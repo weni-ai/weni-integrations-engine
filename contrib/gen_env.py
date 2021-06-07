@@ -17,6 +17,7 @@ SECRET_KEY='{get_random_string(50, chars)}'
 TIME_ZONE='America/Maceio'
 DATABASE_URL='postgresql://postgres:password@localhost:5432/dbname'
 ALLOWED_HOSTS='*'
+LANGUAGE_CODE='en-us'
 """.strip()
 
 env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
