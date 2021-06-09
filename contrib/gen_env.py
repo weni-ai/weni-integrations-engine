@@ -13,11 +13,11 @@ chars = ascii_letters + digits + punctuation
 
 CONFIG_STRING = f"""
 DEBUG=True
-SECRET_KEY='{get_random_string(50, chars)}'
-TIME_ZONE='America/Maceio'
-DATABASE_URL='postgresql://postgres:password@localhost:5432/dbname'
 ALLOWED_HOSTS='*'
+SECRET_KEY='{get_random_string(50, chars)}'
+DATABASE_URL='postgresql://marketplace:marketplace@localhost:5432/marketplace'
 LANGUAGE_CODE='en-us'
+TIME_ZONE='America/Maceio'
 """.strip()
 
 env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
