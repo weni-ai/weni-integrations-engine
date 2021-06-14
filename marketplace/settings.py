@@ -47,8 +47,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     # marketplace apps
-    "marketplace.core",
     "marketplace.accounts",
+    "marketplace.core",
 ]
 
 MIDDLEWARE = [
