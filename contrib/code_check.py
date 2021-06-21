@@ -32,4 +32,4 @@ if __name__ == "__main__":
     if not os.getcwd().endswith("weni-marketplace-engine"):
         raise Exception("The command need be executed in weni-marketplace-engine")
 
-    execute("flake8 .")
+    execute("flake8 marketplace/")
