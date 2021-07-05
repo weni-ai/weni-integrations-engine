@@ -47,4 +47,4 @@ jobs:
       - name: Run coverage tests
         run: |
           poetry run coverage run manage.py test --verbosity=2 --noinput
-          poetry run coverage xml
+          poetry run coverage report -m
