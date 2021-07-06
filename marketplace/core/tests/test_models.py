@@ -2,9 +2,12 @@ from django.db import connection
 from django.db.models.base import ModelBase
 from django.db.utils import ProgrammingError
 from django.test import TestCase
+from django.contrib.auth import get_user_model
 
 from marketplace.core.models import AbstractBaseModel
-from marketplace.accounts.models import User
+
+
+User = get_user_model()
 
 
 class TestAbstractBaseModel(TestCase):
