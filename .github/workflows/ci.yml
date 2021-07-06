@@ -25,9 +25,9 @@ jobs:
         uses: harmon758/postgresql-action@v1
         with:
           postgresql version: ${{ matrix.pg-version }}
-          postgresql db: dbname # change to marketplace
-          postgresql user: postgres # change to marketplace
-          postgresql password: password # change to marketplace
+          postgresql db: marketplace
+          postgresql user: marketplace
+          postgresql password: marketplace
 
       - name: Install Python
         uses: actions/setup-python@v1
