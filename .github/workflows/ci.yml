@@ -1,0 +1,50 @@
+# This workflow will install Python dependencies, run tests and lint with a single version of Python
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+
+name: Python application
+
+on:
+  push:
+    branches: [ main ] # change to main
+  pull_request:
+    branches: [ main ] # change to main
+
+jobs:
+  test:
+    name: Test
+    strategy:
+      max-parallel: 2
+      matrix:
+        pg-version: ['11', '12']
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v1
+
+      - name: Install PostgreSQL
+        uses: harmon758/postgresql-action@v1
+        with:
+          postgresql version: ${{ matrix.pg-version }}
+          postgresql db: dbname # change to marketplace
+          postgresql user: postgres # change to marketplace
+          postgresql password: password # change to marketplace
+
+      - name: Install Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: '3.8.x'
+
+      - name: Initialize environment
+        run: |
+          pip install --upgrade pip poetry
+          poetry install
+          poetry run python contrib/gen_env.py
+
+      - name: Validate code syntax
+        run: |
+          poetry run python contrib/code_check.py
+
+      - name: Run coverage tests
+        run: |
+          poetry run coverage run manage.py test --verbosity=2 --noinput
+          poetry run coverage report -m
