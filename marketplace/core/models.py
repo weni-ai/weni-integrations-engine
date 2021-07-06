@@ -24,11 +24,11 @@ class AbstractBaseModel(models.Model):
         null=True,
     )
 
-    def save(self):
+    def save(self, *args, **kwargs):
         if self.id and not self.modified_by:
             raise ValueError("modified_by can't be None")
 
-        super().save()
+        super().save(*args, **kwargs)
 
     class Meta:
         abstract = True
