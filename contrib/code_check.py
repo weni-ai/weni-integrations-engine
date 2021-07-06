@@ -32,4 +32,9 @@ if __name__ == "__main__":
     if not os.getcwd().endswith("weni-marketplace-engine"):
         raise Exception("The command need be executed in weni-marketplace-engine")
 
+    # Lint validations
     execute("flake8 marketplace/")
+
+    # Coverage tests
+    execute("coverage run manage.py test --verbosity=2 --noinput")
+    execute("coverage report -m")

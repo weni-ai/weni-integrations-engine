@@ -40,11 +40,6 @@ jobs:
           poetry install
           poetry run python contrib/gen_env.py
 
-      - name: Validate code syntax
+      - name: Validate code syntax and unit tests
         run: |
           poetry run python contrib/code_check.py
-
-      - name: Run coverage tests
-        run: |
-          poetry run coverage run manage.py test --verbosity=2 --noinput
-          poetry run coverage report -m
