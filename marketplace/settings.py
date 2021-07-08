@@ -135,6 +135,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 USE_S3 = env.bool("USE_S3", default=False)
 
+MEDIA_ROOT = env.str("MEDIA_ROOT", default="media/")
+
 if USE_S3:
     """
     Upload files to S3 bucket
