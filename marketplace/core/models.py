@@ -14,7 +14,6 @@ class AbstractBaseModel(models.Model):
         "accounts.User",
         on_delete=models.PROTECT,
         related_name="created_%(class)ss",
-        editable=False,
     )
     modified_by = models.ForeignKey(
         "accounts.User",
