@@ -50,7 +50,7 @@ INSTALLED_APPS = [
     "marketplace.accounts",
     "marketplace.core",
     "marketplace.applications",
-    "marketpace.interactions",
+    "marketplace.interactions",
     # installed apps
     "rest_framework",
 ]
