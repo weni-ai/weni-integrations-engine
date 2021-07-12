@@ -1,5 +1,3 @@
-from typing import Tuple
-
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 
@@ -9,33 +7,31 @@ from marketplace.interactions.models import Rating, Comment
 User = get_user_model()
 
 
-def create_rating() -> Tuple[User, dict, Rating]:
-    created_by = User.objects.create(email="admin@marketplace.ai", password="fake@pass#$")
-
-    data = dict(
-        app_slug="test_slug",
-        created_by=created_by,
-        rate=5,
-    )
-
-    return created_by, data, Rating.objects.create(**data)
-
-
-class TestModelRating(TestCase):
+class TestModelRatingMixin:
     def setUp(self):
-        self.user, self.rating_data, self.rating = create_rating()
+        super().setUp()
 
+        self.user = User.objects.create(email="admin@marketplace.ai", password="fake@pass#$")
+
+        self.rating_data = dict(
+            app_slug="test_slug",
+            created_by=self.user,
+            rate=5,
+        )
+
+        self.rating = Rating.objects.create(**self.rating_data)
+
+
+class TestModelRating(TestModelRatingMixin, TestCase):
     def test_created_rating_data(self):
         self.assertEqual(self.rating.app_slug, self.rating_data["app_slug"])
         self.assertEqual(self.rating.rate, self.rating_data["rate"])
 
 
-class TestModelRatingMethods(TestCase):
+class TestModelRatingMethods(TestModelRatingMixin, TestCase):
     """
     Test all methods from model Rating
     """
-    def setUp(self):
-        self.user, self.rating_data, self.rating = create_rating()
 
     def test_str_method(self):
         created_by = self.rating_data["created_by"]
@@ -45,7 +41,6 @@ class TestModelRatingMethods(TestCase):
 
 
 class TestModelCommentMixin:
-
     def setUp(self):
         super().setUp()
 
@@ -70,5 +65,6 @@ class TestModelCommentMethods(TestModelCommentMixin, TestCase):
     """
     Test all methods from model Comment
     """
+
     def test_str_method(self):
         self.assertEqual(self.comment.content, str(self.comment))
