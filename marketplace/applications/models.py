@@ -1,10 +1,10 @@
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
 
-from marketplace.core.models import AbstractBaseModel
+from marketplace.core.models import AppAbstractBaseModel
 
 
-class App(AbstractBaseModel):
+class App(AppAbstractBaseModel):
 
     PLATFORM_IA = "IA"
     PLATFORM_WENI_FLOWS = "WF"
@@ -19,17 +19,16 @@ class App(AbstractBaseModel):
     config = models.JSONField()
     org_uuid = models.UUIDField("Org UUID")
     platform = models.CharField(choices=PLATFORM_CHOICES, max_length=2)
-    app_slug = models.SlugField()
 
     class Meta:
         verbose_name = _("Org")
         verbose_name_plural = _("Orgs")
 
     def __str__(self) -> str:
-        return self.app_slug
+        return self.app_code
 
 
-class AppTypeAsset(AbstractBaseModel):
+class AppTypeAsset(AppAbstractBaseModel):
 
     ASSET_TYPE_IMAGE_BANNER = "IB"
     ASSET_TYPE_IMAGE_COMMON = "IC"
@@ -43,7 +42,6 @@ class AppTypeAsset(AbstractBaseModel):
         (ASSET_TYPE_LINK, "link"),
     )
 
-    app_slug = models.SlugField()
     asset_type = models.CharField("Type", choices=ASSET_TYPE_CHOICES, max_length=2)
     attachment = models.FileField()
 
@@ -52,4 +50,4 @@ class AppTypeAsset(AbstractBaseModel):
         verbose_name_plural = "App Type Assets"
 
     def __str__(self) -> str:
-        return self.app_slug
+        return self.app_code

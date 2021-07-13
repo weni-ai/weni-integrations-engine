@@ -14,7 +14,7 @@ User = get_user_model()
 
 def create_app_type_asset(created_by: User) -> Tuple[dict, AppTypeAsset]:
     app_data = dict(
-        app_slug="test_slug",
+        app_code="test_slug",
         asset_type=AppTypeAsset.ASSET_TYPE_ATTACHMENT,
         attachment="file_to_upload.txt",
         created_by=created_by,
@@ -34,7 +34,7 @@ class TestModelApp(TestCase):
             config=self.config,
             org_uuid=uuid.uuid4(),
             platform=App.PLATFORM_WENI_FLOWS,
-            app_slug="test_slug",
+            app_code="wwc",
             created_by=self.user,
         )
 
@@ -44,10 +44,10 @@ class TestModelApp(TestCase):
         self.assertEqual(self.app.config, self.config)
         self.assertEqual(self.app.org_uuid, self.app_data["org_uuid"])
         self.assertEqual(self.app.platform, App.PLATFORM_WENI_FLOWS)
-        self.assertEqual(self.app.app_slug, self.app_data["app_slug"])
+        self.assertEqual(self.app.app_code, self.app_data["app_code"])
 
     def test_str_method(self):
-        self.assertEqual(str(self.app), self.app_data["app_slug"])
+        self.assertEqual(str(self.app), self.app_data["app_code"])
 
 
 class TestModelAppTypeAsset(TestCase):
@@ -58,7 +58,7 @@ class TestModelAppTypeAsset(TestCase):
         self.app_data, self.app_type_asset = create_app_type_asset(self.user)
 
     def test_created_app_type_asset_data(self):
-        self.assertEqual(self.app_type_asset.app_slug, self.app_data["app_slug"])
+        self.assertEqual(self.app_type_asset.app_code, self.app_data["app_code"])
         self.assertEqual(self.app_type_asset.asset_type, AppTypeAsset.ASSET_TYPE_ATTACHMENT)
 
     def test_url_from_attachment(self):
@@ -74,4 +74,4 @@ def TestModelAppTypeAssetMethods(TestCase):
         self.app_data, self.app_type_asset = create_app_type_asset(self.user)
 
     def test_str_method(self):
-        self.assertEqual(str(self.app_type_asset), self.app_data["app_slug"])
+        self.assertEqual(str(self.app_type_asset), self.app_data["app_code"])

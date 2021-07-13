@@ -31,3 +31,11 @@ class AbstractBaseModel(models.Model):
 
     class Meta:
         abstract = True
+
+
+class AppAbstractBaseModel(AbstractBaseModel):
+
+    app_code = models.SlugField()
+
+    class Meta:
+        abstract = True
