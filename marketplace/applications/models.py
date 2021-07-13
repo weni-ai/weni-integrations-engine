@@ -37,13 +37,14 @@ class AppTypeAsset(AppAbstractBaseModel):
 
     ASSET_TYPE_CHOICES = (
         (ASSET_TYPE_IMAGE_BANNER, "image_banner"),
-        (ASSET_TYPE_IMAGE_COMMON, "image_common"),
+        (ASSET_TYPE_IMAGE_COMMON, "icon"),
         (ASSET_TYPE_ATTACHMENT, "attachment"),
         (ASSET_TYPE_LINK, "link"),
     )
 
     asset_type = models.CharField("Type", choices=ASSET_TYPE_CHOICES, max_length=2)
     attachment = models.FileField()
+    description = models.CharField(max_length=50, blank=True, null=True)
 
     class Meta:
         verbose_name = "App Type Asset"
