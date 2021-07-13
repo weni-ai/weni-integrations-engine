@@ -3,8 +3,9 @@ import urllib
 from typing import Tuple
 
 from django.test import TestCase
-from django.contrib.auth import get_user_model
 from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.db import IntegrityError
 
 from marketplace.applications.models import App, AppTypeAsset
 
@@ -15,7 +16,7 @@ User = get_user_model()
 def create_app_type_asset(created_by: User) -> Tuple[dict, AppTypeAsset]:
     app_data = dict(
         app_code="test_slug",
-        asset_type=AppTypeAsset.ASSET_TYPE_ATTACHMENT,
+        asset_type=AppTypeAsset.ASSET_TYPE_ICON,
         attachment="file_to_upload.txt",
         created_by=created_by,
     )
@@ -59,11 +60,15 @@ class TestModelAppTypeAsset(TestCase):
 
     def test_created_app_type_asset_data(self):
         self.assertEqual(self.app_type_asset.app_code, self.app_data["app_code"])
-        self.assertEqual(self.app_type_asset.asset_type, AppTypeAsset.ASSET_TYPE_ATTACHMENT)
+        self.assertEqual(self.app_type_asset.asset_type, AppTypeAsset.ASSET_TYPE_ICON)
 
     def test_url_from_attachment(self):
         expected_url = urllib.parse.urljoin(settings.MEDIA_URL, self.app_data["attachment"])
         self.assertEqual(expected_url, self.app_type_asset.attachment.url)
+
+    def test_unique_constraint_between_asset_type_and_app_code(self):
+        with self.assertRaises(IntegrityError):
+            create_app_type_asset(self.user)
 
 
 def TestModelAppTypeAssetMethods(TestCase):

@@ -1,4 +1,6 @@
 from django.db import models
+from django.db.models import Q
+from django.db.models.constraints import UniqueConstraint
 from django.utils.translation import ugettext_lazy as _
 
 from marketplace.core.models import AppAbstractBaseModel
@@ -31,13 +33,13 @@ class App(AppAbstractBaseModel):
 class AppTypeAsset(AppAbstractBaseModel):
 
     ASSET_TYPE_IMAGE_BANNER = "IB"
-    ASSET_TYPE_IMAGE_COMMON = "IC"
+    ASSET_TYPE_ICON = "IC"
     ASSET_TYPE_ATTACHMENT = "AT"
     ASSET_TYPE_LINK = "LK"
 
     ASSET_TYPE_CHOICES = (
         (ASSET_TYPE_IMAGE_BANNER, "image_banner"),
-        (ASSET_TYPE_IMAGE_COMMON, "icon"),
+        (ASSET_TYPE_ICON, "icon"),
         (ASSET_TYPE_ATTACHMENT, "attachment"),
         (ASSET_TYPE_LINK, "link"),
     )
@@ -49,6 +51,13 @@ class AppTypeAsset(AppAbstractBaseModel):
     class Meta:
         verbose_name = "App Type Asset"
         verbose_name_plural = "App Type Assets"
+        constraints = [
+            UniqueConstraint(
+                fields=["asset_type", "app_code"],
+                condition=Q(asset_type="IC"),
+                name="unique_asset_type_icon_app_code",
+            )
+        ]
 
     def __str__(self) -> str:
         return self.app_code
