@@ -154,4 +154,4 @@ if USE_S3:
 
 else:
     STATIC_URL = "/static/"
-    MEDIA_URL = '/media/'
+    MEDIA_URL = "/media/"
