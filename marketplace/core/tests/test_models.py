@@ -4,13 +4,13 @@ from django.db.utils import ProgrammingError
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 
-from marketplace.core.models import AbstractBaseModel
+from marketplace.core.models import BaseModel
 
 
 User = get_user_model()
 
 
-class TestAbstractBaseModel(TestCase):
+class TestBaseModel(TestCase):
     def setUp(self):
         super().setUp()
 
@@ -23,13 +23,13 @@ class TestAbstractBaseModel(TestCase):
     def setUpClass(cls):
         if not hasattr(cls, "_base_model"):
             cls._base_model = ModelBase(
-                "FakeModel", (AbstractBaseModel,), {"__module__": AbstractBaseModel.__module__}
+                "FakeModel", (BaseModel,), {"__module__": BaseModel.__module__}
             )
 
         try:
             with connection.schema_editor() as schema_editor:
                 schema_editor.create_model(cls._base_model)
-            super(TestAbstractBaseModel, cls).setUpClass()
+            super(TestBaseModel, cls).setUpClass()
         except ProgrammingError:
             pass
 

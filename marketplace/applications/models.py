@@ -3,10 +3,10 @@ from django.db.models import Q
 from django.db.models.constraints import UniqueConstraint
 from django.utils.translation import ugettext_lazy as _
 
-from marketplace.core.models import AppAbstractBaseModel
+from marketplace.core.models import AppBaseModel
 
 
-class App(AppAbstractBaseModel):
+class App(AppBaseModel):
 
     PLATFORM_IA = "IA"
     PLATFORM_WENI_FLOWS = "WF"
@@ -30,7 +30,7 @@ class App(AppAbstractBaseModel):
         return self.app_code
 
 
-class AppTypeAsset(AppAbstractBaseModel):
+class AppTypeAsset(AppBaseModel):
 
     ASSET_TYPE_IMAGE_BANNER = "IB"
     ASSET_TYPE_ICON = "IC"
