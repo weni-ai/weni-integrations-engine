@@ -23,8 +23,8 @@ class App(AppBaseModel):
     platform = models.CharField(choices=PLATFORM_CHOICES, max_length=2)
 
     class Meta:
-        verbose_name = _("Org")
-        verbose_name_plural = _("Orgs")
+        verbose_name = _("App")
+        verbose_name_plural = _("Apps")
 
     def __str__(self) -> str:
         return self.app_code

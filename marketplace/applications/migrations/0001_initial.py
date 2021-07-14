@@ -52,8 +52,8 @@ class Migration(migrations.Migration):
                 ),
             ],
             options={
-                "verbose_name": "Org",
-                "verbose_name_plural": "Orgs",
+                "verbose_name": "App",
+                "verbose_name_plural": "Apps",
             },
         ),
     ]
