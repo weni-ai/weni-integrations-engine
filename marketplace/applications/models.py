@@ -13,9 +13,9 @@ class App(AppAbstractBaseModel):
     PLATFORM_RC = "RC"
 
     PLATFORM_CHOICES = (
-        (PLATFORM_IA, "ia"),
+        (PLATFORM_IA, "inteligence-artificial"),
         (PLATFORM_WENI_FLOWS, "weni-flows"),
-        (PLATFORM_RC, "rc"),
+        (PLATFORM_RC, "rocketchat"),
     )
 
     config = models.JSONField()
