@@ -3,7 +3,15 @@ from django.db.models import Q
 from django.db.models.constraints import UniqueConstraint
 from django.utils.translation import ugettext_lazy as _
 
-from marketplace.core.models import AppBaseModel
+from marketplace.core.models import BaseModel
+
+
+class AppBaseModel(BaseModel):
+
+    app_code = models.SlugField()
+
+    class Meta:
+        abstract = True
 
 
 class App(AppBaseModel):
