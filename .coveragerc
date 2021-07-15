@@ -5,6 +5,7 @@ omit =
     *site-packages/*
     manage.py
     marketplace/settings.py
+    *tests/*
 
 [report]
 fail_under = 95

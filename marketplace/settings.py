@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     # marketplace apps
     "marketplace.accounts",
     "marketplace.core",
+    "marketplace.applications",
 ]
 
 MIDDLEWARE = [
@@ -124,12 +125,33 @@ USE_L10N = True
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/3.2/howto/static-files/
-
-STATIC_URL = "/static/"
-
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+
+# AWS Configurations
+
+USE_S3 = env.bool("USE_S3", default=False)
+
+MEDIA_ROOT = env.str("MEDIA_ROOT", default="media/")
+
+if USE_S3:
+    """
+    Upload files to S3 bucket
+    """
+
+    DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+
+    AWS_ACCESS_KEY_ID = env.str("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY = env.str("AWS_SECRET_ACCESS_KEY")
+
+    AWS_STORAGE_BUCKET_NAME = env.str("AWS_STORAGE_BUCKET_NAME")
+
+    AWS_QUERYSTRING_AUTH = False
+    AWS_S3_FILE_OVERWRITE = False
+
+else:
+    STATIC_URL = "/static/"
+    MEDIA_URL = "/media/"

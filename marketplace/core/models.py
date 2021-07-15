@@ -4,7 +4,7 @@ from django.db import models
 from django.utils.translation import ugettext_lazy as _
 
 
-class AbstractBaseModel(models.Model):
+class BaseModel(models.Model):
 
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     created_on = models.DateTimeField(_("Created on"), editable=False, auto_now_add=True)
@@ -14,7 +14,6 @@ class AbstractBaseModel(models.Model):
         "accounts.User",
         on_delete=models.PROTECT,
         related_name="created_%(class)ss",
-        editable=False,
     )
     modified_by = models.ForeignKey(
         "accounts.User",

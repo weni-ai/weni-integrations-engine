@@ -18,6 +18,11 @@ SECRET_KEY='{get_random_string(50, chars)}'
 DATABASE_URL='postgresql://marketplace:marketplace@localhost:5432/marketplace'
 LANGUAGE_CODE='en-us'
 TIME_ZONE='America/Maceio'
+MEDIA_ROOT='media/'
+USE_S3=False                  # if True uses AWS S3 to store static files
+AWS_ACCESS_KEY_ID=''
+AWS_SECRET_ACCESS_KEY=''
+AWS_STORAGE_BUCKET_NAME=''
 """.strip()
 
 env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
