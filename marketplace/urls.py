@@ -16,6 +16,9 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from django.contrib.auth.models import Group
+from django.urls.conf import include
+
+from marketplace.apis import urls as api_urls
 
 
 admin.site.unregister(Group)
@@ -23,4 +26,5 @@ admin.site.unregister(Group)
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("api/v1/", include(api_urls)),
 ]
