@@ -1,3 +1,4 @@
+from typing import Dict
 from abc import ABC, abstractproperty
 
 from django.db.models.query import QuerySet
@@ -45,7 +46,7 @@ class AbstractAppType(ABC):
         ...  # pragma: no cover
 
     @abstractproperty
-    def bg_color(self) -> dict[int, int, int, float]:
+    def bg_color(self) -> dict:
         ...  # pragma: no cover
 
 
