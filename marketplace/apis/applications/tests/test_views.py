@@ -11,6 +11,7 @@ from marketplace.apis.applications.views import AppTypeViewSet
 from marketplace.applications.tests import utils
 from marketplace.applications import types
 
+
 User = get_user_model()
 
 
