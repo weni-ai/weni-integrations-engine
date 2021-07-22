@@ -1,26 +1,26 @@
 from django.db import models
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db.models.constraints import UniqueConstraint
 
-from marketplace.core.models import AbstractBaseModel
+from marketplace.applications.models import AppBaseModel
 
 
-class Rating(AbstractBaseModel):
+class Rating(AppBaseModel):
 
     rate = models.IntegerField(validators=[MaxValueValidator(5), MinValueValidator(1)])
-    app_slug = models.SlugField()
 
     class Meta:
         verbose_name = "Rating"
         verbose_name_plural = "Ratings"
+        constraints = [UniqueConstraint(fields=["created_by", "app_code"], name="unique_rationg_created_by_app_code")]
 
     def __str__(self) -> str:
         return f"{self.rate} - {self.created_by.email}"
 
 
-class Comment(AbstractBaseModel):
+class Comment(AppBaseModel):
 
     content = models.TextField()
-    app_slug = models.SlugField()
 
     class Meta:
         verbose_name = "Comment"

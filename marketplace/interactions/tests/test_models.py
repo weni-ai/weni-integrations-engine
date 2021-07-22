@@ -1,5 +1,6 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError
 
 from marketplace.interactions.models import Rating, Comment
 
@@ -14,7 +15,7 @@ class TestModelRatingMixin:
         self.user = User.objects.create(email="admin@marketplace.ai", password="fake@pass#$")
 
         self.rating_data = dict(
-            app_slug="test_slug",
+            app_code="wwc",
             created_by=self.user,
             rate=5,
         )
@@ -24,8 +25,12 @@ class TestModelRatingMixin:
 
 class TestModelRating(TestModelRatingMixin, TestCase):
     def test_created_rating_data(self):
-        self.assertEqual(self.rating.app_slug, self.rating_data["app_slug"])
+        self.assertEqual(self.rating.app_code, self.rating_data["app_code"])
         self.assertEqual(self.rating.rate, self.rating_data["rate"])
+
+    def test_unique_constraint_between_created_by_and_app_code(self):
+        with self.assertRaises(IntegrityError):
+            Rating.objects.create(**self.rating_data)
 
 
 class TestModelRatingMethods(TestModelRatingMixin, TestCase):
@@ -47,7 +52,7 @@ class TestModelCommentMixin:
         self.user = User.objects.create(email="admin@marketplace.ai", password="fake@pass#$")
 
         self.comment_data = dict(
-            app_slug="test_slug",
+            app_code="wwc",
             created_by=self.user,
             content="This is a test comment",
         )
@@ -57,7 +62,7 @@ class TestModelCommentMixin:
 
 class TestModelComment(TestModelCommentMixin, TestCase):
     def test_created_comment_data(self):
-        self.assertEqual(self.comment.app_slug, self.comment_data["app_slug"])
+        self.assertEqual(self.comment.app_code, self.comment_data["app_code"])
         self.assertEqual(self.comment.content, self.comment_data["content"])
 
 

@@ -36,7 +36,7 @@ class TestBaseModel(TestCase):
         try:
             with connection.schema_editor() as schema_editor:
                 schema_editor.delete_model(cls._base_model)
-            super(TestAbstractBaseModel, cls).tearDownClass()
+            super(TestBaseModel, cls).tearDownClass()
         except ProgrammingError:
             pass
 
