@@ -18,10 +18,13 @@ from django.urls import path
 from django.contrib.auth.models import Group
 from django.urls.conf import include
 
-from marketplace.apis import urls as api_urls
+from marketplace.applications import urls as applications_urls
 
 
 admin.site.unregister(Group)
+
+
+api_urls = [path("", include(applications_urls))]
 
 
 urlpatterns = [

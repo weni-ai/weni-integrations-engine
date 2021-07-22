@@ -1,5 +1,3 @@
-import unittest
-
 from django.test import TestCase
 from django.urls import reverse
 from django.contrib.auth import get_user_model
@@ -7,27 +5,31 @@ from rest_framework.test import APIClient
 from rest_framework import status
 
 from marketplace.applications.models import AppTypeAsset
-from marketplace.apis.applications.views import AppTypeViewSet
-from marketplace.applications.tests import utils
 from marketplace.applications import types
 
 
 User = get_user_model()
 
 
-class AppTypeTestCase(TestCase):
+class AppTypeViewTestCase(TestCase):
     URL: str
 
     def setUp(self):
         super().setUp()
 
         self.user = User.objects.create_superuser(email="admin@marketplace.ai", password="fake@pass#$")
-        self.app_type = utils.create_app_type_asset("wwc", AppTypeAsset.ASSET_TYPE_ICON, "Fake", created_by=self.user)
+        self.app_type = AppTypeAsset.objects.create(
+            app_code="wwc",
+            asset_type=AppTypeAsset.ASSET_TYPE_ICON,
+            attachment="file_to_upload.txt",
+            description="Fake",
+            created_by=self.user,
+        )
 
         self.client = APIClient()
 
 
-class ListAppTypeTestCase(AppTypeTestCase):
+class ListAppTypeViewTestCase(AppTypeViewTestCase):
     URL = reverse("apptypes-list")
 
     def test_request_status_ok(self):
@@ -39,7 +41,7 @@ class ListAppTypeTestCase(AppTypeTestCase):
         self.assertEqual(len(response.json()), len(types.get_types()))
 
 
-class RetrieveAppTypeTestCase(AppTypeTestCase):
+class RetrieveAppTypeViewTestCase(AppTypeViewTestCase):
     URL = reverse("apptypes-detail", kwargs={"pk": "wwc"})
 
     def test_request_status_ok(self):

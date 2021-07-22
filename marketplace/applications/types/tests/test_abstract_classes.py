@@ -3,7 +3,6 @@ import uuid
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 
-from marketplace.applications.tests import utils
 from marketplace.applications.types import AppType
 from marketplace.applications.models import AppTypeAsset, App
 
@@ -11,16 +10,7 @@ from marketplace.applications.models import AppTypeAsset, App
 User = get_user_model()
 
 
-def create_fake_app_type_asset(fake_type_instance: AppType, user: User) -> AppTypeAsset:
-    return utils.create_app_type_asset(
-        app_code=fake_type_instance.code,
-        asset_type=AppTypeAsset.ASSET_TYPE_ICON,
-        description="Test app type asset",
-        created_by=user,
-    )
-
-
-class TestAppType(TestCase):
+class AppTypeTestCase(TestCase):
     def setUp(self):
         super().setUp()
 
@@ -37,12 +27,21 @@ class TestAppType(TestCase):
 
         self.FakeType = FakeType
 
+    def create_app_type_asset(self, fake_type_instance: AppType, user: User) -> AppTypeAsset:
+        return AppTypeAsset.objects.create(
+            app_code=fake_type_instance.code,
+            asset_type=AppTypeAsset.ASSET_TYPE_ICON,
+            attachment="../../tests/file_to_upload.txt",
+            description="Test app type asset",
+            created_by=user,
+        )
+
     def test_list_assets_from_app_type(self):
         fake_type_instance = self.FakeType()
 
         self.assertFalse(fake_type_instance.assets.exists())
 
-        create_fake_app_type_asset(fake_type_instance, self.user)
+        self.create_app_type_asset(fake_type_instance, self.user)
 
         self.assertTrue(fake_type_instance.assets.exists())
 
@@ -70,13 +69,13 @@ class TestAppType(TestCase):
 
     def test_get_icon_from_app_type(self):
         fake_type_instance = self.FakeType()
-        icon = create_fake_app_type_asset(fake_type_instance, self.user)
+        icon = self.create_app_type_asset(fake_type_instance, self.user)
 
         self.assertEqual(fake_type_instance.get_icon_asset(), icon)
 
     def test_get_icon_url_from_app_type(self):
         fake_type_instance = self.FakeType()
-        icon = create_fake_app_type_asset(fake_type_instance, self.user)
+        icon = self.create_app_type_asset(fake_type_instance, self.user)
 
         self.assertEqual(fake_type_instance.get_icon_url(), icon.attachment.url)
 
