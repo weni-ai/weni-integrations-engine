@@ -16,11 +16,18 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from django.contrib.auth.models import Group
+from django.urls.conf import include
+
+from marketplace.applications import urls as applications_urls
 
 
 admin.site.unregister(Group)
 
 
+api_urls = [path("", include(applications_urls))]
+
+
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("api/v1/", include(api_urls)),
 ]

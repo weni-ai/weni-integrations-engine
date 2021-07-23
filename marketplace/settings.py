@@ -50,6 +50,8 @@ INSTALLED_APPS = [
     "marketplace.accounts",
     "marketplace.core",
     "marketplace.applications",
+    # installed apps
+    "rest_framework",
 ]
 
 MIDDLEWARE = [
