@@ -3,6 +3,8 @@ import uuid
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
 
+from marketplace.core.validators import validate_app_code_exists
+
 
 class BaseModel(models.Model):
 
@@ -28,6 +30,14 @@ class BaseModel(models.Model):
             raise ValueError("modified_by can't be None")
 
         super().save(*args, **kwargs)
+
+    class Meta:
+        abstract = True
+
+
+class AppTypeBaseModel(BaseModel):
+
+    app_code = models.SlugField(validators=[validate_app_code_exists])
 
     class Meta:
         abstract = True
