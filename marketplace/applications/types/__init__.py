@@ -30,7 +30,19 @@ def _get_app_types_members() -> list:
                 yield member
 
 
-def get_types() -> list:
+def get_types(category: str = None) -> list:
+    """
+    Returns a list of AppTypes
+
+        Parameters:
+            category (str): Filter AppTypes by category
+
+        Returns:
+            list: A list of AppTypes
+    """
+    if category:
+        return list(filter(lambda _type: _type.get_category_display() == category, _types))
+
     return _types
 
 
