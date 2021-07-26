@@ -2,10 +2,10 @@ from django.db import models
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db.models.constraints import UniqueConstraint
 
-from marketplace.applications.models import AppBaseModel
+from marketplace.core.models import AppTypeBaseModel
 
 
-class Rating(AppBaseModel):
+class Rating(AppTypeBaseModel):
 
     rate = models.IntegerField(validators=[MaxValueValidator(5), MinValueValidator(1)])
 
@@ -18,7 +18,7 @@ class Rating(AppBaseModel):
         return f"{self.rate} - {self.created_by.email}"
 
 
-class Comment(AppBaseModel):
+class Comment(AppTypeBaseModel):
 
     content = models.TextField()
 
