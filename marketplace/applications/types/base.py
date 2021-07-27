@@ -4,6 +4,7 @@ from abc import ABC, abstractproperty
 from django.db.models.query import QuerySet
 
 from marketplace.applications.models import AppTypeAsset, App
+from marketplace.interactions.models import Rating, Comment
 
 
 class AbstractAppType(ABC):
@@ -62,6 +63,14 @@ class AppType(AbstractAppType):
     @property
     def apps(self) -> QuerySet:
         return App.objects.filter(app_code=self.code)
+
+    @property
+    def ratings(self) -> QuerySet:
+        return Rating.objects.filter(app_code=self.code)
+
+    @property
+    def comments(self) -> QuerySet:
+        return Comment.objects.filter(app_code=self.code)
 
     def get_icon_asset(self) -> AppTypeAsset:
         try:
