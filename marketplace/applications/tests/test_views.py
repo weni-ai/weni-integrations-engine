@@ -40,6 +40,14 @@ class ListAppTypeViewTestCase(AppTypeViewTestCase):
         response = self.client.get(self.URL)
         self.assertEqual(len(response.json()), len(types.get_types()))
 
+    def test_filter_app_type_by_fake_category(self):
+        response = self.client.get(self.URL + "?category=fake")
+        self.assertEqual(response.json(), [])
+
+    def test_filter_app_type_by_right_category(self):
+        response = self.client.get(self.URL + "?category=channel")
+        self.assertTrue(len(response.json()) > 0)
+
 
 class RetrieveAppTypeViewTestCase(AppTypeViewTestCase):
     URL = reverse("apptypes-detail", kwargs={"pk": "wwc"})

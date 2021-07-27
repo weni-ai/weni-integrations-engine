@@ -11,7 +11,7 @@ class AppTypeViewSet(viewsets.ViewSet):
     serializer_class = AppTypeSerializer
 
     def list(self, request):
-        app_types = types.get_types()
+        app_types = types.get_types(request.query_params.get("category"))
         serializer = self.serializer_class(app_types, many=True)
 
         return Response(serializer.data)
