@@ -33,7 +33,12 @@ class TestBaseModel(TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        ...
+        try:
+            with connection.schema_editor() as schema_editor:
+                schema_editor.delete_model(cls._base_model)
+            super(TestBaseModel, cls).tearDownClass()
+        except ProgrammingError:
+            pass
 
     def test_model_have_right_related_names(self):
         self.assertTrue(hasattr(self.user, "created_fakemodels"))

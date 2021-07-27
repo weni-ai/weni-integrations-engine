@@ -15,13 +15,17 @@ def log(output: str, log_style: str):
     print(LogStyle.WHITE, "└─", log_style + output, "\n")
 
 
-def execute(cmd: str):
+def execute(cmd: str, cmd_output: bool = False):
     os.chdir(os.getcwd())
     print(LogStyle.HEADER, "Running -", LogStyle.BOLD + cmd)
 
     try:
-        subprocess.check_output(cmd, shell=True).decode("utf-8")
+        output = subprocess.check_output(cmd, shell=True).decode("utf-8")
         log("Success", LogStyle.OK)
+
+        if cmd_output:
+            print(LogStyle.OK, "\nCommand output: \n\n", output)
+
     except subprocess.CalledProcessError as e:
         print(LogStyle.FAIL, e.stdout.decode("utf-8").replace("\n", "\n ").strip())
         log("Fail", LogStyle.FAIL)
@@ -37,4 +41,4 @@ if __name__ == "__main__":
 
     # Coverage tests
     execute("coverage run manage.py test --verbosity=2 --noinput")
-    execute("coverage report -m")
+    execute("coverage report -m", cmd_output=True)
