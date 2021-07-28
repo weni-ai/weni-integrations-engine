@@ -84,3 +84,6 @@ class AppType(AbstractAppType):
     def get_category_display(self) -> str:
         categories = dict(self.CATEGORY_CHOICES)
         return categories.get(self.category)
+
+    def get_ratings_average(self) -> float:
+        return Rating.get_apptype_average(self.code)
