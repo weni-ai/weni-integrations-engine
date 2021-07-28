@@ -17,6 +17,8 @@ class AppTypeSerializer(serializers.Serializer):
     category = serializers.ChoiceField(choices=AppType.CATEGORY_CHOICES, source="get_category_display")
     icon = serializers.URLField(source="get_icon_url")
     bg_color = ColorSerializer()
+    rating = serializers.SerializerMethodField()
+    comments_count = serializers.SerializerMethodField()
 
     assets = serializers.SerializerMethodField()
 
@@ -29,3 +31,10 @@ class AppTypeSerializer(serializers.Serializer):
             }
             for asset in obj.assets
         ]
+
+    def get_rating(self, obj) -> dict:
+        # TODO: Return too the "mine" field
+        return dict(average=obj.get_ratings_average())
+
+    def get_comments_count(self, obj) -> int:
+        return obj.comments.count()
