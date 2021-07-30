@@ -44,6 +44,18 @@ class TestModelRatingMethods(TestModelRatingMixin, TestCase):
 
         self.assertEquals(str(self.rating), f"{rate} - {created_by.email}")
 
+    def test_get_apptype_average_method(self):
+        self.assertEqual(Rating.get_apptype_average("wwc"), 5.0)
+
+        self.rating_data["rate"] = 2
+        self.rating_data["created_by"] = User.objects.create_superuser(
+            email="user@marketplace.ai",
+            password="fake@pass#$",
+        )
+        Rating.objects.create(**self.rating_data)
+
+        self.assertEqual(Rating.get_apptype_average("wwc"), 3.5)
+
 
 class TestModelCommentMixin:
     def setUp(self):

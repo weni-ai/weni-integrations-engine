@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Avg
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db.models.constraints import UniqueConstraint
 
@@ -16,6 +17,10 @@ class Rating(AppTypeBaseModel):
 
     def __str__(self) -> str:
         return f"{self.rate} - {self.created_by.email}"
+
+    @classmethod
+    def get_apptype_average(cls, app_code: str) -> float:
+        return cls.objects.filter(app_code=app_code).aggregate(Avg("rate")).get("rate__avg")
 
 
 class Comment(AppTypeBaseModel):

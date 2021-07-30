@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 
 from marketplace.applications.types import AppType
 from marketplace.applications.models import AppTypeAsset, App
+from marketplace.interactions.models import Rating, Comment
 
 
 User = get_user_model()
@@ -60,6 +61,34 @@ class AppTypeTestCase(TestCase):
 
         self.assertTrue(fake_type_instance.apps.exists())
 
+    def test_list_ratings_from_app_type(self):
+        fake_type_instance = self.FakeType()
+        self.assertFalse(fake_type_instance.ratings.exists())
+
+        rating = Rating.objects.create(
+            app_code=fake_type_instance.code,
+            created_by=self.user,
+            rate=4,
+        )
+
+        self.assertTrue(fake_type_instance.ratings.exists())
+        self.assertTrue(fake_type_instance.ratings.count() == 1)
+        self.assertEqual(rating, fake_type_instance.ratings.first())
+
+    def test_list_comments_from_app_type(self):
+        fake_type_instance = self.FakeType()
+        self.assertFalse(fake_type_instance.comments.exists())
+
+        comment = Comment.objects.create(
+            app_code=fake_type_instance.code,
+            created_by=self.user,
+            content="Fake comment to test the AppType",
+        )
+
+        self.assertTrue(fake_type_instance.comments.exists())
+        self.assertTrue(fake_type_instance.comments.count() == 1)
+        self.assertEqual(comment, fake_type_instance.comments.first())
+
     def test_get_icon_from_app_type_without_asset(self):
         fake_type_instance = self.FakeType()
         message = f"{self.FakeType.__name__} doesn't have an icon"
@@ -84,3 +113,23 @@ class AppTypeTestCase(TestCase):
         categories = dict(self.FakeType.CATEGORY_CHOICES)
 
         self.assertEqual(fake_type_instance.get_category_display(), categories[fake_type_instance.category])
+
+    def test_get_ratings_average_from_app_type(self):
+        fake_type_instance = self.FakeType()
+        self.assertIsNone(fake_type_instance.get_ratings_average())
+
+        Rating.objects.create(
+            app_code=fake_type_instance.code,
+            created_by=self.user,
+            rate=4,
+        )
+
+        self.assertEqual(fake_type_instance.get_ratings_average(), 4.0)
+
+        Rating.objects.create(
+            app_code=fake_type_instance.code,
+            created_by=User.objects.create_superuser(email="user@marketplace.ai", password="fake@pass#$"),
+            rate=1,
+        )
+
+        self.assertEqual(fake_type_instance.get_ratings_average(), 2.5)
