@@ -1,4 +1,4 @@
-from marketplace.applications.types.base import AppType
+from marketplace.core.types.base import AppType
 
 
 class WeniWebChatType(AppType):

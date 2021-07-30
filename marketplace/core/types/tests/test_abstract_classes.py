@@ -3,7 +3,7 @@ import uuid
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 
-from marketplace.applications.types import AppType
+from marketplace.core.types.base import AppType
 from marketplace.applications.models import AppTypeAsset, App
 from marketplace.interactions.models import Rating, Comment
 

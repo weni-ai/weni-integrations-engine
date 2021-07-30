@@ -5,7 +5,7 @@ from rest_framework.test import APIClient
 from rest_framework import status
 
 from marketplace.applications.models import AppTypeAsset
-from marketplace.applications import types
+from marketplace.core import types
 
 
 User = get_user_model()

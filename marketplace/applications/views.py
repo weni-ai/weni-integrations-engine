@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from marketplace.applications.serializers import AppTypeSerializer
-from marketplace.applications import types
+from marketplace.core import types
 
 
 class AppTypeViewSet(viewsets.ViewSet):

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from marketplace.applications.types.base import AppType
+from marketplace.core.types.base import AppType
 
 
 class ColorSerializer(serializers.Serializer):
