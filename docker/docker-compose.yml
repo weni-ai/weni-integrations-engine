@@ -19,11 +19,11 @@ services:
       - DEBUG=${DEBUG:-true}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS:-*}
       - SECRET_KEY=${SECRET_KEY}
-      - DATABASE_URL=${DATABASE_URL-postgresql://marketplace:marketplace@database:5432/marketplace}
-      - LANGUAGE_CODE=${LANGUAGE_CODE-en-us}
-      - TIME_ZONE=${TIME_ZONE-America/Maceio}
-      - MEDIA_ROOT=${MEDIA_ROOT-media/}
-      - USE_S3=${USE_S3-false}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://marketplace:marketplace@database:5432/marketplace}
+      - LANGUAGE_CODE=${LANGUAGE_CODE:-en-us}
+      - TIME_ZONE=${TIME_ZONE:-America/Maceio}
+      - MEDIA_ROOT=${MEDIA_ROOT:-media/}
+      - USE_S3=${USE_S3:-false}
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - AWS_STORAGE_BUCKET_NAME=${AWS_STORAGE_BUCKET_NAME}
