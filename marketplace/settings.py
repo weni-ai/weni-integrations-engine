@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     "marketplace.interactions",
     # installed apps
     "rest_framework",
+    "mozilla_django_oidc",
 ]
 
 MIDDLEWARE = [
@@ -134,6 +135,14 @@ USE_TZ = True
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+}
+
+
 # AWS Configurations
 
 USE_S3 = env.bool("USE_S3", default=False)
@@ -158,3 +167,21 @@ if USE_S3:
 else:
     STATIC_URL = "/static/"
     MEDIA_URL = "/media/"
+
+
+# Mozilla OIDC Configurations
+
+USE_OIDC = env.bool("USE_OIDC")
+
+if USE_OIDC:
+    REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"].append("mozilla_django_oidc.contrib.drf.OIDCAuthentication")
+
+    OIDC_RP_CLIENT_ID = env.str("OIDC_RP_CLIENT_ID")
+    OIDC_RP_CLIENT_SECRET = env.str("OIDC_RP_CLIENT_SECRET")
+    OIDC_OP_AUTHORIZATION_ENDPOINT = env.str("OIDC_OP_AUTHORIZATION_ENDPOINT")
+    OIDC_OP_TOKEN_ENDPOINT = env.str("OIDC_OP_TOKEN_ENDPOINT")
+    OIDC_OP_USER_ENDPOINT = env.str("OIDC_OP_USER_ENDPOINT")
+    OIDC_OP_JWKS_ENDPOINT = env.str("OIDC_OP_JWKS_ENDPOINT")
+    OIDC_RP_SIGN_ALGO = env.str("OIDC_RP_SIGN_ALGO", default="RS256")
+    OIDC_DRF_AUTH_BACKEND = "marketplace.accounts.backends.WeniOIDCAuthenticationBackend"
+    OIDC_RP_SCOPES = env.str("OIDC_RP_SCOPES", default="openid email")
