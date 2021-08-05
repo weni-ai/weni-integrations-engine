@@ -5,7 +5,7 @@ from django.test import TestCase
 from marketplace.applications import types
 
 
-class TestWongModuleImport(TestCase):
+class TestWrongModuleImport(TestCase):
     """
     Tests if "_get_modules" will return any error when trying to import a file
     """
