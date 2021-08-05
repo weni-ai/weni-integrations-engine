@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import status
 
 from marketplace.applications.models import AppTypeAsset
-from marketplace.applications import types
+from marketplace.core import types
 from marketplace.applications.views import AppTypeViewSet
 from marketplace.core.tests.base import APIBaseTestCase
 

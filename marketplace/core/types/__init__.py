@@ -2,7 +2,7 @@ import os
 import inspect
 import importlib
 
-from marketplace.applications.types.base import AppType
+from marketplace.core.types.base import AppType
 
 
 _types = []
@@ -16,7 +16,7 @@ def _get_modules():
             continue
 
         try:
-            module = importlib.import_module(f"marketplace.applications.types.{content_file}")
+            module = importlib.import_module(f"marketplace.core.types.{content_file}")
         except ModuleNotFoundError:
             continue
 
