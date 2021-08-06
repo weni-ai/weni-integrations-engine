@@ -17,6 +17,8 @@ from django.contrib import admin
 from django.urls import path
 from django.contrib.auth.models import Group
 from django.urls.conf import include
+from django.conf import settings
+from django.conf.urls.static import static
 
 from marketplace.applications import urls as applications_urls
 from marketplace.interactions import urls as interactions_urls
@@ -31,4 +33,4 @@ api_urls = [path("", include(applications_urls)), path("", include(interactions_
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/v1/", include(api_urls)),
-]
+] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
