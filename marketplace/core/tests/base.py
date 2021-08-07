@@ -15,25 +15,37 @@ class Request(object):
     def __init__(self, test_instance: TestCase):
         self.test_instance = test_instance
         self.factory = APIRequestFactory()
+        self.set_view(test_instance.view)
 
     def get_response_data(self, response: Response) -> dict:
         return json.loads(json.dumps(response.data))
 
-    def get(self, url: str, **kwargs) -> Response:
-        request = self.factory.get(url)
-        force_authenticate(request, user=self.test_instance.user)
-        response = self.test_instance.view(request, **kwargs)
+    def set_view(self, view):
+        self._view = view
+
+    def _get_response(self, request, **kwargs) -> Response:
+        response = self._view(request, **kwargs)
         setattr(response, "json", self.get_response_data(response))
 
         return response
 
-    def post(self):
-        # TODO: Implements POST method later
-        ...
+    def get(self, url: str, **kwargs) -> Response:
+        request = self.factory.get(url)
+        force_authenticate(request, user=self.test_instance.user)
 
-    def put(self):
-        # TODO: Implements PUT method later
-        ...
+        return self._get_response(request, **kwargs)
+
+    def post(self, url, body=None, **kwargs) -> Response:
+        request = self.factory.post(url, data=json.dumps(body), content_type="application/json")
+        force_authenticate(request, user=self.test_instance.user)
+
+        return self._get_response(request, **kwargs)
+
+    def put(self,url, body=None, **kwargs):
+        request = self.factory.put(url, data=json.dumps(body), content_type="application/json")
+        force_authenticate(request, user=self.test_instance.user)
+
+        return self._get_response(request, **kwargs)
 
     def delete(self):
         # TODO: Implements DELETE method later
