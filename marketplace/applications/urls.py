@@ -6,10 +6,10 @@ from marketplace.interactions import views as interactions_views
 
 
 router = routers.SimpleRouter()
-router.register("apptypes", applications_views.AppTypeViewSet, basename="apptypes")
+router.register("apptypes", applications_views.AppTypeViewSet, basename="apptype")
 
-comments_router = routers.NestedSimpleRouter(router, r"apptypes", lookup="apptypes")
-comments_router.register("comments", interactions_views.CommentViewSet, basename="apptypes-comments")
+comments_router = routers.NestedSimpleRouter(router, r"apptypes", lookup="apptype")
+comments_router.register("comments", interactions_views.CommentViewSet, basename="apptype-comment")
 
 
 urlpatterns = [

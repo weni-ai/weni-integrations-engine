@@ -10,7 +10,7 @@ class CommentViewSet(viewsets.ModelViewSet):
     serializer_class = CommentSerializer
 
     def get_queryset(self):
-        return super().get_queryset().filter(app_code=self.kwargs["apptypes_pk"])
+        return super().get_queryset().filter(app_code=self.kwargs["apptype_pk"])
 
     def perform_create(self, serializer):
-        serializer.save(app_code=self.kwargs["apptypes_pk"])
+        serializer.save(app_code=self.kwargs["apptype_pk"])
