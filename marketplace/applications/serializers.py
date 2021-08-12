@@ -1,3 +1,4 @@
+from marketplace.interactions.models import Rating
 from rest_framework import serializers
 from marketplace.core.types.base import AppType
 
@@ -33,8 +34,16 @@ class AppTypeSerializer(serializers.Serializer):
         ]
 
     def get_rating(self, obj) -> dict:
-        # TODO: Return too the "mine" field
-        return dict(average=obj.get_ratings_average())
+        rating = dict(average=obj.get_ratings_average(), mine=None)
+
+        user = self.context["request"].user
+        try:
+            rating_instance = user.created_ratings.get(app_code=obj.code)
+            rating["mine"] = rating_instance.rate
+        except Rating.DoesNotExist:
+            pass
+
+        return rating
 
     def get_comments_count(self, obj) -> int:
         return obj.comments.count()
