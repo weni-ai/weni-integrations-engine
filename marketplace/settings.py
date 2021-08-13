@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     # installed apps
     "rest_framework",
     "mozilla_django_oidc",
+    "storages",
 ]
 
 MIDDLEWARE = [
