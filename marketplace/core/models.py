@@ -34,6 +34,10 @@ class BaseModel(models.Model):
     class Meta:
         abstract = True
 
+    @property
+    def edited(self) -> bool:
+        return bool(self.modified_by)
+
 
 class AppTypeBaseModel(BaseModel):
 

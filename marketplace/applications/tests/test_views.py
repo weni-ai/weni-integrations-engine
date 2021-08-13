@@ -25,7 +25,7 @@ class AppTypeViewTestCase(APIBaseTestCase):
 
 
 class ListAppTypeViewTestCase(AppTypeViewTestCase):
-    url = reverse("apptypes-list")
+    url = reverse("apptype-list")
     view_class = AppTypeViewSet
 
     @property
@@ -50,7 +50,7 @@ class ListAppTypeViewTestCase(AppTypeViewTestCase):
 
 
 class RetrieveAppTypeViewTestCase(AppTypeViewTestCase):
-    url = reverse("apptypes-detail", kwargs={"pk": "wwc"})
+    url = reverse("apptype-detail", kwargs={"pk": "wwc"})
     view_class = AppTypeViewSet
 
     @property
