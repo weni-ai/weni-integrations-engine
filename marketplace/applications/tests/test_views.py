@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import status
 
 from marketplace.applications.models import AppTypeAsset
+from marketplace.interactions.models import Rating
 from marketplace.core import types
 from marketplace.applications.views import AppTypeViewSet
 from marketplace.core.tests.base import APIBaseTestCase
@@ -65,6 +66,31 @@ class RetrieveAppTypeViewTestCase(AppTypeViewTestCase):
         response = self.request.get(self.url, pk="invalid")
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertIsNone(response.json)
+
+    def test_retrieve_apptype_rating_without_rating_object(self):
+        response = self.request.get(self.url, pk="wwc")
+        rating = response.json.get("rating")
+
+        self.assertIsNone(rating["average"])
+        self.assertIsNone(rating["mine"])
+
+    def test_retrieve_apptype_rating_with_rating_object(self):
+        Rating.objects.create(created_by=self.user, rate=5, app_code="wwc")
+
+        response = self.request.get(self.url, pk="wwc")
+        rating = response.json.get("rating")
+
+        self.assertEqual(rating["mine"], 5)
+        self.assertEqual(rating["average"], 5.0)
+
+    def test_retrieve_apptype_rating_created_from_other_user(self):
+        Rating.objects.create(created_by=self.super_user, rate=5, app_code="wwc")
+
+        response = self.request.get(self.url, pk="wwc")
+        rating = response.json.get("rating")
+
+        self.assertIsNone(rating["mine"])
+        self.assertEqual(rating["average"], 5.0)
 
     def test_retrieve_response_data(self):
         apptype = types.get_type("wwc")
