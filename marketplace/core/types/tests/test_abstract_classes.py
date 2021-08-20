@@ -18,6 +18,7 @@ class AppTypeTestCase(TestCase):
         self.user = User.objects.create_superuser(email="admin@marketplace.ai", password="fake@pass#$")
 
         class FakeType(AppType):
+            view_class = None
             code = "ftp"
             name = "Fake Type"
             description = "Type to test only"
@@ -25,6 +26,7 @@ class AppTypeTestCase(TestCase):
             category = AppType.CATEGORY_CHANNEL
             developer = "Weni"
             bg_color = "#123A23"
+            platform = App.PLATFORM_WENI_FLOWS
 
         self.FakeType = FakeType
 

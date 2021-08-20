@@ -3,6 +3,7 @@ from rest_framework_nested import routers
 
 from marketplace.applications import views as applications_views
 from marketplace.interactions import views as interactions_views
+from marketplace.core.types import urls as apps_urls
 
 
 router = routers.SimpleRouter()
@@ -15,4 +16,5 @@ comments_router.register("comments", interactions_views.CommentViewSet, basename
 urlpatterns = [
     path("", include(router.urls)),
     path("", include(comments_router.urls)),
+    path("", include(apps_urls)),
 ]
