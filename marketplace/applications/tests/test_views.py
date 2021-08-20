@@ -105,8 +105,12 @@ class RetrieveAppTypeViewTestCase(AppTypeViewTestCase):
 
         response = self.request.get(self.url, pk="wwc")
         apptype_assets = response.json.get("assets")
-        self.assertEqual(apptype_assets[0].get("url"), self.app_type_asset.attachment.url)
-        self.assertEqual(apptype_assets[1].get("url"), link_asset.url)
+
+        media = list(filter(lambda asset: "media" in asset["url"], apptype_assets))[0]
+        link = list(filter(lambda asset: "https" in asset["url"], apptype_assets))[0]
+
+        self.assertEqual(media["url"], self.app_type_asset.attachment.url)
+        self.assertEqual(link["url"], link_asset.url)
 
     def test_retrieve_response_data(self):
         apptype = types.get_type("wwc")
