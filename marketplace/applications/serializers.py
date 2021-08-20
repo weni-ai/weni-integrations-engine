@@ -3,13 +3,6 @@ from rest_framework import serializers
 from marketplace.core.types.base import AppType
 
 
-class ColorSerializer(serializers.Serializer):
-    red = serializers.IntegerField()
-    green = serializers.IntegerField()
-    blue = serializers.IntegerField()
-    alpha = serializers.FloatField()
-
-
 class AppTypeSerializer(serializers.Serializer):
     code = serializers.CharField()
     name = serializers.CharField()
@@ -17,7 +10,7 @@ class AppTypeSerializer(serializers.Serializer):
     summary = serializers.CharField()
     category = serializers.ChoiceField(choices=AppType.CATEGORY_CHOICES, source="get_category_display")
     icon = serializers.URLField(source="get_icon_url")
-    bg_color = ColorSerializer()
+    bg_color = serializers.CharField()
     rating = serializers.SerializerMethodField()
     comments_count = serializers.SerializerMethodField()
 
