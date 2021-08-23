@@ -51,18 +51,18 @@ class RetrieveCommentViewTestCase(APIBaseTestCase):
             content="This is only a test content",
         )
 
-        self.url = reverse("apptype-comment-detail", kwargs={"apptype_pk": "wwc", "pk": self.comment.pk})
+        self.url = reverse("apptype-comment-detail", kwargs={"apptype_pk": "wwc", "uuid": self.comment.uuid})
 
     @property
     def view(self):
         return self.view_class.as_view(self.ACTION_RETRIEVE)
 
     def test_request_status_ok(self):
-        response = self.request.get(self.url, apptype_pk="wwc", pk=self.comment.pk)
+        response = self.request.get(self.url, apptype_pk="wwc", uuid=self.comment.uuid)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_retrieve_comment_data(self):
-        response = self.request.get(self.url, apptype_pk="wwc", pk=self.comment.pk)
+        response = self.request.get(self.url, apptype_pk="wwc", uuid=self.comment.uuid)
         self.assertEqual(response.json["content"], self.comment.content)
         self.assertIn("app_code", response.json)
         self.assertIn("uuid", response.json)
@@ -85,7 +85,7 @@ class UpdateCommentViewTestCase(APIBaseTestCase):
             content="This is only a test content",
         )
 
-        self.url = reverse("apptype-comment-detail", kwargs={"apptype_pk": "wwc", "pk": self.comment.pk})
+        self.url = reverse("apptype-comment-detail", kwargs={"apptype_pk": "wwc", "uuid": self.comment.uuid})
 
     @property
     def view(self):
@@ -95,14 +95,14 @@ class UpdateCommentViewTestCase(APIBaseTestCase):
         return Comment.objects.get(pk=self.comment.pk)
 
     def test_request_status_ok(self):
-        response = self.request.put(self.url, self.body, apptype_pk="wwc", pk=self.comment.pk)
+        response = self.request.put(self.url, self.body, apptype_pk="wwc", uuid=self.comment.uuid)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_modified_by_with_other_user_on_update(self):
         created_by = self.comment.created_by
 
         self.request.set_user(self.super_user)
-        response = self.request.put(self.url, self.body, apptype_pk="wwc", pk=self.comment.pk)
+        response = self.request.put(self.url, self.body, apptype_pk="wwc", uuid=self.comment.uuid)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertFalse(response.json["owned"])
@@ -112,14 +112,14 @@ class UpdateCommentViewTestCase(APIBaseTestCase):
     def test_comment_edited_after_update(self):
         self.assertFalse(self.comment.edited)
 
-        response = self.request.put(self.url, self.body, apptype_pk="wwc", pk=self.comment.pk)
+        response = self.request.put(self.url, self.body, apptype_pk="wwc", uuid=self.comment.uuid)
         updated_comment = self.get_updated_comment()
 
         self.assertTrue(updated_comment.edited)
         self.assertTrue(response.json["edited"])
 
     def test_update_comment_data(self):
-        response = self.request.put(self.url, self.body, apptype_pk="wwc", pk=self.comment.pk)
+        response = self.request.put(self.url, self.body, apptype_pk="wwc", uuid=self.comment.uuid)
         updated_comment = self.get_updated_comment()
 
         self.assertEqual(self.body["content"], updated_comment.content)
@@ -141,19 +141,19 @@ class DestroyCommentViewTestCase(APIBaseTestCase):
             content="This is only a test content",
         )
 
-        self.url = reverse("apptype-comment-detail", kwargs={"apptype_pk": "wwc", "pk": self.comment.pk})
+        self.url = reverse("apptype-comment-detail", kwargs={"apptype_pk": "wwc", "uuid": self.comment.uuid})
 
     @property
     def view(self):
         return self.view_class.as_view(self.ACTION_DESTROY)
 
     def test_request_status_ok(self):
-        response = self.request.delete(self.url, apptype_pk="wwc", pk=self.comment.pk)
+        response = self.request.delete(self.url, apptype_pk="wwc", uuid=self.comment.uuid)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertIsNone(response.json)
 
     def test_comment_right_deleted(self):
-        self.request.delete(self.url, apptype_pk="wwc", pk=self.comment.pk)
+        self.request.delete(self.url, apptype_pk="wwc", uuid=self.comment.uuid)
         self.assertFalse(Comment.objects.filter(pk=self.comment.pk).exists())
 
 

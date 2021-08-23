@@ -8,6 +8,7 @@ class CommentViewSet(viewsets.ModelViewSet):
 
     queryset = Comment.objects
     serializer_class = CommentSerializer
+    lookup_field = "uuid"
 
     def get_queryset(self):
         return super().get_queryset().filter(app_code=self.kwargs["apptype_pk"])
