@@ -1,8 +1,10 @@
+import uuid
+
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 from rest_framework import status
 
-from marketplace.applications.models import AppTypeAsset
+from marketplace.applications.models import AppTypeAsset, App
 from marketplace.interactions.models import Rating
 from marketplace.core import types
 from marketplace.applications.views import AppTypeViewSet
@@ -104,3 +106,16 @@ class RetrieveAppTypeViewTestCase(AppTypeViewTestCase):
         self.assertEqual(apptype.get_category_display(), data["category"])
         self.assertEqual(apptype.get_icon_url(), data["icon"])
         self.assertEqual(apptype.bg_color, data["bg_color"])
+
+    def test_integrations_count_value(self):
+        for number in range(10):
+            App.objects.create(
+                app_code="wwc",
+                config={},
+                org_uuid=uuid.uuid4(),
+                platform=App.PLATFORM_WENI_FLOWS,
+                created_by=self.user,
+            )
+
+            response = self.request.get(self.url, pk="wwc")
+            self.assertEqual(response.json["integrations_count"], number + 1)

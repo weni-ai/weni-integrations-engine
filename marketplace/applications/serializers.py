@@ -13,6 +13,7 @@ class AppTypeSerializer(serializers.Serializer):
     bg_color = serializers.CharField()
     rating = serializers.SerializerMethodField()
     comments_count = serializers.SerializerMethodField()
+    integrations_count = serializers.SerializerMethodField()
 
     assets = serializers.SerializerMethodField()
 
@@ -40,3 +41,6 @@ class AppTypeSerializer(serializers.Serializer):
 
     def get_comments_count(self, obj) -> int:
         return obj.comments.count()
+
+    def get_integrations_count(self, obj) -> int:
+        return obj.apps.count()
