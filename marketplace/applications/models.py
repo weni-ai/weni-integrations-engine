@@ -45,7 +45,8 @@ class AppTypeAsset(AppTypeBaseModel):
     )
 
     asset_type = models.CharField("Type", choices=ASSET_TYPE_CHOICES, max_length=2)
-    attachment = models.FileField()
+    attachment = models.FileField(null=True, blank=True)
+    url = models.URLField(null=True, blank=True)
     description = models.CharField(max_length=50, blank=True, null=True)
 
     class Meta:
