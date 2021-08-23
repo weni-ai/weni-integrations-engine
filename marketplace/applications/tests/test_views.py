@@ -1,5 +1,6 @@
 import uuid
 
+from django.test import override_settings
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 from rest_framework import status
@@ -14,11 +15,12 @@ from marketplace.core.tests.base import APIBaseTestCase
 User = get_user_model()
 
 
+@override_settings(USE_S3=False, USE_OIDC=False)
 class AppTypeViewTestCase(APIBaseTestCase):
     def setUp(self):
         super().setUp()
 
-        self.app_type = AppTypeAsset.objects.create(
+        self.app_type_asset = AppTypeAsset.objects.create(
             app_code="wwc",
             asset_type=AppTypeAsset.ASSET_TYPE_ICON,
             attachment="file_to_upload.txt",
@@ -93,6 +95,24 @@ class RetrieveAppTypeViewTestCase(AppTypeViewTestCase):
 
         self.assertIsNone(rating["mine"])
         self.assertEqual(rating["average"], 5.0)
+
+    def test_retrieve_apptype_asset_link_url(self):
+        link_asset = AppTypeAsset.objects.create(
+            app_code="wwc",
+            asset_type=AppTypeAsset.ASSET_TYPE_LINK,
+            url="https://dash.weni.ai",
+            description="Weni dash URL",
+            created_by=self.user,
+        )
+
+        response = self.request.get(self.url, pk="wwc")
+        apptype_assets = response.json.get("assets")
+
+        media = list(filter(lambda asset: "media" in asset["url"], apptype_assets))[0]
+        link = list(filter(lambda asset: "https" in asset["url"], apptype_assets))[0]
+
+        self.assertEqual(media["url"], self.app_type_asset.attachment.url)
+        self.assertEqual(link["url"], link_asset.url)
 
     def test_retrieve_response_data(self):
         apptype = types.get_type("wwc")
