@@ -72,7 +72,7 @@ class TestModelAppTypeAsset(TestCase):
             create_app_type_asset(self.user)
 
 
-def TestModelAppTypeAssetMethods(TestCase):
+class TestModelAppTypeAssetMethods(TestCase):
     def setUp(self):
         super().setUp()
 
