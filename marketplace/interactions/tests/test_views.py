@@ -3,8 +3,8 @@ from django.contrib.auth import get_user_model
 from rest_framework import status
 
 from marketplace.core.tests.base import APIBaseTestCase
-from marketplace.interactions.views import CommentViewSet
-from marketplace.interactions.models import Comment
+from marketplace.interactions.views import CommentViewSet, RatingViewSet
+from marketplace.interactions.models import Comment, Rating
 
 
 class CreateCommentViewTestCase(APIBaseTestCase):
@@ -183,3 +183,41 @@ class ListCommentViewTestCase(APIBaseTestCase):
     def test_comments_count(self):
         response = self.request.get(self.url, apptype_pk="wwc")
         self.assertEqual(len(response.json), self.comments_count)
+
+
+class CreateRatingViewTestCase(APIBaseTestCase):
+    view_class = RatingViewSet
+    url = reverse("apptype-rating-list", kwargs={"apptype_pk": "wwc"})
+
+    body = dict(rate=3)
+
+    @property
+    def view(self):
+        return self.view_class.as_view(self.ACTION_CREATE)
+
+    def test_request_status_ok(self):
+        response = self.request.post(self.url, self.body, apptype_pk="wwc")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_create_new_rating(self):
+        response = self.request.post(self.url, self.body, apptype_pk="wwc")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.json["rate"], self.body["rate"])
+        self.assertIn("uuid", response.json)
+
+        rating = Rating.objects.get(uuid=response.json["uuid"])
+        self.assertEqual(self.body["rate"], rating.rate)
+        self.assertFalse(rating.edited)
+
+    def test_update_an_existent_rating(self):
+        updated_body = {"rate": 5}
+
+        create_response = self.request.post(self.url, self.body, apptype_pk="wwc")
+        update_response = self.request.post(self.url, updated_body, apptype_pk="wwc")
+
+        rating = Rating.objects.get(uuid=create_response.json["uuid"])
+        self.assertEqual(create_response.json["uuid"], update_response.json["uuid"])
+        self.assertEqual(Rating.objects.count(), 1)
+        self.assertEqual(rating.rate, updated_body["rate"])
+        self.assertNotEqual(rating.rate, self.body["rate"])
+        self.assertTrue(rating.edited)
