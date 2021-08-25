@@ -1,3 +1,7 @@
+v0.1.1
+----------
+ * Solve Poetry dependencies conflict on pip install
+
 v0.1.0
 ----------
  * Add integrations_count to AppTypes endpoint

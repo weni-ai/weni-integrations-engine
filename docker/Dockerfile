@@ -60,7 +60,7 @@ FROM base AS build
 RUN if [ ! "x${BUILD_DEPS}" = "x" ] ; then apt-get update \
   && apt-get install -y --no-install-recommends ${BUILD_DEPS} ; fi
 
-from build as build-poetry
+FROM build as build-poetry
 
 COPY ./pyproject.toml .
 COPY ./poetry.lock .
