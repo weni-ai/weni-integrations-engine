@@ -2,7 +2,7 @@ import uuid
 import urllib
 from typing import Tuple
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
@@ -51,6 +51,7 @@ class TestModelApp(TestCase):
         self.assertEqual(str(self.app), self.app_data["app_code"])
 
 
+@override_settings(USE_S3=False)
 class TestModelAppTypeAsset(TestCase):
     def setUp(self):
         super().setUp()
@@ -71,7 +72,7 @@ class TestModelAppTypeAsset(TestCase):
             create_app_type_asset(self.user)
 
 
-def TestModelAppTypeAssetMethods(TestCase):
+class TestModelAppTypeAssetMethods(TestCase):
     def setUp(self):
         super().setUp()
 

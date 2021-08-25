@@ -60,18 +60,24 @@ FROM base AS build
 RUN if [ ! "x${BUILD_DEPS}" = "x" ] ; then apt-get update \
   && apt-get install -y --no-install-recommends ${BUILD_DEPS} ; fi
 
+FROM build as build-poetry
+
 COPY ./pyproject.toml .
 COPY ./poetry.lock .
 
 RUN python -m pip install -U poetry \
-  && poetry export --output requirements.txt
+  && poetry export --output /requirements.txt
+
+FROM build as build-pip
+
+COPY --from=build-poetry /requirements.txt .
 
 RUN mkdir /install \
   && pip install --no-cache-dir --prefix=/install --require-hashes -r requirements.txt
 
 FROM base
 
-COPY --from=build /install /usr/local
+COPY --from=build-pip /install /usr/local
 
 # Clear image and install runtime dependences
 RUN apt-get update \

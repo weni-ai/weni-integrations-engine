@@ -52,7 +52,7 @@ class AbstractAppType(ABC):
         ...  # pragma: no cover
 
     @abstractproperty
-    def bg_color(self) -> dict:
+    def bg_color(self) -> str:
         ...  # pragma: no cover
 
     @abstractproperty

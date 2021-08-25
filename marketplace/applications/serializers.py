@@ -1,13 +1,7 @@
+from marketplace.applications.models import AppTypeAsset
 from marketplace.interactions.models import Rating
 from rest_framework import serializers
 from marketplace.core.types.base import AppType
-
-
-class ColorSerializer(serializers.Serializer):
-    red = serializers.IntegerField()
-    green = serializers.IntegerField()
-    blue = serializers.IntegerField()
-    alpha = serializers.FloatField()
 
 
 class AppTypeSerializer(serializers.Serializer):
@@ -17,9 +11,10 @@ class AppTypeSerializer(serializers.Serializer):
     summary = serializers.CharField()
     category = serializers.ChoiceField(choices=AppType.CATEGORY_CHOICES, source="get_category_display")
     icon = serializers.URLField(source="get_icon_url")
-    bg_color = ColorSerializer()
+    bg_color = serializers.CharField()
     rating = serializers.SerializerMethodField()
     comments_count = serializers.SerializerMethodField()
+    integrations_count = serializers.SerializerMethodField()
 
     assets = serializers.SerializerMethodField()
 
@@ -27,7 +22,7 @@ class AppTypeSerializer(serializers.Serializer):
         return [
             {
                 "type": asset.get_asset_type_display(),
-                "url": asset.attachment.url,
+                "url": asset.url if asset.asset_type == AppTypeAsset.ASSET_TYPE_LINK else asset.attachment.url,
                 "description": asset.description,
             }
             for asset in obj.assets
@@ -47,3 +42,6 @@ class AppTypeSerializer(serializers.Serializer):
 
     def get_comments_count(self, obj) -> int:
         return obj.comments.count()
+
+    def get_integrations_count(self, obj) -> int:
+        return obj.apps.count()

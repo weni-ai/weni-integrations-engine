@@ -59,11 +59,13 @@ INSTALLED_APPS = [
     "rest_framework",
     "mozilla_django_oidc",
     "storages",
+    "corsheaders",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -193,3 +195,9 @@ if USE_OIDC:
     OIDC_RP_SIGN_ALGO = env.str("OIDC_RP_SIGN_ALGO", default="RS256")
     OIDC_DRF_AUTH_BACKEND = "marketplace.accounts.backends.WeniOIDCAuthenticationBackend"
     OIDC_RP_SCOPES = env.str("OIDC_RP_SCOPES", default="openid email")
+
+
+# django-cors-headers Configurations
+
+# TODO: Configure CORS to production environment
+CORS_ALLOW_ALL_ORIGINS = DEBUG
