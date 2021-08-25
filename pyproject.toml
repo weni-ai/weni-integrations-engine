@@ -16,6 +16,8 @@ mozilla-django-oidc = "^2.0.0"
 drf-nested-routers = "^0.93.3"
 django-storages = "^1.11.1"
 django-cors-headers = "^3.8.0"
+grpcio = "^1.39.0"
+celery = "^5.1.2"
 
 [tool.poetry.dev-dependencies]
 black = "^21.5b2"
