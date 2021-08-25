@@ -56,7 +56,7 @@ class AppTypeTestCase(TestCase):
         App.objects.create(
             app_code=fake_type_instance.code,
             config={"test": "test"},
-            org_uuid=uuid.uuid4(),
+            project_uuid=uuid.uuid4(),
             platform=App.PLATFORM_WENI_FLOWS,
             created_by=self.user,
         )

@@ -16,7 +16,7 @@ class CreateWeniWebChatAppTestCase(APIBaseTestCase):
         super().setUp()
 
         self.body = {
-            "org_uuid": str(uuid.uuid4()),  # TODO: Change "org_uuid" key to "project_uuid"
+            "project_uuid": str(uuid.uuid4()),
             "platform": App.PLATFORM_WENI_FLOWS,
         }
 
@@ -28,12 +28,12 @@ class CreateWeniWebChatAppTestCase(APIBaseTestCase):
         response = self.request.post(self.url, self.body)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-    def test_create_app_without_org_uuid(self):  # TODO: Change "org_uuid" to "project_uuid"
-        self.body.pop("org_uuid")
+    def test_create_app_without_project_uuid(self):
+        self.body.pop("project_uuid")
         response = self.request.post(self.url, self.body)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("org_uuid", response.json)
+        self.assertIn("project_uuid", response.json)
 
     def test_create_app_without_platform(self):
         self.body.pop("platform")
@@ -50,7 +50,7 @@ class RetrieveWeniWebChatAppTestCase(APIBaseTestCase):
         super().setUp()
 
         self.app = App.objects.create(
-            app_code="wwc", created_by=self.user, org_uuid=str(uuid.uuid4()), platform=App.PLATFORM_WENI_FLOWS
+            app_code="wwc", created_by=self.user, project_uuid=str(uuid.uuid4()), platform=App.PLATFORM_WENI_FLOWS
         )
 
         self.url = reverse("wwc-app-detail", kwargs={"pk": self.app.pk})
@@ -66,11 +66,7 @@ class RetrieveWeniWebChatAppTestCase(APIBaseTestCase):
     def test_retrieve_app_data(self):
         response = self.request.get(self.url, pk=self.app.pk)
         self.assertIn("uuid", response.json)
-        self.assertIn("org_uuid", response.json)
+        self.assertIn("project_uuid", response.json)
         self.assertIn("platform", response.json)
         self.assertIn("created_on", response.json)
         self.assertIsNone(response.json["config"])
-
-
-class ConfigureWeniWebChatAppTestCase(APIBaseTestCase):
-    ...

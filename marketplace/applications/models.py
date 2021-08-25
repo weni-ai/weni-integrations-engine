@@ -19,7 +19,7 @@ class App(AppTypeBaseModel):
     )
 
     config = models.JSONField(null=True)
-    org_uuid = models.UUIDField("Org UUID")
+    project_uuid = models.UUIDField("Project UUID")
     platform = models.CharField(choices=PLATFORM_CHOICES, max_length=2)
 
     class Meta:
