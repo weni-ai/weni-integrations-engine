@@ -68,7 +68,7 @@ COPY ./poetry.lock .
 RUN python -m pip install -U poetry \
   && poetry export --output /requirements.txt
 
-from build as build-pip
+FROM build as build-pip
 
 COPY --from=build-poetry /requirements.txt .
 
