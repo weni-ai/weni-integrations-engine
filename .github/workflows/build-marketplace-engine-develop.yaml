@@ -1,4 +1,4 @@
-name: Build Develop Push
+name: Build Develop Marketplace Engine
 on:
   push:
     tags:
@@ -13,7 +13,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           ref:  main
-          ###There isn't a develop branch yet. Change as needed
+          ###There isn't a develop branch yet. Change as needed.
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
       - name: Set up Docker Buildx
@@ -22,11 +22,11 @@ jobs:
         id: vars
         run: echo ::set-output name=tag::${GITHUB_REF#refs/*/}
       - name: Login to ECR
-        uses: docker/login-action@v1 
+        uses: docker/login-action@v1
         with:
           registry: 242357350604.dkr.ecr.sa-east-1.amazonaws.com
           username: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          password: ${{ secrets.AWS_SECRET_ACCESS_KEY }} 
+          password: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       - name: Build and push - Rapidpro Image
         id: docker_build1
         uses: docker/build-push-action@v2
