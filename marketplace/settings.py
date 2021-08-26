@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "marketplace.core",
     "marketplace.applications",
     "marketplace.interactions",
+    "marketplace.grpc",
     # installed apps
     "rest_framework",
     "mozilla_django_oidc",
@@ -203,7 +204,16 @@ if USE_OIDC:
 CORS_ALLOW_ALL_ORIGINS = DEBUG
 
 
-# gRPC
+# gRPC Connect Client
 
 CONNECT_GRPC_SERVER_URL = env.str("CONNECT_GRPC_SERVER_URL")
-CONNECT_CERTIFICATE_GRPC_CRT = env.str("CONNECT_GRPC_SERVER_URL", None)
+CONNECT_CERTIFICATE_GRPC_CRT = env.str("CONNECT_CERTIFICATE_GRPC_CRT", None)
+
+
+# Celery
+CELERY_BROKER_URL = env.str("CELERY_BROKER_URL", default="redis://localhost:6379")
+CELERY_RESULT_BACKEND = env.str("CELERY_RESULT_BACKEND", default="redis://localhost:6379")
+CELERY_ACCEPT_CONTENT = ['application/json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
