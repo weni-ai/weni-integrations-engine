@@ -1,4 +1,3 @@
-from typing import Dict
 from abc import ABC, abstractproperty
 
 from django.db.models.query import QuerySet
