@@ -1,24 +1,26 @@
-from django.test import TestCase
+import uuid
+
+from django.test import override_settings
 from django.urls import reverse
 from django.contrib.auth import get_user_model
-from rest_framework.test import APIClient
 from rest_framework import status
 
-from marketplace.applications.models import AppTypeAsset
-from marketplace.applications import types
+from marketplace.applications.models import AppTypeAsset, App
+from marketplace.interactions.models import Rating
+from marketplace.core import types
+from marketplace.applications.views import AppTypeViewSet
+from marketplace.core.tests.base import APIBaseTestCase
 
 
 User = get_user_model()
 
 
-class AppTypeViewTestCase(TestCase):
-    URL: str
-
+@override_settings(USE_S3=False, USE_OIDC=False)
+class AppTypeViewTestCase(APIBaseTestCase):
     def setUp(self):
         super().setUp()
 
-        self.user = User.objects.create_superuser(email="admin@marketplace.ai", password="fake@pass#$")
-        self.app_type = AppTypeAsset.objects.create(
+        self.app_type_asset = AppTypeAsset.objects.create(
             app_code="wwc",
             asset_type=AppTypeAsset.ASSET_TYPE_ICON,
             attachment="file_to_upload.txt",
@@ -26,47 +28,96 @@ class AppTypeViewTestCase(TestCase):
             created_by=self.user,
         )
 
-        self.client = APIClient()
-
 
 class ListAppTypeViewTestCase(AppTypeViewTestCase):
-    URL = reverse("apptypes-list")
+    url = reverse("apptype-list")
+    view_class = AppTypeViewSet
+
+    @property
+    def view(self):
+        return self.view_class.as_view({"get": "list"})
 
     def test_request_status_ok(self):
-        response = self.client.get(self.URL)
+        response = self.request.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_list_app_types_count(self):
-        response = self.client.get(self.URL)
-        self.assertEqual(len(response.json()), len(types.get_types()))
+        response = self.request.get(self.url)
+        self.assertEqual(len(response.json), len(types.get_types()))
 
     def test_filter_app_type_by_fake_category(self):
-        response = self.client.get(self.URL + "?category=fake")
-        self.assertEqual(response.json(), [])
+        response = self.request.get(self.url + "?category=fake")
+        self.assertEqual(response.json, [])
 
     def test_filter_app_type_by_right_category(self):
-        response = self.client.get(self.URL + "?category=channel")
-        self.assertTrue(len(response.json()) > 0)
+        response = self.request.get(self.url + "?category=channel")
+        self.assertTrue(len(response.json) > 0)
 
 
 class RetrieveAppTypeViewTestCase(AppTypeViewTestCase):
-    URL = reverse("apptypes-detail", kwargs={"pk": "wwc"})
+    url = reverse("apptype-detail", kwargs={"pk": "wwc"})
+    view_class = AppTypeViewSet
+
+    @property
+    def view(self):
+        return self.view_class.as_view({"get": "retrieve"})
 
     def test_request_status_ok(self):
-        response = self.client.get(self.URL)
+        response = self.request.get(self.url, pk="wwc")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_retrieve_with_invalid_code(self):
-        url = reverse("apptypes-detail", kwargs={"pk": "invalid"})
-        response = self.client.get(url)
-
+        response = self.request.get(self.url, pk="invalid")
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertFalse(bool(response.content))
+        self.assertIsNone(response.json)
+
+    def test_retrieve_apptype_rating_without_rating_object(self):
+        response = self.request.get(self.url, pk="wwc")
+        rating = response.json.get("rating")
+
+        self.assertIsNone(rating["average"])
+        self.assertIsNone(rating["mine"])
+
+    def test_retrieve_apptype_rating_with_rating_object(self):
+        Rating.objects.create(created_by=self.user, rate=5, app_code="wwc")
+
+        response = self.request.get(self.url, pk="wwc")
+        rating = response.json.get("rating")
+
+        self.assertEqual(rating["mine"], 5)
+        self.assertEqual(rating["average"], 5.0)
+
+    def test_retrieve_apptype_rating_created_from_other_user(self):
+        Rating.objects.create(created_by=self.super_user, rate=5, app_code="wwc")
+
+        response = self.request.get(self.url, pk="wwc")
+        rating = response.json.get("rating")
+
+        self.assertIsNone(rating["mine"])
+        self.assertEqual(rating["average"], 5.0)
+
+    def test_retrieve_apptype_asset_link_url(self):
+        link_asset = AppTypeAsset.objects.create(
+            app_code="wwc",
+            asset_type=AppTypeAsset.ASSET_TYPE_LINK,
+            url="https://dash.weni.ai",
+            description="Weni dash URL",
+            created_by=self.user,
+        )
+
+        response = self.request.get(self.url, pk="wwc")
+        apptype_assets = response.json.get("assets")
+
+        media = list(filter(lambda asset: "media" in asset["url"], apptype_assets))[0]
+        link = list(filter(lambda asset: "https" in asset["url"], apptype_assets))[0]
+
+        self.assertEqual(media["url"], self.app_type_asset.attachment.url)
+        self.assertEqual(link["url"], link_asset.url)
 
     def test_retrieve_response_data(self):
         apptype = types.get_type("wwc")
-        response = self.client.get(self.URL)
-        data = response.json()
+        response = self.request.get(self.url, pk="wwc")
+        data = response.json
 
         self.assertEqual(apptype.code, data["code"])
         self.assertEqual(apptype.name, data["name"])
@@ -75,3 +126,16 @@ class RetrieveAppTypeViewTestCase(AppTypeViewTestCase):
         self.assertEqual(apptype.get_category_display(), data["category"])
         self.assertEqual(apptype.get_icon_url(), data["icon"])
         self.assertEqual(apptype.bg_color, data["bg_color"])
+
+    def test_integrations_count_value(self):
+        for number in range(10):
+            App.objects.create(
+                app_code="wwc",
+                config={},
+                org_uuid=uuid.uuid4(),
+                platform=App.PLATFORM_WENI_FLOWS,
+                created_by=self.user,
+            )
+
+            response = self.request.get(self.url, pk="wwc")
+            self.assertEqual(response.json["integrations_count"], number + 1)

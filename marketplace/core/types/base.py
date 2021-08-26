@@ -3,6 +3,7 @@ from abc import ABC, abstractproperty
 from django.db.models.query import QuerySet
 
 from marketplace.applications.models import AppTypeAsset, App
+from marketplace.interactions.models import Rating, Comment
 
 
 class AbstractAppType(ABC):
@@ -45,7 +46,7 @@ class AbstractAppType(ABC):
         ...  # pragma: no cover
 
     @abstractproperty
-    def bg_color(self) -> dict:
+    def bg_color(self) -> str:
         ...  # pragma: no cover
 
 
@@ -62,6 +63,14 @@ class AppType(AbstractAppType):
     def apps(self) -> QuerySet:
         return App.objects.filter(app_code=self.code)
 
+    @property
+    def ratings(self) -> QuerySet:
+        return Rating.objects.filter(app_code=self.code)
+
+    @property
+    def comments(self) -> QuerySet:
+        return Comment.objects.filter(app_code=self.code)
+
     def get_icon_asset(self) -> AppTypeAsset:
         try:
             return self.assets.get(asset_type=AppTypeAsset.ASSET_TYPE_ICON)
@@ -74,3 +83,6 @@ class AppType(AbstractAppType):
     def get_category_display(self) -> str:
         categories = dict(self.CATEGORY_CHOICES)
         return categories.get(self.category)
+
+    def get_ratings_average(self) -> float:
+        return Rating.get_apptype_average(self.code)

@@ -1,11 +1,22 @@
 from django.urls import path, include
-from rest_framework.routers import DefaultRouter
+from rest_framework_nested import routers
+
 from marketplace.applications import views as applications_views
+from marketplace.interactions import views as interactions_views
 
 
-router = DefaultRouter()
-router.register("apptypes", applications_views.AppTypeViewSet, basename="apptypes")
+router = routers.SimpleRouter()
+router.register("apptypes", applications_views.AppTypeViewSet, basename="apptype")
+
+comments_router = routers.NestedSimpleRouter(router, r"apptypes", lookup="apptype")
+comments_router.register("comments", interactions_views.CommentViewSet, basename="apptype-comment")
+
+rating_router = routers.NestedSimpleRouter(router, r"apptypes", lookup="apptype")
+rating_router.register("ratings", interactions_views.RatingViewSet, basename="apptype-rating")
+
 
 urlpatterns = [
     path("", include(router.urls)),
+    path("", include(comments_router.urls)),
+    path("", include(rating_router.urls)),
 ]

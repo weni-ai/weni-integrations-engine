@@ -10,19 +10,23 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 import environ
 
 
-# Setting and starting environ
-environ.Env.read_env(env_file=(environ.Path(__file__) - 2)(".env"))
-
-env = environ.Env()
-
-
 # Build paths inside the project like this: BASE_DIR / "subdir".
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+# environ settings
+ENV_PATH = os.path.join(BASE_DIR, ".env")
+
+if os.path.exists(ENV_PATH):
+    environ.Env.read_env(env_file=ENV_PATH)
+
+env = environ.Env()
 
 
 # Quick-start development settings - unsuitable for production
@@ -53,11 +57,15 @@ INSTALLED_APPS = [
     "marketplace.interactions",
     # installed apps
     "rest_framework",
+    "mozilla_django_oidc",
+    "storages",
+    "corsheaders",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -134,6 +142,14 @@ USE_TZ = True
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+}
+
+
 # AWS Configurations
 
 USE_S3 = env.bool("USE_S3", default=False)
@@ -156,5 +172,32 @@ if USE_S3:
     AWS_S3_FILE_OVERWRITE = False
 
 else:
-    STATIC_URL = "/static/"
     MEDIA_URL = "/media/"
+
+
+STATIC_URL = "/static/"
+STATIC_ROOT = os.path.join(BASE_DIR, "static")
+
+
+# Mozilla OIDC Configurations
+
+USE_OIDC = env.bool("USE_OIDC")
+
+if USE_OIDC:
+    REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"].append("mozilla_django_oidc.contrib.drf.OIDCAuthentication")
+
+    OIDC_RP_CLIENT_ID = env.str("OIDC_RP_CLIENT_ID")
+    OIDC_RP_CLIENT_SECRET = env.str("OIDC_RP_CLIENT_SECRET")
+    OIDC_OP_AUTHORIZATION_ENDPOINT = env.str("OIDC_OP_AUTHORIZATION_ENDPOINT")
+    OIDC_OP_TOKEN_ENDPOINT = env.str("OIDC_OP_TOKEN_ENDPOINT")
+    OIDC_OP_USER_ENDPOINT = env.str("OIDC_OP_USER_ENDPOINT")
+    OIDC_OP_JWKS_ENDPOINT = env.str("OIDC_OP_JWKS_ENDPOINT")
+    OIDC_RP_SIGN_ALGO = env.str("OIDC_RP_SIGN_ALGO", default="RS256")
+    OIDC_DRF_AUTH_BACKEND = "marketplace.accounts.backends.WeniOIDCAuthenticationBackend"
+    OIDC_RP_SCOPES = env.str("OIDC_RP_SCOPES", default="openid email")
+
+
+# django-cors-headers Configurations
+
+# TODO: Configure CORS to production environment
+CORS_ALLOW_ALL_ORIGINS = DEBUG

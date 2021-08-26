@@ -1,9 +1,10 @@
 from django.core.exceptions import ValidationError
-from marketplace import applications
 
 
 def validate_app_code_exists(value):
+    from marketplace.core import types
+
     try:
-        applications.types.get_type(value)
+        types.get_type(value)
     except KeyError:
         raise ValidationError(f"AppType ({value}) not exists!")
