@@ -13,11 +13,11 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="apptypeasset",
             name="url",
-            field=models.URLField(null=True),
+            field=models.URLField(blank=True, null=True),
         ),
         migrations.AlterField(
             model_name="apptypeasset",
             name="attachment",
-            field=models.FileField(null=True, upload_to=""),
+            field=models.FileField(blank=True, null=True, upload_to=""),
         ),
     ]

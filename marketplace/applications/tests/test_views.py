@@ -132,7 +132,7 @@ class RetrieveAppTypeViewTestCase(AppTypeViewTestCase):
             App.objects.create(
                 app_code="wwc",
                 config={},
-                org_uuid=uuid.uuid4(),
+                project_uuid=uuid.uuid4(),
                 platform=App.PLATFORM_WENI_FLOWS,
                 created_by=self.user,
             )
