@@ -1,6 +1,7 @@
 from abc import ABC, abstractproperty
 
 from django.db.models.query import QuerySet
+from rest_framework.views import APIView
 
 from marketplace.applications.models import AppTypeAsset, App
 from marketplace.interactions.models import Rating, Comment
@@ -20,6 +21,10 @@ class AbstractAppType(ABC):
         (CATEGORY_CLASSIFIER, "classifier"),
         (CATEGORY_TICKETER, "ticketer"),
     )
+
+    @abstractproperty
+    def view_class(self) -> APIView:
+        ...  # pragma: no cover
 
     @abstractproperty
     def code(self) -> str:
@@ -47,6 +52,10 @@ class AbstractAppType(ABC):
 
     @abstractproperty
     def bg_color(self) -> str:
+        ...  # pragma: no cover
+
+    @abstractproperty
+    def platform(self) -> str:
         ...  # pragma: no cover
 
 

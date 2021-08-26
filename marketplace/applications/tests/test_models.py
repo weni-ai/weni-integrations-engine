@@ -33,7 +33,7 @@ class TestModelApp(TestCase):
 
         self.app_data = dict(
             config=self.config,
-            org_uuid=uuid.uuid4(),
+            project_uuid=uuid.uuid4(),
             platform=App.PLATFORM_WENI_FLOWS,
             app_code="wwc",
             created_by=self.user,
@@ -43,7 +43,7 @@ class TestModelApp(TestCase):
 
     def test_created_app_data(self):
         self.assertEqual(self.app.config, self.config)
-        self.assertEqual(self.app.org_uuid, self.app_data["org_uuid"])
+        self.assertEqual(self.app.project_uuid, self.app_data["project_uuid"])
         self.assertEqual(self.app.platform, App.PLATFORM_WENI_FLOWS)
         self.assertEqual(self.app.app_code, self.app_data["app_code"])
 
