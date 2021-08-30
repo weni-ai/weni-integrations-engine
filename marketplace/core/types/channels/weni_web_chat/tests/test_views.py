@@ -53,18 +53,18 @@ class RetrieveWeniWebChatAppTestCase(APIBaseTestCase):
             app_code="wwc", created_by=self.user, project_uuid=str(uuid.uuid4()), platform=App.PLATFORM_WENI_FLOWS
         )
 
-        self.url = reverse("wwc-app-detail", kwargs={"pk": self.app.pk})
+        self.url = reverse("wwc-app-detail", kwargs={"uuid": self.app.uuid})
 
     @property
     def view(self):
         return self.view_class.as_view(APIBaseTestCase.ACTION_RETRIEVE)
 
     def test_request_ok(self):
-        response = self.request.get(self.url, pk=self.app.pk)
+        response = self.request.get(self.url, uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_retrieve_app_data(self):
-        response = self.request.get(self.url, pk=self.app.pk)
+        response = self.request.get(self.url, uuid=self.app.uuid)
         self.assertIn("uuid", response.json)
         self.assertIn("project_uuid", response.json)
         self.assertIn("platform", response.json)
