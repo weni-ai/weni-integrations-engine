@@ -57,6 +57,12 @@ class Request(object):
 
         return self._get_response(request, **kwargs)
 
+    def patch(self, url: str, body=None, **kwargs) -> Response:
+        request = self.factory.patch(url, data=json.dumps(body), content_type="application/json")
+        force_authenticate(request, user=self._user)
+
+        return self._get_response(request, **kwargs)
+
 
 class APIBaseTestCase(TestCase):
 

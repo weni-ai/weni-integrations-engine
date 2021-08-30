@@ -15,9 +15,9 @@ class AppTypeBaseSerializer(serializers.ModelSerializer):
     )
 
     def create(self, validated_data):
-        validated_data.pop("modified_by")
+        validated_data.pop("modified_by", None)
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
-        validated_data.pop("created_by")
+        validated_data.pop("created_by", None)
         return super().update(instance, validated_data)

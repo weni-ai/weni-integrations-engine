@@ -70,3 +70,26 @@ class RetrieveWeniWebChatAppTestCase(APIBaseTestCase):
         self.assertIn("platform", response.json)
         self.assertIn("created_on", response.json)
         self.assertIsNone(response.json["config"])
+
+
+class ConfigureWeniWebChatAppTestCase(APIBaseTestCase):
+    view_class = WeniWebChatViewSet
+
+    def setUp(self):
+        super().setUp()
+
+        self.body = {"config": {"name": "FakeWeniWebChat", "roberta": 123}}
+
+        self.app = App.objects.create(
+            app_code="wwc", created_by=self.user, project_uuid=str(uuid.uuid4()), platform=App.PLATFORM_WENI_FLOWS
+        )
+
+        self.url = reverse("wwc-app-configure", kwargs={"pk": self.app.pk})
+
+    @property
+    def view(self):
+        return self.view_class.as_view(dict(patch="configure"))
+
+    def test_request_ok(self):
+        response = self.request.patch(self.url, self.body, pk=self.app.pk)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
