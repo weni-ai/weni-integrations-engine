@@ -78,7 +78,17 @@ class ConfigureWeniWebChatAppTestCase(APIBaseTestCase):
     def setUp(self):
         super().setUp()
 
-        self.body = {"config": {"name": "FakeWeniWebChat", "roberta": 123}}
+        self.body = {
+            "config": {
+                "name": "FakeWeniWebChat",
+                "dasd": 123,
+                "title": "dsa",
+                "avatarImage": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeA"
+                "AAAA3NCSVQICAjb4U/gAAAADElEQVQImWNgYGAAAAAEAAGjChXjAAAAAElFTkSuQmCC",
+                "customCss": "#teste",
+                "keepHistory": True,
+            }
+        }
 
         self.app = App.objects.create(
             app_code="wwc", created_by=self.user, project_uuid=str(uuid.uuid4()), platform=App.PLATFORM_WENI_FLOWS

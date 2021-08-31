@@ -31,7 +31,7 @@ class WeniWebChatViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         channel_uuid = ConnectGRPCClient.create_weni_web_chat(request.user.email)
-        serializer.validated_data["config"]["channel"] = channel_uuid
+        serializer.validated_data["config"]["channelUuid"] = channel_uuid
 
         self.perform_update(serializer)
 
