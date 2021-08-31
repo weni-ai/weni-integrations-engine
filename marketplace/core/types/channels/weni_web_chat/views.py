@@ -9,6 +9,7 @@ class WeniWebChatViewSet(viewsets.ModelViewSet):
 
     queryset = App.objects
     serializer_class = WeniWebChatSerializer
+    lookup_field = "uuid"
 
     def get_queryset(self):
         return super().get_queryset().filter(app_code=type_.WeniWebChatType.code)
