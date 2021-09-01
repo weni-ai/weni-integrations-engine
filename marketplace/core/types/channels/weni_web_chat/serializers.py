@@ -40,7 +40,7 @@ class ConfigSerializer(serializers.Serializer):
     # timeBetweenMessages = serializers.IntegerField(default=1)
     initPayload = serializers.CharField(default="start")
     mainColor = serializers.CharField(default="#00DED3")
-    avatarImage = AvatarBase64ImageField(required=True)  # TODO: Validate if "required" need be True
+    avatarImage = AvatarBase64ImageField(required=False)
     customCss = serializers.CharField(required=False)
 
     def to_internal_value(self, data):
