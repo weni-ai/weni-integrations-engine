@@ -44,7 +44,7 @@ class RetrieveWeniWebChatAppTestCase(APIBaseTestCase):
         super().setUp()
 
         self.app = App.objects.create(
-            app_code="wwc", created_by=self.user, project_uuid=str(uuid.uuid4()), platform=App.PLATFORM_WENI_FLOWS
+            code="wwc", created_by=self.user, project_uuid=str(uuid.uuid4()), platform=App.PLATFORM_WENI_FLOWS
         )
 
         self.url = reverse("wwc-app-detail", kwargs={"uuid": self.app.uuid})

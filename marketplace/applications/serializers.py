@@ -33,7 +33,7 @@ class AppTypeSerializer(serializers.Serializer):
 
         user = self.context["request"].user
         try:
-            rating_instance = user.created_ratings.get(app_code=obj.code)
+            rating_instance = user.created_ratings.get(code=obj.code)
             rating["mine"] = rating_instance.rate
         except Rating.DoesNotExist:
             pass

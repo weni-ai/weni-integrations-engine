@@ -21,7 +21,7 @@ class AppTypeViewTestCase(APIBaseTestCase):
         super().setUp()
 
         self.app_type_asset = AppTypeAsset.objects.create(
-            app_code="wwc",
+            code="wwc",
             asset_type=AppTypeAsset.ASSET_TYPE_ICON,
             attachment="file_to_upload.txt",
             description="Fake",
@@ -79,7 +79,7 @@ class RetrieveAppTypeViewTestCase(AppTypeViewTestCase):
         self.assertIsNone(rating["mine"])
 
     def test_retrieve_apptype_rating_with_rating_object(self):
-        Rating.objects.create(created_by=self.user, rate=5, app_code="wwc")
+        Rating.objects.create(created_by=self.user, rate=5, code="wwc")
 
         response = self.request.get(self.url, pk="wwc")
         rating = response.json.get("rating")
@@ -88,7 +88,7 @@ class RetrieveAppTypeViewTestCase(AppTypeViewTestCase):
         self.assertEqual(rating["average"], 5.0)
 
     def test_retrieve_apptype_rating_created_from_other_user(self):
-        Rating.objects.create(created_by=self.super_user, rate=5, app_code="wwc")
+        Rating.objects.create(created_by=self.super_user, rate=5, code="wwc")
 
         response = self.request.get(self.url, pk="wwc")
         rating = response.json.get("rating")
@@ -98,7 +98,7 @@ class RetrieveAppTypeViewTestCase(AppTypeViewTestCase):
 
     def test_retrieve_apptype_asset_link_url(self):
         link_asset = AppTypeAsset.objects.create(
-            app_code="wwc",
+            code="wwc",
             asset_type=AppTypeAsset.ASSET_TYPE_LINK,
             url="https://dash.weni.ai",
             description="Weni dash URL",
@@ -130,7 +130,7 @@ class RetrieveAppTypeViewTestCase(AppTypeViewTestCase):
     def test_integrations_count_value(self):
         for number in range(10):
             App.objects.create(
-                app_code="wwc",
+                code="wwc",
                 config={},
                 project_uuid=uuid.uuid4(),
                 platform=App.PLATFORM_WENI_FLOWS,

@@ -32,7 +32,7 @@ class AppTypeTestCase(TestCase):
 
     def create_app_type_asset(self, fake_type_instance: AppType, user: User) -> AppTypeAsset:
         return AppTypeAsset.objects.create(
-            app_code=fake_type_instance.code,
+            code=fake_type_instance.code,
             asset_type=AppTypeAsset.ASSET_TYPE_ICON,
             attachment="../../tests/file_to_upload.txt",
             description="Test app type asset",
@@ -54,7 +54,7 @@ class AppTypeTestCase(TestCase):
         self.assertFalse(fake_type_instance.apps.exists())
 
         App.objects.create(
-            app_code=fake_type_instance.code,
+            code=fake_type_instance.code,
             config={"test": "test"},
             project_uuid=uuid.uuid4(),
             platform=App.PLATFORM_WENI_FLOWS,
@@ -68,7 +68,7 @@ class AppTypeTestCase(TestCase):
         self.assertFalse(fake_type_instance.ratings.exists())
 
         rating = Rating.objects.create(
-            app_code=fake_type_instance.code,
+            code=fake_type_instance.code,
             created_by=self.user,
             rate=4,
         )
@@ -82,7 +82,7 @@ class AppTypeTestCase(TestCase):
         self.assertFalse(fake_type_instance.comments.exists())
 
         comment = Comment.objects.create(
-            app_code=fake_type_instance.code,
+            code=fake_type_instance.code,
             created_by=self.user,
             content="Fake comment to test the AppType",
         )
@@ -121,7 +121,7 @@ class AppTypeTestCase(TestCase):
         self.assertIsNone(fake_type_instance.get_ratings_average())
 
         Rating.objects.create(
-            app_code=fake_type_instance.code,
+            code=fake_type_instance.code,
             created_by=self.user,
             rate=4,
         )
@@ -129,7 +129,7 @@ class AppTypeTestCase(TestCase):
         self.assertEqual(fake_type_instance.get_ratings_average(), 4.0)
 
         Rating.objects.create(
-            app_code=fake_type_instance.code,
+            code=fake_type_instance.code,
             created_by=User.objects.create_superuser(email="user@marketplace.ai", password="fake@pass#$"),
             rate=1,
         )

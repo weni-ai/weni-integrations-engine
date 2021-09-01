@@ -66,19 +66,19 @@ class AppType(AbstractAppType):
 
     @property
     def assets(self) -> QuerySet:
-        return AppTypeAsset.objects.filter(app_code=self.code)
+        return AppTypeAsset.objects.filter(code=self.code)
 
     @property
     def apps(self) -> QuerySet:
-        return App.objects.filter(app_code=self.code)
+        return App.objects.filter(code=self.code)
 
     @property
     def ratings(self) -> QuerySet:
-        return Rating.objects.filter(app_code=self.code)
+        return Rating.objects.filter(code=self.code)
 
     @property
     def comments(self) -> QuerySet:
-        return Comment.objects.filter(app_code=self.code)
+        return Comment.objects.filter(code=self.code)
 
     def get_icon_asset(self) -> AppTypeAsset:
         try:

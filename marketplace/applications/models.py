@@ -27,7 +27,7 @@ class App(AppTypeBaseModel):
         verbose_name_plural = _("Apps")
 
     def __str__(self) -> str:
-        return self.app_code
+        return self.code
 
 
 class AppTypeAsset(AppTypeBaseModel):
@@ -54,11 +54,11 @@ class AppTypeAsset(AppTypeBaseModel):
         verbose_name_plural = "App Type Assets"
         constraints = [
             UniqueConstraint(
-                fields=["asset_type", "app_code"],
+                fields=["asset_type", "code"],
                 condition=Q(asset_type="IC"),
-                name="unique_asset_type_icon_app_code",
+                name="unique_asset_type_icon_code",
             )
         ]
 
     def __str__(self) -> str:
-        return self.app_code
+        return self.code
