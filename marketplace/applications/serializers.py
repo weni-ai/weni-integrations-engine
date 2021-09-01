@@ -2,6 +2,7 @@ from marketplace.applications.models import App, AppTypeAsset
 from marketplace.interactions.models import Rating
 from rest_framework import serializers
 from marketplace.core.types.base import AppType
+from marketplace.core import types
 
 
 class AppTypeSerializer(serializers.Serializer):
@@ -48,7 +49,14 @@ class AppTypeSerializer(serializers.Serializer):
 
 
 class MyAppSerializer(serializers.ModelSerializer):
-
+    name = serializers.CharField()
+    description = serializers.SerializerMethodField()
     class Meta:
         model = App
-        fields = ("uuid",)
+        fields = ("uuid", "code", "name", "description")
+
+    def get_name(self, obj):
+        return obj.apptype.name
+
+    def get_description(self, obj):
+        return obj.apptype.description

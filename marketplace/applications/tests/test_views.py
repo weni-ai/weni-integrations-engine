@@ -147,7 +147,7 @@ class RetrieveMyAppViewTestCase(APIBaseTestCase):
     def setUp(self):
         super().setUp()
         self.app = App.objects.create(
-            app_code="wwc",
+            code="wwc",
             config={"test": "test"},
             project_uuid=uuid.uuid4(),
             platform=App.PLATFORM_WENI_FLOWS,
@@ -161,4 +161,5 @@ class RetrieveMyAppViewTestCase(APIBaseTestCase):
 
     def test_request_status_ok(self):
         response = self.request.get(self.url, uuid=self.app.uuid)
+        print(response.json)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
