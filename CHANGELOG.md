@@ -1,3 +1,13 @@
+v0.1.2
+----------
+ * Add platform on create a WeniWebChat app
+ * Change WeniWebChatViewSet lookup_field to uuid
+ * Add WeniWebChat App create end retrieve endpoint (#36)
+ * Set null=True on field App.config
+ * Add weni-web-chat app view and configure urls
+ * Add WeniWebChat App create end retrieve endpoint
+ * Increase test coverage
+
 v0.1.1
 ----------
  * Solve Poetry dependencies conflict on pip install
