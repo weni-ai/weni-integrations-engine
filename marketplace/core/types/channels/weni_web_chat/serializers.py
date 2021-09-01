@@ -103,10 +103,9 @@ class ConfigSerializer(serializers.Serializer):
         header_path = os.path.dirname(os.path.abspath(__file__))
 
         with open(os.path.join(header_path, "header.script"), "r") as script_header:
-            script = script_header.read().replace("<APPTYPE_CODE>", type_.WeniWebChatType.code)
+            header = script_header.read().replace("<APPTYPE_CODE>", type_.WeniWebChatType.code)
 
-        script += json.dumps(attrs, indent=2)
-        script += ");"
+        script = header.replace("<FIELDS>", json.dumps(attrs, indent=2))
 
         storage = AppStorage(self.parent.instance)
 
@@ -117,8 +116,12 @@ class ConfigSerializer(serializers.Serializer):
 
 class WeniWebChatConfigureSerializer(AppTypeBaseSerializer):
 
-    config = ConfigSerializer()
+    config = ConfigSerializer(write_only=True)
+    script = serializers.SerializerMethodField()
+
+    def get_script(self, obj):
+        return obj.config.get("script")
 
     class Meta:
         model = App
-        fields = ("uuid", "config", "modified_by")
+        fields = ("uuid", "config", "modified_by", "script")

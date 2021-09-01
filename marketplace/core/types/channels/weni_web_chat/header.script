@@ -2,4 +2,4 @@ let j = document.createElement("div");
 j.id = "<APPTYPE_CODE>";
 document.body.appendChild(j);
 
-WebChat.default.init(
+WebChat.default.init(<FIELDS>);
