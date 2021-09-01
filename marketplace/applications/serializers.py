@@ -1,4 +1,4 @@
-from marketplace.applications.models import AppTypeAsset
+from marketplace.applications.models import App, AppTypeAsset
 from marketplace.interactions.models import Rating
 from rest_framework import serializers
 from marketplace.core.types.base import AppType
@@ -45,3 +45,10 @@ class AppTypeSerializer(serializers.Serializer):
 
     def get_integrations_count(self, obj) -> int:
         return obj.apps.count()
+
+
+class MyAppSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = App
+        fields = ("uuid",)

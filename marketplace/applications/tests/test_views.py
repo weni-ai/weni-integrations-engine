@@ -8,7 +8,7 @@ from rest_framework import status
 from marketplace.applications.models import AppTypeAsset, App
 from marketplace.interactions.models import Rating
 from marketplace.core import types
-from marketplace.applications.views import AppTypeViewSet
+from marketplace.applications.views import AppTypeViewSet, MyAppViewSet
 from marketplace.core.tests.base import APIBaseTestCase
 
 
@@ -139,3 +139,26 @@ class RetrieveAppTypeViewTestCase(AppTypeViewTestCase):
 
             response = self.request.get(self.url, pk="wwc")
             self.assertEqual(response.json["integrations_count"], number + 1)
+
+
+class RetrieveMyAppViewTestCase(APIBaseTestCase):
+    view_class = MyAppViewSet
+
+    def setUp(self):
+        super().setUp()
+        self.app = App.objects.create(
+            app_code="wwc",
+            config={"test": "test"},
+            project_uuid=uuid.uuid4(),
+            platform=App.PLATFORM_WENI_FLOWS,
+            created_by=self.user,
+        )
+        self.url = reverse("my-app-detail", kwargs={"uuid": self.app.uuid})
+
+    @property
+    def view(self):
+        return self.view_class.as_view(APIBaseTestCase.ACTION_RETRIEVE)
+
+    def test_request_status_ok(self):
+        response = self.request.get(self.url, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
