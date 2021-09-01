@@ -3,7 +3,6 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from marketplace.applications.models import App
-from marketplace.grpc.client import ConnectGRPCClient
 from .serializers import WeniWebChatSerializer, WeniWebChatConfigureSerializer
 from . import type as type_
 
@@ -25,20 +24,10 @@ class WeniWebChatViewSet(viewsets.ModelViewSet):
         """
         Adds a config on specified App and create a channel on weni-flows
         """
-        app = self.get_object()
-
         self.serializer_class = WeniWebChatConfigureSerializer
-        serializer = self.get_serializer(app, data=request.data)
+        serializer = self.get_serializer(self.get_object(), data=request.data)
         serializer.is_valid(raise_exception=True)
-
-        channel_uuid = ConnectGRPCClient.create_weni_web_chat(request.user.email)
-        serializer.validated_data["config"]["channelUuid"] = channel_uuid
 
         self.perform_update(serializer)
 
-        self.generate_script()
-
         return Response(serializer.data)
-
-    def generate_script(self):
-        ...
