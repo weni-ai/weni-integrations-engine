@@ -1,6 +1,7 @@
 from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.exceptions import ValidationError
 
 from marketplace.applications.serializers import AppTypeSerializer, MyAppSerializer
 from marketplace.core import types
@@ -39,3 +40,12 @@ class MyAppViewSet(viewsets.ReadOnlyModelViewSet):
     lookup_field = "uuid"
     serializer_class = MyAppSerializer
     queryset = App.objects
+
+    def get_queryset(self):
+        project_uuid = self.request.query_params.get("project_uuid")
+        if not project_uuid:
+            raise ValidationError("project_uuid is a required parameter!")
+
+        # TODO: Validate user permission
+
+        return super().get_queryset().filter(project_uuid=project_uuid)

@@ -141,7 +141,7 @@ class RetrieveAppTypeViewTestCase(AppTypeViewTestCase):
             self.assertEqual(response.json["integrations_count"], number + 1)
 
 
-class RetrieveMyAppViewTestCase(APIBaseTestCase):
+class RetrieveMyAppViewTestCase(AppTypeViewTestCase):
     view_class = MyAppViewSet
 
     def setUp(self):
@@ -159,7 +159,71 @@ class RetrieveMyAppViewTestCase(APIBaseTestCase):
     def view(self):
         return self.view_class.as_view(APIBaseTestCase.ACTION_RETRIEVE)
 
+    @property
+    def query_parameter(self):
+        return f"?project_uuid={self.app.project_uuid}"
+
     def test_request_status_ok(self):
-        response = self.request.get(self.url, uuid=self.app.uuid)
-        print(response.json)
+        response = self.request.get(self.url + self.query_parameter, uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_retrieve_apps_without_project_uuid(self):
+        response = self.request.get(self.url, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json[0], "project_uuid is a required parameter!")
+
+    def test_retrieve_my_apps_data(self):
+        response = self.request.get(self.url + self.query_parameter, uuid=self.app.uuid)
+        self.assertEqual(response.json["name"], self.app.apptype.name)
+        self.assertEqual(response.json["description"], self.app.apptype.description)
+        self.assertEqual(response.json["summary"], self.app.apptype.summary)
+        self.assertEqual(response.json["icon"], self.app_type_asset.attachment.url)
+        self.assertEqual(response.json["config"], self.app.config)
+
+
+class ListMyAppViewTestCase(AppTypeViewTestCase):
+    url = reverse("my-app-list")
+    view_class = MyAppViewSet
+
+    def setUp(self):
+        super().setUp()
+        self.apps = []
+
+        self.common_uuid = uuid.uuid4()
+        self.apps_count = 10
+
+        for _ in range(self.apps_count):
+            self.apps.append(self.create_app(self.common_uuid))
+
+    @property
+    def view(self):
+        return self.view_class.as_view(APIBaseTestCase.ACTION_LIST)
+
+    def create_app(self, project_uuid: str) -> App:
+        return App.objects.create(
+            code="wwc",
+            config={"test": "test"},
+            project_uuid=project_uuid,
+            platform=App.PLATFORM_WENI_FLOWS,
+            created_by=self.user,
+        )
+
+    def test_request_status_ok(self):
+        response = self.request.get(self.url + f"?project_uuid={self.common_uuid}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_apps_count_by_project(self):
+        response = self.request.get(self.url + f"?project_uuid={self.common_uuid}")
+        self.assertEqual(len(response.json), self.apps_count)
+
+    def test_apps_count_with_another_project_uuid(self):
+        new_uuid = uuid.uuid4()
+        self.create_app(new_uuid)
+
+        response = self.request.get(self.url + f"?project_uuid={new_uuid}")
+        self.assertEqual(len(response.json), 1)
+
+    def test_list_apps_without_project_uuid(self):
+        response = self.request.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json[0], "project_uuid is a required parameter!")

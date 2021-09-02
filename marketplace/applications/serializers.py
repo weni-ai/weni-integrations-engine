@@ -49,14 +49,11 @@ class AppTypeSerializer(serializers.Serializer):
 
 
 class MyAppSerializer(serializers.ModelSerializer):
-    name = serializers.CharField()
-    description = serializers.SerializerMethodField()
+    icon = serializers.SerializerMethodField()
+
+    def get_icon(self, obj) -> str:  # TODO: Get `icon` from own App object
+        return obj.apptype.get_icon_url()
+
     class Meta:
         model = App
-        fields = ("uuid", "code", "name", "description")
-
-    def get_name(self, obj):
-        return obj.apptype.name
-
-    def get_description(self, obj):
-        return obj.apptype.description
+        fields = ("uuid", "code", "name", "description", "summary", "icon", "config")
