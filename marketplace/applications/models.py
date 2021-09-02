@@ -23,7 +23,7 @@ class App(AppTypeBaseModel):
         (PLATFORM_RC, "rocketchat"),
     )
 
-    config = models.JSONField(null=True)
+    config = models.JSONField(default=dict)
     project_uuid = models.UUIDField("Project UUID")
     platform = models.CharField(choices=PLATFORM_CHOICES, max_length=2)
 
