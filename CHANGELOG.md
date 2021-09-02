@@ -1,3 +1,13 @@
+v0.1.4
+----------
+ * Add "CORS_ALLOWED_ORIGINS" environment variable
+ * Add "configured" query parameter on "my-apps" endpoint
+ * Add a default value "{}" to App.config
+ * Execute CI on push in all branches
+ * Add "my-apps" list and retrieve endpoint
+ * Change app code name from "app_code" to "code"
+ * Add "configure" endpoint to Weni Web Chat App
+
 v0.1.3
 ----------
  * Add configure endpoint to Weni Web Chat App
