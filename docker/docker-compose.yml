@@ -9,6 +9,10 @@ services:
       - POSTGRES_USER=${POSTGRES_USER:-marketplace}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-marketplace}
       - POSTGRES_DB=${POSTGRES_DB:-marketplace}
+  redis:
+    image: redis
+    ports:
+      - 6379:6379
   marketplace:
     build:
       context: ..
@@ -37,3 +41,4 @@ services:
       - OIDC_RP_SIGN_ALGO=${OIDC_RP_SIGN_ALGO}
     depends_on:
       - database
+      - redis

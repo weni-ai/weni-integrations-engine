@@ -34,6 +34,8 @@ OIDC_OP_TOKEN_ENDPOINT=""
 OIDC_OP_USER_ENDPOINT=""
 OIDC_OP_JWKS_ENDPOINT=""
 OIDC_RP_SIGN_ALGO=""
+
+CONNECT_GRPC_SERVER_URL=""
 """.strip()
 
 env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
