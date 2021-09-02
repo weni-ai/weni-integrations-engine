@@ -1,7 +1,7 @@
 from mozilla_django_oidc.auth import OIDCAuthenticationBackend
 
 
-class WeniOIDCAuthenticationBackend(OIDCAuthenticationBackend):
+class WeniOIDCAuthenticationBackend(OIDCAuthenticationBackend):  # pragma: no cover
     def create_user(self, claims):
         email = claims.get("email")
 

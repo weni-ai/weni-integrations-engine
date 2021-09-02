@@ -201,3 +201,8 @@ if USE_OIDC:
 
 # TODO: Configure CORS to production environment
 CORS_ALLOW_ALL_ORIGINS = DEBUG
+
+
+# Extra configurations
+
+DYNAMIC_APPTYPES = []

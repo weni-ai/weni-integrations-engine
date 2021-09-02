@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from marketplace.core.types.base import AppType
 from marketplace.applications.models import AppTypeAsset, App
 from marketplace.interactions.models import Rating, Comment
+from marketplace.core.tests.base import MockDynamicAppType
 
 
 User = get_user_model()
@@ -53,13 +54,14 @@ class AppTypeTestCase(TestCase):
 
         self.assertFalse(fake_type_instance.apps.exists())
 
-        App.objects.create(
-            code=fake_type_instance.code,
-            config={"test": "test"},
-            project_uuid=uuid.uuid4(),
-            platform=App.PLATFORM_WENI_FLOWS,
-            created_by=self.user,
-        )
+        with MockDynamicAppType([fake_type_instance]):
+            App.objects.create(
+                code=fake_type_instance.code,
+                config={"test": "test"},
+                project_uuid=uuid.uuid4(),
+                platform=App.PLATFORM_WENI_FLOWS,
+                created_by=self.user,
+            )
 
         self.assertTrue(fake_type_instance.apps.exists())
 
