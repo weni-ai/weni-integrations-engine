@@ -3,11 +3,7 @@
 
 name: Python application
 
-on:
-  push:
-    branches: [ main ] # change to main
-  pull_request:
-    branches: [ main ] # change to main
+on: [push, pull_request]
 
 jobs:
   test:
