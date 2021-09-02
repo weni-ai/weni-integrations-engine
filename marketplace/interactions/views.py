@@ -12,10 +12,10 @@ class CommentViewSet(viewsets.ModelViewSet):
     lookup_field = "uuid"
 
     def get_queryset(self):
-        return super().get_queryset().filter(app_code=self.kwargs["apptype_pk"])
+        return super().get_queryset().filter(code=self.kwargs["apptype_pk"])
 
     def perform_create(self, serializer):
-        serializer.save(app_code=self.kwargs["apptype_pk"])
+        serializer.save(code=self.kwargs["apptype_pk"])
 
 
 class RatingViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
@@ -23,4 +23,4 @@ class RatingViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     serializer_class = RatingSerializer
 
     def perform_create(self, serializer):
-        serializer.save(app_code=self.kwargs["apptype_pk"])
+        serializer.save(code=self.kwargs["apptype_pk"])

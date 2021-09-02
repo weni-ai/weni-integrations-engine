@@ -14,10 +14,10 @@ class WeniWebChatViewSet(viewsets.ModelViewSet):
     lookup_field = "uuid"
 
     def get_queryset(self):
-        return super().get_queryset().filter(app_code=type_.WeniWebChatType.code)
+        return super().get_queryset().filter(code=type_.WeniWebChatType.code)
 
     def perform_create(self, serializer):
-        serializer.save(app_code=type_.WeniWebChatType.code)
+        serializer.save(code=type_.WeniWebChatType.code)
 
     @action(detail=True, methods=["PATCH"])
     def configure(self, request, **kwargs):

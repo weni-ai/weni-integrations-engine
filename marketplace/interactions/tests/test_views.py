@@ -32,7 +32,7 @@ class CreateCommentViewTestCase(APIBaseTestCase):
         response = self.request.post(self.url, self.body, apptype_pk="wwc")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.json["content"], self.body["content"])
-        self.assertIn("app_code", response.json)
+        self.assertIn("code", response.json)
         self.assertIn("uuid", response.json)
         self.assertIn("created_on", response.json)
         self.assertFalse(response.json["edited"])
@@ -46,7 +46,7 @@ class RetrieveCommentViewTestCase(APIBaseTestCase):
         super().setUp()
 
         self.comment = Comment.objects.create(
-            app_code="wwc",
+            code="wwc",
             created_by=self.user,
             content="This is only a test content",
         )
@@ -64,7 +64,7 @@ class RetrieveCommentViewTestCase(APIBaseTestCase):
     def test_retrieve_comment_data(self):
         response = self.request.get(self.url, apptype_pk="wwc", uuid=self.comment.uuid)
         self.assertEqual(response.json["content"], self.comment.content)
-        self.assertIn("app_code", response.json)
+        self.assertIn("code", response.json)
         self.assertIn("uuid", response.json)
         self.assertIn("created_on", response.json)
         self.assertFalse(response.json["edited"])
@@ -80,7 +80,7 @@ class UpdateCommentViewTestCase(APIBaseTestCase):
         self.body = {"content": "This is the comment test modified"}
 
         self.comment = Comment.objects.create(
-            app_code="wwc",
+            code="wwc",
             created_by=self.user,
             content="This is only a test content",
         )
@@ -123,7 +123,7 @@ class UpdateCommentViewTestCase(APIBaseTestCase):
         updated_comment = self.get_updated_comment()
 
         self.assertEqual(self.body["content"], updated_comment.content)
-        self.assertIn("app_code", response.json)
+        self.assertIn("code", response.json)
         self.assertIn("uuid", response.json)
         self.assertIn("created_on", response.json)
         self.assertTrue(response.json["owned"])
@@ -136,7 +136,7 @@ class DestroyCommentViewTestCase(APIBaseTestCase):
         super().setUp()
 
         self.comment = Comment.objects.create(
-            app_code="wwc",
+            code="wwc",
             created_by=self.user,
             content="This is only a test content",
         )
@@ -167,7 +167,7 @@ class ListCommentViewTestCase(APIBaseTestCase):
 
         for comment in range(self.comments_count):
             Comment.objects.create(
-                app_code="wwc",
+                code="wwc",
                 created_by=self.user,
                 content=f"This is only a test content ({comment})",
             )
