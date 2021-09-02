@@ -1,11 +1,14 @@
 import json
 
 from django.test import TestCase
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIRequestFactory
 from rest_framework.test import force_authenticate
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from marketplace.core.types.base import AppType
 
 
 User = get_user_model()
@@ -91,3 +94,24 @@ class APIBaseTestCase(TestCase):
 
     def _get_request(self):
         return self.request_class(self)
+
+
+class MockDynamicAppType:
+    """
+    Lets you add a list of apptypes dynamically
+    Usage:
+
+    with MockDynamicAppType([<APPTYPE_INSTANCES>]):
+        ...
+    """
+    def __init__(self, apptypes: list):
+        self.apptypes = apptypes
+
+    def __enter__(self):
+        for apptype in self.apptypes:
+            assert isinstance(apptype, AppType), f"Expected a `AppType`, `{apptype.__class__.__name__}` is not valid!"
+            settings.DYNAMIC_APPTYPES.append(apptype)
+
+    def __exit__(self, *args):
+        for apptype in self.apptypes:
+            settings.DYNAMIC_APPTYPES.remove(apptype)

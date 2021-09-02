@@ -8,6 +8,11 @@ from marketplace.core.models import AppTypeBaseModel
 
 class App(AppTypeBaseModel):
 
+    name: str = None
+    description: str = None
+    summary: str = None
+    # TODO: Add `icon` property
+
     PLATFORM_IA = "IA"
     PLATFORM_WENI_FLOWS = "WF"
     PLATFORM_RC = "RC"
@@ -28,6 +33,24 @@ class App(AppTypeBaseModel):
 
     def __str__(self) -> str:
         return self.code
+
+    def __init__(self, *args, **kwargs):
+        """
+        Copy some properties from their respective AppType
+        """
+        super().__init__(*args, **kwargs)
+        self.name = self.apptype.name
+        self.description = self.apptype.description
+        self.summary = self.apptype.summary
+        # TODO: Add `icon` property
+
+    @property
+    def apptype(self):
+        """
+        Returns de respective AppType
+        """
+        from marketplace.core import types
+        return types.get_type(self.code)
 
 
 class AppTypeAsset(AppTypeBaseModel):

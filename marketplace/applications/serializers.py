@@ -1,7 +1,8 @@
-from marketplace.applications.models import AppTypeAsset
+from marketplace.applications.models import App, AppTypeAsset
 from marketplace.interactions.models import Rating
 from rest_framework import serializers
 from marketplace.core.types.base import AppType
+from marketplace.core import types
 
 
 class AppTypeSerializer(serializers.Serializer):
@@ -45,3 +46,14 @@ class AppTypeSerializer(serializers.Serializer):
 
     def get_integrations_count(self, obj) -> int:
         return obj.apps.count()
+
+
+class MyAppSerializer(serializers.ModelSerializer):
+    icon = serializers.SerializerMethodField()
+
+    def get_icon(self, obj) -> str:  # TODO: Get `icon` from own App object
+        return obj.apptype.get_icon_url()
+
+    class Meta:
+        model = App
+        fields = ("uuid", "code", "name", "description", "summary", "icon", "config")

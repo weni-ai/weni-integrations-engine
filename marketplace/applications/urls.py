@@ -8,6 +8,7 @@ from marketplace.core.types import urls as apps_urls
 
 router = routers.SimpleRouter()
 router.register("apptypes", applications_views.AppTypeViewSet, basename="apptype")
+router.register("my-apps", applications_views.MyAppViewSet, basename="my-app")
 
 comments_router = routers.NestedSimpleRouter(router, r"apptypes", lookup="apptype")
 comments_router.register("comments", interactions_views.CommentViewSet, basename="apptype-comment")

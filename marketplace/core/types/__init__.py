@@ -2,6 +2,8 @@ import os
 import inspect
 import importlib
 
+from django.conf import settings
+
 from marketplace.core.types.base import AppType
 
 
@@ -40,6 +42,11 @@ def get_types(category: str = None) -> list:
         Returns:
             list: A list of AppTypes
     """
+    global _types
+
+    if settings.DYNAMIC_APPTYPES:
+        _types += settings.DYNAMIC_APPTYPES
+
     if category:
         return list(filter(lambda _type: _type.get_category_display() == category, _types))
 
@@ -47,7 +54,7 @@ def get_types(category: str = None) -> list:
 
 
 def get_type(code: str) -> AppType:
-    types = list(filter(lambda type: type.code == code, _types))
+    types = list(filter(lambda type: type.code == code, get_types()))
 
     if not len(types):
         raise KeyError(f"Invalid code: {code} No AppType found")
