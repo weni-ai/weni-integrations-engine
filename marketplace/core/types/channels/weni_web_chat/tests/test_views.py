@@ -63,4 +63,4 @@ class RetrieveWeniWebChatAppTestCase(APIBaseTestCase):
         self.assertIn("project_uuid", response.json)
         self.assertIn("platform", response.json)
         self.assertIn("created_on", response.json)
-        self.assertIsNone(response.json["config"])
+        self.assertEqual(response.json["config"], {})
