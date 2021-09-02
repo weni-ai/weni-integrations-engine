@@ -1,3 +1,4 @@
+from django.db.models import Q
 from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework import status
@@ -42,10 +43,27 @@ class MyAppViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = App.objects
 
     def get_queryset(self):
-        project_uuid = self.request.query_params.get("project_uuid")
+        queryset = super().get_queryset()
+
+        query_params = self.request.query_params
+        project_uuid = query_params.get("project_uuid")
+        configured = query_params.get("configured")
+
         if not project_uuid:
             raise ValidationError("project_uuid is a required parameter!")
 
+        queryset = queryset.filter(project_uuid=project_uuid)
+
+        if configured is not None:
+            if configured == "true":
+                queryset = queryset.exclude(config={})
+
+            elif configured == "false":
+                queryset = queryset.filter(config={})
+
+            else:
+                raise ValidationError(f"Expected a boolean param in configured, but recived `{configured}`")
+
         # TODO: Validate user permission
 
-        return super().get_queryset().filter(project_uuid=project_uuid)
+        return queryset
