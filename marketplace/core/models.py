@@ -41,7 +41,7 @@ class BaseModel(models.Model):
 
 class AppTypeBaseModel(BaseModel):
 
-    app_code = models.SlugField(validators=[validate_app_code_exists])
+    code = models.SlugField(validators=[validate_app_code_exists])
 
     class Meta:
         abstract = True
