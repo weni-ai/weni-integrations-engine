@@ -37,11 +37,12 @@ class ConfigSerializer(serializers.Serializer):
     showFullScreenButton = serializers.BooleanField(default=True)
     displayUnreadCount = serializers.BooleanField(default=False)
     keepHistory = serializers.BooleanField(default=False)
-    # timeBetweenMessages = serializers.IntegerField(default=1)
     initPayload = serializers.CharField(default="start")
     mainColor = serializers.CharField(default="#00DED3")
     avatarImage = AvatarBase64ImageField(required=False)
     customCss = serializers.CharField(required=False)
+
+    # TODO: Implements `timeBetweenMessages` field
 
     def to_internal_value(self, data):
         data = super().to_internal_value(data)
