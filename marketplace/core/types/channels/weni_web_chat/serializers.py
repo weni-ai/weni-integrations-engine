@@ -90,7 +90,6 @@ class ConfigSerializer(serializers.Serializer):
         channel_uuid = str(uuid.uuid4())  # Fake UUID, only to test
         attrs["channelUuid"] = channel_uuid
 
-        attrs.pop("mainColor")
         attrs.pop("keepHistory")
 
         self.generate_script(attrs)
