@@ -16,6 +16,7 @@ class AppTypeSerializer(serializers.Serializer):
     rating = serializers.SerializerMethodField()
     comments_count = serializers.SerializerMethodField()
     integrations_count = serializers.SerializerMethodField()
+    metrics = serializers.SerializerMethodField()
 
     assets = serializers.SerializerMethodField()
 
@@ -46,6 +47,10 @@ class AppTypeSerializer(serializers.Serializer):
 
     def get_integrations_count(self, obj) -> int:
         return obj.apps.count()
+
+    def get_metrics(self, obj):
+        # TODO: Get real metric from AppType
+        return 58602143
 
 
 class MyAppSerializer(serializers.ModelSerializer):

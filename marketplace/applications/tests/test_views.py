@@ -140,6 +140,10 @@ class RetrieveAppTypeViewTestCase(AppTypeViewTestCase):
             response = self.request.get(self.url, pk="wwc")
             self.assertEqual(response.json["integrations_count"], number + 1)
 
+    def test_metrics_value(self):
+        response = self.request.get(self.url, pk="wwc")
+        self.assertEqual(response.json["metrics"], 58602143)
+
 
 class RetrieveMyAppViewTestCase(AppTypeViewTestCase):
     view_class = MyAppViewSet
