@@ -50,6 +50,7 @@ class App(AppTypeBaseModel):
         Returns de respective AppType
         """
         from marketplace.core import types
+
         return types.get_type(self.code)
 
 
