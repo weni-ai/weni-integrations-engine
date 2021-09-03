@@ -1,9 +1,15 @@
+from typing import TYPE_CHECKING, Generator
+
 from django.db import models
 from django.db.models import Q
 from django.db.models.constraints import UniqueConstraint
 from django.utils.translation import ugettext_lazy as _
 
 from marketplace.core.models import AppTypeBaseModel
+from marketplace import core
+
+if TYPE_CHECKING:
+    from marketplace.core.types.base import AppType
 
 
 class App(AppTypeBaseModel):
@@ -45,13 +51,11 @@ class App(AppTypeBaseModel):
         # TODO: Add `icon` property
 
     @property
-    def apptype(self):
+    def apptype(self) -> "AppType":
         """
         Returns de respective AppType
         """
-        from marketplace.core import types
-
-        return types.get_type(self.code)
+        return core.types.get_type(self.code)
 
 
 class AppTypeAsset(AppTypeBaseModel):
@@ -86,3 +90,22 @@ class AppTypeAsset(AppTypeBaseModel):
 
     def __str__(self) -> str:
         return self.code
+
+
+class AppTypeFeatured(AppTypeBaseModel):
+    class Meta:
+        verbose_name = "AppType Featured"
+        verbose_name_plural = "AppType Featureds"
+        constraints = [UniqueConstraint(fields=["code"], name="unique_app_type_featured_code")]
+
+    def __str__(self) -> str:
+        return self.code
+
+    @property
+    def apptype(self) -> "AppType":
+        return core.types.get_type(self.code)
+
+    @classmethod
+    def get_apptype_featureds(cls) -> Generator[None, None, "AppType"]:
+        for featured in cls.objects.all():
+            yield featured.apptype

@@ -18,7 +18,7 @@ class AppTypeTestCase(TestCase):
 
         self.user = User.objects.create_superuser(email="admin@marketplace.ai", password="fake@pass#$")
 
-        class FakeType(AppType):
+        class FakeType(AppType):  # TODO: Change name to FakeAppType
             view_class = None
             code = "ftp"
             name = "Fake Type"

@@ -7,7 +7,8 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
 
-from marketplace.applications.models import App, AppTypeAsset
+from marketplace.applications.models import App, AppTypeAsset, AppTypeFeatured
+from marketplace.core import types
 
 
 User = get_user_model()
@@ -81,3 +82,37 @@ class TestModelAppTypeAssetMethods(TestCase):
 
     def test_str_method(self):
         self.assertEqual(str(self.app_type_asset), self.app_data["code"])
+
+
+class TestModelAppTypeFeatured(TestCase):
+    def setUp(self):
+        super().setUp()
+
+        self.user = User.objects.create_superuser(email="admin@marketplace.ai", password="fake@pass#$")
+        self.apptype_featured = AppTypeFeatured.objects.create(code="wwc", created_by=self.user)
+
+    def test_created_apptype_featured_data(self):
+        self.assertEqual(self.apptype_featured.code, "wwc")
+        self.assertEqual(self.apptype_featured.created_by, self.user)
+
+    def test_unique_code_constraint(self):
+        with self.assertRaises(IntegrityError):
+            AppTypeFeatured.objects.create(code="wwc", created_by=self.user)
+
+
+class TestModelAppTypeFeaturedMethods(TestCase):
+    def setUp(self):
+        super().setUp()
+
+        self.user = User.objects.create_superuser(email="admin@marketplace.ai", password="fake@pass#$")
+        self.apptype_featured = AppTypeFeatured.objects.create(code="wwc", created_by=self.user)
+
+    def test_str_method(self):
+        self.assertEqual(str(self.apptype_featured), self.apptype_featured.code)
+
+    def test_apptype_method(self):
+        self.assertEqual(self.apptype_featured.apptype, types.get_type("wwc"))
+
+    def test_get_apptype_featureds(self):
+        apptype = next(self.apptype_featured.get_apptype_featureds())
+        self.assertEqual(apptype, types.get_type("wwc"))
