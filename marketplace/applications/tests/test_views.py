@@ -5,7 +5,7 @@ from django.urls import reverse
 from django.contrib.auth import get_user_model
 from rest_framework import status
 
-from marketplace.applications.models import AppTypeAsset, App
+from marketplace.applications.models import AppTypeAsset, AppTypeFeatured, App
 from marketplace.interactions.models import Rating
 from marketplace.core import types
 from marketplace.applications.views import AppTypeViewSet, MyAppViewSet
@@ -143,6 +143,28 @@ class RetrieveAppTypeViewTestCase(AppTypeViewTestCase):
     def test_metrics_value(self):
         response = self.request.get(self.url, pk="wwc")
         self.assertEqual(response.json["metrics"], 58602143)
+
+
+class FeaturedsAppTypeViewTestCase(AppTypeViewTestCase):
+    url = reverse("apptype-featureds")
+    view_class = AppTypeViewSet
+
+    @property
+    def view(self):
+        return self.view_class.as_view(dict(get="featureds"))
+
+    def test_request_status_ok(self):
+        response = self.request.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_list_featured_apptypes_without_featureds(self):
+        response = self.request.get(self.url)
+        self.assertEqual(response.json, [])
+
+    def test_list_featured_apptypes_with_featureds(self):
+        AppTypeFeatured.objects.create(code="wwc", created_by=self.user)
+        response = self.request.get(self.url)
+        self.assertEqual(len(response.json), 1)
 
 
 class RetrieveMyAppViewTestCase(AppTypeViewTestCase):

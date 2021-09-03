@@ -1,12 +1,12 @@
-from django.db.models import Q
 from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
+from rest_framework.decorators import action
 
 from marketplace.applications.serializers import AppTypeSerializer, MyAppSerializer
 from marketplace.core import types
-from marketplace.applications.models import App
+from marketplace.applications.models import App, AppTypeFeatured
 
 
 class AppTypeViewSet(viewsets.ViewSet):
@@ -33,6 +33,13 @@ class AppTypeViewSet(viewsets.ViewSet):
             return Response(status=status.HTTP_404_NOT_FOUND)
 
         serializer = self.get_serializer(app_type)
+
+        return Response(serializer.data)
+
+    @action(detail=False)
+    def featureds(self, request, **kwargs):
+        apptypes = AppTypeFeatured.get_apptype_featureds()
+        serializer = self.get_serializer(apptypes, many=True)
 
         return Response(serializer.data)
 
