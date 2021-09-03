@@ -8,8 +8,8 @@ class WeniWebChatType(AppType):
 
     code = "wwc"
     name = "Weni Web Chat"
-    description = "O chat da Weni"  # TODO: Change to real description
-    summary = "O chat da Weni"  # TODO: Change to real summary
+    description = "weniWebChat.data.description"
+    summary = "weniWebChat.data.summary"
     category = AppType.CATEGORY_CHANNEL
     developer = "Weni"
     bg_color = "#00DED333"
