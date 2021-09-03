@@ -104,6 +104,7 @@ class MockDynamicAppType:
     with MockDynamicAppType([<APPTYPE_INSTANCES>]):
         ...
     """
+
     def __init__(self, apptypes: list):
         self.apptypes = apptypes
 
