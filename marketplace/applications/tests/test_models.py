@@ -14,9 +14,9 @@ from marketplace.core import types
 User = get_user_model()
 
 
-def create_app_type_asset(created_by: User) -> Tuple[dict, AppTypeAsset]:
+def create_apptype_asset(created_by: User) -> Tuple[dict, AppTypeAsset]:
     app_data = dict(
-        code="test_slug",
+        code="wwc",
         asset_type=AppTypeAsset.ASSET_TYPE_ICON,
         attachment="file_to_upload.txt",
         created_by=created_by,
@@ -58,19 +58,19 @@ class TestModelAppTypeAsset(TestCase):
         super().setUp()
 
         self.user = User.objects.create_superuser(email="admin@marketplace.ai", password="fake@pass#$")
-        self.app_data, self.app_type_asset = create_app_type_asset(self.user)
+        self.app_data, self.apptype_asset = create_apptype_asset(self.user)
 
-    def test_created_app_type_asset_data(self):
-        self.assertEqual(self.app_type_asset.code, self.app_data["code"])
-        self.assertEqual(self.app_type_asset.asset_type, AppTypeAsset.ASSET_TYPE_ICON)
+    def test_created_apptype_asset_data(self):
+        self.assertEqual(self.apptype_asset.code, self.app_data["code"])
+        self.assertEqual(self.apptype_asset.asset_type, AppTypeAsset.ASSET_TYPE_ICON)
 
     def test_url_from_attachment(self):
         expected_url = urllib.parse.urljoin(settings.MEDIA_URL, self.app_data["attachment"])
-        self.assertEqual(expected_url, self.app_type_asset.attachment.url)
+        self.assertEqual(expected_url, self.apptype_asset.attachment.url)
 
     def test_unique_constraint_between_asset_type_and_code(self):
         with self.assertRaises(IntegrityError):
-            create_app_type_asset(self.user)
+            create_apptype_asset(self.user)
 
 
 class TestModelAppTypeAssetMethods(TestCase):
@@ -78,10 +78,11 @@ class TestModelAppTypeAssetMethods(TestCase):
         super().setUp()
 
         self.user = User.objects.create_superuser(email="admin@marketplace.ai", password="fake@pass#$")
-        self.app_data, self.app_type_asset = create_app_type_asset(self.user)
+        self.app_data, self.apptype_asset = create_apptype_asset(self.user)
 
     def test_str_method(self):
-        self.assertEqual(str(self.app_type_asset), self.app_data["code"])
+        str_ = f"{self.apptype_asset.apptype.name} - {self.apptype_asset.attachment.url}"
+        self.assertEqual(str(self.apptype_asset), str_)
 
 
 class TestModelAppTypeFeatured(TestCase):
@@ -108,7 +109,7 @@ class TestModelAppTypeFeaturedMethods(TestCase):
         self.apptype_featured = AppTypeFeatured.objects.create(code="wwc", created_by=self.user)
 
     def test_str_method(self):
-        self.assertEqual(str(self.apptype_featured), self.apptype_featured.code)
+        self.assertEqual(str(self.apptype_featured), self.apptype_featured.apptype.name)
 
     def test_apptype_method(self):
         self.assertEqual(self.apptype_featured.apptype, types.get_type("wwc"))
