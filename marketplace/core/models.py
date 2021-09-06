@@ -51,7 +51,7 @@ class AppTypeBaseModel(BaseModel):
     @property
     def apptype(self) -> "AppType":
         """
-        Returns de respective AppType
+        Returns the respective AppType
         """
         return core.types.get_type(self.code)
 
