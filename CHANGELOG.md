@@ -1,3 +1,12 @@
+v0.1.5
+----------
+ * Change app code reference on AppStorage
+ * Return mainColor on WeniWebChatViewSet.configure
+ * Add WeniWebChatType real language keys
+ * Add AppTypeFeatured model and featureds endpoint
+ * Run black in all project
+ * Add metrics field to AppType endpoint
+
 v0.1.4
 ----------
  * Add "CORS_ALLOWED_ORIGINS" environment variable
