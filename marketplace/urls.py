@@ -1,5 +1,8 @@
+import re
+
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, re_path
+from django.views.static import serve
 from django.contrib.auth.models import Group
 from django.urls.conf import include
 from django.conf import settings
@@ -18,7 +21,17 @@ api_urls = [path("", include(applications_urls)), path("", include(interactions_
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/v1/", include(api_urls)),
-] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+]
+
+
+# Static files
+
+if settings.DEBUG:
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
+else:
+    regex_path = "^{}(?P<path>.*)$".format(re.escape(settings.STATIC_URL.lstrip("/")))
+    urlpatterns.append(re_path(regex_path, serve, {"document_root": settings.STATIC_ROOT}))
 
 
 # Django Admin
