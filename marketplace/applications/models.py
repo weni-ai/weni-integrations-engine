@@ -50,13 +50,6 @@ class App(AppTypeBaseModel):
         self.summary = self.apptype.summary
         # TODO: Add `icon` property
 
-    @property
-    def apptype(self) -> "AppType":
-        """
-        Returns de respective AppType
-        """
-        return core.types.get_type(self.code)
-
 
 class AppTypeAsset(AppTypeBaseModel):
 
@@ -89,7 +82,12 @@ class AppTypeAsset(AppTypeBaseModel):
         ]
 
     def __str__(self) -> str:
-        return self.code
+        str_ = f"{self.apptype.name} - "
+
+        if self.asset_type == self.ASSET_TYPE_LINK:
+            return str_ + self.url
+
+        return str_ + self.attachment.url
 
 
 class AppTypeFeatured(AppTypeBaseModel):
@@ -99,11 +97,7 @@ class AppTypeFeatured(AppTypeBaseModel):
         constraints = [UniqueConstraint(fields=["code"], name="unique_app_type_featured_code")]
 
     def __str__(self) -> str:
-        return self.code
-
-    @property
-    def apptype(self) -> "AppType":
-        return core.types.get_type(self.code)
+        return self.apptype.name
 
     @classmethod
     def get_apptype_featureds(cls) -> Generator[None, None, "AppType"]:
