@@ -14,6 +14,8 @@ import os
 from pathlib import Path
 
 import environ
+import sentry_sdk
+from sentry_sdk.integrations.django import DjangoIntegration
 
 
 # Build paths inside the project like this: BASE_DIR / "subdir".
@@ -222,3 +224,14 @@ CELERY_TIMEZONE = TIME_ZONE
 # Extra configurations
 
 DYNAMIC_APPTYPES = []
+
+
+# Sentry configuration
+
+USE_SENTRY = env.bool("USE_SENTRY", default=False)
+
+if USE_SENTRY:
+    sentry_sdk.init(
+        dsn=env.str("SENTRY_DSN"),
+        integrations=[DjangoIntegration()],
+    )

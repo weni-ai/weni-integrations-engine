@@ -37,6 +37,9 @@ OIDC_RP_SIGN_ALGO=""
 
 CONNECT_GRPC_SERVER_URL=""
 CORS_ALLOWED_ORIGINS=""
+
+USE_SENTRY=False
+SENTRY_DSN=""
 """.strip()
 
 env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
