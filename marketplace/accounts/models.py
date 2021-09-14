@@ -1,3 +1,5 @@
+import uuid
+
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
@@ -54,3 +56,35 @@ class User(AbstractBaseUser, PermissionsMixin):
     class Meta:
         verbose_name = _("user")
         verbose_name_plural = _("users")
+
+
+class ProjectAuthorization(models.Model):
+
+    ROLE_NOT_SETTED = 0
+    ROLE_VIEWER = 1
+    ROLE_CONTRIBUTOR = 2
+    ROLE_ADMIN = 3
+
+    ROLE_CHOICES = (
+        (ROLE_NOT_SETTED, "not set"),
+        (ROLE_VIEWER, "viewer"),
+        (ROLE_CONTRIBUTOR, "contributor"),
+        (ROLE_ADMIN, "admin"),
+    )
+
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    user = models.ForeignKey(User, models.CASCADE, related_name="authorizations")
+    project_uuid = models.UUIDField()
+
+    role = models.PositiveIntegerField(choices=ROLE_CHOICES, default=ROLE_NOT_SETTED)
+
+    created_on = models.DateTimeField("Created on", editable=False, auto_now_add=True)
+    modified_on = models.DateTimeField("Modified on", auto_now=True)
+
+    class Meta:
+        verbose_name = "Project Authorization"
+        verbose_name_plural = "Project Authorizations"
+        unique_together = ["user", "project_uuid"]
+
+    def __str__(self) -> str:
+        return f"{self.user} - {self.project_uuid}"
