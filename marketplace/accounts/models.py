@@ -7,6 +7,8 @@ from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth.models import PermissionsMixin
 from django.contrib.auth.models import UserManager as BaseUserManager
 
+from marketplace.core.models import BaseModel
+
 
 class UserManager(BaseUserManager):
     def _create_user(self, email, password, **extra_fields):
@@ -88,3 +90,30 @@ class ProjectAuthorization(models.Model):
 
     def __str__(self) -> str:
         return f"{self.user} - {self.project_uuid}"
+
+    def set_role(self, role: int):
+        assert role in dict(self.ROLE_CHOICES), f"Role: {role} isn't valid!"
+        self.role = role
+        self.save()
+
+    def can_contribute(self, obj: BaseModel) -> bool:
+        return obj.created_by == self.user and self.is_contributor
+
+    def can_destroy(self, obj):
+        return self.is_admin or self.can_contribute(obj)
+
+    @property
+    def can_write(self) -> bool:
+        return self.is_contributor or self.is_admin
+
+    @property
+    def is_viewer(self):
+        return self.role == self.ROLE_VIEWER
+
+    @property
+    def is_contributor(self):
+        return self.role == self.ROLE_CONTRIBUTOR
+
+    @property
+    def is_admin(self):
+        return self.role == self.ROLE_ADMIN
