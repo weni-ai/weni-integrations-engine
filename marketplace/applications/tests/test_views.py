@@ -1,4 +1,3 @@
-from os import stat
 import uuid
 
 from django.test import override_settings
@@ -280,7 +279,7 @@ class ListMyAppViewTestCase(AppTypeViewTestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.json[0], "Expected a boolean param in configured, but recived `test`")
 
-    def test_request_without_permission(self):
+    def test_request_without_authorization(self):
         self.user_authorization.delete()
         response = self.request.get(self.url + f"?project_uuid={self.project_uuid}")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
