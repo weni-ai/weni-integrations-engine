@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "mozilla_django_oidc",
     "storages",
     "corsheaders",
+    "django_grpc_framework",
 ]
 
 MIDDLEWARE = [
@@ -235,3 +236,10 @@ if USE_SENTRY:
         dsn=env.str("SENTRY_DSN"),
         integrations=[DjangoIntegration()],
     )
+
+
+# gRPC Framework configurations
+
+GRPC_FRAMEWORK = {
+    "ROOT_HANDLERS_HOOK": "marketplace.grpc.urls.grpc_handlers",
+}
