@@ -1,8 +1,9 @@
 from rest_framework import viewsets
 from rest_framework import mixins
 
-from marketplace.interactions.models import Comment, Rating
-from marketplace.interactions.serializers import CommentSerializer, RatingSerializer
+from .models import Comment
+from .serializers import CommentSerializer, RatingSerializer
+from .permissions import CommentManagePermission
 
 
 class CommentViewSet(viewsets.ModelViewSet):
@@ -10,6 +11,7 @@ class CommentViewSet(viewsets.ModelViewSet):
     queryset = Comment.objects
     serializer_class = CommentSerializer
     lookup_field = "uuid"
+    permission_classes = (CommentManagePermission,)
 
     def get_queryset(self):
         return super().get_queryset().filter(code=self.kwargs["apptype_pk"])
