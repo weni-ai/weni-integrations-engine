@@ -1,4 +1,4 @@
-from marketplace.grpc.protos import user_pb2_grpc
+from weni.protobuf.integrations import user_pb2_grpc
 
 from .services import UserPermissionService
 

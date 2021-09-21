@@ -133,6 +133,3 @@ dmypy.json
 
 # Static files
 media/
-
-# gRPC
-marketplace/grpc/protos/*

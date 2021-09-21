@@ -2,7 +2,7 @@ import grpc
 from django.conf import settings
 
 from marketplace.celery import app as celery_app
-from marketplace.grpc.protos import project_pb2, project_pb2_grpc
+from weni.protobuf.connect import project_pb2, project_pb2_grpc
 
 
 class ConnectGRPCClient:
@@ -30,7 +30,7 @@ class ConnectGRPCClient:
 @celery_app.task(name="create_weni_web_chat")
 def create_weni_web_chat(name: str, user_email: str, base_url: str) -> str:
     client = ConnectGRPCClient()
-    response = client.project_stub.CreateChannel(
+    _ = client.project_stub.CreateChannel(
         project_pb2.CreateChannelRequest(name=name, user=user_email, base_url=base_url)
     )
 

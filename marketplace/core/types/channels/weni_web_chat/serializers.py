@@ -7,7 +7,6 @@ from marketplace.core.fields import Base64ImageField
 
 from marketplace.applications.models import App
 from marketplace.core.serializers import AppTypeBaseSerializer
-from marketplace.grpc.client import ConnectGRPCClient
 from marketplace.core.storage import AppStorage
 from . import type as type_
 
