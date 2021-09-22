@@ -41,8 +41,7 @@ class ConfigSerializer(serializers.Serializer):
     mainColor = serializers.CharField(default="#00DED3")
     avatarImage = AvatarBase64ImageField(required=False)
     customCss = serializers.CharField(required=False)
-
-    # TODO: Implements `timeBetweenMessages` field
+    timeBetweenMessages = serializers.IntegerField(default=1)
 
     def to_internal_value(self, data):
         data = super().to_internal_value(data)
@@ -104,6 +103,8 @@ class ConfigSerializer(serializers.Serializer):
 
         with open(os.path.join(header_path, "header.script"), "r") as script_header:
             header = script_header.read().replace("<APPTYPE_CODE>", type_.WeniWebChatType.code)
+            header = header.replace("<CUSTOM-MESSAGE-DELAY>", str(attrs.get("timeBetweenMessages")))
+            attrs.pop("timeBetweenMessages")
 
         script = header.replace("<FIELDS>", json.dumps(attrs, indent=2))
 

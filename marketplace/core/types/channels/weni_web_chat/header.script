@@ -2,4 +2,10 @@ let j = document.createElement("div");
 j.id = "<APPTYPE_CODE>";
 document.body.appendChild(j);
 
-WebChat.default.init(<FIELDS>);
+let p = <FIELDS>;
+
+p["customMessageDelay"] = message => {
+    return <CUSTOM-MESSAGE-DELAY> * 1000;
+}
+
+WebChat.default.init(p);
