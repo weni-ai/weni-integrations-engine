@@ -1,3 +1,8 @@
+v0.1.6
+----------
+ * Add permissions to comments endpoint
+ * Add static urls when DEBUG=False
+
 v0.1.5
 ----------
  * Change app code reference on AppStorage
