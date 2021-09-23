@@ -2,6 +2,11 @@ let j = document.createElement("div");
 j.id = "<APPTYPE_CODE>";
 document.body.appendChild(j);
 
+let s = document.createElement("link");
+s.rel = "stylesheet";
+s.href = "<CUSTOM_CSS>";
+document.head.appendChild(s);
+
 let p = <FIELDS>;
 
 p["customMessageDelay"] = message => {

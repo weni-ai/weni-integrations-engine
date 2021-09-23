@@ -62,9 +62,7 @@ class ConfigSerializer(serializers.Serializer):
         return data
 
     def validate(self, attrs):
-        from .type import WeniWebChatType
-
-        attrs["selector"] = f"#{WeniWebChatType.code}"
+        attrs["selector"] = f"#{type_.WeniWebChatType.code}"
 
         attrs["customizeWidget"] = {
             "headerBackgroundColor": attrs["mainColor"],
@@ -91,7 +89,7 @@ class ConfigSerializer(serializers.Serializer):
 
         attrs.pop("keepHistory")
 
-        self.generate_script(attrs)
+        attrs["script"] = self.generate_script(attrs.copy())
 
         return super().validate(attrs)
 
@@ -104,7 +102,9 @@ class ConfigSerializer(serializers.Serializer):
         with open(os.path.join(header_path, "header.script"), "r") as script_header:
             header = script_header.read().replace("<APPTYPE_CODE>", type_.WeniWebChatType.code)
             header = header.replace("<CUSTOM-MESSAGE-DELAY>", str(attrs.get("timeBetweenMessages")))
+            header = header.replace("<CUSTOM_CSS>", str(attrs.get("customCss")))
             attrs.pop("timeBetweenMessages")
+            attrs.pop("customCss")
 
         script = header.replace("<FIELDS>", json.dumps(attrs, indent=2))
 
@@ -112,7 +112,7 @@ class ConfigSerializer(serializers.Serializer):
 
         with storage.open("script.js", "w") as up_file:
             up_file.write(script)
-            attrs["script"] = storage.url(up_file.name)
+            return storage.url(up_file.name)
 
 
 class WeniWebChatConfigureSerializer(AppTypeBaseSerializer):
