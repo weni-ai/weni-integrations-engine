@@ -15,7 +15,6 @@ from marketplace.core.tests.base import APIBaseTestCase
 User = get_user_model()
 
 
-@override_settings(USE_S3=False, USE_OIDC=False)
 class AppTypeViewTestCase(APIBaseTestCase):
     def setUp(self):
         super().setUp()
