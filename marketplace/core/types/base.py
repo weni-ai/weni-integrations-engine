@@ -84,10 +84,12 @@ class AppType(AbstractAppType):
         try:
             return self.assets.get(asset_type=AppTypeAsset.ASSET_TYPE_ICON)
         except AppTypeAsset.DoesNotExist:
-            raise AppTypeAsset.DoesNotExist(f"{self.__class__.__name__} doesn't have an icon")
+            return None
 
     def get_icon_url(self) -> str:
-        return self.get_icon_asset().attachment.url
+        icon_asset = self.get_icon_asset()
+        if icon_asset is not None:
+            return self.get_icon_asset().attachment.url
 
     def get_category_display(self) -> str:
         categories = dict(self.CATEGORY_CHOICES)

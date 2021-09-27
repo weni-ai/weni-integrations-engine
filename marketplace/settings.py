@@ -223,6 +223,11 @@ CELERY_TIMEZONE = TIME_ZONE
 
 # Extra configurations
 
+APPTYPES_CLASSES = [
+    "channels.weni_web_chat.type.WeniWebChatType",
+    "channels.whatsapp_demo.type.WhatsAppDemoType",
+]
+
 DYNAMIC_APPTYPES = []
 
 
