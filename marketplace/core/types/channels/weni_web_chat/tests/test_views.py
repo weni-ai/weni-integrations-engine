@@ -6,6 +6,7 @@ from rest_framework import status
 from marketplace.core.tests.base import APIBaseTestCase
 from ..views import WeniWebChatViewSet
 from marketplace.applications.models import App
+from marketplace.accounts.models import ProjectAuthorization
 
 
 class CreateWeniWebChatAppTestCase(APIBaseTestCase):
@@ -14,8 +15,12 @@ class CreateWeniWebChatAppTestCase(APIBaseTestCase):
 
     def setUp(self):
         super().setUp()
+        project_uuid = str(uuid.uuid4())
+        self.body = {"project_uuid": project_uuid}
 
-        self.body = {"project_uuid": str(uuid.uuid4())}
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=project_uuid, role=ProjectAuthorization.ROLE_CONTRIBUTOR
+        )
 
     @property
     def view(self):
@@ -29,12 +34,16 @@ class CreateWeniWebChatAppTestCase(APIBaseTestCase):
         self.body.pop("project_uuid")
         response = self.request.post(self.url, self.body)
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("project_uuid", response.json)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_create_app_platform(self):
         response = self.request.post(self.url, self.body)
         self.assertEqual(response.json["platform"], App.PLATFORM_WENI_FLOWS)
+
+    def test_create_app_without_permission(self):
+        self.user_authorization.delete()
+        response = self.request.post(self.url, self.body)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
 class RetrieveWeniWebChatAppTestCase(APIBaseTestCase):
@@ -46,7 +55,7 @@ class RetrieveWeniWebChatAppTestCase(APIBaseTestCase):
         self.app = App.objects.create(
             code="wwc", created_by=self.user, project_uuid=str(uuid.uuid4()), platform=App.PLATFORM_WENI_FLOWS
         )
-
+        self.user_authorization = self.user.authorizations.create(project_uuid=self.app.project_uuid)
         self.url = reverse("wwc-app-detail", kwargs={"uuid": self.app.uuid})
 
     @property
@@ -64,3 +73,51 @@ class RetrieveWeniWebChatAppTestCase(APIBaseTestCase):
         self.assertIn("platform", response.json)
         self.assertIn("created_on", response.json)
         self.assertEqual(response.json["config"], {})
+
+
+class DestroyWeniWebChatAppTestCase(APIBaseTestCase):
+    view_class = WeniWebChatViewSet
+
+    def setUp(self):
+        super().setUp()
+
+        self.app = App.objects.create(
+            code="wwc", created_by=self.user, project_uuid=str(uuid.uuid4()), platform=App.PLATFORM_WENI_FLOWS
+        )
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid, role=ProjectAuthorization.ROLE_ADMIN
+        )
+        self.url = reverse("wwc-app-detail", kwargs={"uuid": self.app.uuid})
+
+    @property
+    def view(self):
+        return self.view_class.as_view(APIBaseTestCase.ACTION_DESTROY)
+
+    def test_destroy_app_ok(self):
+        response = self.request.delete(self.url, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_destroy_with_authorization_contributor(self):
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_CONTRIBUTOR)
+        response = self.request.delete(self.url, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_destroy_with_authorization_contributor_and_another_user(self):
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_CONTRIBUTOR)
+        self.request.set_user(self.super_user)
+        self.super_user.authorizations.create(
+            project_uuid=self.app.project_uuid, role=ProjectAuthorization.ROLE_CONTRIBUTOR
+        )
+
+        response = self.request.delete(self.url, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_destroy_with_authorization_viewer(self):
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_VIEWER)
+        response = self.request.delete(self.url, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_destroy_with_authorization_not_setted(self):
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_NOT_SETTED)
+        response = self.request.delete(self.url, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

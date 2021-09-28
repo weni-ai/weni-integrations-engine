@@ -1,12 +1,13 @@
 from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import ValidationError, PermissionDenied
 from rest_framework.decorators import action
 
 from marketplace.applications.serializers import AppTypeSerializer, MyAppSerializer
 from marketplace.core import types
 from marketplace.applications.models import App, AppTypeFeatured
+from marketplace.accounts.models import ProjectAuthorization
 
 
 class AppTypeViewSet(viewsets.ViewSet):
@@ -59,6 +60,11 @@ class MyAppViewSet(viewsets.ReadOnlyModelViewSet):
         if not project_uuid:
             raise ValidationError("project_uuid is a required parameter!")
 
+        try:
+            self.request.user.authorizations.get(project_uuid=project_uuid)
+        except ProjectAuthorization.DoesNotExist:
+            raise PermissionDenied()
+
         queryset = queryset.filter(project_uuid=project_uuid)
 
         if configured is not None:
@@ -70,7 +76,5 @@ class MyAppViewSet(viewsets.ReadOnlyModelViewSet):
 
             else:
                 raise ValidationError(f"Expected a boolean param in configured, but recived `{configured}`")
-
-        # TODO: Validate user permission
 
         return queryset

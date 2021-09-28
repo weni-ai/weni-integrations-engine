@@ -20,7 +20,7 @@ TIME_ZONE=\"America/Maceio\"
 MEDIA_ROOT=\"media/\"
 
 # if USE_S3 is True uses AWS S3 to store static files
-USE_S3=False 
+USE_S3=False
 AWS_ACCESS_KEY_ID=\"\"
 AWS_SECRET_ACCESS_KEY=\"\"
 AWS_STORAGE_BUCKET_NAME=\"\"

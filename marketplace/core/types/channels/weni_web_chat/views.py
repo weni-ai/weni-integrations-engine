@@ -4,6 +4,7 @@ from rest_framework.response import Response
 
 from marketplace.applications.models import App
 from .serializers import WeniWebChatSerializer, WeniWebChatConfigureSerializer
+from marketplace.accounts.permissions import ProjectManagePermission
 from . import type as type_
 
 
@@ -12,6 +13,7 @@ class WeniWebChatViewSet(viewsets.ModelViewSet):
     queryset = App.objects
     serializer_class = WeniWebChatSerializer
     lookup_field = "uuid"
+    permission_classes = [ProjectManagePermission]
 
     def get_queryset(self):
         return super().get_queryset().filter(code=type_.WeniWebChatType.code)
