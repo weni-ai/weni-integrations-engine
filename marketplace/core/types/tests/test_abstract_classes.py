@@ -95,10 +95,7 @@ class AppTypeTestCase(TestCase):
 
     def test_get_icon_from_app_type_without_asset(self):
         fake_type_instance = self.FakeType()
-        message = f"{self.FakeType.__name__} doesn't have an icon"
-
-        with self.assertRaisesMessage(AppTypeAsset.DoesNotExist, message):
-            fake_type_instance.get_icon_asset()
+        self.assertIsNone(fake_type_instance.get_icon_asset())
 
     def test_get_icon_from_app_type(self):
         fake_type_instance = self.FakeType()
