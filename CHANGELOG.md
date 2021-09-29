@@ -1,3 +1,9 @@
+v0.1.7
+----------
+ * Change integrations admin interface URL to `/`
+ * Adjust script that recognizes apptypes
+ * Permissions system
+
 v0.1.6
 ----------
  * Add permissions to comments endpoint
