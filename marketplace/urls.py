@@ -19,7 +19,7 @@ api_urls = [path("", include(applications_urls)), path("", include(interactions_
 
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
+    path("", admin.site.urls),
     path("api/v1/", include(api_urls)),
 ]
 
