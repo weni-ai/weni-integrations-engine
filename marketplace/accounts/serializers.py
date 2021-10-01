@@ -17,3 +17,13 @@ class ProjectAuthorizationSerializer(proto_serializers.ModelProtoSerializer):
         model = ProjectAuthorization
         proto_class = user_pb2.Permission
         fields = ("project_uuid", "role", "user")
+
+
+class UserSerializer(proto_serializers.ModelProtoSerializer):
+
+    user = serializers.SlugRelatedField(slug_field="email", queryset=User.objects.all())
+
+    class Meta:
+        model = User
+        proto_class = user_pb2.User
+        fields = ("user", "photo_url", "first_name", "last_name")
