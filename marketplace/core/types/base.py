@@ -22,6 +22,11 @@ class AbstractAppType(ABC):
         (CATEGORY_TICKETER, "ticketer"),
     )
 
+    CONFIG_DESIGN_SIDEBAR = "sidebar"
+    CONFIG_DESIGN_MODAL = "modal"
+
+    config_design: str = CONFIG_DESIGN_SIDEBAR
+
     @abstractproperty
     def view_class(self) -> APIView:
         ...  # pragma: no cover
