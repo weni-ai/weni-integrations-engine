@@ -7,6 +7,7 @@ from django.contrib.auth.models import Group
 from django.urls.conf import include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.views.generic.base import RedirectView
 
 from marketplace.applications import urls as applications_urls
 from marketplace.interactions import urls as interactions_urls
@@ -19,7 +20,8 @@ api_urls = [path("", include(applications_urls)), path("", include(interactions_
 
 
 urlpatterns = [
-    path("", admin.site.urls),
+    path("", RedirectView.as_view(url="/admin")),
+    path("admin", admin.site.urls),
     path("api/v1/", include(api_urls)),
 ]
 
