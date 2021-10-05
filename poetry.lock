@@ -715,10 +715,22 @@ category = "main"
 optional = false
 python-versions = "*"
 
+[[package]]
+name = "weni-protobuffers"
+version = "1.1.0"
+description = "Protocol Buffers for Weni Platform"
+category = "main"
+optional = false
+python-versions = ">=3.6,<4.0"
+
+[package.dependencies]
+grpcio = ">=1.39.0,<2.0.0"
+protobuf = ">=3.17.3,<4.0.0"
+
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "4b046062bf4f944ab636a8a8b38b2da897e23a0c0fa830330da778043dc72cf2"
+content-hash = "4902cf0cd2d51f6ada5092e8252ee66a36bb30cccb07f6bf6ed2c8a6c1d01fb0"
 
 [metadata.files]
 amqp = [
@@ -1229,4 +1241,8 @@ vine = [
 wcwidth = [
     {file = "wcwidth-0.2.5-py2.py3-none-any.whl", hash = "sha256:beb4802a9cebb9144e99086eff703a642a13d6a0052920003a230f3294bbe784"},
     {file = "wcwidth-0.2.5.tar.gz", hash = "sha256:c4d647b99872929fdb7bdcaa4fbe7f01413ed3d98077df798530e5b04f116c83"},
+]
+weni-protobuffers = [
+    {file = "weni-protobuffers-1.1.0.tar.gz", hash = "sha256:64c055925bf7907a29fb27f43b396adff147c94ce8503d3d51d8f266206d8cc3"},
+    {file = "weni_protobuffers-1.1.0-py3-none-any.whl", hash = "sha256:924a0e084c0805b4499b8a3fccb1a1302c56035653964ea5c6e2048070fb6a7a"},
 ]
