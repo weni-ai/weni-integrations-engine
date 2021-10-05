@@ -3,7 +3,7 @@ from django_grpc_framework import generics, mixins
 from django.contrib.auth import get_user_model
 
 from .models import ProjectAuthorization
-from .serializers import ProjectAuthorizationSerializer, UserSerializer
+from .serializers import ProjectAuthorizationProtoSerializer, UserProtoSerializer
 
 
 User = get_user_model()
@@ -11,7 +11,7 @@ User = get_user_model()
 
 class UserPermissionService(mixins.UpdateModelMixin, generics.GenericService):
 
-    serializer_class = ProjectAuthorizationSerializer
+    serializer_class = ProjectAuthorizationProtoSerializer
 
     def get_object(self):
         user = get_object_or_404(User, email=self.request.user)
@@ -21,7 +21,7 @@ class UserPermissionService(mixins.UpdateModelMixin, generics.GenericService):
 
 class UserService(mixins.UpdateModelMixin, generics.GenericService):
 
-    serializer_class = UserSerializer
+    serializer_class = UserProtoSerializer
 
     def get_object(self):
         return User.objects.get_or_create(email=self.request.user)[0]

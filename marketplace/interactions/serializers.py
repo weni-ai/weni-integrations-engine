@@ -2,15 +2,17 @@ from rest_framework import serializers
 
 from marketplace.core.serializers import AppTypeBaseSerializer
 from marketplace.interactions.models import Comment, Rating
+from marketplace.accounts.serializers import UserSerializer
 
 
 class CommentSerializer(AppTypeBaseSerializer):
     class Meta:
         model = Comment
-        fields = ["code", "uuid", "content", "created_by", "created_on", "modified_by", "edited", "owned"]
+        fields = ["code", "uuid", "content", "created_by", "created_on", "modified_by", "edited", "owned", "owner"]
         read_only_fields = ("code", "uuid", "created_on", "edited")
 
     owned = serializers.SerializerMethodField()
+    owner = UserSerializer(source="created_by", read_only=True)
 
     def get_owned(self, obj) -> bool:
         request = self.context["request"]
