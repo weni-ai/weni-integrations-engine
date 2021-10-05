@@ -1,3 +1,11 @@
+v0.1.8
+----------
+ * Add weni-protobuffers==1.1.0 package
+ * Adjust Weni Web Chat script
+ * Adjust AppTypeAsset __str__ return
+ * Add user update gRPC endpoint
+ * Adjust django admin interface static files
+
 v0.1.7
 ----------
  * Change integrations admin interface URL to `/`
