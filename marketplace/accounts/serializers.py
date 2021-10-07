@@ -9,7 +9,7 @@ from weni.protobuf.integrations import user_pb2
 User = get_user_model()
 
 
-class ProjectAuthorizationSerializer(proto_serializers.ModelProtoSerializer):
+class ProjectAuthorizationProtoSerializer(proto_serializers.ModelProtoSerializer):
 
     user = serializers.SlugRelatedField(slug_field="email", queryset=User.objects.all())
 
@@ -19,7 +19,7 @@ class ProjectAuthorizationSerializer(proto_serializers.ModelProtoSerializer):
         fields = ("project_uuid", "role", "user")
 
 
-class UserSerializer(proto_serializers.ModelProtoSerializer):
+class UserProtoSerializer(proto_serializers.ModelProtoSerializer):
 
     user = serializers.SlugRelatedField(slug_field="email", queryset=User.objects.all())
 
@@ -27,3 +27,9 @@ class UserSerializer(proto_serializers.ModelProtoSerializer):
         model = User
         proto_class = user_pb2.User
         fields = ("user", "photo_url", "first_name", "last_name")
+
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ("first_name", "last_name", "email", "photo_url")
