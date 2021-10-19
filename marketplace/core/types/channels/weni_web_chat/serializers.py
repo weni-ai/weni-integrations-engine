@@ -8,6 +8,7 @@ from marketplace.core.fields import Base64ImageField
 from marketplace.applications.models import App
 from marketplace.core.serializers import AppTypeBaseSerializer
 from marketplace.core.storage import AppStorage
+from marketplace.celery import app as celery_app
 from . import type as type_
 
 
@@ -82,15 +83,22 @@ class ConfigSerializer(serializers.Serializer):
             "storage": "local" if attrs["keepHistory"] else "session",
         }
 
-        # channel_uuid = ConnectGRPCClient.create_weni_web_chat(request.user.email) # TODO: Implement real connectio
-        channel_uuid = str(uuid.uuid4())  # Fake UUID, only to test
-        attrs["channelUuid"] = channel_uuid
+        attrs["channelUuid"] = self._create_channel()
 
         attrs.pop("keepHistory")
 
         attrs["script"] = self.generate_script(attrs.copy())
 
         return super().validate(attrs)
+
+    def _create_channel(self) -> str:
+        user = self.context.get("request").user
+        name = f"{type_.WeniWebChatType.name} - #{self.parent.instance.id}"
+
+        task = celery_app.send_task(name="create_weni_web_chat", args=[name, user.email])
+        task.wait()
+
+        return task.result
 
     def generate_script(self, attrs):
         """
