@@ -1,5 +1,4 @@
 import os
-import uuid
 import json
 
 from rest_framework import serializers
@@ -44,8 +43,10 @@ class ConfigSerializer(serializers.Serializer):
     timeBetweenMessages = serializers.IntegerField(default=1)
 
     def to_internal_value(self, data):
+        self.app = self.parent.instance
+
         data = super().to_internal_value(data)
-        storage = AppStorage(self.parent.instance)
+        storage = AppStorage(self.app)
 
         if data.get("avatarImage"):
             content_file = data["avatarImage"]
@@ -83,7 +84,8 @@ class ConfigSerializer(serializers.Serializer):
             "storage": "local" if attrs["keepHistory"] else "session",
         }
 
-        attrs["channelUuid"] = self._create_channel()
+        channel_uuid = self.app.config.get("channelUuid", None)
+        attrs["channelUuid"] = channel_uuid if channel_uuid is not None else self._create_channel()
 
         attrs.pop("keepHistory")
 
@@ -93,7 +95,7 @@ class ConfigSerializer(serializers.Serializer):
 
     def _create_channel(self) -> str:
         user = self.context.get("request").user
-        name = f"{type_.WeniWebChatType.name} - #{self.parent.instance.id}"
+        name = f"{type_.WeniWebChatType.name} - #{self.app.id}"
 
         task = celery_app.send_task(name="create_weni_web_chat", args=[name, user.email])
         task.wait()
@@ -109,13 +111,18 @@ class ConfigSerializer(serializers.Serializer):
         with open(os.path.join(header_path, "header.script"), "r") as script_header:
             header = script_header.read().replace("<APPTYPE_CODE>", type_.WeniWebChatType.code)
             header = header.replace("<CUSTOM-MESSAGE-DELAY>", str(attrs.get("timeBetweenMessages")))
-            header = header.replace("<CUSTOM_CSS>", str(attrs.get("customCss")))
+
+            custom_css = str(attrs.get("customCss", ""))
+            header = header.replace("<CUSTOM_CSS>", custom_css)
+
             attrs.pop("timeBetweenMessages")
-            attrs.pop("customCss")
+
+            if custom_css:
+                attrs.pop("customCss")
 
         script = header.replace("<FIELDS>", json.dumps(attrs, indent=2))
 
-        storage = AppStorage(self.parent.instance)
+        storage = AppStorage(self.app)
 
         with storage.open("script.js", "w") as up_file:
             up_file.write(script)
