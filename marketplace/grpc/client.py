@@ -6,6 +6,9 @@ from weni.protobuf.connect import project_pb2, project_pb2_grpc
 
 
 class ConnectGRPCClient:
+
+    base_url = settings.SOCKET_BASE_URL
+
     def __init__(self):
         self.channel = self._get_channel()
         self.project_stub = self._get_project_stub()
@@ -20,20 +23,14 @@ class ConnectGRPCClient:
     def _get_project_stub(self):
         return project_pb2_grpc.ProjectControllerStub(self.channel)
 
-    @classmethod
-    def create_weni_web_chat(cls, name: str, user_email: str, base_url: str) -> str:
-        task = celery_app.send_task(name="create_weni_web_chat", args=[name, user_email, base_url])
-        task.wait()
-        return task.result
+    def create_weni_web_chat(self, name: str, user_email: str) -> str:
+        response = self.project_stub.CreateChannel(
+            project_pb2.CreateChannelRequest(name=name, user=user_email, base_url=self.base_url)
+        )
+        return response
 
 
 @celery_app.task(name="create_weni_web_chat")
-def create_weni_web_chat(name: str, user_email: str, base_url: str) -> str:
+def create_weni_web_chat(name: str, user_email: str) -> str:
     client = ConnectGRPCClient()
-    _ = client.project_stub.CreateChannel(
-        project_pb2.CreateChannelRequest(name=name, user=user_email, base_url=base_url)
-    )
-
-    # TODO: Call connect end get response
-
-    return "fake-channe-uuid"
+    return client.create_weni_web_chat(name, user_email).uuid
