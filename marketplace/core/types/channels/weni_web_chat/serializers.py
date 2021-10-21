@@ -1,9 +1,10 @@
 import os
 import json
 
+from django.conf import settings
 from rest_framework import serializers
-from marketplace.core.fields import Base64ImageField
 
+from marketplace.core.fields import Base64ImageField
 from marketplace.applications.models import App
 from marketplace.core.serializers import AppTypeBaseSerializer
 from marketplace.core.storage import AppStorage
@@ -86,6 +87,8 @@ class ConfigSerializer(serializers.Serializer):
 
         channel_uuid = self.app.config.get("channelUuid", None)
         attrs["channelUuid"] = channel_uuid if channel_uuid is not None else self._create_channel()
+
+        attrs["socketUrl"] = settings.SOCKET_BASE_URL
 
         attrs.pop("keepHistory")
 
