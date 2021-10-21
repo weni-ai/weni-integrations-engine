@@ -23,7 +23,7 @@ class AppTypeSerializer(serializers.Serializer):
     def get_assets(self, obj):
         return [
             {
-                "type": asset.get_asset_type_display(),
+                "type": asset.asset_type,
                 "url": asset.url if asset.asset_type == AppTypeAsset.ASSET_TYPE_LINK else asset.attachment.url,
                 "description": asset.description,
             }
