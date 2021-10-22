@@ -89,6 +89,7 @@ class ConfigSerializer(serializers.Serializer):
         attrs["channelUuid"] = channel_uuid if channel_uuid is not None else self._create_channel()
 
         attrs["socketUrl"] = settings.SOCKET_BASE_URL
+        attrs["host"] = settings.FLOWS_HOST_URL
 
         attrs.pop("keepHistory")
 
