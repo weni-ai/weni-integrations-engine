@@ -49,7 +49,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     last_name = models.CharField(_("last name"), max_length=150, blank=True)
     email = models.EmailField(_("email"), unique=True, help_text=_("User email"))
 
-    photo_url = URLField(blank=True)
+    photo_url = URLField(blank=True, max_length=255)
 
     is_staff = models.BooleanField(_("staff status"), default=False)
     is_active = models.BooleanField(_("active"), default=True)
