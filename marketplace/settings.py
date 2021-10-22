@@ -48,6 +48,7 @@ ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
+    "mozilla_django_oidc",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
@@ -60,7 +61,6 @@ INSTALLED_APPS = [
     "marketplace.grpc",
     # installed apps
     "rest_framework",
-    "mozilla_django_oidc",
     "storages",
     "corsheaders",
     "django_grpc_framework",
