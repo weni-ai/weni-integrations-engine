@@ -39,7 +39,7 @@ class ConfigSerializer(serializers.Serializer):
     keepHistory = serializers.BooleanField(default=False)
     initPayload = serializers.CharField(default="start")
     mainColor = serializers.CharField(default="#00DED3")
-    avatarImage = AvatarBase64ImageField(required=False)
+    profileAvatar = AvatarBase64ImageField(required=False)
     customCss = serializers.CharField(required=False)
     timeBetweenMessages = serializers.IntegerField(default=1)
 
@@ -49,12 +49,14 @@ class ConfigSerializer(serializers.Serializer):
         data = super().to_internal_value(data)
         storage = AppStorage(self.app)
 
-        if data.get("avatarImage"):
-            content_file = data["avatarImage"]
+        if data.get("profileAvatar"):
+            content_file = data["profileAvatar"]
 
             with storage.open(content_file.name, "w") as up_file:
                 up_file.write(content_file.file.read())
-                data["avatarImage"] = storage.url(up_file.name)
+                file_url = storage.url(up_file.name)
+                data["profileAvatar"] = file_url
+                data["openLauncherImage"] = file_url
 
         if data.get("customCss"):
             with storage.open("custom.css", "w") as up_file:
