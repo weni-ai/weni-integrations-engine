@@ -23,14 +23,16 @@ class ConnectGRPCClient:
     def _get_project_stub(self):
         return project_pb2_grpc.ProjectControllerStub(self.channel)
 
-    def create_weni_web_chat(self, name: str, user_email: str) -> str:
+    def create_weni_web_chat(self, project_uuid: str, name: str, user_email: str) -> str:
         response = self.project_stub.CreateChannel(
-            project_pb2.CreateChannelRequest(name=name, user=user_email, base_url=self.base_url)
+            project_pb2.CreateChannelRequest(
+                project_uuid=project_uuid, name=name, user=user_email, base_url=self.base_url
+            )
         )
         return response
 
 
 @celery_app.task(name="create_weni_web_chat")
-def create_weni_web_chat(name: str, user_email: str) -> str:
+def create_weni_web_chat(project_uuid: str, name: str, user_email: str) -> str:
     client = ConnectGRPCClient()
-    return client.create_weni_web_chat(name, user_email).uuid
+    return client.create_weni_web_chat(project_uuid, name, user_email).uuid
