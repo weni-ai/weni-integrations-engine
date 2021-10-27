@@ -103,7 +103,7 @@ class ConfigSerializer(serializers.Serializer):
         user = self.context.get("request").user
         name = f"{type_.WeniWebChatType.name} - #{self.app.id}"
 
-        task = celery_app.send_task(name="create_weni_web_chat", args=[name, user.email])
+        task = celery_app.send_task(name="create_weni_web_chat", args=[self.app.project_uuid, name, user.email])
         task.wait()
 
         return task.result
