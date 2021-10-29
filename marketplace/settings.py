@@ -251,3 +251,5 @@ if USE_SENTRY:
 GRPC_FRAMEWORK = {
     "ROOT_HANDLERS_HOOK": "marketplace.grpc.urls.grpc_handlers",
 }
+
+USE_GRPC = env.bool("USE_GRPC", default=False)
