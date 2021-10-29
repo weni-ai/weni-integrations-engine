@@ -57,14 +57,14 @@ uvloop = ["uvloop (>=0.15.2)"]
 
 [[package]]
 name = "boto3"
-version = "1.19.4"
+version = "1.19.6"
 description = "The AWS SDK for Python"
 category = "main"
 optional = false
 python-versions = ">= 3.6"
 
 [package.dependencies]
-botocore = ">=1.22.4,<1.23.0"
+botocore = ">=1.22.6,<1.23.0"
 jmespath = ">=0.7.1,<1.0.0"
 s3transfer = ">=0.5.0,<0.6.0"
 
@@ -73,7 +73,7 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.22.4"
+version = "1.22.6"
 description = "Low-level, data-driven core of boto 3."
 category = "main"
 optional = false
@@ -731,7 +731,7 @@ python-versions = "*"
 
 [[package]]
 name = "weni-protobuffers"
-version = "1.2.0"
+version = "1.2.1"
 description = "Protocol Buffers for Weni Platform"
 category = "main"
 optional = false
@@ -744,7 +744,7 @@ protobuf = ">=3.17.3,<4.0.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "e7206f6247a9a42a5352c120fc0588c6f2e6aea505072a06026111723308d256"
+content-hash = "bec5fa8d9a4011407ab755689bf5729e8b9f4d4bf1e0bce54a012f2f2e9b7ada"
 
 [metadata.files]
 amqp = [
@@ -764,12 +764,12 @@ black = [
     {file = "black-21.9b0.tar.gz", hash = "sha256:7de4cfc7eb6b710de325712d40125689101d21d25283eed7e9998722cf10eb91"},
 ]
 boto3 = [
-    {file = "boto3-1.19.4-py3-none-any.whl", hash = "sha256:492962f8cd5ff4aaaaa6bfb321eb526e4758755856226e233b5ead3b3a9c35a5"},
-    {file = "boto3-1.19.4.tar.gz", hash = "sha256:5493c0af5ab79e15f3a37d8b9c86461ac04bae5cb5b82fb911c78dbcfbdab07e"},
+    {file = "boto3-1.19.6-py3-none-any.whl", hash = "sha256:79e40de74faaf4b36fc885b10a2a39adb242ab499ba6d9506c6f91d0054b5338"},
+    {file = "boto3-1.19.6.tar.gz", hash = "sha256:e8e20230fd8dfd991fa8459696ff2da96b15ba720f05f96d43174b2f04b328a9"},
 ]
 botocore = [
-    {file = "botocore-1.22.4-py3-none-any.whl", hash = "sha256:579e682b1453fa142dd2f76d09e9c567017f2ae85000329084db8bb49316c228"},
-    {file = "botocore-1.22.4.tar.gz", hash = "sha256:ecc6f90dc27c4d74246a83474edf5ad272e614bebe8c5fb8b9516db4437dbf59"},
+    {file = "botocore-1.22.6-py3-none-any.whl", hash = "sha256:5fa5de2deef817d0ef52b97dec2bc6e4489a3145afa3f5f4ec0ad6a3b213a019"},
+    {file = "botocore-1.22.6.tar.gz", hash = "sha256:9210881ee5eef6fff30a2e1acfe9dea068a0885a13731ab2034e35775379637f"},
 ]
 celery = [
     {file = "celery-5.1.2-py3-none-any.whl", hash = "sha256:9dab2170b4038f7bf10ef2861dbf486ddf1d20592290a1040f7b7a1259705d42"},
@@ -1283,6 +1283,6 @@ wcwidth = [
     {file = "wcwidth-0.2.5.tar.gz", hash = "sha256:c4d647b99872929fdb7bdcaa4fbe7f01413ed3d98077df798530e5b04f116c83"},
 ]
 weni-protobuffers = [
-    {file = "weni-protobuffers-1.2.0.tar.gz", hash = "sha256:df240ee1be50f81c7d6bf34db003a6554d7562444d0b996c8a219dc44aa9ee8c"},
-    {file = "weni_protobuffers-1.2.0-py3-none-any.whl", hash = "sha256:023df4df157979573153c83d8c13ecfca6a5aa0b4d23363636f7dbf20bfe7a98"},
+    {file = "weni-protobuffers-1.2.1.tar.gz", hash = "sha256:97ab25a573b8194c34cfdaaf8e1f791a4c42126922cbd23746806b69dcfae289"},
+    {file = "weni_protobuffers-1.2.1-py3-none-any.whl", hash = "sha256:a09844bc888a5a061872000160192694e9237d40b409fb60eba4ef2a225379d8"},
 ]
