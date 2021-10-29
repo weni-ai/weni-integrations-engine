@@ -31,8 +31,21 @@ class ConnectGRPCClient:
         )
         return response
 
+    def release_channel(self, channel_uuid: str, user_email: str) -> None:
+        response = self.project_stub.ReleaseChannel(
+            project_pb2.ReleaseChannelRequest(channel_uuid=channel_uuid, user=user_email)
+        )
+        return response
+
 
 @celery_app.task(name="create_weni_web_chat")
 def create_weni_web_chat(project_uuid: str, name: str, user_email: str) -> str:
     client = ConnectGRPCClient()
     return client.create_weni_web_chat(project_uuid, name, user_email).uuid
+
+
+@celery_app.task(name="release_channel")
+def release_channel(channel_uuid: str, user_email: str) -> None:
+    client = ConnectGRPCClient()
+    client.release_channel(channel_uuid, user_email)
+    return None
