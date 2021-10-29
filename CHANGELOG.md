@@ -1,3 +1,18 @@
+v1.0.0
+----------
+ * Add release channel endpoint to connect client
+ * Add project_uuid on create Weni Web Chat
+ * Rename avatarImage to profileAvatar and add openLauncherImage
+ * Add FLOWS_HOST_URL environment variable and return on configure
+ * Adjust first_name and last_name on create a new user
+ * Increase the max_length of the photo_url field to 255
+ * Add first_name and last_name in user on creating it
+ * Add sockertUrl to Weni Web Chat configure endponint
+ * Adjust featureds endpoint return
+ * Adjust customCss and channelUUID
+ * Call the Connect endpoint to create a channel in Flows
+ * Return the owner of comment in comments list endpoint 
+
 v0.1.8
 ----------
  * Add weni-protobuffers==1.1.0 package
