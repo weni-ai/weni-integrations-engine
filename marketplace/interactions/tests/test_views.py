@@ -32,7 +32,7 @@ class CreateCommentViewTestCase(APIBaseTestCase):
         response = self.request.post(self.url, self.body, apptype_pk="wwc")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.json["content"], self.body["content"])
-        self.assertIn("app_code", response.json)
+        self.assertIn("code", response.json)
         self.assertIn("uuid", response.json)
         self.assertIn("created_on", response.json)
         self.assertFalse(response.json["edited"])
@@ -46,7 +46,7 @@ class RetrieveCommentViewTestCase(APIBaseTestCase):
         super().setUp()
 
         self.comment = Comment.objects.create(
-            app_code="wwc",
+            code="wwc",
             created_by=self.user,
             content="This is only a test content",
         )
@@ -64,11 +64,16 @@ class RetrieveCommentViewTestCase(APIBaseTestCase):
     def test_retrieve_comment_data(self):
         response = self.request.get(self.url, apptype_pk="wwc", uuid=self.comment.uuid)
         self.assertEqual(response.json["content"], self.comment.content)
-        self.assertIn("app_code", response.json)
+        self.assertIn("code", response.json)
         self.assertIn("uuid", response.json)
         self.assertIn("created_on", response.json)
         self.assertFalse(response.json["edited"])
         self.assertTrue(response.json["owned"])
+
+    def test_retrieve_with_another_user(self):
+        self.request.set_user(self.super_user)
+        response = self.request.get(self.url, apptype_pk="wwc", uuid=self.comment.uuid)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
 class UpdateCommentViewTestCase(APIBaseTestCase):
@@ -80,7 +85,7 @@ class UpdateCommentViewTestCase(APIBaseTestCase):
         self.body = {"content": "This is the comment test modified"}
 
         self.comment = Comment.objects.create(
-            app_code="wwc",
+            code="wwc",
             created_by=self.user,
             content="This is only a test content",
         )
@@ -98,17 +103,6 @@ class UpdateCommentViewTestCase(APIBaseTestCase):
         response = self.request.put(self.url, self.body, apptype_pk="wwc", uuid=self.comment.uuid)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-    def test_modified_by_with_other_user_on_update(self):
-        created_by = self.comment.created_by
-
-        self.request.set_user(self.super_user)
-        response = self.request.put(self.url, self.body, apptype_pk="wwc", uuid=self.comment.uuid)
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertFalse(response.json["owned"])
-        self.assertNotEqual(self.comment.modified_by, created_by)
-        self.assertEqual(self.comment.created_by, created_by)
-
     def test_comment_edited_after_update(self):
         self.assertFalse(self.comment.edited)
 
@@ -123,10 +117,16 @@ class UpdateCommentViewTestCase(APIBaseTestCase):
         updated_comment = self.get_updated_comment()
 
         self.assertEqual(self.body["content"], updated_comment.content)
-        self.assertIn("app_code", response.json)
+        self.assertIn("code", response.json)
         self.assertIn("uuid", response.json)
         self.assertIn("created_on", response.json)
         self.assertTrue(response.json["owned"])
+
+    def test_update_comment_with_another_user(self):
+        self.request.set_user(self.super_user)
+        response = self.request.put(self.url, self.body, apptype_pk="wwc", uuid=self.comment.uuid)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
 class DestroyCommentViewTestCase(APIBaseTestCase):
@@ -136,7 +136,7 @@ class DestroyCommentViewTestCase(APIBaseTestCase):
         super().setUp()
 
         self.comment = Comment.objects.create(
-            app_code="wwc",
+            code="wwc",
             created_by=self.user,
             content="This is only a test content",
         )
@@ -156,6 +156,11 @@ class DestroyCommentViewTestCase(APIBaseTestCase):
         self.request.delete(self.url, apptype_pk="wwc", uuid=self.comment.uuid)
         self.assertFalse(Comment.objects.filter(pk=self.comment.pk).exists())
 
+    def test_destroy_comment_with_another_user(self):
+        self.request.set_user(self.super_user)
+        response = self.request.delete(self.url, apptype_pk="wwc", uuid=self.comment.uuid)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
 
 class ListCommentViewTestCase(APIBaseTestCase):
     view_class = CommentViewSet
@@ -167,7 +172,7 @@ class ListCommentViewTestCase(APIBaseTestCase):
 
         for comment in range(self.comments_count):
             Comment.objects.create(
-                app_code="wwc",
+                code="wwc",
                 created_by=self.user,
                 content=f"This is only a test content ({comment})",
             )
@@ -183,6 +188,11 @@ class ListCommentViewTestCase(APIBaseTestCase):
     def test_comments_count(self):
         response = self.request.get(self.url, apptype_pk="wwc")
         self.assertEqual(len(response.json), self.comments_count)
+
+    def test_list_with_another_user(self):
+        self.request.set_user(self.super_user)
+        response = self.request.get(self.url, apptype_pk="wwc")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
 
 class CreateRatingViewTestCase(APIBaseTestCase):

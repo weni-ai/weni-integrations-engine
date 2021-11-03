@@ -1,9 +1,14 @@
 import uuid
+from typing import TYPE_CHECKING
 
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
 
 from marketplace.core.validators import validate_app_code_exists
+from marketplace import core
+
+if TYPE_CHECKING:
+    from marketplace.core.types.base import AppType
 
 
 class BaseModel(models.Model):
@@ -41,7 +46,14 @@ class BaseModel(models.Model):
 
 class AppTypeBaseModel(BaseModel):
 
-    app_code = models.SlugField(validators=[validate_app_code_exists])
+    code = models.SlugField(validators=[validate_app_code_exists])
+
+    @property
+    def apptype(self) -> "AppType":
+        """
+        Returns the respective AppType
+        """
+        return core.types.get_type(self.code)
 
     class Meta:
         abstract = True

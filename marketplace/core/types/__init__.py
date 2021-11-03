@@ -2,32 +2,21 @@ import os
 import inspect
 import importlib
 
+from django.utils.module_loading import import_string
+from django.conf import settings
+
 from marketplace.core.types.base import AppType
 
 
-_types = []
-
-_types_path = os.path.dirname(__file__)
+types_ = []
 
 
-def _get_modules():
-    for content_file in os.listdir(_types_path):
-        if content_file.endswith(".py") or content_file == "__pycache__":
-            continue
+def _get_app_types_members():
+    if settings.APPTYPES_CLASSES is []:
+        yield
 
-        try:
-            module = importlib.import_module(f"marketplace.core.types.{content_file}")
-        except ModuleNotFoundError:
-            continue
-
-        yield module
-
-
-def _get_app_types_members() -> list:
-    for module in _get_modules():
-        for name, member in inspect.getmembers(module):
-            if inspect.isclass(member) and issubclass(member, AppType):
-                yield member
+    for module_path in settings.APPTYPES_CLASSES:
+        yield import_string(f"marketplace.core.types.{module_path}")
 
 
 def get_types(category: str = None) -> list:
@@ -40,14 +29,21 @@ def get_types(category: str = None) -> list:
         Returns:
             list: A list of AppTypes
     """
-    if category:
-        return list(filter(lambda _type: _type.get_category_display() == category, _types))
+    global types_
 
-    return _types
+    app_types = types_.copy()
+
+    if settings.DYNAMIC_APPTYPES:
+        app_types += settings.DYNAMIC_APPTYPES
+
+    if category:
+        return list(filter(lambda type_: type_.get_category_display() == category, app_types))
+
+    return app_types
 
 
 def get_type(code: str) -> AppType:
-    types = list(filter(lambda type: type.code == code, _types))
+    types = list(filter(lambda type: type.code == code, get_types()))
 
     if not len(types):
         raise KeyError(f"Invalid code: {code} No AppType found")
@@ -56,4 +52,4 @@ def get_type(code: str) -> AppType:
 
 
 for member in _get_app_types_members():
-    _types.append(member())
+    types_.append(member())

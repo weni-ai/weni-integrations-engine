@@ -1,7 +1,8 @@
-from marketplace.applications.models import AppTypeAsset
+from marketplace.applications.models import App, AppTypeAsset
 from marketplace.interactions.models import Rating
 from rest_framework import serializers
 from marketplace.core.types.base import AppType
+from marketplace.core import types
 
 
 class AppTypeSerializer(serializers.Serializer):
@@ -15,13 +16,14 @@ class AppTypeSerializer(serializers.Serializer):
     rating = serializers.SerializerMethodField()
     comments_count = serializers.SerializerMethodField()
     integrations_count = serializers.SerializerMethodField()
+    metrics = serializers.SerializerMethodField()
 
     assets = serializers.SerializerMethodField()
 
     def get_assets(self, obj):
         return [
             {
-                "type": asset.get_asset_type_display(),
+                "type": asset.asset_type,
                 "url": asset.url if asset.asset_type == AppTypeAsset.ASSET_TYPE_LINK else asset.attachment.url,
                 "description": asset.description,
             }
@@ -33,7 +35,7 @@ class AppTypeSerializer(serializers.Serializer):
 
         user = self.context["request"].user
         try:
-            rating_instance = user.created_ratings.get(app_code=obj.code)
+            rating_instance = user.created_ratings.get(code=obj.code)
             rating["mine"] = rating_instance.rate
         except Rating.DoesNotExist:
             pass
@@ -45,3 +47,18 @@ class AppTypeSerializer(serializers.Serializer):
 
     def get_integrations_count(self, obj) -> int:
         return obj.apps.count()
+
+    def get_metrics(self, obj):
+        # TODO: Get real metric from AppType
+        return 58602143
+
+
+class MyAppSerializer(serializers.ModelSerializer):
+    icon = serializers.SerializerMethodField()
+
+    def get_icon(self, obj) -> str:  # TODO: Get `icon` from own App object
+        return obj.apptype.get_icon_url()
+
+    class Meta:
+        model = App
+        fields = ("uuid", "code", "name", "description", "summary", "icon", "config")

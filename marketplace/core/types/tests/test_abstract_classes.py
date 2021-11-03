@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from marketplace.core.types.base import AppType
 from marketplace.applications.models import AppTypeAsset, App
 from marketplace.interactions.models import Rating, Comment
+from marketplace.core.tests.base import MockDynamicAppType
 
 
 User = get_user_model()
@@ -17,7 +18,8 @@ class AppTypeTestCase(TestCase):
 
         self.user = User.objects.create_superuser(email="admin@marketplace.ai", password="fake@pass#$")
 
-        class FakeType(AppType):
+        class FakeType(AppType):  # TODO: Change name to FakeAppType
+            view_class = None
             code = "ftp"
             name = "Fake Type"
             description = "Type to test only"
@@ -25,12 +27,13 @@ class AppTypeTestCase(TestCase):
             category = AppType.CATEGORY_CHANNEL
             developer = "Weni"
             bg_color = "#123A23"
+            platform = App.PLATFORM_WENI_FLOWS
 
         self.FakeType = FakeType
 
     def create_app_type_asset(self, fake_type_instance: AppType, user: User) -> AppTypeAsset:
         return AppTypeAsset.objects.create(
-            app_code=fake_type_instance.code,
+            code=fake_type_instance.code,
             asset_type=AppTypeAsset.ASSET_TYPE_ICON,
             attachment="../../tests/file_to_upload.txt",
             description="Test app type asset",
@@ -51,13 +54,14 @@ class AppTypeTestCase(TestCase):
 
         self.assertFalse(fake_type_instance.apps.exists())
 
-        App.objects.create(
-            app_code=fake_type_instance.code,
-            config={"test": "test"},
-            org_uuid=uuid.uuid4(),
-            platform=App.PLATFORM_WENI_FLOWS,
-            created_by=self.user,
-        )
+        with MockDynamicAppType([fake_type_instance]):
+            App.objects.create(
+                code=fake_type_instance.code,
+                config={"test": "test"},
+                project_uuid=uuid.uuid4(),
+                platform=App.PLATFORM_WENI_FLOWS,
+                created_by=self.user,
+            )
 
         self.assertTrue(fake_type_instance.apps.exists())
 
@@ -66,7 +70,7 @@ class AppTypeTestCase(TestCase):
         self.assertFalse(fake_type_instance.ratings.exists())
 
         rating = Rating.objects.create(
-            app_code=fake_type_instance.code,
+            code=fake_type_instance.code,
             created_by=self.user,
             rate=4,
         )
@@ -80,7 +84,7 @@ class AppTypeTestCase(TestCase):
         self.assertFalse(fake_type_instance.comments.exists())
 
         comment = Comment.objects.create(
-            app_code=fake_type_instance.code,
+            code=fake_type_instance.code,
             created_by=self.user,
             content="Fake comment to test the AppType",
         )
@@ -91,10 +95,7 @@ class AppTypeTestCase(TestCase):
 
     def test_get_icon_from_app_type_without_asset(self):
         fake_type_instance = self.FakeType()
-        message = f"{self.FakeType.__name__} doesn't have an icon"
-
-        with self.assertRaisesMessage(AppTypeAsset.DoesNotExist, message):
-            fake_type_instance.get_icon_asset()
+        self.assertIsNone(fake_type_instance.get_icon_asset())
 
     def test_get_icon_from_app_type(self):
         fake_type_instance = self.FakeType()
@@ -119,7 +120,7 @@ class AppTypeTestCase(TestCase):
         self.assertIsNone(fake_type_instance.get_ratings_average())
 
         Rating.objects.create(
-            app_code=fake_type_instance.code,
+            code=fake_type_instance.code,
             created_by=self.user,
             rate=4,
         )
@@ -127,7 +128,7 @@ class AppTypeTestCase(TestCase):
         self.assertEqual(fake_type_instance.get_ratings_average(), 4.0)
 
         Rating.objects.create(
-            app_code=fake_type_instance.code,
+            code=fake_type_instance.code,
             created_by=User.objects.create_superuser(email="user@marketplace.ai", password="fake@pass#$"),
             rate=1,
         )

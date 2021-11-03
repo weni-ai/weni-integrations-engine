@@ -1,12 +1,23 @@
+from typing import TYPE_CHECKING, Generator
+
 from django.db import models
 from django.db.models import Q
 from django.db.models.constraints import UniqueConstraint
 from django.utils.translation import ugettext_lazy as _
 
 from marketplace.core.models import AppTypeBaseModel
+from marketplace import core
+
+if TYPE_CHECKING:
+    from marketplace.core.types.base import AppType
 
 
 class App(AppTypeBaseModel):
+
+    name: str = None
+    description: str = None
+    summary: str = None
+    # TODO: Add `icon` property
 
     PLATFORM_IA = "IA"
     PLATFORM_WENI_FLOWS = "WF"
@@ -18,8 +29,8 @@ class App(AppTypeBaseModel):
         (PLATFORM_RC, "rocketchat"),
     )
 
-    config = models.JSONField()
-    org_uuid = models.UUIDField("Org UUID")
+    config = models.JSONField(default=dict)
+    project_uuid = models.UUIDField("Project UUID")
     platform = models.CharField(choices=PLATFORM_CHOICES, max_length=2)
 
     class Meta:
@@ -27,7 +38,17 @@ class App(AppTypeBaseModel):
         verbose_name_plural = _("Apps")
 
     def __str__(self) -> str:
-        return self.app_code
+        return self.code
+
+    def __init__(self, *args, **kwargs):
+        """
+        Copy some properties from their respective AppType
+        """
+        super().__init__(*args, **kwargs)
+        self.name = self.apptype.name
+        self.description = self.apptype.description
+        self.summary = self.apptype.summary
+        # TODO: Add `icon` property
 
 
 class AppTypeAsset(AppTypeBaseModel):
@@ -38,10 +59,10 @@ class AppTypeAsset(AppTypeBaseModel):
     ASSET_TYPE_LINK = "LK"
 
     ASSET_TYPE_CHOICES = (
-        (ASSET_TYPE_IMAGE_BANNER, "image_banner"),
-        (ASSET_TYPE_ICON, "icon"),
-        (ASSET_TYPE_ATTACHMENT, "attachment"),
-        (ASSET_TYPE_LINK, "link"),
+        (ASSET_TYPE_IMAGE_BANNER, "Image Banner"),
+        (ASSET_TYPE_ICON, "Icon"),
+        (ASSET_TYPE_ATTACHMENT, "Attachment"),
+        (ASSET_TYPE_LINK, "Link"),
     )
 
     asset_type = models.CharField("Type", choices=ASSET_TYPE_CHOICES, max_length=2)
@@ -54,11 +75,26 @@ class AppTypeAsset(AppTypeBaseModel):
         verbose_name_plural = "App Type Assets"
         constraints = [
             UniqueConstraint(
-                fields=["asset_type", "app_code"],
+                fields=["asset_type", "code"],
                 condition=Q(asset_type="IC"),
-                name="unique_asset_type_icon_app_code",
+                name="unique_asset_type_icon_code",
             )
         ]
 
     def __str__(self) -> str:
-        return self.app_code
+        return f"{self.apptype.name} - {dict(self.ASSET_TYPE_CHOICES).get(self.asset_type)}"
+
+
+class AppTypeFeatured(AppTypeBaseModel):
+    class Meta:
+        verbose_name = "AppType Featured"
+        verbose_name_plural = "AppType Featureds"
+        constraints = [UniqueConstraint(fields=["code"], name="unique_app_type_featured_code")]
+
+    def __str__(self) -> str:
+        return self.apptype.name
+
+    @classmethod
+    def get_apptype_featureds(cls) -> Generator[None, None, "AppType"]:
+        for featured in cls.objects.all():
+            yield featured.apptype

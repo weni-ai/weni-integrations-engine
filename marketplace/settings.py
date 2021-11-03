@@ -14,6 +14,8 @@ import os
 from pathlib import Path
 
 import environ
+import sentry_sdk
+from sentry_sdk.integrations.django import DjangoIntegration
 
 
 # Build paths inside the project like this: BASE_DIR / "subdir".
@@ -46,6 +48,7 @@ ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
+    "mozilla_django_oidc",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
@@ -55,11 +58,12 @@ INSTALLED_APPS = [
     "marketplace.core",
     "marketplace.applications",
     "marketplace.interactions",
+    "marketplace.grpc",
     # installed apps
     "rest_framework",
-    "mozilla_django_oidc",
     "storages",
     "corsheaders",
+    "django_grpc_framework",
 ]
 
 MIDDLEWARE = [
@@ -199,5 +203,53 @@ if USE_OIDC:
 
 # django-cors-headers Configurations
 
-# TODO: Configure CORS to production environment
+CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default="")
 CORS_ALLOW_ALL_ORIGINS = DEBUG
+
+
+# gRPC Connect Client
+
+CONNECT_GRPC_SERVER_URL = env.str("CONNECT_GRPC_SERVER_URL")
+CONNECT_CERTIFICATE_GRPC_CRT = env.str("CONNECT_CERTIFICATE_GRPC_CRT", None)
+
+SOCKET_BASE_URL = env.str("SOCKET_BASE_URL", "")
+FLOWS_HOST_URL = env.str("FLOWS_HOST_URL", "")
+
+
+# Celery
+
+CELERY_BROKER_URL = env.str("CELERY_BROKER_URL", default="redis://localhost:6379")
+CELERY_RESULT_BACKEND = env.str("CELERY_RESULT_BACKEND", default="redis://localhost:6379")
+CELERY_ACCEPT_CONTENT = ["application/json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = TIME_ZONE
+
+
+# Extra configurations
+
+APPTYPES_CLASSES = [
+    "channels.weni_web_chat.type.WeniWebChatType",
+]
+
+DYNAMIC_APPTYPES = []
+
+
+# Sentry configuration
+
+USE_SENTRY = env.bool("USE_SENTRY", default=False)
+
+if USE_SENTRY:
+    sentry_sdk.init(
+        dsn=env.str("SENTRY_DSN"),
+        integrations=[DjangoIntegration()],
+    )
+
+
+# gRPC Framework configurations
+
+GRPC_FRAMEWORK = {
+    "ROOT_HANDLERS_HOOK": "marketplace.grpc.urls.grpc_handlers",
+}
+
+USE_GRPC = env.bool("USE_GRPC", default=False)

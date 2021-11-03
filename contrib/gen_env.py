@@ -20,7 +20,7 @@ TIME_ZONE=\"America/Maceio\"
 MEDIA_ROOT=\"media/\"
 
 # if USE_S3 is True uses AWS S3 to store static files
-USE_S3=False 
+USE_S3=False
 AWS_ACCESS_KEY_ID=\"\"
 AWS_SECRET_ACCESS_KEY=\"\"
 AWS_STORAGE_BUCKET_NAME=\"\"
@@ -34,6 +34,14 @@ OIDC_OP_TOKEN_ENDPOINT=""
 OIDC_OP_USER_ENDPOINT=""
 OIDC_OP_JWKS_ENDPOINT=""
 OIDC_RP_SIGN_ALGO=""
+
+CONNECT_GRPC_SERVER_URL=""
+CORS_ALLOWED_ORIGINS=""
+
+USE_SENTRY=False
+SENTRY_DSN=""
+
+USE_GRPC=False
 """.strip()
 
 env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
