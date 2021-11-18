@@ -1,0 +1,123 @@
+name: Build Weni Integrations Engine in Shared (Push Tag)
+
+on:
+  push:
+    tags:
+      - 'v*.*.*-develop*'
+      - 'v*.*.*-staging*'
+      - 'v*.*.*'
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest 
+    steps:
+
+      - name: Set variables
+        run: |
+            TAG=$(echo $GITHUB_REF|cut -d"/" -f3)
+            if $(echo  $TAG|grep --silent -e 'v*.*.*-develop*')
+            then 
+              echo "Found environment: DEVELOP - $TAG"
+              echo "MANIFESTS_ENVIRONMENT=develop" >> $GITHUB_ENV
+              echo "MANIFESTS_ENVIRONMENT=develop"
+              echo "TAG=$TAG" >> $GITHUB_ENV
+              echo "TAG=$TAG"
+              echo "IMAGE_TAG=869898323958.dkr.ecr.us-east-1.amazonaws.com/integrations:engine-$TAG" >> $GITHUB_ENV
+              echo "IMAGE_TAG=869898323958.dkr.ecr.us-east-1.amazonaws.com/integrations:engine-$TAG"
+            elif $(echo  $TAG|grep --silent -e 'v*.*.*-staging*')
+            then
+              echo "Found environment: STAGING - $TAG"
+              echo "MANIFESTS_ENVIRONMENT=staging" >> $GITHUB_ENV
+              echo "MANIFESTS_ENVIRONMENT=staging"
+              echo "TAG=$TAG" >> $GITHUB_ENV
+              echo "TAG=$TAG"
+              echo "IMAGE_TAG=869898323958.dkr.ecr.us-east-1.amazonaws.com/integrations:engine-$TAG" >> $GITHUB_ENV
+              echo "IMAGE_TAG=869898323958.dkr.ecr.us-east-1.amazonaws.com/integrations:engine-$TAG"
+            elif $(echo  $TAG|grep --silent -e 'v*.*.*')
+            then
+              echo "No environment found, assuming: PRODUCTION - $TAG"
+              echo "MANIFESTS_ENVIRONMENT=production" >> $GITHUB_ENV
+              echo "MANIFESTS_ENVIRONMENT=production"
+              echo "TAG=$TAG" >> $GITHUB_ENV
+              echo "TAG=$TAG"
+              echo "IMAGE_TAG=869898323958.dkr.ecr.us-east-1.amazonaws.com/integrations:engine-$TAG" >> $GITHUB_ENV
+              echo "IMAGE_TAG=869898323958.dkr.ecr.us-east-1.amazonaws.com/integrations:engine-$TAG"
+            else
+              echo 'Not a valid tag. Skipping...'
+              exit 1
+            fi
+            echo COMMIT_SHA="$GITHUB_SHA" >> GITHUB_ENV
+            echo "COMMIT_SHA=$GITHUB_SHA"
+
+      - name: Check out the repo
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ env.GITHUB_SHA }}
+          repository: Ilhasoft/weni-integrations-engine
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Login to ECR
+        uses: docker/login-action@v1
+        with:
+          registry: 869898323958.dkr.ecr.us-east-1.amazonaws.com
+          username: ${{ secrets.AWS_ACCESS_KEY_ID_SHARED }}
+          password: ${{ secrets.AWS_SECRET_ACCESS_KEY_SHARED }}
+
+      - name: Build and push - Integrations Engine Image
+        id: docker_build1
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          labels: branch=${{ env.TAG }},commit=${{env.GITHUB_SHA}},repository=https://github.com/Ilhasoft/weni-integrations-engine
+          file: docker/Dockerfile
+          push: true
+          tags: 869898323958.dkr.ecr.us-east-1.amazonaws.com/integrations:engine-${{ env.TAG }}
+          no-cache: true
+
+      - name: Check out Kubernetes Manifests
+        uses: actions/checkout@master
+        with:
+          ref: main
+          repository: Ilhasoft/kubernetes-manifests
+          token: ${{ secrets.CICEROW_GITHUB_PERMANENT_TOKEN }}
+          path: ./kubernetes-manifests/
+
+      - name: Update image on deployment
+        run: |
+            sudo apt update
+            sudo apt install -y jq
+            app_dir='integrations'
+            deploy_patch_name='deployment-engine.json'
+            for e in ${{ env.MANIFESTS_ENVIRONMENT }}; do
+              if [ -d "kubernetes-manifests/${app_dir}/${e}" ] ; then
+                echo 'Old image to replace:'
+                cat "kubernetes-manifests/${app_dir}/${e}/${deploy_patch_name}" | jq '.[] | select(.path == "/spec/template/spec/containers/0/image") | .value'
+                echo 'New configurations:'
+                new_configuration=$(
+                  cat "kubernetes-manifests/${app_dir}/${e}/${deploy_patch_name}" \
+                    | jq '(..|select(.path == "/spec/template/spec/containers/0/image")?) += {value: "'"${{ env.IMAGE_TAG }}"'"}'
+                )
+                echo "$new_configuration"
+                echo "$new_configuration" > "kubernetes-manifests/${app_dir}/${e}/${deploy_patch_name}"
+              else
+                echo "kubernetes-manifests/${app_dir}/${e}: Does not exist, skipping"
+              fi
+            done
+
+      - name: Commit & Push changes
+        uses: actions-js/push@master
+        with:
+          github_token: ${{ secrets.CICEROW_GITHUB_PERMANENT_TOKEN }}
+          repository: Ilhasoft/kubernetes-manifests
+          directory: ./kubernetes-manifests/
+          branch: main
+          message: "From Integrations Engine Build (Push-Tag)"
+
+      - name: Generated Image
+        run: |
+            echo "IMAGE:      " ${{ env.IMAGE_TAG }}
