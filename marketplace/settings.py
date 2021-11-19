@@ -230,6 +230,7 @@ CELERY_TIMEZONE = TIME_ZONE
 
 APPTYPES_CLASSES = [
     "channels.weni_web_chat.type.WeniWebChatType",
+    "channels.telegram.type.TelegramType",
 ]
 
 DYNAMIC_APPTYPES = []
