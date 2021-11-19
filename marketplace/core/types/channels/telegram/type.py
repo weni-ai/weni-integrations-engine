@@ -7,6 +7,7 @@ class TelegramType(AppType):
     view_class = views.TelegramViewSet
 
     code = "tg"
+    channeltype_code = "TG"
     name = "Telegram"
     description = "telegram.data.description"
     summary = "telegram.data.summary"
