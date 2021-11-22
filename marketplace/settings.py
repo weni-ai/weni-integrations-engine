@@ -233,8 +233,6 @@ APPTYPES_CLASSES = [
     "channels.telegram.type.TelegramType",
 ]
 
-DYNAMIC_APPTYPES = []
-
 
 # Sentry configuration
 

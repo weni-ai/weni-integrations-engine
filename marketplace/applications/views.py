@@ -22,18 +22,25 @@ class AppTypeViewSet(viewsets.ViewSet):
         return self.serializer_class(*args, **kwargs)
 
     def list(self, request):
-        app_types = types.get_types(request.query_params.get("category"))
-        serializer = self.get_serializer(app_types, many=True)
+        category = request.query_params.get("category", None)
+        apptypes = types.APPTYPES
+
+        if category is not None:
+            apptypes = apptypes.filter(
+                lambda apptype: apptype.get_category_display() == request.query_params.get("category")
+            )
+
+        serializer = self.get_serializer(apptypes.values(), many=True)
 
         return Response(serializer.data)
 
     def retrieve(self, request, pk=None):
         try:
-            app_type = types.get_type(pk)
+            apptype = types.APPTYPES.get(pk)
         except KeyError:
             return Response(status=status.HTTP_404_NOT_FOUND)
 
-        serializer = self.get_serializer(app_type)
+        serializer = self.get_serializer(apptype)
 
         return Response(serializer.data)
 
