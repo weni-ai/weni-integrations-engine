@@ -102,9 +102,10 @@ class ConfigSerializer(serializers.Serializer):
     def _create_channel(self) -> str:
         user = self.context.get("request").user
         name = f"{type_.WeniWebChatType.name} - #{self.app.id}"
+        data = {"name": name, "base_url": settings.SOCKET_BASE_URL}
 
         task = celery_app.send_task(
-            name="create_channel", args=[user.email, self.app.project_uuid, dict(name=name), self.app.channeltype_code]
+            name="create_channel", args=[user.email, self.app.project_uuid, data, self.app.channeltype_code]
         )
         task.wait()
 

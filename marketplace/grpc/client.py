@@ -26,8 +26,6 @@ class ConnectGRPCClient:
         return project_pb2_grpc.ProjectControllerStub(self.channel)
 
     def create_channel(self, user: str, project_uuid: str, data: dict, channeltype_code: str) -> str:
-        data["base_url"] = self.base_url
-        print(dict(user=user, project_uuid=project_uuid, data=json.dumps(data), channeltype_code=channeltype_code))
         response = self.project_stub.CreateChannel(
             project_pb2.CreateChannelRequest(
                 user=user, project_uuid=project_uuid, data=json.dumps(data), channeltype_code=channeltype_code
