@@ -1,9 +1,10 @@
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.response import Response
 from django.conf import settings
 
 from marketplace.applications.models import App
-from .serializers import TelegramSerializer
+from .serializers import TelegramSerializer, TelegramConfigureSerializer
 from marketplace.accounts.permissions import ProjectManagePermission
 from marketplace.celery import app as celery_app
 from . import type as type_
@@ -31,4 +32,13 @@ class TelegramViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["PATCH"])
     def configure(self, request, **kwargs):
-        ...
+        """
+        Adds a config on specified App and create a channel on weni-flows
+        """
+        self.serializer_class = TelegramConfigureSerializer
+        serializer = self.get_serializer(self.get_object(), data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        self.perform_update(serializer)
+
+        return Response(serializer.data)
