@@ -1,3 +1,5 @@
+import json
+
 import grpc
 from django.conf import settings
 
@@ -23,10 +25,10 @@ class ConnectGRPCClient:
     def _get_project_stub(self):
         return project_pb2_grpc.ProjectControllerStub(self.channel)
 
-    def create_weni_web_chat(self, project_uuid: str, name: str, user_email: str) -> str:
+    def create_channel(self, user: str, project_uuid: str, data: dict, channeltype_code: str) -> str:
         response = self.project_stub.CreateChannel(
             project_pb2.CreateChannelRequest(
-                project_uuid=project_uuid, name=name, user=user_email, base_url=self.base_url
+                user=user, project_uuid=project_uuid, data=json.dumps(data), channeltype_code=channeltype_code
             )
         )
         return response
@@ -38,10 +40,10 @@ class ConnectGRPCClient:
         return response
 
 
-@celery_app.task(name="create_weni_web_chat")
-def create_weni_web_chat(project_uuid: str, name: str, user_email: str) -> str:
+@celery_app.task(name="create_channel")
+def create_channel(user: str, project_uuid: str, data: dict, channeltype_code: str) -> str:
     client = ConnectGRPCClient()
-    return client.create_weni_web_chat(project_uuid, name, user_email).uuid
+    return client.create_channel(user, project_uuid, data, channeltype_code).uuid
 
 
 @celery_app.task(name="release_channel")
