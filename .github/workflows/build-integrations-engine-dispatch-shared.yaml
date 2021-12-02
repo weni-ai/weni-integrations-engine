@@ -45,7 +45,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           context: .
-          labels: branch=${{github.event.inputs.source-branch}},commit=${{GITHUB_SHA}},repository=https://github.com/Ilhasoft/weni-integrations-engine
+          labels: branch=${{github.event.inputs.source-branch}},commit=${{env.GITHUB_SHA}},repository=https://github.com/Ilhasoft/weni-integrations-engine
           file: docker/Dockerfile
           push: true
           tags: 869898323958.dkr.ecr.us-east-1.amazonaws.com/integrations:engine-${{github.event.inputs.tag-name}}
@@ -56,7 +56,7 @@ jobs:
         with:
           ref: main
           repository: Ilhasoft/kubernetes-manifests
-          token: ${{ secrets.CICEROW_GITHUB_PERMANENT_TOKEN }}
+          token: ${{ secrets.DEVOPS_GITHUB_PERMANENT_TOKEN }}
           path: ./kubernetes-manifests/
 
       - name: Set variable tag for jq
@@ -112,7 +112,7 @@ jobs:
       - name: Commit & Push changes
         uses: actions-js/push@master
         with:
-          github_token: ${{ secrets.CICEROW_GITHUB_PERMANENT_TOKEN }}
+          github_token: ${{ secrets.DEVOPS_GITHUB_PERMANENT_TOKEN }}
           repository: Ilhasoft/kubernetes-manifests
           directory: ./kubernetes-manifests/
           branch: main

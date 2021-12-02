@@ -97,7 +97,7 @@ jobs:
         with:
           ref: main
           repository: Ilhasoft/kubernetes-manifests
-          token: ${{ secrets.CICEROW_GITHUB_PERMANENT_TOKEN }}
+          token: ${{ secrets.DEVOPS_GITHUB_PERMANENT_TOKEN }}
           path: ./kubernetes-manifests/
 
       - name: Update image on deployment
@@ -148,7 +148,7 @@ jobs:
       - name: Commit & Push changes
         uses: actions-js/push@master
         with:
-          github_token: ${{ secrets.CICEROW_GITHUB_PERMANENT_TOKEN }}
+          github_token: ${{ secrets.DEVOPS_GITHUB_PERMANENT_TOKEN }}
           repository: Ilhasoft/kubernetes-manifests
           directory: ./kubernetes-manifests/
           branch: main
