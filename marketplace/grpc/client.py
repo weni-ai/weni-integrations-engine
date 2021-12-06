@@ -2,6 +2,7 @@ import json
 
 import grpc
 from django.conf import settings
+from rest_framework import serializers
 
 from marketplace.celery import app as celery_app
 from weni.protobuf.connect import project_pb2, project_pb2_grpc
@@ -26,11 +27,16 @@ class ConnectGRPCClient:
         return project_pb2_grpc.ProjectControllerStub(self.channel)
 
     def create_channel(self, user: str, project_uuid: str, data: dict, channeltype_code: str) -> str:
-        response = self.project_stub.CreateChannel(
-            project_pb2.CreateChannelRequest(
-                user=user, project_uuid=project_uuid, data=json.dumps(data), channeltype_code=channeltype_code
+        try:
+            response = self.project_stub.CreateChannel(
+                project_pb2.CreateChannelRequest(
+                    user=user, project_uuid=project_uuid, data=json.dumps(data), channeltype_code=channeltype_code
+                )
             )
-        )
+        except grpc.RpcError as error:
+            if error.code() is grpc.StatusCode.INVALID_ARGUMENT:
+                raise serializers.ValidationError()
+
         return response
 
     def release_channel(self, channel_uuid: str, user_email: str) -> None:
