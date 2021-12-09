@@ -731,7 +731,7 @@ python-versions = "*"
 
 [[package]]
 name = "weni-protobuffers"
-version = "1.2.4"
+version = "1.2.5"
 description = "Protocol Buffers for Weni Platform"
 category = "main"
 optional = false
@@ -1283,6 +1283,6 @@ wcwidth = [
     {file = "wcwidth-0.2.5.tar.gz", hash = "sha256:c4d647b99872929fdb7bdcaa4fbe7f01413ed3d98077df798530e5b04f116c83"},
 ]
 weni-protobuffers = [
-    {file = "weni-protobuffers-1.2.4.tar.gz", hash = "sha256:84c7909388c80418563fd2d6b333284bd172052d3f11fc228971c5d09831c06b"},
-    {file = "weni_protobuffers-1.2.4-py3-none-any.whl", hash = "sha256:5ef7db4efbb15282a7ec8e612342796bbc128922e861d5422e4e0695131ea598"},
+    {file = "weni-protobuffers-1.2.5.tar.gz", hash = "sha256:c10169636e2cadcc38bbc5e9c7505c8f06d374ae9e1459385fedb766077e2944"},
+    {file = "weni_protobuffers-1.2.5-py3-none-any.whl", hash = "sha256:6b1d1e34b64093e0b547d55d1165eb763f93815d04a10750a4b6f88ad25c0c03"},
 ]
