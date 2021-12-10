@@ -204,7 +204,7 @@ if USE_OIDC:
 # django-cors-headers Configurations
 
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default="")
-CORS_ALLOW_ALL_ORIGINS = DEBUG
+CORS_ALLOW_ALL_ORIGINS = env.str("CORS_ALLOW_ALL_ORIGINS", default=DEBUG)
 
 
 # gRPC Connect Client
