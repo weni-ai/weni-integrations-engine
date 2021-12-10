@@ -26,8 +26,12 @@ class ConfigSerializer(serializers.Serializer):
     def validate(self, attrs: dict):
         app = self.parent.instance
 
-        channel_uuid = app.config.get("channelUuid", None)
-        attrs["channelUuid"] = channel_uuid if channel_uuid is not None else self._create_channel(attrs, app)
+        attrs["channelUuid"] = app.config.get("channelUuid", None)
+
+        if attrs["channelUuid"] is None:
+            channel = self._create_channel(attrs, app)
+            attrs["channelUuid"] = channel.get("uuid")
+            attrs["title"] = channel.get("name")
 
         return super().validate(attrs)
 

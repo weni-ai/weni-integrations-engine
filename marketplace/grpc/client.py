@@ -36,6 +36,7 @@ class ConnectGRPCClient:
         except grpc.RpcError as error:
             if error.code() is grpc.StatusCode.INVALID_ARGUMENT:
                 raise serializers.ValidationError()
+            raise error
 
         return response
 
@@ -47,9 +48,10 @@ class ConnectGRPCClient:
 
 
 @celery_app.task(name="create_channel")
-def create_channel(user: str, project_uuid: str, data: dict, channeltype_code: str) -> str:
+def create_channel(user: str, project_uuid: str, data: dict, channeltype_code: str):
     client = ConnectGRPCClient()
-    return client.create_channel(user, project_uuid, data, channeltype_code).uuid
+    channel = client.create_channel(user, project_uuid, data, channeltype_code)
+    return dict(uuid=channel.uuid, name=channel.name, config=channel.config, address=channel.address)
 
 
 @celery_app.task(name="release_channel")
