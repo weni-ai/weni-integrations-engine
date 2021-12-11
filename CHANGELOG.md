@@ -1,3 +1,14 @@
+v1.1.0
+----------
+ * Returns new fields when creating a channel
+ * Add a base class named BaseAppTypeViewSet
+ * Adjust CORS_ALLOW_ALL_ORIGINS to read environment variable
+ * Handle exceptions when creating channels
+ * Add configure endpoint to Telegram type
+ * Create Weni Web Chat Channel Using Generic Endpoint
+ * Update readme with env variables and local development instructions
+ * Add Telegram Type
+
 v1.0.0
 ----------
  * Add release channel endpoint to connect client
