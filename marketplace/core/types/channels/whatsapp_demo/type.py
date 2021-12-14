@@ -8,6 +8,7 @@ class WhatsAppDemoType(AppType):
     view_class = WhatsAppDemoViewSet
 
     code = "whatsapp_demo"
+    channeltype_code = None
     name = "WhatsApp Demo"
     description = "WhatsAppDemo.data.description"
     summary = "WhatsAppDemo.data.summary"

@@ -81,8 +81,7 @@ class TestModelAppTypeAssetMethods(TestCase):
         self.app_data, self.apptype_asset = create_apptype_asset(self.user)
 
     def test_str_method(self):
-        str_ = f"{self.apptype_asset.apptype.name} - {self.apptype_asset.attachment.url}"
-        self.assertEqual(str(self.apptype_asset), str_)
+        self.assertEqual(str(self.apptype_asset), f"{self.apptype_asset.apptype.name} - Icon")
 
 
 class TestModelAppTypeFeatured(TestCase):

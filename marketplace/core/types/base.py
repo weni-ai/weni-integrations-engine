@@ -31,6 +31,13 @@ class AbstractAppType(ABC):
         ...  # pragma: no cover
 
     @abstractproperty
+    def channeltype_code(self) -> str:
+        """
+        code referring to `ChannelType.code` in Weni Flows
+        """
+        ...
+
+    @abstractproperty
     def name(self) -> str:
         ...  # pragma: no cover
 

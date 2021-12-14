@@ -17,6 +17,7 @@ class App(AppTypeBaseModel):
     name: str = None
     description: str = None
     summary: str = None
+    channeltype_code: str = None
     # TODO: Add `icon` property
 
     PLATFORM_IA = "IA"
@@ -48,6 +49,7 @@ class App(AppTypeBaseModel):
         self.name = self.apptype.name
         self.description = self.apptype.description
         self.summary = self.apptype.summary
+        self.channeltype_code = self.apptype.channeltype_code
         # TODO: Add `icon` property
 
 
@@ -59,10 +61,10 @@ class AppTypeAsset(AppTypeBaseModel):
     ASSET_TYPE_LINK = "LK"
 
     ASSET_TYPE_CHOICES = (
-        (ASSET_TYPE_IMAGE_BANNER, "image_banner"),
-        (ASSET_TYPE_ICON, "icon"),
-        (ASSET_TYPE_ATTACHMENT, "attachment"),
-        (ASSET_TYPE_LINK, "link"),
+        (ASSET_TYPE_IMAGE_BANNER, "Image Banner"),
+        (ASSET_TYPE_ICON, "Icon"),
+        (ASSET_TYPE_ATTACHMENT, "Attachment"),
+        (ASSET_TYPE_LINK, "Link"),
     )
 
     asset_type = models.CharField("Type", choices=ASSET_TYPE_CHOICES, max_length=2)
@@ -82,12 +84,7 @@ class AppTypeAsset(AppTypeBaseModel):
         ]
 
     def __str__(self) -> str:
-        str_ = f"{self.apptype.name} - "
-
-        if self.asset_type == self.ASSET_TYPE_LINK:
-            return str_ + self.url
-
-        return str_ + self.attachment.url
+        return f"{self.apptype.name} - {dict(self.ASSET_TYPE_CHOICES).get(self.asset_type)}"
 
 
 class AppTypeFeatured(AppTypeBaseModel):

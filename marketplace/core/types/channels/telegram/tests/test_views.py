@@ -5,14 +5,18 @@ from django.test import override_settings
 from rest_framework import status
 
 from marketplace.core.tests.base import APIBaseTestCase
-from ..views import WeniWebChatViewSet
+from ..views import TelegramViewSet
 from marketplace.applications.models import App
 from marketplace.accounts.models import ProjectAuthorization
 
 
-class CreateWeniWebChatAppTestCase(APIBaseTestCase):
-    url = reverse("wwc-app-list")
-    view_class = WeniWebChatViewSet
+class CreateTelegramAppTestCase(APIBaseTestCase):
+    url = reverse("tg-app-list")
+    view_class = TelegramViewSet
+
+    @property
+    def view(self):
+        return self.view_class.as_view(APIBaseTestCase.ACTION_CREATE)
 
     def setUp(self):
         super().setUp()
@@ -22,10 +26,6 @@ class CreateWeniWebChatAppTestCase(APIBaseTestCase):
         self.user_authorization = self.user.authorizations.create(
             project_uuid=project_uuid, role=ProjectAuthorization.ROLE_CONTRIBUTOR
         )
-
-    @property
-    def view(self):
-        return self.view_class.as_view(APIBaseTestCase.ACTION_CREATE)
 
     def test_request_ok(self):
         response = self.request.post(self.url, self.body)
@@ -47,17 +47,17 @@ class CreateWeniWebChatAppTestCase(APIBaseTestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
-class RetrieveWeniWebChatAppTestCase(APIBaseTestCase):
-    view_class = WeniWebChatViewSet
+class RetrieveTelegramAppTestCase(APIBaseTestCase):
+    view_class = TelegramViewSet
 
     def setUp(self):
         super().setUp()
 
         self.app = App.objects.create(
-            code="wwc", created_by=self.user, project_uuid=str(uuid.uuid4()), platform=App.PLATFORM_WENI_FLOWS
+            code="tg", created_by=self.user, project_uuid=str(uuid.uuid4()), platform=App.PLATFORM_WENI_FLOWS
         )
         self.user_authorization = self.user.authorizations.create(project_uuid=self.app.project_uuid)
-        self.url = reverse("wwc-app-detail", kwargs={"uuid": self.app.uuid})
+        self.url = reverse("tg-app-detail", kwargs={"uuid": self.app.uuid})
 
     @property
     def view(self):
@@ -77,19 +77,19 @@ class RetrieveWeniWebChatAppTestCase(APIBaseTestCase):
 
 
 @override_settings(USE_GRPC=False)
-class DestroyWeniWebChatAppTestCase(APIBaseTestCase):
-    view_class = WeniWebChatViewSet
+class DestroyTelegramAppTestCase(APIBaseTestCase):
+    view_class = TelegramViewSet
 
     def setUp(self):
         super().setUp()
 
         self.app = App.objects.create(
-            code="wwc", created_by=self.user, project_uuid=str(uuid.uuid4()), platform=App.PLATFORM_WENI_FLOWS
+            code="tg", created_by=self.user, project_uuid=str(uuid.uuid4()), platform=App.PLATFORM_WENI_FLOWS
         )
         self.user_authorization = self.user.authorizations.create(
             project_uuid=self.app.project_uuid, role=ProjectAuthorization.ROLE_ADMIN
         )
-        self.url = reverse("wwc-app-detail", kwargs={"uuid": self.app.uuid})
+        self.url = reverse("tg-app-detail", kwargs={"uuid": self.app.uuid})
 
     @property
     def view(self):

@@ -1,14 +1,14 @@
 import os
-import uuid
 import json
 
+from django.conf import settings
 from rest_framework import serializers
-from marketplace.core.fields import Base64ImageField
 
+from marketplace.core.fields import Base64ImageField
 from marketplace.applications.models import App
 from marketplace.core.serializers import AppTypeBaseSerializer
-from marketplace.grpc.client import ConnectGRPCClient
 from marketplace.core.storage import AppStorage
+from marketplace.celery import app as celery_app
 from . import type as type_
 
 
@@ -39,21 +39,24 @@ class ConfigSerializer(serializers.Serializer):
     keepHistory = serializers.BooleanField(default=False)
     initPayload = serializers.CharField(default="start")
     mainColor = serializers.CharField(default="#00DED3")
-    avatarImage = AvatarBase64ImageField(required=False)
+    profileAvatar = AvatarBase64ImageField(required=False)
     customCss = serializers.CharField(required=False)
-
-    # TODO: Implements `timeBetweenMessages` field
+    timeBetweenMessages = serializers.IntegerField(default=1)
 
     def to_internal_value(self, data):
-        data = super().to_internal_value(data)
-        storage = AppStorage(self.parent.instance)
+        self.app = self.parent.instance
 
-        if data.get("avatarImage"):
-            content_file = data["avatarImage"]
+        data = super().to_internal_value(data)
+        storage = AppStorage(self.app)
+
+        if data.get("profileAvatar"):
+            content_file = data["profileAvatar"]
 
             with storage.open(content_file.name, "w") as up_file:
                 up_file.write(content_file.file.read())
-                data["avatarImage"] = storage.url(up_file.name)
+                file_url = storage.url(up_file.name)
+                data["profileAvatar"] = file_url
+                data["openLauncherImage"] = file_url
 
         if data.get("customCss"):
             with storage.open("custom.css", "w") as up_file:
@@ -63,9 +66,7 @@ class ConfigSerializer(serializers.Serializer):
         return data
 
     def validate(self, attrs):
-        from .type import WeniWebChatType
-
-        attrs["selector"] = f"#{WeniWebChatType.code}"
+        attrs["selector"] = f"#{type_.WeniWebChatType.code}"
 
         attrs["customizeWidget"] = {
             "headerBackgroundColor": attrs["mainColor"],
@@ -86,15 +87,29 @@ class ConfigSerializer(serializers.Serializer):
             "storage": "local" if attrs["keepHistory"] else "session",
         }
 
-        # channel_uuid = ConnectGRPCClient.create_weni_web_chat(request.user.email) # TODO: Implement real connectio
-        channel_uuid = str(uuid.uuid4())  # Fake UUID, only to test
-        attrs["channelUuid"] = channel_uuid
+        channel_uuid = self.app.config.get("channelUuid", None)
+        attrs["channelUuid"] = channel_uuid if channel_uuid is not None else self._create_channel().get("uuid")
+
+        attrs["socketUrl"] = settings.SOCKET_BASE_URL
+        attrs["host"] = settings.FLOWS_HOST_URL
 
         attrs.pop("keepHistory")
 
-        self.generate_script(attrs)
+        attrs["script"] = self.generate_script(attrs.copy())
 
         return super().validate(attrs)
+
+    def _create_channel(self) -> str:
+        user = self.context.get("request").user
+        name = f"{type_.WeniWebChatType.name} - #{self.app.id}"
+        data = {"name": name, "base_url": settings.SOCKET_BASE_URL}
+
+        task = celery_app.send_task(
+            name="create_channel", args=[user.email, self.app.project_uuid, data, self.app.channeltype_code]
+        )
+        task.wait()
+
+        return task.result
 
     def generate_script(self, attrs):
         """
@@ -104,14 +119,23 @@ class ConfigSerializer(serializers.Serializer):
 
         with open(os.path.join(header_path, "header.script"), "r") as script_header:
             header = script_header.read().replace("<APPTYPE_CODE>", type_.WeniWebChatType.code)
+            header = header.replace("<CUSTOM-MESSAGE-DELAY>", str(attrs.get("timeBetweenMessages")))
+
+            custom_css = str(attrs.get("customCss", ""))
+            header = header.replace("<CUSTOM_CSS>", custom_css)
+
+            attrs.pop("timeBetweenMessages")
+
+            if custom_css:
+                attrs.pop("customCss")
 
         script = header.replace("<FIELDS>", json.dumps(attrs, indent=2))
 
-        storage = AppStorage(self.parent.instance)
+        storage = AppStorage(self.app)
 
         with storage.open("script.js", "w") as up_file:
             up_file.write(script)
-            attrs["script"] = storage.url(up_file.name)
+            return storage.url(up_file.name)
 
 
 class WeniWebChatConfigureSerializer(AppTypeBaseSerializer):

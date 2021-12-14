@@ -1,27 +1,21 @@
-from typing import TYPE_CHECKING
-
 from rest_framework import viewsets
-from rest_framework.decorators import action
-from rest_framework.response import Response
+from django.conf import settings
 
 from marketplace.applications.models import App
-
-if TYPE_CHECKING:
-    from marketplace.core.types.base import AppType
+from marketplace.accounts.permissions import ProjectManagePermission
+from marketplace.celery import app as celery_app
 
 
 class BaseAppTypeViewSet(viewsets.ModelViewSet):
 
     queryset = App.objects
-    type_class: "AppType" = None
     lookup_field = "uuid"
+    permission_classes = [ProjectManagePermission]
 
-    def get_queryset(self):
-        return super().get_queryset().filter(code=self.type_class.code)
+    def perform_destroy(self, instance):
+        super().perform_destroy(instance)
 
-    def perform_create(self, serializer):
-        serializer.save(code=self.type_class.code)
+        channel_uuid = instance.config.get("channelUuid")
 
-    @action(detail=True, methods=["PATCH"])
-    def configure(self, request, **kwargs) -> Response:
-        raise NotImplementedError()
+        if channel_uuid is not None and settings.USE_GRPC:
+            celery_app.send_task(name="release_channel", args=[channel_uuid, self.request.user.email]).wait()
