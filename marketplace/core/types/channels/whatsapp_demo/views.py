@@ -10,10 +10,10 @@ class WhatsAppDemoViewSet(views.BaseAppTypeViewSet):
     serializer_class = WhatsAppDemoSerializer
 
     def get_queryset(self):
-        return super().get_queryset().filter(code=type_.WeniWebChatType.code)
+        return super().get_queryset().filter(code=type_.WhatsAppDemoType.code)
 
     def perform_create(self, serializer):
-        serializer.save(code=type_.WeniWebChatType.code)
+        serializer.save(code=type_.WhatsAppDemoType.code)
 
     @action(detail=True, methods=["PATCH"])
     def configure(self, request, **kwargs):

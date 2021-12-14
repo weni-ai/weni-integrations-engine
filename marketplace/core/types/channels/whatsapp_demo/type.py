@@ -7,7 +7,7 @@ from .views import WhatsAppDemoViewSet
 class WhatsAppDemoType(AppType):
     view_class = WhatsAppDemoViewSet
 
-    code = "whatsapp_demo"
+    code = "wpp-demo"
     channeltype_code = None
     name = "WhatsApp Demo"
     description = "WhatsAppDemo.data.description"
