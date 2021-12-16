@@ -6,6 +6,7 @@ from rest_framework import serializers
 
 from marketplace.celery import app as celery_app
 from weni.protobuf.connect import project_pb2, project_pb2_grpc
+from weni.protobuf.wpp_router import channel_pb2, channel_pb2_grpc
 
 
 class ConnectGRPCClient:
@@ -47,6 +48,25 @@ class ConnectGRPCClient:
         return response
 
 
+class RouterGRPCClient:
+    def __init__(self):
+        self.channel = self._get_channel()
+        self.stub = self._get_stub()
+
+    def _get_channel(self):
+        if settings.ROUTER_CERTIFICATE_GRPC_CRT:
+            with open(settings.ROUTER_CERTIFICATE_GRPC_CRT, "rb") as crt:
+                credentials = grpc.ssl_channel_credentials(crt.read())
+            return grpc.secure_channel(settings.ROUTER_GRPC_SERVER_URL, credentials)
+        return grpc.insecure_channel(settings.ROUTER_GRPC_SERVER_URL)
+
+    def _get_stub(self):
+        return channel_pb2_grpc.ChannelServiceStub(self.channel)
+
+    def get_channel_token(self, uuid: str, name: str) -> str:
+        return self.stub.CreateChannel(channel_pb2.ChannelRequest(uuid=uuid, name=name))
+
+
 @celery_app.task(name="create_channel")
 def create_channel(user: str, project_uuid: str, data: dict, channeltype_code: str):
     client = ConnectGRPCClient()
@@ -59,3 +79,9 @@ def release_channel(channel_uuid: str, user_email: str) -> None:
     client = ConnectGRPCClient()
     client.release_channel(channel_uuid, user_email)
     return None
+
+
+@celery_app.task(name="get_channel_token")
+def get_channel_token(uuid: str, name: str) -> str:
+    client = RouterGRPCClient()
+    return client.get_channel_token(uuid, name).token
