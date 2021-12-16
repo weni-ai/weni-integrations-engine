@@ -1,4 +1,5 @@
 import uuid
+from unittest.mock import patch
 
 from django.urls import reverse
 from rest_framework import status
@@ -7,6 +8,14 @@ from marketplace.core.tests.base import APIBaseTestCase
 from ..views import WhatsAppDemoViewSet
 from marketplace.applications.models import App
 from marketplace.accounts.models import ProjectAuthorization
+
+
+class CeleryResponse:
+    def __init__(self, response):
+        self.result = response
+
+    def wait(self):
+        ...
 
 
 class CreateWhatsAppDemoAppTestCase(APIBaseTestCase):
@@ -50,7 +59,7 @@ class CreateWhatsAppDemoAppTestCase(APIBaseTestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
-class RetrieveWeniWebChatAppTestCase(APIBaseTestCase):
+class RetrieveWhatsAppDemoAppTestCase(APIBaseTestCase):
     view_class = WhatsAppDemoViewSet
 
     def setUp(self):
@@ -79,7 +88,7 @@ class RetrieveWeniWebChatAppTestCase(APIBaseTestCase):
         self.assertEqual(response.json["config"], {})
 
 
-class DestroyWeniWebChatAppTestCase(APIBaseTestCase):
+class DestroyWhatsAppDemoAppTestCase(APIBaseTestCase):
     view_class = WhatsAppDemoViewSet
 
     def setUp(self):
@@ -125,3 +134,48 @@ class DestroyWeniWebChatAppTestCase(APIBaseTestCase):
         self.user_authorization.set_role(ProjectAuthorization.ROLE_NOT_SETTED)
         response = self.request.delete(self.url, uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class ConfigureWhatsAppDemoAppTestCase(APIBaseTestCase):
+    view_class = WhatsAppDemoViewSet
+
+    def setUp(self):
+        super().setUp()
+
+        self.app = App.objects.create(
+            code="wpp-demo",
+            created_by=self.user,
+            project_uuid=str(uuid.uuid4()),
+            platform=App.PLATFORM_WENI_FLOWS,
+        )
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid, role=ProjectAuthorization.ROLE_ADMIN
+        )
+
+        self.url = reverse("wpp-demo-app-configure", kwargs={"uuid": self.app.uuid})
+
+    @property
+    def view(self):
+        return self.view_class.as_view(dict(patch="configure"))
+
+    @patch("marketplace.celery.app.send_task")
+    def test_configure_app_ok(self, task):
+        self.view_class.type_class.NUMBER = "+559999998888"
+        channel_uuid = str(uuid.uuid4())
+
+        task.side_effect = [
+            CeleryResponse(dict(name="WhatsApp: +559999998888", uuid=channel_uuid)),
+            CeleryResponse("WhatsApp:+559999998888-whatsapp-demo-v5ciobe7te"),
+        ]
+
+        response = self.request.patch(self.url, {}, uuid=self.app.uuid)
+
+        app = App.objects.get(uuid=self.app.uuid)
+        self.assertEqual(str(app.uuid), response.json["uuid"])
+        self.assertEqual(app.config["title"], "WhatsApp: +559999998888")
+        self.assertEqual(app.config["channelUuid"], channel_uuid)
+        self.assertEqual(app.config["routerToken"], "WhatsApp:+559999998888-whatsapp-demo-v5ciobe7te")
+        self.assertEqual(
+            app.config["redirectUrl"],
+            "https://wa.me/+559999998888?text=WhatsApp:+559999998888-whatsapp-demo-v5ciobe7te",
+        )
