@@ -15,3 +15,4 @@ class TelegramType(AppType):
     developer = "Weni"
     bg_color = "#00DED333"
     platform = App.PLATFORM_WENI_FLOWS
+    config_design = "sidebar"

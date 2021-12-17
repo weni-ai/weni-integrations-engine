@@ -71,6 +71,10 @@ class AppType(AbstractAppType):
     Abstract class that all app types must inherit from it
     """
 
+    def __init__(self):
+        if self.view_class is not None:
+            self.view_class.type_class = self
+
     @property
     def assets(self) -> QuerySet:
         return AppTypeAsset.objects.filter(code=self.code)

@@ -216,6 +216,12 @@ SOCKET_BASE_URL = env.str("SOCKET_BASE_URL", "")
 FLOWS_HOST_URL = env.str("FLOWS_HOST_URL", "")
 
 
+# gRPC Router Client
+
+ROUTER_GRPC_SERVER_URL = env.str("ROUTER_GRPC_SERVER_URL")
+ROUTER_CERTIFICATE_GRPC_CRT = env.str("ROUTER_CERTIFICATE_GRPC_CRT", None)
+
+
 # Celery
 
 CELERY_BROKER_URL = env.str("CELERY_BROKER_URL", default="redis://localhost:6379")
@@ -231,6 +237,7 @@ CELERY_TIMEZONE = TIME_ZONE
 APPTYPES_CLASSES = [
     "channels.weni_web_chat.type.WeniWebChatType",
     "channels.telegram.type.TelegramType",
+    "channels.whatsapp_demo.type.WhatsAppDemoType",
 ]
 
 DYNAMIC_APPTYPES = []
