@@ -14,16 +14,10 @@ class WhatsAppDemoViewSet(views.BaseAppTypeViewSet):
         return super().get_queryset().filter(code=self.type_class.code)
 
     def perform_create(self, serializer):
-        serializer.save(code=self.type_class.code)
 
-    @action(detail=True, methods=["PATCH"])
-    def configure(self, request, **kwargs):
-        """
-        Adds a config on specified App and create a channel on weni-flows
-        """
-        user = request.user
-        instance = self.get_object()
+        user = self.request.user
         type_class = self.type_class
+        instance = serializer.save(code=self.type_class.code)
 
         data = dict(
             number=type_class.NUMBER,
@@ -51,8 +45,6 @@ class WhatsAppDemoViewSet(views.BaseAppTypeViewSet):
         task.wait()
 
         instance.config["routerToken"] = task.result
-        instance.config["redirectUrl"] = f"https://wa.me/{type_class.NUMBER}?text={task.result}"
+        instance.config["redirect_url"] = f"https://wa.me/{type_class.NUMBER}?text={task.result}"
         instance.modified_by = user
         instance.save()
-
-        return Response(dict(uuid=str(instance.uuid), redirectUrl=instance.config["redirectUrl"]))
