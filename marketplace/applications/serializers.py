@@ -13,6 +13,7 @@ class AppTypeSerializer(serializers.Serializer):
     category = serializers.ChoiceField(choices=AppType.CATEGORY_CHOICES, source="get_category_display")
     icon = serializers.URLField(source="get_icon_url")
     bg_color = serializers.CharField()
+    config_design = serializers.CharField()
     rating = serializers.SerializerMethodField()
     comments_count = serializers.SerializerMethodField()
     integrations_count = serializers.SerializerMethodField()
