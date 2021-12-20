@@ -18,6 +18,7 @@ class AppTypeSerializer(serializers.Serializer):
     comments_count = serializers.SerializerMethodField()
     integrations_count = serializers.SerializerMethodField()
     metrics = serializers.SerializerMethodField()
+    can_add = serializers.SerializerMethodField()
 
     assets = serializers.SerializerMethodField()
 
@@ -52,6 +53,10 @@ class AppTypeSerializer(serializers.Serializer):
     def get_metrics(self, obj):
         # TODO: Get real metric from AppType
         return 58602143
+
+    def get_can_add(self, obj):
+        project_uuid = self.context["request"].META.get("project_uuid")
+        return obj.can_add(project_uuid)
 
 
 class MyAppSerializer(serializers.ModelSerializer):

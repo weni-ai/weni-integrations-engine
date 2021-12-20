@@ -108,3 +108,6 @@ class AppType(AbstractAppType):
 
     def get_ratings_average(self) -> float:
         return Rating.get_apptype_average(self.code)
+
+    def can_add(self, project_uuid: str) -> bool:
+        return True
