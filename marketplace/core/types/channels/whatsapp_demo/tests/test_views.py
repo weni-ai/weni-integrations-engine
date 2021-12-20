@@ -58,6 +58,9 @@ class CreateWhatsAppDemoAppTestCase(APIBaseTestCase):
             "https://wa.me/+559999998888?text=WhatsApp:+559999998888-whatsapp-demo-v5ciobe7te",
         )
 
+        response = self.request.post(self.url, self.body)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
     def test_create_app_without_project_uuid(self):
         self.body.pop("project_uuid")
         response = self.request.post(self.url, self.body)
