@@ -16,6 +16,7 @@ from pathlib import Path
 import environ
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
+from corsheaders.defaults import default_headers
 
 
 # Build paths inside the project like this: BASE_DIR / "subdir".
@@ -205,6 +206,7 @@ if USE_OIDC:
 
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default="")
 CORS_ALLOW_ALL_ORIGINS = env.str("CORS_ALLOW_ALL_ORIGINS", default=DEBUG)
+CORS_ALLOW_HEADERS = list(default_headers) + ["project-uuid"]
 
 
 # gRPC Connect Client
