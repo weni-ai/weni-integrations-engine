@@ -1,3 +1,8 @@
+v1.2.0
+----------
+ * Add integration limit for Whatsapp Demo
+ * Add WhatsApp Demo type end endpoints
+
 v1.1.0
 ----------
  * Returns new fields when creating a channel
