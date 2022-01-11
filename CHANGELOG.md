@@ -1,3 +1,7 @@
+v1.2.1
+----------
+ * Add project-uuid to CORS_ALLOW_HEADERS
+
 v1.2.0
 ----------
  * Add integration limit for Whatsapp Demo
