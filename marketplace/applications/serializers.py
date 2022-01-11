@@ -55,7 +55,7 @@ class AppTypeSerializer(serializers.Serializer):
         return 58602143
 
     def get_can_add(self, obj):
-        project_uuid = self.context["request"].META.get("project_uuid")
+        project_uuid = self.context["request"].headers.get("Project-Uuid")
         return obj.can_add(project_uuid)
 
 
