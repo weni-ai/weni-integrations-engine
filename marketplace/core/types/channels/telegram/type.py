@@ -13,6 +13,6 @@ class TelegramType(AppType):
     summary = "telegram.data.summary"
     category = AppType.CATEGORY_CHANNEL
     developer = "Weni"
-    bg_color = "#00DED333"
+    bg_color = "#039be533"
     platform = App.PLATFORM_WENI_FLOWS
     config_design = "sidebar"

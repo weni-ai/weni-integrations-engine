@@ -22,7 +22,7 @@ class WhatsAppDemoType(AppType):
     summary = "WhatsAppDemo.data.summary"
     category = AppType.CATEGORY_CHANNEL
     developer = "Weni"
-    bg_color = "#00DED333"
+    bg_color = "#d1fcc9cc"
     platform = App.PLATFORM_WENI_FLOWS
     config_design = "popup"
 
