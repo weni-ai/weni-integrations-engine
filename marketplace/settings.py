@@ -240,6 +240,7 @@ APPTYPES_CLASSES = [
     "channels.weni_web_chat.type.WeniWebChatType",
     "channels.telegram.type.TelegramType",
     "channels.whatsapp_demo.type.WhatsAppDemoType",
+    "channels.whatsapp.type.WhatsAppType",
 ]
 
 DYNAMIC_APPTYPES = []
