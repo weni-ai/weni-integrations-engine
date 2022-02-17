@@ -72,8 +72,13 @@ class AppType(AbstractAppType):
     """
 
     def __init__(self):
+        self._set_settings()
+
         if self.view_class is not None:
             self.view_class.type_class = self
+
+    def _set_settings(self) -> None:
+        pass
 
     @property
     def assets(self) -> QuerySet:
