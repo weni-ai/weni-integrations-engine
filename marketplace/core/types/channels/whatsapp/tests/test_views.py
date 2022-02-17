@@ -95,7 +95,7 @@ class SharedWabasWhatsAppTestCase(APIBaseTestCase):
         self.assertEqual(response.json, [self.debug_token_error_response.error_message])
 
     @patch("requests.get")
-    def test_request_with_invalid_input_token(self, requests):
+    def test_response_without_whatsapp_business_management(self, requests):
         requests.side_effect = [self.debug_token_without_business_response]
         response = self.request.get(self.url + f"?input_token={self.input_token}")
         self.assertEqual(response.json, [])
