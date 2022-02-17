@@ -14,7 +14,6 @@ class WhatsAppSerializer(AppTypeBaseSerializer):
             "created_by",
             "created_on",
             "modified_by",
-            "redirect_url",
         )
         read_only_fields = ("code", "uuid", "platform")
 
