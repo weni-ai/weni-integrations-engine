@@ -3,7 +3,7 @@ from unittest.mock import patch, MagicMock
 from django.test import TestCase
 from rest_framework.exceptions import ValidationError
 
-from ..facades import request, BaseWhatsAppAPI
+from ..facades import request, BaseWhatsAppAPI, AssignedUsersAPI
 from ..type import WhatsAppType
 
 
@@ -58,3 +58,32 @@ class BaseWhatsAppAPITestCase(TestCase):
 
         with self.assertRaisesMessage(ValidationError, error_message):
             self.fake_whatsapp_api._request(self.fake_whatsapp_api._get_url())
+
+
+class AssignedUsersAPITestCase(TestCase):
+    def setUp(self):
+        super().setUp()
+
+        self.assigned_users_obj = AssignedUsersAPI(APP_TYPE)
+
+    def test__get_url_returns_ok(self):
+        waba_id = "123456"
+        right_return = f"{APP_TYPE.API_URL}/{waba_id}/assigned_users"
+        self.assertEqual(self.assigned_users_obj._get_url(waba_id), right_return)
+
+    @patch("requests.get")
+    def test_validate_system_user_waba(self, mock_get: MagicMock):
+        mock_get.return_value = FakeResponse({"data": [{"id": APP_TYPE.SYSTEM_USER_ID, "tasks": ["MANAGE"]}]})
+        self.assigned_users_obj.validate_system_user_waba("123456")
+
+    @patch("requests.get")
+    def test_validate_system_user_waba_with_invalid_data(self, mock_get: MagicMock):
+        mock_get.return_value = FakeResponse({"data": [{"id": "fake", "tasks": ["MANAGE"]}]})
+
+        with self.assertRaises(ValidationError):
+            self.assigned_users_obj.validate_system_user_waba("123456")
+
+        mock_get.return_value = FakeResponse({"data": [{"id": APP_TYPE.SYSTEM_USER_ID, "tasks": ["fake"]}]})
+
+        with self.assertRaises(ValidationError):
+            self.assigned_users_obj.validate_system_user_waba("123456")
