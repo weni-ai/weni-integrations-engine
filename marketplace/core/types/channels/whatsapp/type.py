@@ -24,5 +24,8 @@ class WhatsAppType(AppType):
 
     def _set_settings(self):
         self.SYSTEM_USER_ACCESS_TOKEN = config("WHATSAPP_SYSTEM_USER_ACCESS_TOKEN")
+        self.SYSTEM_USER_ID = config("WHATSAPP_SYSTEM_USER_ID")
+        self.BUSINESS_ID = config("WHATSAPP_BUSINESS_ID")
+        self.BUSINESS_CREDIT_LINE_ID = config("WHATSAPP_BUSINESS_CREDIT_LINE_ID")
         self.VERSION = config("WHATSAPP_VERSION")
         self.API_URL = urllib.parse.urljoin(config("WHATSAPP_API_URL"), self.VERSION)

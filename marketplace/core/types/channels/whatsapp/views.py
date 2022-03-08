@@ -10,6 +10,14 @@ if TYPE_CHECKING:
 
 from marketplace.core.types import views
 from .serializers import WhatsAppSerializer
+from .facades import (
+    WhatsAppFacade,
+    AssignedUsersAPI,
+    CreditLineAttachAPI,
+    CreditLineAllocationConfigAPI,
+    CreditLineValidatorAPI,
+    CreditLineFacade,
+)
 
 
 class WhatsAppViewSet(views.BaseAppTypeViewSet):
@@ -18,6 +26,24 @@ class WhatsAppViewSet(views.BaseAppTypeViewSet):
 
     def get_queryset(self):
         return super().get_queryset().filter(code=self.type_class.code)
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        type_class = self.type_class
+
+        validated_data = serializer.validated_data
+        target_id = validated_data.get("target_id")
+
+        assigned_users_api = AssignedUsersAPI(type_class)
+
+        attach_api = CreditLineAttachAPI(type_class)
+        allocation_config_api = CreditLineAllocationConfigAPI(type_class)
+        validator_api = CreditLineValidatorAPI(type_class)
+
+        credit_line_facade = CreditLineFacade(attach_api, allocation_config_api, validator_api)
+
+        whatsapp = WhatsAppFacade(assigned_users_api, credit_line_facade)
+        whatsapp.create(target_id)
 
     @action(detail=False, methods=["GET"], url_name="shared-wabas", url_path="shared-wabas")
     def shared_wabas(self, request: "Request", **kwargs):
