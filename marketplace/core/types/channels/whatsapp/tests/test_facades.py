@@ -3,7 +3,7 @@ from unittest.mock import patch, MagicMock
 from django.test import TestCase
 from rest_framework.exceptions import ValidationError
 
-from ..facades import request, BaseWhatsAppAPI, AssignedUsersAPI
+from ..facades import request, BaseWhatsAppAPI, AssignedUsersAPI, CreditLineAttachAPI
 from ..type import WhatsAppType
 
 
@@ -87,3 +87,16 @@ class AssignedUsersAPITestCase(TestCase):
 
         with self.assertRaises(ValidationError):
             self.assigned_users_obj.validate_system_user_waba("123456")
+
+
+class CreditLineAttachAPITestCase(TestCase):
+    def setUp(self):
+        super().setUp()
+
+        self.credit_line_attach_api_obj = CreditLineAttachAPI(APP_TYPE)
+
+    def test__get_url_returns_ok(self):
+        right_return = "{}/{}/whatsapp_credit_sharing_and_attach".format(
+            APP_TYPE.API_URL, APP_TYPE.BUSINESS_CREDIT_LINE_ID
+        )
+        self.assertEqual(self.credit_line_attach_api_obj._get_url(), right_return)
