@@ -3,7 +3,7 @@ from unittest.mock import patch, MagicMock
 from django.test import TestCase
 from rest_framework.exceptions import ValidationError
 
-from ..facades import request, BaseWhatsAppAPI, AssignedUsersAPI, CreditLineAttachAPI
+from ..facades import request, BaseWhatsAppAPI, AssignedUsersAPI, CreditLineAttachAPI, CreditLineAllocationConfigAPI
 from ..type import WhatsAppType
 
 
@@ -100,3 +100,15 @@ class CreditLineAttachAPITestCase(TestCase):
             APP_TYPE.API_URL, APP_TYPE.BUSINESS_CREDIT_LINE_ID
         )
         self.assertEqual(self.credit_line_attach_api_obj._get_url(), right_return)
+
+
+class CreditLineAllocationConfigAPITestCase(TestCase):
+    def setUp(self):
+        super().setUp()
+
+        self.credit_line_allocation_config_api = CreditLineAllocationConfigAPI(APP_TYPE)
+
+    def test__get_url_returns_ok(self):
+        allocation_config_id = "123123"
+        right_return = f"{APP_TYPE.API_URL}/{allocation_config_id}"
+        self.assertEqual(self.credit_line_allocation_config_api._get_url(allocation_config_id), right_return)
