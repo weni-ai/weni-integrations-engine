@@ -37,7 +37,7 @@ class BaseWhatsAppAPI(ABC):
 
 class AssignedUsersAPI(BaseWhatsAppAPI):
     def _get_url(self, target_id: str) -> str:
-        return urljoin(self._app_type.API_URL, target_id + "/assigned_users")
+        return f"{self._app_type.API_URL}/{target_id}/assigned_users"
 
     def _request(self, target_id: str, method: str = "get", params: dict = {}) -> Response:
         url = self._get_url(target_id)
@@ -68,8 +68,8 @@ class AssignedUsersAPI(BaseWhatsAppAPI):
 
 class CreditLineAttachAPI(BaseWhatsAppAPI):
     def _get_url(self) -> str:
-        return urljoin(
-            self._app_type.API_URL, self._app_type.BUSINESS_CREDIT_LINE_ID + "/whatsapp_credit_sharing_and_attach"
+        return "{}/{}/whatsapp_credit_sharing_and_attach".format(
+            self._app_type.API_URL, self._app_type.BUSINESS_CREDIT_LINE_ID
         )
 
     def _request(self, params: dict = {}) -> Response:
@@ -84,7 +84,7 @@ class CreditLineAttachAPI(BaseWhatsAppAPI):
 
 class CreditLineAllocationConfigAPI(BaseWhatsAppAPI):
     def _get_url(self, allocation_config_id: str) -> str:
-        return urljoin(self._app_type.API_URL, allocation_config_id)
+        return f"{self._app_type.API_URL}/{allocation_config_id}"
 
     def get_allocation_config_credential_id(self, allocation_config_id: str) -> str:
         params = dict(fields="receiving_credential{id}")
@@ -126,7 +126,7 @@ class CreditLineFacade(object):
         self._validator_api.validate_config_credential_id(config_credential_id, target_id)
 
 
-class WhatsAppFacade(object):
+class WhatsAppAPIFacade(object):
     def __init__(
         self,
         assigned_users_api: BaseWhatsAppAPI,
@@ -139,3 +139,25 @@ class WhatsAppFacade(object):
         self._assigned_users_api.add_system_user_waba(target_id)
         self._assigned_users_api.validate_system_user_waba(target_id)
         self._credit_line_facade.attach(target_id)
+
+
+class WhatsAppFacade(object):
+    def __init__(self, waba_id: str, app_type: "WhatsAppType"):
+        self._waba_id = waba_id
+        self._app_type = app_type
+
+    def _get_assigned_users_api(self) -> AssignedUsersAPI:
+        return AssignedUsersAPI(self._app_type)
+
+    def _get_credit_line_facade(self) -> CreditLineFacade:
+        attach_api = CreditLineAttachAPI(self._app_type)
+        allocation_config_api = CreditLineAllocationConfigAPI(self._app_type)
+        validator_api = CreditLineValidatorAPI(self._app_type)
+
+        return CreditLineFacade(attach_api, allocation_config_api, validator_api)
+
+    def create(self):
+        assigned_users_api = self._get_assigned_users_api()
+        credit_line_facade = self._get_credit_line_facade()
+        whatsapp = WhatsAppAPIFacade(assigned_users_api, credit_line_facade)
+        whatsapp.create(self._waba_id)
