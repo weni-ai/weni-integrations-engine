@@ -1,10 +1,12 @@
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
-from urllib.parse import urljoin
 
 import requests
 from requests.models import Response
 from rest_framework.exceptions import ValidationError
+
+from .queue import InfrastructureQueueItem, InfrastructureItemManager
+from .apis import InfrastructureDeployAPI, InfrastructureRemoveAPI
 
 if TYPE_CHECKING:
     from .type import WhatsAppType
@@ -139,6 +141,22 @@ class WhatsAppAPIFacade(object):
         self._assigned_users_api.add_system_user_waba(target_id)
         self._assigned_users_api.validate_system_user_waba(target_id)
         self._credit_line_facade.attach(target_id)
+
+
+class InfrastructureQueueFacade(object):
+
+    def __init__(self):
+        self.items = InfrastructureItemManager()
+        self._deploy_api = InfrastructureDeployAPI()
+        self._remove_api = InfrastructureRemoveAPI()
+
+    def deploy_whatsapp(self, item: InfrastructureQueueItem):
+        self._deploy_api.deploy(item)
+        self.items.add(item)
+
+    def remove_whatsapp(self, item: InfrastructureQueueItem):
+        self._remove_api.remove(item)
+        self.items.remove(item) # TODO: Remove only after confirmation
 
 
 class WhatsAppFacade(object):
