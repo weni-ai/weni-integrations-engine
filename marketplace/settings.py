@@ -262,3 +262,8 @@ GRPC_FRAMEWORK = {
 }
 
 USE_GRPC = env.bool("USE_GRPC", default=False)
+
+
+# Celery
+
+CELERY_BEAT_SCHEDULE = {}
