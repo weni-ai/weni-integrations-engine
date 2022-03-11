@@ -10,6 +10,9 @@ from .facades import InfrastructureQueueFacade, InfrastructureQueueItem
 logger = logging.getLogger(__name__)
 
 
+# TODO: Create a task that validates if old queue item are deployed
+
+
 @celery_app.task(name="manage_queue_size")
 def manage_queue_size():
     queue = InfrastructureQueueFacade()
@@ -20,19 +23,18 @@ def manage_queue_size():
     logger.info(f"Whatsapp infrastructure queue size: {queue_size}")
 
     if queue_size < infra_amount:
-        for _ in range(infra_amount - queue_size):
-            redis = get_redis_connection()
+        redis = get_redis_connection()
 
-            if redis.get("infra-lock"):
-                return None
-            else:
-                with redis.lock("infra-lock"):
-                    queue_item = InfrastructureQueueItem()
-                    queue.deploy_whatsapp(queue_item)
+        if redis.get("infra-lock"):
+            logger.info(f"Waiting for the last infrastructure to be fully deployed")
+            return None
+        else:
+            with redis.lock("infra-lock"):
+                queue_item = InfrastructureQueueItem()
+                queue.deploy_whatsapp(queue_item)
 
-                    logger.info(f"Deploying a new infrastructure whose `uid` is {queue_item.uid}")
-
-                    time.sleep(settings.WHATSAPP_TIME_BETWEEN_DEPLOY_INFRASTRUCTURE)
+                logger.info(f"Deploying a new infrastructure whose `uid` is {queue_item.uid}")
+                time.sleep(settings.WHATSAPP_TIME_BETWEEN_DEPLOY_INFRASTRUCTURE)
 
 
 @celery_app.task(name="manage_infra_queue_status")
@@ -42,4 +44,4 @@ def manage_infra_queue_status():
     for queue_item in queue.items.all():
 
         if queue_item.status == InfrastructureQueueItem.STATUS_PROPAGATING:
-            print("Validando se propagou")
+            logger.info(f"Validando se propagou")
