@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 
 import os
 from pathlib import Path
+from datetime import timedelta
 
 import environ
 import sentry_sdk
@@ -43,6 +44,7 @@ DEBUG = env.bool("DEBUG")
 
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")
 
+EXTERNAL_URL = env.str("EXTERNAL_URL", default="https://f6e0-2804-7c8-6765-8900-d00b-4885-a6c4-c4be.ngrok.io")
 
 # Application definition
 
@@ -152,6 +154,9 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
+    # "DEFAULT_PARSER_CLASSES": [
+    #     "rest_framework.parsers.JSONParser",
+    # ],
 }
 
 
@@ -224,14 +229,30 @@ ROUTER_GRPC_SERVER_URL = env.str("ROUTER_GRPC_SERVER_URL")
 ROUTER_CERTIFICATE_GRPC_CRT = env.str("ROUTER_CERTIFICATE_GRPC_CRT", None)
 
 
+# Redis
+
+REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379")
+
+
 # Celery
 
-CELERY_BROKER_URL = env.str("CELERY_BROKER_URL", default="redis://localhost:6379")
+CELERY_BROKER_URL = env.str("CELERY_BROKER_URL", default=REDIS_URL)
 CELERY_RESULT_BACKEND = env.str("CELERY_RESULT_BACKEND", default="redis://localhost:6379")
 CELERY_ACCEPT_CONTENT = ["application/json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
+
+
+# Cache
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": REDIS_URL,
+        "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
+    }
+}
 
 
 # Extra configurations
@@ -264,3 +285,26 @@ GRPC_FRAMEWORK = {
 }
 
 USE_GRPC = env.bool("USE_GRPC", default=False)
+
+# TODO: Change variables to especific app
+WHATSAPP_GITHUB_ACCESS_TOKEN = env("WHATSAPP_GITHUB_ACCESS_TOKEN")
+WHATSAPP_DISPATCHES_URL = env(
+    "WHATSAPP_DISPATCHES_URL", default="https://api.github.com/repos/Ilhasoft/kubernetes-manifests/dispatches"
+)
+WHATSAPP_DISPATCHES_WEBHOOK_URL = env("WHATSAPP_DISPATCHES_WEBHOOK_URL", default="https://httpbin.org/anything")
+WHATSAPP_TIME_BETWEEN_DEPLOY_INFRASTRUCTURE = env.int("WHATSAPP_TIME_BETWEEN_DEPLOY_INFRASTRUCTURE", default=1) * 60
+WHATSAPP_INFRASTRUCTURE_AMOUNT = env.int("WHATSAPP_INFRASTRUCTURE_AMOUNT", default=2)
+
+
+# Celery
+
+CELERY_BEAT_SCHEDULE = {
+    "manage-queue-size": {
+        "task": "manage_queue_size",
+        "schedule": timedelta(seconds=5),
+    },
+    "manage-infra-queue-status": {
+        "task": "manage_infra_queue_status",
+        "schedule": timedelta(seconds=5),
+    },
+}
