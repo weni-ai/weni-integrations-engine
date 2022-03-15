@@ -53,7 +53,7 @@ class AppTypeBaseModel(BaseModel):
         """
         Returns the respective AppType
         """
-        return core.types.get_type(self.code)
+        return core.types.APPTYPES.get(self.code)
 
     class Meta:
         abstract = True

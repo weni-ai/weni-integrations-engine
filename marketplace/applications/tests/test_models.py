@@ -111,8 +111,8 @@ class TestModelAppTypeFeaturedMethods(TestCase):
         self.assertEqual(str(self.apptype_featured), self.apptype_featured.apptype.name)
 
     def test_apptype_method(self):
-        self.assertEqual(self.apptype_featured.apptype, types.get_type("wwc"))
+        self.assertEqual(self.apptype_featured.apptype, types.APPTYPES.get("wwc"))
 
     def test_get_apptype_featureds(self):
         apptype = next(self.apptype_featured.get_apptype_featureds())
-        self.assertEqual(apptype, types.get_type("wwc"))
+        self.assertEqual(apptype, types.APPTYPES.get("wwc"))

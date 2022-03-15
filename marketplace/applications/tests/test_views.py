@@ -42,7 +42,7 @@ class ListAppTypeViewTestCase(AppTypeViewTestCase):
 
     def test_list_app_types_count(self):
         response = self.request.get(self.url)
-        self.assertEqual(len(response.json), len(types.get_types()))
+        self.assertEqual(len(response.json), len(types.APPTYPES))
 
     def test_filter_app_type_by_fake_category(self):
         response = self.request.get(self.url + "?category=fake")
@@ -114,7 +114,7 @@ class RetrieveAppTypeViewTestCase(AppTypeViewTestCase):
         self.assertEqual(link["url"], link_asset.url)
 
     def test_retrieve_response_data(self):
-        apptype = types.get_type("wwc")
+        apptype = types.APPTYPES.get("wwc")
         response = self.request.get(self.url, pk="wwc")
         data = response.json
 

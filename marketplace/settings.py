@@ -243,8 +243,6 @@ APPTYPES_CLASSES = [
     "channels.whatsapp.type.WhatsAppType",
 ]
 
-DYNAMIC_APPTYPES = []
-
 
 # Sentry configuration
 
