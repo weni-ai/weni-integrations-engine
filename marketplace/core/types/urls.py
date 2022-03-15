@@ -5,12 +5,11 @@ from marketplace.core import types
 
 urlpatterns = []
 
-for type_ in types.get_types():
+for apptype in types.APPTYPES.values():
     router = routers.SimpleRouter()
-
-    if type_.view_class is None:
+    if apptype.view_class is None:
         continue
 
-    router.register("apps", type_.view_class, basename=f"{type_.code}-app")
+    router.register("apps", apptype.view_class, basename=f"{apptype.code}-app")
 
-    urlpatterns.append(path(f"apptypes/{type_.code}/", include(router.urls)))
+    urlpatterns.append(path(f"apptypes/{apptype.code}/", include(router.urls)))

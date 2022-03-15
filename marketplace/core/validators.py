@@ -5,6 +5,6 @@ def validate_app_code_exists(value):
     from marketplace.core import types
 
     try:
-        types.get_type(value)
+        types.APPTYPES.get(value)
     except KeyError:
         raise ValidationError(f"AppType ({value}) not exists!")
