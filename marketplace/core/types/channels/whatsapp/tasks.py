@@ -30,7 +30,7 @@ def manage_queue_size():
         redis = get_redis_connection()
 
         if redis.get("infra-lock"):
-            logger.info(f"Waiting for the last infrastructure to be fully deployed")
+            logger.info("Waiting for the last infrastructure to be fully deployed")
             return None
         else:
             with redis.lock("infra-lock"):

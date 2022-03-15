@@ -1,10 +1,15 @@
+from datetime import datetime
+from string import ascii_lowercase, digits
+
 from django.core.cache import cache
 from django.utils.crypto import get_random_string
+from django.conf import settings
 
 from .apis import InfrastructureDeployAPI, InfrastructureRemoveAPI
+from .exceptions import InvalidItemStatus, ItemAlreadyInQueue
 
 
-class InfrastructureQueueItem(object): # TODO: Change name later
+class QueueItem(object):
 
     STATUS_DEPLOYING = "DEPLOYING"
     STATUS_PROPAGATING = "PROPAGATING"
@@ -18,71 +23,100 @@ class InfrastructureQueueItem(object): # TODO: Change name later
 
     def __init__(self, body: dict = None):
         if body is not None:
-            self._uid = body.get("uid")
-            self._status = body.get("status")
+            self.__dict__.update(body)
         else:
             self._setup_item()
 
     @property
     def key(self):
-        return self.CACHE_KEY.format(uid=self._uid)
+        return self.CACHE_KEY.format(uid=self.uid)
 
     @property
-    def body(self):
-        return dict(uid=self._uid, status=self._status)
+    def url(self):
+        return f"https://{self.uid}.wa.weni.ai/"
 
-    def get_uid(self) -> str:
-        return self._uid
+    def update(self, **kwargs):
+        status = kwargs.get("status", None)
+        if status is not None and status not in self.STATUS_CHOICES:
+            raise InvalidItemStatus(f"The status must be between: {self.STATUS_CHOICES}")
 
-    def update_status(self, status):
-        if status not in self.STATUS_CHOICES:
-            raise Exception(f"The status must be between: {self.STATUS_CHOICES}")
+        self.__dict__.update(kwargs)
 
-        self._status = status
+    def get_random_uid(self):
+        # TODO: Validade uid
+        return "sandro" + get_random_string(12, allowed_chars=ascii_lowercase + digits)
 
     def _setup_item(self):
-        self._uid = "sandro" + get_random_string(12) # TODO: Validate if url already in use
-        self._status = self.STATUS_DEPLOYING
+        self.uid = self.get_random_uid()
+        self.status = self.STATUS_DEPLOYING
+        self.created_at = datetime.now()
 
     def __str__(self) -> str:
-        return str(self.body)
+        return str(vars(self))
 
     def __repr__(self) -> str:
         return str(self)
 
 
-class InfrastructureItemManager(object): # TODO: Change name later
+class BaseQueueItemManager(object):
     @property
     def keys(self) -> list:
-        return cache.keys(InfrastructureQueueItem.CACHE_KEY_PREFIX + "*")
+        return cache.keys(QueueItem.CACHE_KEY_PREFIX + "*")
 
-    @property
-    def all(self) -> list:
-        def get_whatsapp_queue_item_by_key(key):
-            body = cache.get(key)
-            return InfrastructureQueueItem(body)
+    def _set_or_update(self, item: QueueItem):
+        cache.set(item.key, vars(item), None)
 
-        return list(map(get_whatsapp_queue_item_by_key, self.keys))
+    def _get_item_by_index(self, index: int) -> QueueItem:
+        try:
+            return self.all()[-1]
+        except IndexError:
+            return None
 
-    def _set_or_update(self, item: InfrastructureQueueItem):
-        cache.set(item.key, item.body, None)
+    def __len__(self) -> int:
+        return len(self.keys)
 
-    def add(self, item: InfrastructureQueueItem):
+
+class QueueItemManagerCRUD(BaseQueueItemManager):
+    def add(self, item: QueueItem):
+        if self.get(item.uid) is not None:
+            raise ItemAlreadyInQueue(f"The item whose `uid` is `{item.uid}` is already in the queue")
         self._set_or_update(item)
 
-    def get(self, uid) -> InfrastructureQueueItem:
-        key = InfrastructureQueueItem.CACHE_KEY.format(uid=uid)
+    def get(self, uid) -> QueueItem:
+        key = QueueItem.CACHE_KEY.format(uid=uid)
         body = cache.get(key)
 
         if body is not None:
-            return InfrastructureQueueItem(body)
+            return QueueItem(body)
 
-    def update(self, item: InfrastructureQueueItem):
+    def update(self, item: QueueItem, **kwargs):
+        item.update(**kwargs)
         self._set_or_update(item)
 
-    def remove(self, item: InfrastructureQueueItem):
+    def remove(self, item: QueueItem):
         cache.delete(item.key)
 
+
+class QueueItemManager(QueueItemManagerCRUD):
+    def _get_all_items(self):
+        def get_whatsapp_queue_item_by_key(key):
+            body = cache.get(key)
+            return QueueItem(body)
+
+        return list(map(get_whatsapp_queue_item_by_key, self.keys))
+
+    def _sort_items_by_created_at(self, items):
+        items.sort(key=lambda item: item.created_at)
+
+    def all(self) -> list:
+        items = self._get_all_items()
+        self._sort_items_by_created_at(items)
+
+        return items
+
+    def done_items(self) -> list[QueueItem]:
+        return list(filter(lambda item: item.status == QueueItem.STATUS_DONE, self.all()))
+
     def clear(self):
-        for item in self.all:
+        for item in self.all():
             self.remove(item)

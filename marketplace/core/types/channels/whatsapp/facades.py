@@ -5,8 +5,9 @@ import requests
 from requests.models import Response
 from rest_framework.exceptions import ValidationError
 
-from .queue import InfrastructureQueueItem, InfrastructureItemManager
+from .queue import QueueItem, QueueItemManager
 from .apis import InfrastructureDeployAPI, InfrastructureRemoveAPI
+from .exceptions import ItemAlreadyInQueue
 
 if TYPE_CHECKING:
     from .type import WhatsAppType
@@ -144,19 +145,23 @@ class WhatsAppAPIFacade(object):
 
 
 class InfrastructureQueueFacade(object):
-
     def __init__(self):
-        self.items = InfrastructureItemManager()
+        self.items = QueueItemManager()
         self._deploy_api = InfrastructureDeployAPI()
         self._remove_api = InfrastructureRemoveAPI()
 
-    def deploy_whatsapp(self, item: InfrastructureQueueItem):
-        self._deploy_api.deploy(item)
+    def deploy_whatsapp(self, item: QueueItem):
         self.items.add(item)
+        self._deploy_api.deploy(item)
 
-    def remove_whatsapp(self, item: InfrastructureQueueItem):
+    def remove_whatsapp(self, item: QueueItem):
         self._remove_api.remove(item)
-        self.items.remove(item) # TODO: Remove only after confirmation
+        self.items.remove(item)  # TODO: Remove only after confirmation
+
+    def book_whatsapp(self) -> str:
+        item = self.items.done_items()[-1]
+        self.items.remove(item)
+        return item.url
 
 
 class WhatsAppFacade(object):
@@ -179,3 +184,4 @@ class WhatsAppFacade(object):
         credit_line_facade = self._get_credit_line_facade()
         whatsapp = WhatsAppAPIFacade(assigned_users_api, credit_line_facade)
         whatsapp.create(self._waba_id)
+        return InfrastructureQueueFacade().get_whatsapp_url()

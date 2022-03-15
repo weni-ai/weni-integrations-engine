@@ -4,20 +4,15 @@ import requests
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
+from rest_framework import status as response_status
 
 if TYPE_CHECKING:
     from rest_framework.request import Request
 
 from marketplace.core.types import views
 from .serializers import WhatsAppSerializer
-from .facades import (
-    WhatsAppFacade,
-    AssignedUsersAPI,
-    CreditLineAttachAPI,
-    CreditLineAllocationConfigAPI,
-    CreditLineValidatorAPI,
-    CreditLineFacade,
-)
+from .facades import WhatsAppFacade, InfrastructureQueueFacade
+from .queue import QueueItem
 
 
 class WhatsAppViewSet(views.BaseAppTypeViewSet):
@@ -29,21 +24,41 @@ class WhatsAppViewSet(views.BaseAppTypeViewSet):
 
     def perform_create(self, serializer):
         user = self.request.user
-        type_class = self.type_class
+        app_type = self.type_class
 
         validated_data = serializer.validated_data
-        target_id = validated_data.get("target_id")
+        waba_id = validated_data.get("target_id")
 
-        assigned_users_api = AssignedUsersAPI(type_class)
+        whatsapp = WhatsAppFacade(waba_id, app_type)
+        infra_url = whatsapp.create()
 
-        attach_api = CreditLineAttachAPI(type_class)
-        allocation_config_api = CreditLineAllocationConfigAPI(type_class)
-        validator_api = CreditLineValidatorAPI(type_class)
+        instance = serializer.save(code=self.type_class.code)
+        instance.config["infra_url"] = infra_url
+        instance.save()
 
-        credit_line_facade = CreditLineFacade(attach_api, allocation_config_api, validator_api)
+    @action(detail=False, methods=["POST"], permission_classes=[])
+    def webhook(self, request: "Request", **kwargs):
+        from django.http.request import QueryDict
 
-        whatsapp = WhatsAppFacade(assigned_users_api, credit_line_facade)
-        whatsapp.create(target_id)
+        data = request.data
+
+        if isinstance(request.data, QueryDict):
+            data = {key: value[0] for key, value in dict(request.data).items()}
+
+        webhook_id = data.get("webhook_id")
+        status = QueueItem.STATUS_PROPAGATING if data.get("status") == "success" else QueueItem.STATUS_FAILED
+        message = data.get("message")
+        # TODO: VAlidar if this code can added on InfrastructureQueueFacade
+        queue = InfrastructureQueueFacade()
+        item = queue.items.get(webhook_id)
+
+        if not item:
+            raise ValidationError("Invalid `webhook_id`!")
+
+        queue.items.update(item, status=status)
+        queue.items.update(item, message=message)
+
+        return Response(status=response_status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=["GET"], url_name="shared-wabas", url_path="shared-wabas")
     def shared_wabas(self, request: "Request", **kwargs):
