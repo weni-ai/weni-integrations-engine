@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     "marketplace.applications",
     "marketplace.interactions",
     "marketplace.grpc",
+    "marketplace.onpremise",
     # installed apps
     "rest_framework",
     "storages",
@@ -284,7 +285,9 @@ GRPC_FRAMEWORK = {
 
 USE_GRPC = env.bool("USE_GRPC", default=False)
 
-# TODO: Change variables to especific app
+
+# On premise queue system
+
 WHATSAPP_GITHUB_ACCESS_TOKEN = env("WHATSAPP_GITHUB_ACCESS_TOKEN")
 WHATSAPP_DISPATCHES_URL = env(
     "WHATSAPP_DISPATCHES_URL", default="https://api.github.com/repos/Ilhasoft/kubernetes-manifests/dispatches"

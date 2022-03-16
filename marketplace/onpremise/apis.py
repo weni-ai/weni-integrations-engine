@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from .queue import QueueItem
 
 
-class BaseInfrastructureAPI(ABC):
+class BaseOnPremiseAPI(ABC):
     @property
     def _headers(self) -> dict:
         return {
@@ -29,6 +29,7 @@ class BaseInfrastructureAPI(ABC):
                 "uid": item.uid,
                 "webhook_url": settings.EXTERNAL_URL + reverse("wpp-app-webhook"),
                 "webhook_id": item.uid,
+                "dry_run": "enable",
             },
         }
 
@@ -37,19 +38,19 @@ class BaseInfrastructureAPI(ABC):
         pass
 
 
-class InfrastructureDeployAPI(BaseInfrastructureAPI):
+class OnPremiseDeployAPI(BaseOnPremiseAPI):
     def _get_event_type(self) -> str:
         return "deploy-whatsapp"
 
     def deploy(self, item: "QueueItem") -> None:
         # TODO: Validate status
-        response = requests.post(self._url, json=self._get_payload(item), headers=self._headers)
+        requests.post(self._url, json=self._get_payload(item), headers=self._headers)
 
 
-class InfrastructureRemoveAPI(BaseInfrastructureAPI):
+class OnPremiseRemoveAPI(BaseOnPremiseAPI):
     def _get_event_type(self) -> str:
         return "remove-whatsapp"
 
     def remove(self, item: "QueueItem") -> None:
         # TODO: Validate status
-        response = requests.post(self._url, json=self._get_payload(item), headers=self._headers)
+        requests.post(self._url, json=self._get_payload(item), headers=self._headers)

@@ -7,7 +7,7 @@ from django_redis import get_redis_connection
 from requests.exceptions import ConnectionError
 
 from marketplace.celery import app as celery_app
-from .facades import InfrastructureQueueFacade, QueueItem
+from .facades import OnPromisseQueueFacade, QueueItem
 from .exceptions import ItemAlreadyInQueue
 
 logger = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 @celery_app.task(name="manage_queue_size")
 def manage_queue_size():
-    queue = InfrastructureQueueFacade()
+    queue = OnPromisseQueueFacade()
 
     queue_size = len(queue.items)
     infra_amount = settings.WHATSAPP_INFRASTRUCTURE_AMOUNT
@@ -46,7 +46,7 @@ def manage_queue_size():
 @celery_app.task(name="manage_infra_queue_status")
 def manage_infra_queue_status():
 
-    queue = InfrastructureQueueFacade()
+    queue = OnPromisseQueueFacade()
 
     for item in queue.items.all():
         if item.status != QueueItem.STATUS_PROPAGATING:
