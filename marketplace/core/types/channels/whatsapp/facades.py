@@ -5,9 +5,7 @@ import requests
 from requests.models import Response
 from rest_framework.exceptions import ValidationError
 
-from .queue import QueueItem, QueueItemManager
-from .apis import InfrastructureDeployAPI, InfrastructureRemoveAPI
-from .exceptions import ItemAlreadyInQueue
+from marketplace.onpremise.facades import OnPremiseQueueFacade, OnPremiseFacade
 
 if TYPE_CHECKING:
     from .type import WhatsAppType
@@ -144,30 +142,15 @@ class WhatsAppAPIFacade(object):
         self._credit_line_facade.attach(target_id)
 
 
-class InfrastructureQueueFacade(object):
-    def __init__(self):
-        self.items = QueueItemManager()
-        self._deploy_api = InfrastructureDeployAPI()
-        self._remove_api = InfrastructureRemoveAPI()
-
-    def deploy_whatsapp(self, item: QueueItem):
-        self.items.add(item)
-        self._deploy_api.deploy(item)
-
-    def remove_whatsapp(self, item: QueueItem):
-        self._remove_api.remove(item)
-        self.items.remove(item)  # TODO: Remove only after confirmation
-
-    def book_whatsapp(self) -> str:
-        item = self.items.done_items()[-1]
-        self.items.remove(item)
-        return item.url
-
-
 class WhatsAppFacade(object):
     def __init__(self, waba_id: str, app_type: "WhatsAppType"):
         self._waba_id = waba_id
         self._app_type = app_type
+
+        self._assigned_users_api = self._get_assigned_users_api()
+        self._credit_line_facade = self._get_credit_line_facade()
+        self._onpremise_queue_facade = OnPremiseQueueFacade()
+        self._on_premise_password = OnPremiseFacade()
 
     def _get_assigned_users_api(self) -> AssignedUsersAPI:
         return AssignedUsersAPI(self._app_type)
@@ -179,9 +162,12 @@ class WhatsAppFacade(object):
 
         return CreditLineFacade(attach_api, allocation_config_api, validator_api)
 
-    def create(self):
-        assigned_users_api = self._get_assigned_users_api()
-        credit_line_facade = self._get_credit_line_facade()
-        whatsapp = WhatsAppAPIFacade(assigned_users_api, credit_line_facade)
+    def create(self) -> tuple[str, str]:
+
+        whatsapp = WhatsAppAPIFacade(self._assigned_users_api, self._credit_line_facade)
         whatsapp.create(self._waba_id)
-        return InfrastructureQueueFacade().get_whatsapp_url()
+
+        onpremise_url = self._onpremise_queue_facade.book_whatsapp()
+        password = self._on_premise_password.change_password(onpremise_url)
+
+        return onpremise_url, password

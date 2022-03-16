@@ -39,6 +39,7 @@ class BaseWhatsAppAPITestCase(TestCase):
 
     def test_declare_class_without_the__get_url_method(self):
         with self.assertRaises(TypeError):
+
             class FakeWhatsAppAPI(BaseWhatsAppAPI):
                 pass
 
