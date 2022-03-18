@@ -1,20 +1,44 @@
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
-import requests
-from requests.auth import HTTPBasicAuth
-from requests.models import Response
 from django.conf import settings
 from django.urls import reverse
 from rest_framework import status
+from requests.auth import HTTPBasicAuth
+from requests.models import Response
+import requests
+
+from .exceptions import UnableRedeemCertificate
 
 if TYPE_CHECKING:
     from .queue import QueueItem
 
 
 class PhoneNumber(object):
+    NUMBER_STATUS_APPROVED = "APPROVED"
+    NUMBER_STATUS_DECLINED = "DECLINED"
+    NUMBER_STATUS_EXPIRED = "EXPIRED"
+    NUMBER_STATUS_PENDING_REVIEW = "PENDING_REVIEW"
+    NUMBER_STATUS_NONE = "NONE"
+
+    NUMBER_STATUS_ERRORS = {
+        NUMBER_STATUS_DECLINED: "The name has not been approved. You cannot download your certificate.",
+        NUMBER_STATUS_EXPIRED: "Your certificate has expire and can no longer be downloaded.",
+        NUMBER_STATUS_PENDING_REVIEW: "Your name request is under review. You cannot download your certificate.",
+        NUMBER_STATUS_NONE: "No certificate is available.",
+    }
+
+    NUMBER_STATUS = (
+        NUMBER_STATUS_APPROVED,
+        NUMBER_STATUS_DECLINED,
+        NUMBER_STATUS_EXPIRED,
+        NUMBER_STATUS_PENDING_REVIEW,
+        NUMBER_STATUS_NONE,
+    )
+
     def __init__(self, number_data: dict):
         self._number_data = number_data
+        self._validate_name_status()
 
         self.display_number = self._get_display_number()
 
@@ -22,6 +46,13 @@ class PhoneNumber(object):
         self.certificate = self._get_certificate()
         self.country_code, self.ddd, self.number = self.display_number
         self.complete_number = self.ddd + self.number
+
+    def _validate_name_status(self):
+        name_status = self._number_data.get("name_status")
+        number_status_error = self.NUMBER_STATUS_ERRORS.get(name_status)
+
+        if number_status_error is not None:
+            raise UnableRedeemCertificate(number_status_error)
 
     def _get_display_number(self) -> list:
         display_phone_number = self._number_data.get("display_phone_number")
@@ -73,7 +104,10 @@ class BaseOnPremiseUserAPI(ABC):
 
     def _request(self, onpremise_url: str, password: str, json: dict = None) -> Response:
         response = requests.post(
-            f"{onpremise_url}/v1/users/login", json=json, headers=self._headers, auth=HTTPBasicAuth("admin", password)
+            f"{onpremise_url}/v1/users/login",
+            json=json,
+            headers=self._headers,
+            auth=HTTPBasicAuth(settings.WHATSAPP_ONPREMISE_USERNAME, password),
         )
 
         if response.status_code == status.HTTP_401_UNAUTHORIZED:
@@ -129,4 +163,5 @@ class OnPremiseRegistrationAPI(object):
             cert=phone_number.certificate,
             method="sms",
         )
+
         requests.post(self._get_url(onpremise_url), json=data, headers=self._get_headers(token))
