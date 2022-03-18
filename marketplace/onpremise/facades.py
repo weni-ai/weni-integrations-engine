@@ -8,6 +8,7 @@ from .apis import (
     OnPremiseRemoveManifestAPI,
     OnPremisePasswordAPI,
     OnPremiseLoginAPI,
+    OnPremiseRegistrationAPI,
 )
 
 if TYPE_CHECKING:
@@ -38,6 +39,7 @@ class OnPremiseFacade(object):
     def __init__(self) -> None:
         self._password_api = OnPremisePasswordAPI()
         self._login_api = OnPremiseLoginAPI()
+        self._registration_api = OnPremiseRegistrationAPI()
 
     def _get_new_password(self) -> str:
         chars = "wFEdGu9ckN!JVKpSrA8WRHnDzsPU3Ca45q7h2tQbeY_xvjg+f@MyBZTX?-m6"
@@ -48,3 +50,9 @@ class OnPremiseFacade(object):
         self._password_api.change(onpremise_url, new_password)
 
         return new_password
+
+    def register_whatsapp(self, onpremise_url: str, password: str, phone_number: "PhoneNumber") -> str:
+        token = self._login_api.get_access_token(onpremise_url, password)
+        self._registration_api.register_account(onpremise_url, token, phone_number)
+
+        return token

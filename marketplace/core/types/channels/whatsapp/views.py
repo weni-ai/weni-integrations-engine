@@ -11,8 +11,9 @@ if TYPE_CHECKING:
 
 from marketplace.core.types import views
 from .serializers import WhatsAppSerializer
-from .facades import WhatsAppFacade, InfrastructureQueueFacade
-from .queue import QueueItem
+from marketplace.onpremise.facades import OnPremiseQueueFacade
+from .facades import WhatsAppFacade
+from marketplace.onpremise.queue import QueueItem
 
 
 class WhatsAppViewSet(views.BaseAppTypeViewSet):
@@ -30,12 +31,14 @@ class WhatsAppViewSet(views.BaseAppTypeViewSet):
         waba_id = validated_data.get("target_id")
 
         whatsapp = WhatsAppFacade(waba_id, app_type)
-        infra_url = whatsapp.create()
+        onpremise_url, onpremise_password, token = whatsapp.create()
 
         instance = serializer.save(code=self.type_class.code)
-        instance.config["infra_url"] = infra_url
+        instance.config["onpremise_url"] = onpremise_url
+        instance.modified_by = user
         instance.save()
 
+    # TODO: Send view to ompremise django app
     @action(detail=False, methods=["POST"], permission_classes=[])
     def webhook(self, request: "Request", **kwargs):
         from django.http.request import QueryDict
@@ -49,7 +52,7 @@ class WhatsAppViewSet(views.BaseAppTypeViewSet):
         status = QueueItem.STATUS_PROPAGATING if data.get("status") == "success" else QueueItem.STATUS_FAILED
         message = data.get("message")
         # TODO: VAlidar if this code can added on InfrastructureQueueFacade
-        queue = InfrastructureQueueFacade()
+        queue = OnPremiseQueueFacade()
         item = queue.items.get(webhook_id)
 
         if not item:

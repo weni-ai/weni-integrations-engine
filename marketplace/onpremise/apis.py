@@ -121,3 +121,12 @@ class OnPremiseRegistrationAPI(object):
 
     def _get_headers(self, token: str):
         return {"Content-Type": "application/json", "Authorization": "Bearer " + token}
+
+    def register_account(self, onpremise_url: str, token: str, phone_number: PhoneNumber) -> None:
+        data = dict(
+            cc=phone_number.country_code,
+            phone_number=str(phone_number),
+            cert=phone_number.certificate,
+            method="sms",
+        )
+        requests.post(self._get_url(onpremise_url), json=data, headers=self._get_headers(token))
