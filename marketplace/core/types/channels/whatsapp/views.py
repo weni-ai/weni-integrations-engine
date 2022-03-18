@@ -10,10 +10,11 @@ if TYPE_CHECKING:
     from rest_framework.request import Request
 
 from marketplace.core.types import views
-from .serializers import WhatsAppSerializer
 from marketplace.onpremise.facades import OnPremiseQueueFacade
-from .facades import WhatsAppFacade
 from marketplace.onpremise.queue import QueueItem
+from marketplace.onpremise.exceptions import UnableRedeemCertificate
+from .serializers import WhatsAppSerializer
+from .facades import WhatsAppFacade
 
 
 class WhatsAppViewSet(views.BaseAppTypeViewSet):
@@ -31,7 +32,10 @@ class WhatsAppViewSet(views.BaseAppTypeViewSet):
         waba_id = validated_data.get("target_id")
 
         whatsapp = WhatsAppFacade(waba_id, app_type)
-        onpremise_url, onpremise_password, token = whatsapp.create()
+        try:
+            onpremise_url, onpremise_password, token = whatsapp.create()
+        except UnableRedeemCertificate as error:
+            raise ValidationError(error)
 
         instance = serializer.save(code=self.type_class.code)
         instance.config["onpremise_url"] = onpremise_url

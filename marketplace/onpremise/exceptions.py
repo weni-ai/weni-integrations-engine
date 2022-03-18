@@ -4,3 +4,7 @@ class InvalidItemStatus(Exception):
 
 class ItemAlreadyInQueue(Exception):
     pass
+
+
+class UnableRedeemCertificate(Exception):
+    pass
