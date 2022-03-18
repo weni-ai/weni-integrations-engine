@@ -62,7 +62,6 @@ INSTALLED_APPS = [
     "marketplace.applications",
     "marketplace.interactions",
     "marketplace.grpc",
-    "marketplace.onpremise",
     # installed apps
     "rest_framework",
     "storages",
@@ -286,26 +285,34 @@ GRPC_FRAMEWORK = {
 USE_GRPC = env.bool("USE_GRPC", default=False)
 
 
-# On premise queue system
-
-WHATSAPP_GITHUB_ACCESS_TOKEN = env("WHATSAPP_GITHUB_ACCESS_TOKEN")
-WHATSAPP_DISPATCHES_URL = env(
-    "WHATSAPP_DISPATCHES_URL", default="https://api.github.com/repos/Ilhasoft/kubernetes-manifests/dispatches"
-)
-WHATSAPP_DISPATCHES_WEBHOOK_URL = env("WHATSAPP_DISPATCHES_WEBHOOK_URL", default="https://httpbin.org/anything")
-WHATSAPP_TIME_BETWEEN_DEPLOY_INFRASTRUCTURE = env.int("WHATSAPP_TIME_BETWEEN_DEPLOY_INFRASTRUCTURE", default=1) * 60
-WHATSAPP_INFRASTRUCTURE_AMOUNT = env.int("WHATSAPP_INFRASTRUCTURE_AMOUNT", default=2)
-
-
 # Celery
 
-CELERY_BEAT_SCHEDULE = {
-    "manage-queue-size": {
+CELERY_BEAT_SCHEDULE = {}
+
+
+# On premise queue system
+
+USE_WHATSAPP_ONPREMISE_QUEUE = env.bool("USE_WHATSAPP_ONPREMISE_QUEUE", default=False)
+
+if USE_WHATSAPP_ONPREMISE_QUEUE:
+    INSTALLED_APPS.append("marketplace.onpremise")
+
+    WHATSAPP_GITHUB_ACCESS_TOKEN = env("WHATSAPP_GITHUB_ACCESS_TOKEN")
+    WHATSAPP_DISPATCHES_URL = env(
+        "WHATSAPP_DISPATCHES_URL", default="https://api.github.com/repos/Ilhasoft/kubernetes-manifests/dispatches"
+    )
+    WHATSAPP_DISPATCHES_WEBHOOK_URL = env("WHATSAPP_DISPATCHES_WEBHOOK_URL", default="https://httpbin.org/anything")
+    WHATSAPP_TIME_BETWEEN_DEPLOY_INFRASTRUCTURE = (
+        env.int("WHATSAPP_TIME_BETWEEN_DEPLOY_INFRASTRUCTURE", default=1) * 60
+    )
+    WHATSAPP_INFRASTRUCTURE_AMOUNT = env.int("WHATSAPP_INFRASTRUCTURE_AMOUNT", default=2)
+    WHATSAPP_ONPREMISE_USERNAME = env("WHATSAPP_ONPREMISE_USERNAME", default="admin")
+
+    CELERY_BEAT_SCHEDULE["manage-queue-size"] = {
         "task": "manage_queue_size",
-        "schedule": timedelta(seconds=5),
-    },
-    "manage-infra-queue-status": {
+        "schedule": timedelta(seconds=5),  # TODO: Set to environment variable
+    }
+    CELERY_BEAT_SCHEDULE["manage-infra-queue-status"] = {
         "task": "manage_infra_queue_status",
-        "schedule": timedelta(seconds=5),
-    },
-}
+        "schedule": timedelta(seconds=5),  # TODO: Set to environment variable
+    }
