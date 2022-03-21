@@ -14,6 +14,17 @@ if TYPE_CHECKING:
     from .type import WhatsAppType
 
 
+class WhatsApp(object):
+    def __init__(self, url:str, password: str, token: str, phone_number: PhoneNumber) -> None:
+        self.url = url
+        self.password = password
+        self.token = token
+        self.phone_number = phone_number
+
+    def __str__(self) -> str:
+        return self.phone_number.complete_number
+
+
 class CreditLineFacade(object):
 
     allocation_config_id: str = None
@@ -49,16 +60,16 @@ class WhatsAppFacade(object):
         self._waba_id = waba_id
 
         self._onpremise_queue_facade = OnPremiseQueueFacade()
-        self._on_premisse_facade = OnPremiseFacade()
+        self._onpremise_facade = OnPremiseFacade()
         self._facebook_api_facade = FacebookAPIFacade(app_type)
 
-    def create(self) -> tuple[str, str, str]:
+    def create(self) -> WhatsApp:
 
         phone_number = self._facebook_api_facade.create(self._waba_id)
 
         onpremise_url = self._onpremise_queue_facade.book_whatsapp()
-        # password = self._on_premisse_facade.change_password(onpremise_url)
-        password = "8TT_B-TUrVAszCyrzpwM"
-        token = self._on_premisse_facade.register_whatsapp(onpremise_url, password, phone_number)
+        # onpremise_password = self._onpremisse_facade.change_password(onpremise_url)
+        onpremise_password = "8TT_B-TUrVAszCyrzpwM"
+        onpremise_token = self._onpremise_facade.register_whatsapp(onpremise_url, onpremise_password, phone_number)
 
-        return onpremise_url, password, token
+        return WhatsApp(onpremise_url, onpremise_password, onpremise_token, phone_number)
