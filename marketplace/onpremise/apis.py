@@ -45,7 +45,7 @@ class PhoneNumber(object):
         self.id = self._get_certificate()
         self.certificate = self._get_certificate()
         self.country_code, self.ddd, self.number = self.display_number
-        self.complete_number = self.ddd + self.number
+        self.complete_number = self.country_code + self.ddd + self.number
 
     def _validate_name_status(self):
         name_status = self._number_data.get("name_status")
@@ -65,7 +65,7 @@ class PhoneNumber(object):
         return self._number_data.get("id")
 
     def __str__(self) -> str:
-        return self.complete_number
+        return self.ddd + self.number
 
 
 class BaseOnPremiseManifestAPI(ABC):
