@@ -54,6 +54,13 @@ class PhoneNumber(object):
         if number_status_error is not None:
             raise UnableRedeemCertificate(number_status_error)
 
+    def _validate_name_status(self):
+        name_status = self._number_data.get("name_status")
+        number_status_error = self.NUMBER_STATUS_ERRORS.get(name_status)
+
+        if number_status_error is not None:
+            raise UnableRedeemCertificate(number_status_error)
+
     def _get_display_number(self) -> list:
         display_phone_number = self._number_data.get("display_phone_number")
         return display_phone_number.replace("-", "").replace("+", "").split()
