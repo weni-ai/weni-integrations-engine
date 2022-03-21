@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 
 import requests
+from django.conf import settings
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
@@ -13,8 +14,9 @@ from marketplace.core.types import views
 from marketplace.onpremise.facades import OnPremiseQueueFacade
 from marketplace.onpremise.queue import QueueItem
 from marketplace.onpremise.exceptions import UnableRedeemCertificate
+from marketplace.celery import app as celery_app
 from .serializers import WhatsAppSerializer
-from .facades import WhatsAppFacade
+from .facades import WhatsApp, WhatsAppFacade
 
 
 class WhatsAppViewSet(views.BaseAppTypeViewSet):
@@ -31,14 +33,38 @@ class WhatsAppViewSet(views.BaseAppTypeViewSet):
         validated_data = serializer.validated_data
         waba_id = validated_data.get("target_id")
 
-        whatsapp = WhatsAppFacade(waba_id, app_type)
+        whatsapp: WhatsApp = None
+
         try:
-            onpremise_url, onpremise_password, token = whatsapp.create()
+            whatsapp_facade = WhatsAppFacade(waba_id, app_type)
+            whatsapp = whatsapp_facade.create()
         except UnableRedeemCertificate as error:
             raise ValidationError(error)
 
         instance = serializer.save(code=self.type_class.code)
-        instance.config["onpremise_url"] = onpremise_url
+
+        data = dict(
+            number=str(whatsapp),
+            country=app_type.COUNTRY, # TODO: Use lib or API
+            base_url=whatsapp.url,
+            username=settings.WHATSAPP_ONPREMISE_USERNAME,
+            password=whatsapp.password,
+            facebook_namespace="fake",
+            facebook_template_list_domain="graph.facebook.com",
+            facebook_business_id="null",
+            facebook_access_token="null",
+        )
+
+        task = celery_app.send_task(
+            name="create_channel", args=[user.email, str(instance.project_uuid), data, instance.channeltype_code]
+        )
+        task.wait()
+        result = task.result
+
+        instance.config["title"] = result.get("name")
+        instance.config["channelUuid"] = result.get("uuid")
+
+        # instance.config["onpremise_url"] = onpremise_url
         instance.modified_by = user
         instance.save()
 
