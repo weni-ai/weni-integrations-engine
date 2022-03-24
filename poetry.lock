@@ -739,7 +739,7 @@ python-versions = "*"
 
 [[package]]
 name = "weni-protobuffers"
-version = "1.2.7"
+version = "1.2.10"
 description = "Protocol Buffers for Weni Platform"
 category = "main"
 optional = false
@@ -1173,6 +1173,8 @@ protobuf = [
     {file = "protobuf-3.19.0.tar.gz", hash = "sha256:6a1dc6584d24ef86f5b104bcad64fa0fe06ed36e5687f426e0445d363a041d18"},
 ]
 psycopg2 = [
+    {file = "psycopg2-2.9.1-cp310-cp310-win32.whl", hash = "sha256:25615574419dd9bda6fdfdcd58afb22e721f5b807cb3d5e62f488c8acf8cb754"},
+    {file = "psycopg2-2.9.1-cp310-cp310-win_amd64.whl", hash = "sha256:e5a8ed9dbfca8dc162c4ada5ab017e10d5a66c542b4c73569f103fa5f342f498"},
     {file = "psycopg2-2.9.1-cp36-cp36m-win32.whl", hash = "sha256:7f91312f065df517187134cce8e395ab37f5b601a42446bdc0f0d51773621854"},
     {file = "psycopg2-2.9.1-cp36-cp36m-win_amd64.whl", hash = "sha256:830c8e8dddab6b6716a4bf73a09910c7954a92f40cf1d1e702fb93c8a919cc56"},
     {file = "psycopg2-2.9.1-cp37-cp37m-win32.whl", hash = "sha256:89409d369f4882c47f7ea20c42c5046879ce22c1e4ea20ef3b00a4dfc0a7f188"},
@@ -1295,6 +1297,6 @@ wcwidth = [
     {file = "wcwidth-0.2.5.tar.gz", hash = "sha256:c4d647b99872929fdb7bdcaa4fbe7f01413ed3d98077df798530e5b04f116c83"},
 ]
 weni-protobuffers = [
-    {file = "weni-protobuffers-1.2.7.tar.gz", hash = "sha256:293d8768fcc2fba2354b49c6f10c222c4deef136b17e56a84228ecce80aab7e2"},
-    {file = "weni_protobuffers-1.2.7-py3-none-any.whl", hash = "sha256:36a7935e50a9f0cdd1ae0d1fd206ae2d6f54854f7f25c548f0d4a021b89d8745"},
+    {file = "weni-protobuffers-1.2.10.tar.gz", hash = "sha256:4972403f6b6862213f6ab6102ebb3885522cbc759204e83e65f80e3822c22f37"},
+    {file = "weni_protobuffers-1.2.10-py3-none-any.whl", hash = "sha256:f645547ae5d296f613d5be5c4564c181770ffba7ff0181f52a7846d9080aa42b"},
 ]
