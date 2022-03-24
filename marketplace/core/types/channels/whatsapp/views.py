@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from rest_framework.request import Request
 
 from marketplace.core.types import views
+from marketplace.accounts.permissions import ProjectViewPermission
 from .serializers import WhatsAppSerializer
 
 
@@ -18,6 +19,17 @@ class WhatsAppViewSet(views.BaseAppTypeViewSet):
 
     def get_queryset(self):
         return super().get_queryset().filter(code=self.type_class.code)
+
+    @action(detail=True, methods=["GET"], permission_classes=[ProjectViewPermission])
+    def conversations(self, request: "Request", **kwargs) -> Response:
+        """
+        obs: this is just a mock to speed up the front end delivery
+        """
+        self.get_object()
+        request.query_params.get("start")
+        request.query_params.get("end")
+
+        return Response(dict(incoming=50, outgoing=50, total=100))
 
     @action(detail=False, methods=["GET"], url_name="shared-wabas", url_path="shared-wabas")
     def shared_wabas(self, request: "Request", **kwargs):
