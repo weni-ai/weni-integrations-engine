@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 
 import os
 from pathlib import Path
+from datetime import timedelta
 
 import environ
 import sentry_sdk
@@ -222,16 +223,33 @@ FLOWS_HOST_URL = env.str("FLOWS_HOST_URL", "")
 
 ROUTER_GRPC_SERVER_URL = env.str("ROUTER_GRPC_SERVER_URL")
 ROUTER_CERTIFICATE_GRPC_CRT = env.str("ROUTER_CERTIFICATE_GRPC_CRT", None)
+ROUTER_BASE_URL = env.str("ROUTER_BASE_URL")
+
+
+# Redis
+
+REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379")
 
 
 # Celery
 
-CELERY_BROKER_URL = env.str("CELERY_BROKER_URL", default="redis://localhost:6379")
+CELERY_BROKER_URL = env.str("CELERY_BROKER_URL", default=REDIS_URL)
 CELERY_RESULT_BACKEND = env.str("CELERY_RESULT_BACKEND", default="redis://localhost:6379")
 CELERY_ACCEPT_CONTENT = ["application/json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
+
+
+# Cache
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": REDIS_URL,
+        "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
+    }
+}
 
 
 # Extra configurations
@@ -266,4 +284,4 @@ USE_GRPC = env.bool("USE_GRPC", default=False)
 
 # Celery
 
-CELERY_BEAT_SCHEDULE = {}
+CELERY_BEAT_SCHEDULE = {"sync-whatsapp-apps": {"task": "sync_whatsapp_apps", "schedule": timedelta(hours=2)}}
