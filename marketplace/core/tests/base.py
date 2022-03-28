@@ -14,6 +14,18 @@ from marketplace.core.types import APPTYPES
 User = get_user_model()
 
 
+class FakeRequestsResponse(object):
+    def __init__(self, data: dict, error_message: str = None):
+        self._data = data
+        self.error_message = error_message
+
+    def raise_for_status(self):
+        pass
+
+    def json(self):
+        return self._data
+
+
 class Request(object):
     def __init__(self, test_instance: TestCase):
         self.test_instance = test_instance
