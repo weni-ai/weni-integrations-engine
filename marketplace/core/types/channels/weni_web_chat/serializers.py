@@ -37,7 +37,7 @@ class ConfigSerializer(serializers.Serializer):
     showFullScreenButton = serializers.BooleanField(default=True)
     displayUnreadCount = serializers.BooleanField(default=False)
     keepHistory = serializers.BooleanField(default=False)
-    initPayload = serializers.CharField(default="start")
+    initPayload = serializers.CharField(required=False)
     mainColor = serializers.CharField(default="#00DED3")
     profileAvatar = AvatarBase64ImageField(required=False)
     customCss = serializers.CharField(required=False)
