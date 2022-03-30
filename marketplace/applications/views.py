@@ -30,6 +30,9 @@ class AppTypeViewSet(viewsets.ViewSet):
                 lambda apptype: apptype.get_category_display() == request.query_params.get("category")
             )
 
+        # TODO: remove this filter, it is only while whatsapp is in beta
+        apptypes = apptypes.filter(lambda apptype: apptype.code != "wpp")
+
         serializer = self.get_serializer(apptypes.values(), many=True)
 
         return Response(serializer.data)

@@ -12,7 +12,7 @@ from ..exceptions import FacebookApiException
 
 
 class ConversationTestCase(TestCase):
-    ... # TODO: Implement tests
+    ...  # TODO: Implement tests
 
 
 class FacebookConversationAPITestCase(TestCase):
