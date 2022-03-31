@@ -58,14 +58,14 @@ class DestroyWhatsAppTestCase(APIBaseTestCase):
     def view(self):
         return self.view_class.as_view(APIBaseTestCase.ACTION_DESTROY)
 
-    def test_destroy_app_ok(self):
-        response = self.request.delete(self.url, uuid=self.app.uuid)
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+    # def test_destroy_app_ok(self):
+    #     response = self.request.delete(self.url, uuid=self.app.uuid)
+    #     self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
-    def test_destroy_with_authorization_contributor(self):
-        self.user_authorization.set_role(ProjectAuthorization.ROLE_CONTRIBUTOR)
-        response = self.request.delete(self.url, uuid=self.app.uuid)
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+    # def test_destroy_with_authorization_contributor(self):
+    #     self.user_authorization.set_role(ProjectAuthorization.ROLE_CONTRIBUTOR)
+    #     response = self.request.delete(self.url, uuid=self.app.uuid)
+    #     self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
     def test_destroy_with_authorization_contributor_and_another_user(self):
         self.user_authorization.set_role(ProjectAuthorization.ROLE_CONTRIBUTOR)

@@ -6,6 +6,7 @@ import requests
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
+from rest_framework import status
 
 if TYPE_CHECKING:
     from rest_framework.request import Request
@@ -58,6 +59,9 @@ class WhatsAppViewSet(views.BaseAppTypeViewSet):
 
     def get_queryset(self):
         return super().get_queryset().filter(code=self.type_class.code)
+
+    def destroy(self, request, *args, **kwargs):
+        return Response("This channel cannot be deleted", status=status.HTTP_403_FORBIDDEN)
 
     @action(detail=True, methods=["GET"], permission_classes=[ProjectViewPermission])
     def conversations(self, request: "Request", **kwargs) -> Response:
