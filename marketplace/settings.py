@@ -104,9 +104,13 @@ WSGI_APPLICATION = "marketplace.wsgi.application"
 
 DATABASES = dict(default=env.db(var="DATABASE_URL"))
 
+
 # Authentication
 
 AUTH_USER_MODEL = "accounts.User"
+
+ADMIN_USER_EMAIL = env("ADMIN_USER_EMAIL", default="admin@weni.ai")
+
 
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators
