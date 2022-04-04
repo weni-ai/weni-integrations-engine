@@ -1,6 +1,7 @@
 from django.conf import settings
-from rest_framework import viewsets
+from rest_framework.viewsets import GenericViewSet
 from rest_framework import status
+from rest_framework.mixins import CreateModelMixin, RetrieveModelMixin, UpdateModelMixin, DestroyModelMixin
 from rest_framework.response import Response
 
 from marketplace.applications.models import App
@@ -8,7 +9,7 @@ from marketplace.accounts.permissions import ProjectManagePermission
 from marketplace.celery import app as celery_app
 
 
-class BaseAppTypeViewSet(viewsets.ModelViewSet):
+class BaseAppTypeViewSet(CreateModelMixin, RetrieveModelMixin, UpdateModelMixin, DestroyModelMixin, GenericViewSet):
 
     queryset = App.objects
     lookup_field = "uuid"
