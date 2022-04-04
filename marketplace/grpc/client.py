@@ -27,6 +27,13 @@ class ConnectGRPCClient:
     def _get_project_stub(self):
         return project_pb2_grpc.ProjectControllerStub(self.channel)
 
+    def list_channels(self, channeltype_code: str):
+        try:
+            response = self.project_stub.Channel(project_pb2.ChannelListRequest(channel_type=channeltype_code))
+            return response
+        except grpc.RpcError as error:
+            raise Exception(error)
+
     def create_channel(self, user: str, project_uuid: str, data: dict, channeltype_code: str) -> str:
         try:
             response = self.project_stub.CreateChannel(
