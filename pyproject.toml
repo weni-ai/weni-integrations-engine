@@ -25,6 +25,7 @@ grpcio-tools = "^1.40.0"
 djangogrpcframework = "^0.2.1"
 weni-protobuffers = "^1.2.0"
 python-decouple = "^3.5"
+django-redis = "^5.2.0"
 
 [tool.poetry.dev-dependencies]
 black = "^21.5b2"
