@@ -1,8 +1,19 @@
+from rest_framework import serializers
+
 from marketplace.applications.models import App
 from marketplace.core.serializers import AppTypeBaseSerializer
 
 
+class WhatsAppConfigSerializer(serializers.Serializer):
+    title = serializers.CharField(required=False)
+
+    class Meta:
+        fields = ("title",)
+
+
 class WhatsAppSerializer(AppTypeBaseSerializer):
+    config = WhatsAppConfigSerializer()
+
     class Meta:
         model = App
         fields = (
