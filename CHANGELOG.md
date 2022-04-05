@@ -1,3 +1,15 @@
+v1.3.0
+----------
+ * Resolves app listing issue without authentication
+ * Endpoint that retrieves conversation information from a number
+ * Add task that syncs whatsapp channels from flows
+ * Update weni-protobuffers and add list_channel to gRPC client
+ * Add field flow_object_uuid to App model
+ * Remove default from initPayload field in Weni Web Chat app
+ * Add new field to Weni Web Chat app called tooltipMessage
+ * Add WhatsApp App and shared_wabas endpoint 
+ * Improve apptypes loading system
+
 v1.2.1
 ----------
  * Add project-uuid to CORS_ALLOW_HEADERS
