@@ -1,5 +1,7 @@
-from .models import ProjectAuthorization
 from rest_framework import permissions
+from django.contrib.auth.models import AnonymousUser
+
+from .models import ProjectAuthorization
 
 
 WRITE_METHODS = ["POST"]
@@ -32,3 +34,14 @@ class ProjectManagePermission(permissions.BasePermission):
             return authorization.can_contribute(obj) or authorization.is_admin
 
         return True
+
+
+class ProjectViewPermission(permissions.BasePermission):
+    def has_object_permission(self, request, view, obj) -> bool:
+        if isinstance(request.user, AnonymousUser):
+            return False
+        try:
+            authorization = request.user.authorizations.get(project_uuid=obj.project_uuid)
+        except ProjectAuthorization.DoesNotExist:
+            return False
+        return authorization.is_viewer or authorization.is_contributor or authorization.is_admin
