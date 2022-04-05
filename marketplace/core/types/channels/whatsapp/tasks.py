@@ -46,7 +46,7 @@ def sync_whatsapp_apps():
                     code=apptype.code,
                     platform=apptype.platform,
                     project_uuid=channel.project_uuid,
-                    flow_channel=channel.uuid,
+                    flow_object_uuid=channel.uuid,
                     defaults=dict(config=config, created_by=User.objects.get_admin_user()),
                 )
 
