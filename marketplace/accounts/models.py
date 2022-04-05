@@ -1,6 +1,7 @@
 import uuid
 
 from django.db import models
+from django.conf import settings
 from django.db.models.fields import URLField
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
@@ -41,6 +42,10 @@ class UserManager(BaseUserManager):
             raise ValueError("Superuser must have is_superuser=True.")
 
         return self._create_user(email, password, **extra_fields)
+
+    def get_admin_user(self):
+        user, _ = self.get_or_create(email=settings.ADMIN_USER_EMAIL)
+        return user
 
 
 class User(AbstractBaseUser, PermissionsMixin):

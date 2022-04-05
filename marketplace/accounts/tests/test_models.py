@@ -4,6 +4,7 @@ from django.test import TestCase
 from django.db import connection
 from django.db.utils import IntegrityError, ProgrammingError
 from django.db.models.base import ModelBase
+from django.conf import settings
 
 from marketplace.accounts.models import User, ProjectAuthorization
 from marketplace.core.models import BaseModel
@@ -41,6 +42,13 @@ class TestUserCreate(TestCase):
 
         with self.assertRaises(ValueError):
             User.objects.create_superuser(**self.user_info)
+
+    def test_get_admin_user_method(self):
+        user_count = User.objects.count()
+        user = User.objects.get_admin_user()
+
+        self.assertNotEqual(user_count, User.objects.count())
+        self.assertEqual(user.email, settings.ADMIN_USER_EMAIL)
 
 
 class ProjectAuthorizationTestCase(TestCase):
