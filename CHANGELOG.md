@@ -1,3 +1,8 @@
+v1.3.1
+----------
+ * Create method that returns an admin user
+ * Add a serializer to whatsapp config and limit fields
+
 v1.3.0
 ----------
  * Resolves app listing issue without authentication
