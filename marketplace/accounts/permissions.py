@@ -5,11 +5,16 @@ from .models import ProjectAuthorization
 
 
 WRITE_METHODS = ["POST"]
-OBJECT_METHODS = ["DELETE", "PATCH", "PUT"]
+OBJECT_METHODS = ["DELETE", "PATCH", "PUT", "GET"]
 
 
-class ProjectManagePermission(permissions.BasePermission):
+class ProjectManagePermission(permissions.IsAuthenticated):
     def has_permission(self, request, view):
+        is_authenticated = super().has_permission(request, view)
+
+        if not is_authenticated:
+            return False
+
         if request.method in WRITE_METHODS:
             project_uuid = request.data.get("project_uuid")
 

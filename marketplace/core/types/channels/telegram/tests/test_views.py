@@ -57,6 +57,7 @@ class RetrieveTelegramAppTestCase(APIBaseTestCase):
             code="tg", created_by=self.user, project_uuid=str(uuid.uuid4()), platform=App.PLATFORM_WENI_FLOWS
         )
         self.user_authorization = self.user.authorizations.create(project_uuid=self.app.project_uuid)
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
         self.url = reverse("tg-app-detail", kwargs={"uuid": self.app.uuid})
 
     @property
