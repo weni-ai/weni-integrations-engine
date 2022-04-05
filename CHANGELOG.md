@@ -1,3 +1,7 @@
+v1.3.2
+----------
+ * Change create param on task sync_whatsapp_apps
+
 v1.3.1
 ----------
  * Create method that returns an admin user
