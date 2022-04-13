@@ -61,9 +61,16 @@ class AppTypeSerializer(serializers.Serializer):
 
 class MyAppSerializer(serializers.ModelSerializer):
     icon = serializers.SerializerMethodField()
+    config = serializers.SerializerMethodField()
 
     def get_icon(self, obj) -> str:  # TODO: Get `icon` from own App object
         return obj.apptype.get_icon_url()
+
+    def get_config(self, obj: App) -> dict:
+        if obj.code == "wpp": # TODO: Remove this line after adjust endpoit
+            return {}
+
+        return obj.config
 
     class Meta:
         model = App
