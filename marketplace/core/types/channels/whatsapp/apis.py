@@ -9,6 +9,32 @@ def _request(url: str, method: str = "GET", *args, **kwargs):
     return requests.request(method.upper(), url, *args, **kwargs)
 
 
+class BaseOnPremiseAPI(object):
+    _endpoint: str = None
+
+    def __init__(self, base_url: str, auth_token: str):
+        self._base_url = base_url
+        self._auth_token = auth_token
+
+    @property
+    def _url(self) -> dict:
+        return self._base_url + self._endpoint
+
+    @property
+    def _headers(self) -> dict:
+        return {"Content-Type": "application/json", "Authorization": f"Bearer {self._auth_token}"}
+
+    def _validate_response(self, response: Response) -> None:
+        errors = response.json().get("errors", None)
+        if errors is not None:
+            raise FacebookApiException(errors)
+
+    def _request(self, url: str, method: str = "get", *args, **kwargs) -> Response:
+        response = getattr(requests, method.lower())(url, *args, **kwargs)
+        self._validate_response(response)
+        return response
+
+
 class Conversations(object):
 
     _user_initiated = 0
@@ -45,6 +71,22 @@ class Conversations(object):
             business_initiated=self._business_initiated,
             total=self._total,
         )
+
+
+class OnPremiseBusinessProfile(object):
+
+    address: str = None
+    description: str = None
+    email: str = None
+    vertical: str = None
+    websites: str = None
+
+    def __init__(self, profile_settings: dict):
+        self._business_profile = profile_settings.get("business", {}).get("profile")
+        self._set_properties()
+
+    def _set_properties(self):
+        self.__dict__.update(self._business_profile)
 
 
 class BaseFacebookBaseApi(object):
@@ -132,3 +174,33 @@ class FacebookPhoneNumbersAPI(BaseFacebookBaseApi):
         response = self._request(url, headers=self._headers)
 
         return response.json()
+
+
+class OnPremiseBusinessProfileAPI(BaseOnPremiseAPI):
+
+    _endpoint = "/v1/settings/business/profile"
+
+    def get_business_profile(self) -> OnPremiseBusinessProfile:
+        response = self._request(self._url, headers=self._headers)
+        profile_settings = response.json().get("settings")
+        return OnPremiseBusinessProfile(profile_settings)
+
+
+class OnPremiseProfileAPI(BaseOnPremiseAPI):
+
+    _endpoint = "/v1/settings/profile/about"
+
+    def get_about_text(self) -> str:
+        response = self._request(self._url, headers=self._headers)
+        profile_settings = response.json().get("settings")
+        return profile_settings.get("profile", {}).get("about", {}).get("text")
+
+
+class OnPremisePhotoAPI(BaseOnPremiseAPI):
+
+    _endpoint = "/v1/settings/profile/photo?format=link"
+
+    def get_photo_url(self) -> str:
+        response = self._request(self._url, headers=self._headers)
+        profile_settings = response.json().get("settings")
+        return profile_settings.get("profile", {}).get("photo", {}).get("link")
