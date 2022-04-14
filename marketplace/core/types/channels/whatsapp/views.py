@@ -16,6 +16,7 @@ from marketplace.core.types import views
 from marketplace.accounts.permissions import ProjectViewPermission
 from .serializers import WhatsAppSerializer
 from .apis import FacebookConversationAPI
+from .facades import OnPremiseProfileFacade
 from .exceptions import FacebookApiException
 
 
@@ -86,6 +87,29 @@ class WhatsAppViewSet(views.BaseAppTypeViewSet):
             raise ValidationError(error)
 
         return Response(conversations.__dict__())
+
+    @action(detail=True, methods=["GET"])  # TODO: validate permission
+    def profile(self, request: "Request", **kwargs) -> Response:
+        app = self.get_object()
+        base_url = app.config.get("base_url", None)
+        auth_token = app.config.get("auth_token", None)
+
+        if base_url is None:
+            raise ValidationError("The On-Premise URL is not configured")
+
+        if auth_token is None:
+            raise ValidationError("On-Premise authentication token is not configured")
+
+        profile_facade = OnPremiseProfileFacade(base_url, auth_token)
+
+        try:
+            profile = profile_facade.get_profile()
+        except FacebookApiException:
+            raise ValidationError(
+                "There was a problem requesting the On-Premise API, check if your `auth_token` is correct"
+            )
+
+        return Response(dict(photo=profile.photo, status=profile.status, description=profile.description))
 
     @action(detail=False, methods=["GET"], url_name="shared-wabas", url_path="shared-wabas")
     def shared_wabas(self, request: "Request", **kwargs):
