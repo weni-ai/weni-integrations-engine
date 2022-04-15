@@ -1,3 +1,5 @@
+import json
+
 import requests
 from requests.models import Response
 from django.conf import settings
@@ -185,8 +187,12 @@ class OnPremiseBusinessProfileAPI(BaseOnPremiseAPI):
         profile_settings = response.json().get("settings")
         return OnPremiseBusinessProfile(profile_settings)
 
+    def set_profile_description(self, description: str) -> None:
+        data = json.dumps(dict(description=description))
+        self._request(self._url, method="post", headers=self._headers, data=data)
 
-class OnPremiseProfileAPI(BaseOnPremiseAPI):
+
+class OnPremiseAboutAPI(BaseOnPremiseAPI):
 
     _endpoint = "/v1/settings/profile/about"
 
@@ -195,12 +201,23 @@ class OnPremiseProfileAPI(BaseOnPremiseAPI):
         profile_settings = response.json().get("settings")
         return profile_settings.get("profile", {}).get("about", {}).get("text")
 
+    def set_about_text(self, text: str) -> None:
+        data = json.dumps(dict(text=text))
+        self._request(self._url, method="patch", headers=self._headers, data=data)
+
 
 class OnPremisePhotoAPI(BaseOnPremiseAPI):
 
-    _endpoint = "/v1/settings/profile/photo?format=link"
+    _endpoint = "/v1/settings/profile/photo"
 
     def get_photo_url(self) -> str:
-        response = self._request(self._url, headers=self._headers)
+        params = dict(format="link")
+        response = self._request(self._url, headers=self._headers, params=params)
         profile_settings = response.json().get("settings")
         return profile_settings.get("profile", {}).get("photo", {}).get("link")
+
+    def set_photo(self, photo):
+        headers = self._headers.copy()
+        headers["Content-Type"] = photo.content_type
+
+        self._request(self._url, method="post", headers=headers, data=photo.file.getvalue())

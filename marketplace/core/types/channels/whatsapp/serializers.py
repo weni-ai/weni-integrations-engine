@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from marketplace.applications.models import App
 from marketplace.core.serializers import AppTypeBaseSerializer
+from marketplace.core.fields import Base64ImageField
 from .timezones import TIMEZONES
 
 
@@ -56,3 +57,12 @@ class WhatsAppSerializer(AppTypeBaseSerializer):
         read_only_fields = ("code", "uuid", "platform")
 
         # TODO: Validate fields
+
+
+class WhatsAppProfileSerializer(serializers.Serializer):
+    status = serializers.CharField(required=False)
+    description = serializers.CharField(required=False)
+    photo = Base64ImageField(required=False)
+
+    class Meta:
+        fields = ("status", "description")
