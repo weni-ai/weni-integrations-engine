@@ -4,6 +4,10 @@ from requests.models import Response
 from .exceptions import FacebookApiException
 
 
+def _request(url: str, method: str = "GET", *args, **kwargs):
+    return requests.request(method.upper(), url, *args, **kwargs)
+
+
 class Conversations(object):
 
     _user_initiated = 0
@@ -42,7 +46,20 @@ class Conversations(object):
         )
 
 
-class FacebookConversationAPI(object):
+class BaseFacebookBaseApi(object):
+    def _validate_response(self, response: Response):
+        error = response.json().get("error", None)
+        if error is not None:
+            raise FacebookApiException(error.get("message"))
+
+    def _request(self, url: str, method: str = "GET", *args, **kwargs) -> Response:
+        response = _request(url, method, *args, **kwargs)
+        self._validate_response(response)
+
+        return response
+
+
+class FacebookConversationAPI(object):  # TODO: Use BaseFacebookBaseApi
     def _validate_response(self, response: Response):
         error = response.json().get("error", None)
         if error is not None:
@@ -68,7 +85,24 @@ class FacebookConversationAPI(object):
     def conversations(self, waba_id: str, access_token: str, start: str, end: str) -> Conversations:
         fields = self._get_fields(start, end)
         params = dict(fields=fields, access_token=access_token)
-        response = self._request(f"https://graph.facebook.com/v13.0/{waba_id}", params=params)
+        response = self._request(
+            f"https://graph.facebook.com/v13.0/{waba_id}", params=params
+        )  # TODO: Change to environment variables
         conversation_analytics = response.json().get("conversation_analytics")
 
         return Conversations(conversation_analytics)
+
+
+class FacebookWABAApi(BaseFacebookBaseApi):
+    def __init__(self, access_token: str) -> None:
+        self._access_token = access_token
+
+    @property
+    def _headers(self) -> dict:
+        return {"Authorization": f"Bearer {self._access_token}"}
+
+    def get_waba(self, waba_id: str) -> dict:
+        response = self._request(
+            f"https://graph.facebook.com/v13.0/{waba_id}/", headers=self._headers
+        )  # TODO: Change to environment variables
+        return response.json()
