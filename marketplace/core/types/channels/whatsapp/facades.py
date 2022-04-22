@@ -1,11 +1,4 @@
-from .apis import OnPremiseBusinessProfileAPI, OnPremiseAboutAPI, OnPremisePhotoAPI, OnPremiseBusinessProfile
-
-
-class Profile(object):
-    def __init__(self, business_profile: OnPremiseBusinessProfile, about_text: str, photo_url: str):
-        self.photo = photo_url
-        self.status = about_text
-        self.description = business_profile.description
+from .apis import OnPremiseBusinessProfileAPI, OnPremiseAboutAPI, OnPremisePhotoAPI
 
 
 class OnPremiseProfileFacade(object):
@@ -13,23 +6,27 @@ class OnPremiseProfileFacade(object):
         self._base_url = base_url
         self._auth_token = auth_token
 
-        self._busines_profile_api = OnPremiseBusinessProfileAPI(base_url, auth_token)
+        self._business_profile_api = OnPremiseBusinessProfileAPI(base_url, auth_token)
         self._about_api = OnPremiseAboutAPI(base_url, auth_token)
         self._photo_api = OnPremisePhotoAPI(base_url, auth_token)
 
-    def get_profile(self) -> Profile:
-        business_profile = self._busines_profile_api.get_business_profile()
+    def get_profile(self) -> dict:
+        business_profile = self._business_profile_api.get_profile()
         about_text = self._about_api.get_about_text()
         photo_url = self._photo_api.get_photo_url()
 
-        return Profile(business_profile, about_text, photo_url)
+        return dict(
+            photo_url=photo_url,
+            status=about_text,
+            business=dict(description=business_profile.description, vertical=business_profile.vertical),
+        )
 
-    def set_profile(self, status: str = None, description: str = None, photo: str = None) -> None:
+    def set_profile(self, photo: str = None, status: str = None, business: dict = None) -> None:
+        if photo is not None:
+            self._photo_api.set_photo(photo)
+
         if status is not None:
             self._about_api.set_about_text(status)
 
-        if description is not None:
-            self._busines_profile_api.set_profile_description(description)
-
-        if photo is not None:
-            self._photo_api.set_photo(photo)
+        if business is not None:
+            self._business_profile_api.set_profile(business)

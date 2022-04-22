@@ -17,7 +17,7 @@ from marketplace.accounts.permissions import ProjectViewPermission
 from .serializers import WhatsAppSerializer, WhatsAppProfileSerializer
 from .apis import FacebookConversationAPI
 from .facades import OnPremiseProfileFacade
-from .exceptions import FacebookApiException
+from .exceptions import FacebookApiException, UnableProcessProfilePhoto
 
 
 class QueryParamsParser(object):
@@ -88,7 +88,7 @@ class WhatsAppViewSet(views.BaseAppTypeViewSet):
 
         return Response(conversations.__dict__())
 
-    @action(detail=True, methods=["GET", "PATCH"])
+    @action(detail=True, methods=["GET", "PATCH"], serializer_class=WhatsAppProfileSerializer)
     def profile(self, request: "Request", **kwargs) -> Response:
         # TODO: Split this view in a APIView
         app = self.get_object()
@@ -103,24 +103,27 @@ class WhatsAppViewSet(views.BaseAppTypeViewSet):
 
         profile_facade = OnPremiseProfileFacade(base_url, auth_token)
 
-        if request.method == "GET":
-            try:
+        try:
+            serializer: WhatsAppProfileSerializer = None
+
+            if request.method == "GET":
                 profile = profile_facade.get_profile()
-            except FacebookApiException:
-                raise ValidationError(
-                    "There was a problem requesting the On-Premise API, check if your authentication token is correct"
-                )
+                serializer = self.get_serializer(profile)
 
-            return Response(dict(photo=profile.photo, status=profile.status, description=profile.description))
-
-        elif request.method == "PATCH":
-            try:
-                serializer = WhatsAppProfileSerializer(data=request.data)
+            elif request.method == "PATCH":
+                serializer = self.get_serializer(data=request.data)
                 serializer.is_valid(raise_exception=True)
                 profile_facade.set_profile(**serializer.validated_data)
-                return Response(serializer.data)
-            except FacebookApiException as error:
-                raise error
+
+            return Response(serializer.data)
+
+        except FacebookApiException:
+            raise ValidationError(
+                "There was a problem requesting the On-Premise API, check if your authentication token is correct"
+            )
+
+        except UnableProcessProfilePhoto as error:
+            raise ValidationError(error)
 
     @action(detail=False, methods=["GET"], url_name="shared-wabas", url_path="shared-wabas")
     def shared_wabas(self, request: "Request", **kwargs):

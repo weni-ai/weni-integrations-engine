@@ -4,7 +4,7 @@ import requests
 from requests.models import Response
 from django.conf import settings
 
-from .exceptions import FacebookApiException
+from .exceptions import FacebookApiException, UnableProcessProfilePhoto
 
 
 def _request(url: str, method: str = "GET", *args, **kwargs):
@@ -182,13 +182,13 @@ class OnPremiseBusinessProfileAPI(BaseOnPremiseAPI):
 
     _endpoint = "/v1/settings/business/profile"
 
-    def get_business_profile(self) -> OnPremiseBusinessProfile:
+    def get_profile(self) -> OnPremiseBusinessProfile:
         response = self._request(self._url, headers=self._headers)
         profile_settings = response.json().get("settings")
         return OnPremiseBusinessProfile(profile_settings)
 
-    def set_profile_description(self, description: str) -> None:
-        data = json.dumps(dict(description=description))
+    def set_profile(self, profile: dict) -> None:
+        data = json.dumps(profile)
         self._request(self._url, method="post", headers=self._headers, data=data)
 
 
@@ -220,4 +220,7 @@ class OnPremisePhotoAPI(BaseOnPremiseAPI):
         headers = self._headers.copy()
         headers["Content-Type"] = photo.content_type
 
-        self._request(self._url, method="post", headers=headers, data=photo.file.getvalue())
+        try:
+            self._request(self._url, method="post", headers=headers, data=photo.file.getvalue())
+        except FacebookApiException:
+            raise UnableProcessProfilePhoto("Unable to process profile photo")

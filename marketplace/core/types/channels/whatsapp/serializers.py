@@ -59,10 +59,37 @@ class WhatsAppSerializer(AppTypeBaseSerializer):
         # TODO: Validate fields
 
 
-class WhatsAppProfileSerializer(serializers.Serializer):
-    status = serializers.CharField(required=False)
-    description = serializers.CharField(required=False)
-    photo = Base64ImageField(required=False)
+class WhatsAppBusinessProfileSerializer(serializers.Serializer):
+    VERTICAl_CHOICES = (
+        "Automotive",
+        "Beauty, Spa and Salon",
+        "Clothing and Apparel",
+        "Education",
+        "Entertainment",
+        "Event Planning and Service",
+        "Finance and Banking",
+        "Food and Grocery",
+        "Public Service",
+        "Hotel and Lodging",
+        "Medical and Health",
+        "Non-profit",
+        "Professional Services",
+        "Shopping and Retail",
+        "Travel and Transportation",
+        "Restaurant",
+        "Other",
+    )
 
-    class Meta:
-        fields = ("status", "description")
+    description = serializers.CharField(required=False)
+    vertical = serializers.ChoiceField(choices=VERTICAl_CHOICES, required=False, default="")
+    vertical_choices = serializers.SerializerMethodField()
+
+    def get_vertical_choices(self, _instance):
+        return self.VERTICAl_CHOICES
+
+
+class WhatsAppProfileSerializer(serializers.Serializer):
+    status = serializers.CharField(max_length=139, required=False)
+    business = WhatsAppBusinessProfileSerializer(required=False)
+    photo_url = serializers.URLField(read_only=True)
+    photo = Base64ImageField(write_only=True, required=False)
