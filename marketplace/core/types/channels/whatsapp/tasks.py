@@ -1,15 +1,14 @@
 import json
 import logging
 
-from django.conf import settings
+from django.contrib.auth import get_user_model
 from django_redis import get_redis_connection
 
 from marketplace.celery import app as celery_app
 from marketplace.grpc.client import ConnectGRPCClient
 from marketplace.core.types import APPTYPES
 from marketplace.applications.models import App
-
-from django.contrib.auth import get_user_model
+from .apis import FacebookWABAApi
 
 
 User = get_user_model()
@@ -17,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 SYNC_WHATSAPP_LOCK_KEY = "sync-whatsapp-lock"
+SYNC_WHATSAPP_WABA_LOCK_KEY = "sync-whatsapp-waba-lock-app:{app_uuid}"
 
 
 @celery_app.task(name="sync_whatsapp_apps")
@@ -52,3 +52,39 @@ def sync_whatsapp_apps():
 
                 if created:
                     logger.info(f"A new whatsapp app was created automatically. UUID: {app.uuid}")
+
+
+@celery_app.task(name="sync_whatsapp_wabas")
+def sync_whatsapp_wabas():
+    apptype = APPTYPES.get("wpp")
+    redis = get_redis_connection()
+
+    for app in apptype.apps:
+        key = SYNC_WHATSAPP_WABA_LOCK_KEY.format(app_uuid=str(app.uuid))
+
+        if redis.get(key) is None:
+            config = app.config
+            access_token = config.get("fb_access_token", None)
+            business_id = config.get("fb_business_id", None)
+
+            if access_token is None:
+                logger.info(f"Skipping the app because it doesn't contain `fb_access_token`. UUID: {app.uuid}")
+                continue
+
+            if access_token is None:
+                logger.info(f"Skipping the app because it doesn't contain `fb_business_id`. UUID: {app.uuid}")
+                continue
+
+            logger.info(f"Syncing app WABA. UUID: {app.uuid}")
+
+            api = FacebookWABAApi(access_token)
+            waba = api.get_waba(business_id)
+
+            app.config["waba"] = waba
+            app.save()
+
+            redis.set(key, "synced", apptype.TIME_BETWEEN_SYNC_WABA_IN_HOURS)
+        else:
+            logger.info(
+                f"Skipping the app because it was recently synced. {redis.ttl(key)} seconds left. UUID: {app.uuid}"
+            )
