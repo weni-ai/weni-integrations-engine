@@ -304,4 +304,7 @@ USE_GRPC = env.bool("USE_GRPC", default=False)
 
 # Celery
 
-CELERY_BEAT_SCHEDULE = {"sync-whatsapp-apps": {"task": "sync_whatsapp_apps", "schedule": timedelta(hours=2)}}
+CELERY_BEAT_SCHEDULE = {
+    "sync-whatsapp-apps": {"task": "sync_whatsapp_apps", "schedule": timedelta(hours=2)},
+    "sync-whatsapp-wabas": {"task": "sync_whatsapp_wabas", "schedule": timedelta(hours=5)},
+}
