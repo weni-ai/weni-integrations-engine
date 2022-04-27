@@ -2,28 +2,40 @@ from rest_framework import serializers
 
 from marketplace.applications.models import App
 from marketplace.core.serializers import AppTypeBaseSerializer
+from .timezones import TIMEZONES
+
+
+class WhatsAppConfigWABASerializer(serializers.Serializer):
+    id_ = serializers.CharField(required=False)
+    name = serializers.CharField(required=False)
+    timezone = serializers.SerializerMethodField(required=False)
+    namespace = serializers.CharField(required=False, source="message_template_namespace")
+
+    def get_timezone(self, instance):
+        timezone_id = instance.get("timezone_id")
+        return TIMEZONES.get(timezone_id, {}).get("name")
+
+    def get_fields(self):
+        """
+        `id` is a reserved word of the language, to avoid conflicts the attribute
+        name was given as `id_`. This method renames the field to be more readable in the API
+        """
+        fields = super().get_fields()
+        fields["id"] = fields.pop("id_")
+        return fields
 
 
 class WhatsAppConfigSerializer(serializers.Serializer):
     title = serializers.CharField(required=False)
 
     # TODO: this is a mock, made just to return fake data. Adjust later.
-    waba = serializers.SerializerMethodField()
+    waba = WhatsAppConfigWABASerializer(required=False)
     message_day_limit = serializers.SerializerMethodField()
     display_name = serializers.SerializerMethodField()
     pin_verification = serializers.SerializerMethodField()
     default_template_language = serializers.SerializerMethodField()
     certificate = serializers.SerializerMethodField()
     consent_status = serializers.SerializerMethodField()
-
-    def get_waba(self, obj: App) -> dict:
-        return dict(
-            id="372347354000000",
-            name="Weni Tecnologia - FB 881768118500000",
-            message_behalf_name="Weni Tecnologia",
-            timezone="America/Sao_Paulo",
-            namespace="2ee3daabc_0f8e_0000_ae7c_175b808f916",
-        )
 
     def get_message_day_limit(self, obj: App) -> int:
         return 10000
