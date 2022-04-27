@@ -1,4 +1,3 @@
-from django.shortcuts import get_object_or_404
 from django_grpc_framework import generics, mixins
 from django.contrib.auth import get_user_model
 

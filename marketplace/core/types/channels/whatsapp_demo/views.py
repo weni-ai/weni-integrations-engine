@@ -1,6 +1,3 @@
-from rest_framework.decorators import action
-from rest_framework.response import Response
-
 from marketplace.core.types import views
 from .serializers import WhatsAppDemoSerializer
 from marketplace.celery import app as celery_app

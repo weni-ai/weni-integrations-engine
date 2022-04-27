@@ -2,7 +2,6 @@ from marketplace.applications.models import App, AppTypeAsset
 from marketplace.interactions.models import Rating
 from rest_framework import serializers
 from marketplace.core.types.base import AppType
-from marketplace.core import types
 
 
 class AppTypeSerializer(serializers.Serializer):
