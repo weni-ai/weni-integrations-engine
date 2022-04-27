@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 import os
 from pathlib import Path
 from datetime import timedelta
+import urllib
 
 import environ
 import sentry_sdk
@@ -258,12 +259,26 @@ CACHES = {
 
 # Extra configurations
 
+APPTYPE_WENI_WEB_CHAT_PATH = "channels.weni_web_chat.type.WeniWebChatType"
+APPTYPE_TELEGRAM_PATH = "channels.telegram.type.TelegramType"
+APPTYPE_WHATSAPP_DEMO_PATH = "channels.whatsapp_demo.type.WhatsAppDemoType"
+APPTYPE_WHATSAPP_PATH = "channels.whatsapp.type.WhatsAppType"
+
 APPTYPES_CLASSES = [
-    "channels.weni_web_chat.type.WeniWebChatType",
-    "channels.telegram.type.TelegramType",
-    "channels.whatsapp_demo.type.WhatsAppDemoType",
-    "channels.whatsapp.type.WhatsAppType",
+    APPTYPE_WENI_WEB_CHAT_PATH,
+    APPTYPE_TELEGRAM_PATH,
+    APPTYPE_WHATSAPP_DEMO_PATH,
+    APPTYPE_WHATSAPP_PATH,
 ]
+
+# These conditions avoid dependence between apptypes,
+# if you want to run the application without using any apptype,
+# just comment it in APPTYPES_CLASSES
+
+if APPTYPE_WHATSAPP_PATH in APPTYPES_CLASSES:
+    WHATSAPP_SYSTEM_USER_ACCESS_TOKEN = env.str("WHATSAPP_SYSTEM_USER_ACCESS_TOKEN")
+    WHATSAPP_VERSION = env.str("WHATSAPP_VERSION")
+    WHATSAPP_API_URL = urllib.parse.urljoin(env.str("WHATSAPP_API_URL"), WHATSAPP_VERSION)
 
 
 # Sentry configuration
