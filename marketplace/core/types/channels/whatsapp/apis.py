@@ -47,6 +47,13 @@ class Conversations(object):
 
 
 class BaseFacebookBaseApi(object):
+    def __init__(self, access_token: str) -> None:
+        self._access_token = access_token
+
+    @property
+    def _headers(self) -> dict:
+        return {"Authorization": f"Bearer {self._access_token}"}
+
     def _validate_response(self, response: Response):
         error = response.json().get("error", None)
         if error is not None:
@@ -105,4 +112,19 @@ class FacebookWABAApi(BaseFacebookBaseApi):
         response = self._request(
             f"https://graph.facebook.com/v13.0/{waba_id}/", headers=self._headers
         )  # TODO: Change to environment variables
+
+        return response.json()
+
+
+class FacebookPhoneNumbersAPI(BaseFacebookBaseApi):
+    def get_phone_numbers(self, waba_id: str) -> list:
+        response = self._request(
+            f"https://graph.facebook.com/v13.0/{waba_id}/phone_numbers", headers=self._headers
+        )  # TODO: Change to environment variables
+
+        return response.json().get("data", [])
+
+    def get_phone_number(self, phone_number_id: str):
+        response = self._request(f"https://graph.facebook.com/v13.0/{phone_number_id}", headers=self._headers)
+
         return response.json()
