@@ -34,25 +34,8 @@ class WhatsAppConfigPhoneNumberSerializer(serializers.Serializer):
 
 class WhatsAppConfigSerializer(serializers.Serializer):
     title = serializers.CharField(required=False)
-
-    # TODO: this is a mock, made just to return fake data. Adjust later.
     waba = WhatsAppConfigWABASerializer(required=False)
     phone_number = WhatsAppConfigPhoneNumberSerializer(required=False)
-    message_day_limit = serializers.SerializerMethodField()
-    pin_verification = serializers.SerializerMethodField()
-    default_template_language = serializers.SerializerMethodField()
-
-    def get_message_day_limit(self, obj: App) -> int:
-        return 10000
-
-    def get_pin_verification(self, obj: App) -> bool:
-        return True
-
-    def get_default_template_language(self, obj: App) -> str:
-        return "pt_BR"
-
-    class Meta:
-        fields = ("title",)
 
 
 class WhatsAppSerializer(AppTypeBaseSerializer):
