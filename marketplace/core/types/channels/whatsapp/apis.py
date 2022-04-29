@@ -1,5 +1,6 @@
 import requests
 from requests.models import Response
+from django.conf import settings
 
 from .exceptions import FacebookApiException
 
@@ -117,14 +118,17 @@ class FacebookWABAApi(BaseFacebookBaseApi):
 
 
 class FacebookPhoneNumbersAPI(BaseFacebookBaseApi):
+    def _get_url(self, endpoint: str) -> str:
+        return f"{settings.WHATSAPP_API_URL}/{endpoint}"
+
     def get_phone_numbers(self, waba_id: str) -> list:
-        response = self._request(
-            f"https://graph.facebook.com/v13.0/{waba_id}/phone_numbers", headers=self._headers
-        )  # TODO: Change to environment variables
+        url = self._get_url(f"{waba_id}/phone_numbers")
+        response = self._request(url, headers=self._headers)
 
         return response.json().get("data", [])
 
     def get_phone_number(self, phone_number_id: str):
-        response = self._request(f"https://graph.facebook.com/v13.0/{phone_number_id}", headers=self._headers)
+        url = self._get_url(phone_number_id)
+        response = self._request(url, headers=self._headers)
 
         return response.json()

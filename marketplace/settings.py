@@ -278,11 +278,17 @@ APPTYPES_CLASSES = [
 
 if APPTYPE_WHATSAPP_PATH in APPTYPES_CLASSES:
     WHATSAPP_SYSTEM_USER_ACCESS_TOKEN = env.str("WHATSAPP_SYSTEM_USER_ACCESS_TOKEN")
-    WHATSAPP_VERSION = env.str("WHATSAPP_VERSION")
-    WHATSAPP_API_URL = urllib.parse.urljoin(env.str("WHATSAPP_API_URL"), WHATSAPP_VERSION)
+    WHATSAPP_VERSION = env.str("WHATSAPP_VERSION", default="v13.0")
+    WHATSAPP_API_URL = urllib.parse.urljoin(
+        env.str("WHATSAPP_API_URL", default="https://graph.facebook.com/"), WHATSAPP_VERSION
+    )
     WHATSAPP_TIME_BETWEEN_SYNC_WABA_IN_HOURS = (
         env.int("WHATSAPP_TIME_BETWEEN_SYNC_WABA_IN_HOURS", default=10) * 60 * 60
     )
+    WHATSAPP_TIME_BETWEEN_SYNC_PHONE_NUMBERS_IN_HOURS = (
+        env.int("WHATSAPP_TIME_BETWEEN_SYNC_PHONE_NUMBERS_IN_HOURS", default=10) * 60 * 60
+    )
+
 
 # Sentry configuration
 
