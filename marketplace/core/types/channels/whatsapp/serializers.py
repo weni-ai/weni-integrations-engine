@@ -25,35 +25,31 @@ class WhatsAppConfigWABASerializer(serializers.Serializer):
         return fields
 
 
+class WhatsAppConfigPhoneNumberSerializer(serializers.Serializer):
+    display_name = serializers.CharField()
+    display_phone_number = serializers.CharField()
+    consent_status = serializers.CharField(required=False)
+    certificate = serializers.CharField(required=False)
+
+
 class WhatsAppConfigSerializer(serializers.Serializer):
     title = serializers.CharField(required=False)
 
     # TODO: this is a mock, made just to return fake data. Adjust later.
     waba = WhatsAppConfigWABASerializer(required=False)
+    phone_number = WhatsAppConfigPhoneNumberSerializer(required=False)
     message_day_limit = serializers.SerializerMethodField()
-    display_name = serializers.SerializerMethodField()
     pin_verification = serializers.SerializerMethodField()
     default_template_language = serializers.SerializerMethodField()
-    certificate = serializers.SerializerMethodField()
-    consent_status = serializers.SerializerMethodField()
 
     def get_message_day_limit(self, obj: App) -> int:
         return 10000
-
-    def get_display_name(self, obj: App) -> str:
-        return "Weni"
 
     def get_pin_verification(self, obj: App) -> bool:
         return True
 
     def get_default_template_language(self, obj: App) -> str:
         return "pt_BR"
-
-    def get_certificate(self, obj: App) -> str:
-        return "AbCdEfGhIjKlMnOpQrStUvWxYz"
-
-    def get_consent_status(self, obj: App) -> str:
-        return "Approved"
 
     class Meta:
         fields = ("title",)
