@@ -81,6 +81,7 @@ def sync_whatsapp_wabas():
             waba = api.get_waba(business_id)
 
             app.config["waba"] = waba
+            app.modified_by = User.objects.get_admin_user()
             app.save()
 
             redis.set(key, "synced", apptype.TIME_BETWEEN_SYNC_WABA_IN_HOURS)
