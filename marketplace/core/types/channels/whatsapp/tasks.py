@@ -1,7 +1,6 @@
 import json
 import logging
 
-from django.conf import settings
 from django_redis import get_redis_connection
 
 from marketplace.celery import app as celery_app
