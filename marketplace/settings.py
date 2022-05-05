@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     "storages",
     "corsheaders",
     "django_grpc_framework",
+    "drf_yasg",
 ]
 
 MIDDLEWARE = [
