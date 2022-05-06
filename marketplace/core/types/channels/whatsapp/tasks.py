@@ -1,6 +1,7 @@
 import json
 import logging
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django_redis import get_redis_connection
 
@@ -86,7 +87,7 @@ def sync_whatsapp_wabas():
                 app.modified_by = User.objects.get_admin_user()
                 app.save()
 
-                redis.set(key, "synced", apptype.TIME_BETWEEN_SYNC_WABA_IN_HOURS)
+                redis.set(key, "synced", settings.WHATSAPP_TIME_BETWEEN_SYNC_WABA_IN_HOURS)
             except FacebookApiException as error:
                 logger.error(f"An error occurred while trying to sync the app. UUID: {app.uuid}. Error: {error}")
                 continue
