@@ -21,9 +21,3 @@ class WhatsAppType(AppType):
     bg_color = "#d1fcc9cc"  # TODO: Change to real color
     platform = App.PLATFORM_WENI_FLOWS
     config_design = "popup"
-
-    def _set_settings(self):
-        self.SYSTEM_USER_ACCESS_TOKEN = config("WHATSAPP_SYSTEM_USER_ACCESS_TOKEN")
-        self.VERSION = config("WHATSAPP_VERSION")
-        self.API_URL = urllib.parse.urljoin(config("WHATSAPP_API_URL"), self.VERSION)
-        self.TIME_BETWEEN_SYNC_WABA_IN_HOURS = config("WHATSAPP_TIME_BETWEEN_SYNC_WABA_IN_HOURS", 10) * 60 * 60

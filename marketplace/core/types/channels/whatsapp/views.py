@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 from datetime import datetime
 
 import requests
+from django.conf import settings
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
@@ -93,9 +94,9 @@ class WhatsAppViewSet(views.BaseAppTypeViewSet):
         if input_token is None:
             raise ValidationError("input_token is a required parameter!")
 
-        headers = {"Authorization": f"Bearer {self.type_class.SYSTEM_USER_ACCESS_TOKEN}"}
+        headers = {"Authorization": f"Bearer {settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN}"}
 
-        response = requests.get(f"{self.type_class.API_URL}/debug_token?input_token={input_token}", headers=headers)
+        response = requests.get(f"{settings.WHATSAPP_API_URL}/debug_token?input_token={input_token}", headers=headers)
         response.raise_for_status()
 
         data = response.json().get("data")
@@ -116,7 +117,7 @@ class WhatsAppViewSet(views.BaseAppTypeViewSet):
         wabas = []
 
         for target_id in target_ids:
-            response = requests.get(f"{self.type_class.API_URL}/{target_id}/?access_token={input_token}")
+            response = requests.get(f"{settings.WHATSAPP_API_URL}/{target_id}/?access_token={input_token}")
             response.raise_for_status()
 
             response_json = response.json()
