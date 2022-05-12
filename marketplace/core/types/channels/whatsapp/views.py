@@ -88,7 +88,7 @@ class WhatsAppViewSet(views.BaseAppTypeViewSet):
 
         return Response(conversations.__dict__())
 
-    @action(detail=True, methods=["GET", "PATCH"], serializer_class=WhatsAppProfileSerializer)
+    @action(detail=True, methods=["GET", "PATCH", "DELETE"], serializer_class=WhatsAppProfileSerializer)
     def profile(self, request: "Request", **kwargs) -> Response:
         # TODO: Split this view in a APIView
         app = self.get_object()
@@ -115,7 +115,10 @@ class WhatsAppViewSet(views.BaseAppTypeViewSet):
                 serializer.is_valid(raise_exception=True)
                 profile_facade.set_profile(**serializer.validated_data)
 
-            return Response(serializer.data)
+            elif request.method == "DELETE":
+                profile_facade.delete_profile_photo()
+
+            return Response(getattr(serializer, "data", None))
 
         except FacebookApiException:
             raise ValidationError(

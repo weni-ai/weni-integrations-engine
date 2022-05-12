@@ -30,3 +30,6 @@ class OnPremiseProfileFacade(object):
 
         if business is not None:
             self._business_profile_api.set_profile(business)
+
+    def delete_profile_photo(self) -> None:
+        self._photo_api.delete_photo()

@@ -224,3 +224,6 @@ class OnPremisePhotoAPI(BaseOnPremiseAPI):
             self._request(self._url, method="post", headers=headers, data=photo.file.getvalue())
         except FacebookApiException:
             raise UnableProcessProfilePhoto("Unable to process profile photo")
+
+    def delete_photo(self) -> None:
+        self._request(self._url, method="delete", headers=self._headers)
