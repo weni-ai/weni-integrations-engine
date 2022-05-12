@@ -212,9 +212,12 @@ class OnPremisePhotoAPI(BaseOnPremiseAPI):
 
     def get_photo_url(self) -> str:
         params = dict(format="link")
-        response = self._request(self._url, headers=self._headers, params=params)
-        profile_settings = response.json().get("settings")
-        return profile_settings.get("profile", {}).get("photo", {}).get("link")
+        try:
+            response = self._request(self._url, headers=self._headers, params=params)
+            profile_settings = response.json().get("settings")
+            return profile_settings.get("profile", {}).get("photo", {}).get("link")
+        except FacebookApiException:
+            return None
 
     def set_photo(self, photo):
         headers = self._headers.copy()
