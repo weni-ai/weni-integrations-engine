@@ -8,4 +8,4 @@ omit =
     *tests/*
 
 [report]
-fail_under = 85
+fail_under = 80
