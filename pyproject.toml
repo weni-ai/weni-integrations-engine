@@ -27,6 +27,7 @@ weni-protobuffers = "^1.2.0"
 python-decouple = "^3.5"
 django-redis = "^5.2.0"
 drf-yasg = "^1.20.0"
+phonenumbers = "^8.12.47"
 
 [tool.poetry.dev-dependencies]
 black = "^21.5b2"

@@ -278,11 +278,17 @@ APPTYPES_CLASSES = [
 
 if APPTYPE_WHATSAPP_PATH in APPTYPES_CLASSES:
     WHATSAPP_SYSTEM_USER_ACCESS_TOKEN = env.str("WHATSAPP_SYSTEM_USER_ACCESS_TOKEN")
-    WHATSAPP_VERSION = env.str("WHATSAPP_VERSION")
-    WHATSAPP_API_URL = urllib.parse.urljoin(env.str("WHATSAPP_API_URL"), WHATSAPP_VERSION)
+    WHATSAPP_VERSION = env.str("WHATSAPP_VERSION", default="v13.0")
+    WHATSAPP_API_URL = urllib.parse.urljoin(
+        env.str("WHATSAPP_API_URL", default="https://graph.facebook.com/"), WHATSAPP_VERSION
+    )
     WHATSAPP_TIME_BETWEEN_SYNC_WABA_IN_HOURS = (
         env.int("WHATSAPP_TIME_BETWEEN_SYNC_WABA_IN_HOURS", default=10) * 60 * 60
     )
+    WHATSAPP_TIME_BETWEEN_SYNC_PHONE_NUMBERS_IN_HOURS = (
+        env.int("WHATSAPP_TIME_BETWEEN_SYNC_PHONE_NUMBERS_IN_HOURS", default=10) * 60 * 60
+    )
+
 
 # Sentry configuration
 
@@ -309,4 +315,5 @@ USE_GRPC = env.bool("USE_GRPC", default=False)
 CELERY_BEAT_SCHEDULE = {
     "sync-whatsapp-apps": {"task": "sync_whatsapp_apps", "schedule": timedelta(hours=2)},
     "sync-whatsapp-wabas": {"task": "sync_whatsapp_wabas", "schedule": timedelta(hours=5)},
+    "sync-whatsapp-phone-numbers": {"task": "sync_whatsapp_phone_numbers", "schedule": timedelta(hours=5)},
 }

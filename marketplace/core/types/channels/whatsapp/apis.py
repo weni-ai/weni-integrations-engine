@@ -1,5 +1,6 @@
 import requests
 from requests.models import Response
+from django.conf import settings
 
 from .exceptions import FacebookApiException
 
@@ -47,6 +48,13 @@ class Conversations(object):
 
 
 class BaseFacebookBaseApi(object):
+    def __init__(self, access_token: str) -> None:
+        self._access_token = access_token
+
+    @property
+    def _headers(self) -> dict:
+        return {"Authorization": f"Bearer {self._access_token}"}
+
     def _validate_response(self, response: Response):
         error = response.json().get("error", None)
         if error is not None:
@@ -105,4 +113,22 @@ class FacebookWABAApi(BaseFacebookBaseApi):
         response = self._request(
             f"https://graph.facebook.com/v13.0/{waba_id}/", headers=self._headers
         )  # TODO: Change to environment variables
+
+        return response.json()
+
+
+class FacebookPhoneNumbersAPI(BaseFacebookBaseApi):
+    def _get_url(self, endpoint: str) -> str:
+        return f"{settings.WHATSAPP_API_URL}/{endpoint}"
+
+    def get_phone_numbers(self, waba_id: str) -> list:
+        url = self._get_url(f"{waba_id}/phone_numbers")
+        response = self._request(url, headers=self._headers)
+
+        return response.json().get("data", [])
+
+    def get_phone_number(self, phone_number_id: str):
+        url = self._get_url(phone_number_id)
+        response = self._request(url, headers=self._headers)
+
         return response.json()
