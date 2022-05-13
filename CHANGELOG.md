@@ -1,3 +1,7 @@
+v1.4.1
+----------
+ * Adjust task that syncs whatsapp apps
+
 v1.4.0
 ----------
  * Whatsapp profile endpoint
