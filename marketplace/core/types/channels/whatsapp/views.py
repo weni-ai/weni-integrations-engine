@@ -14,9 +14,10 @@ if TYPE_CHECKING:
 
 from marketplace.core.types import views
 from marketplace.accounts.permissions import ProjectViewPermission
-from .serializers import WhatsAppSerializer
+from .serializers import WhatsAppSerializer, WhatsAppProfileSerializer
 from .apis import FacebookConversationAPI
-from .exceptions import FacebookApiException
+from .facades import OnPremiseProfileFacade
+from .exceptions import FacebookApiException, UnableProcessProfilePhoto
 
 
 class QueryParamsParser(object):
@@ -86,6 +87,46 @@ class WhatsAppViewSet(views.BaseAppTypeViewSet):
             raise ValidationError(error)
 
         return Response(conversations.__dict__())
+
+    @action(detail=True, methods=["GET", "PATCH", "DELETE"], serializer_class=WhatsAppProfileSerializer)
+    def profile(self, request: "Request", **kwargs) -> Response:
+        # TODO: Split this view in a APIView
+        app = self.get_object()
+        base_url = app.config.get("base_url", None)
+        auth_token = app.config.get("auth_token", None)
+
+        if base_url is None:
+            raise ValidationError("The On-Premise URL is not configured")
+
+        if auth_token is None:
+            raise ValidationError("On-Premise authentication token is not configured")
+
+        profile_facade = OnPremiseProfileFacade(base_url, auth_token)
+
+        try:
+            serializer: WhatsAppProfileSerializer = None
+
+            if request.method == "GET":
+                profile = profile_facade.get_profile()
+                serializer = self.get_serializer(profile)
+
+            elif request.method == "PATCH":
+                serializer = self.get_serializer(data=request.data)
+                serializer.is_valid(raise_exception=True)
+                profile_facade.set_profile(**serializer.validated_data)
+
+            elif request.method == "DELETE":
+                profile_facade.delete_profile_photo()
+
+            return Response(getattr(serializer, "data", None))
+
+        except FacebookApiException:
+            raise ValidationError(
+                "There was a problem requesting the On-Premise API, check if your authentication token is correct"
+            )
+
+        except UnableProcessProfilePhoto as error:
+            raise ValidationError(error)
 
     @action(detail=False, methods=["GET"], url_name="shared-wabas", url_path="shared-wabas")
     def shared_wabas(self, request: "Request", **kwargs):
