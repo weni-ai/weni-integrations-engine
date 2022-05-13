@@ -58,6 +58,11 @@ def sync_whatsapp_apps():
                 if created:
                     logger.info(f"A new whatsapp app was created automatically. UUID: {app.uuid}")
 
+                if app.config.get("auth_token") != config.get("auth_token"):
+                    app.config["auth_token"] = config.get("auth_token")
+                    app.updated_by = User.objects.get_admin_user()
+                    app.save()
+
 
 @celery_app.task(name="sync_whatsapp_wabas")
 def sync_whatsapp_wabas():
