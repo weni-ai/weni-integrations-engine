@@ -60,7 +60,7 @@ def sync_whatsapp_apps():
 
                 if app.config.get("auth_token") != config.get("auth_token"):
                     app.config["auth_token"] = config.get("auth_token")
-                    app.updated_by = User.objects.get_admin_user()
+                    app.modified_by = User.objects.get_admin_user()
                     app.save()
 
 
