@@ -1,3 +1,13 @@
+v1.4.0
+----------
+ * Whatsapp profile endpoint
+ * Refresh WhatsApp auth token whenever I run the task sync_whatsapp_apps
+ * Add task that sync WhatsApp App phone numbers
+ * Add phone number and WABA to WhatsApp config serializer
+ * Add task that sync WhatsApp App WABAs
+ * Remove unused imports from WhatsApp type
+ * Adjust the apptype environment variables system
+
 v1.3.3
 ----------
  * Add swagger to document APIs
