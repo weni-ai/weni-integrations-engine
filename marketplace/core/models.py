@@ -5,7 +5,6 @@ from django.db import models
 from django.utils.translation import ugettext_lazy as _
 
 from marketplace.core.validators import validate_app_code_exists
-from marketplace import core
 
 if TYPE_CHECKING:
     from marketplace.core.types.base import AppType
@@ -53,7 +52,8 @@ class AppTypeBaseModel(BaseModel):
         """
         Returns the respective AppType
         """
-        return core.types.APPTYPES.get(self.code)
+        from marketplace.core.types import APPTYPES
+        return APPTYPES.get(self.code)
 
     class Meta:
         abstract = True

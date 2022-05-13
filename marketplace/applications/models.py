@@ -6,7 +6,6 @@ from django.db.models.constraints import UniqueConstraint
 from django.utils.translation import ugettext_lazy as _
 
 from marketplace.core.models import AppTypeBaseModel
-from marketplace import core
 
 if TYPE_CHECKING:
     from marketplace.core.types.base import AppType

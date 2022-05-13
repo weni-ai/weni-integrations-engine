@@ -3,7 +3,6 @@ from rest_framework import serializers
 from marketplace.core.serializers import AppTypeBaseSerializer
 from marketplace.applications.models import App
 from marketplace.celery import app as celery_app
-from . import type as type_
 
 
 class TelegramSerializer(AppTypeBaseSerializer):

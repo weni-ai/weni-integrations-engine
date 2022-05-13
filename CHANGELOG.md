@@ -1,3 +1,9 @@
+v1.3.3
+----------
+ * Add swagger to document APIs
+ * Remove option that ignores F401
+ * Adjusts apptype instantiation related to app
+
 v1.3.2
 ----------
  * Change create param on task sync_whatsapp_apps
