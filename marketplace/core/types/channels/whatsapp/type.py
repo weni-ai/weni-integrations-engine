@@ -1,7 +1,3 @@
-import urllib
-
-from decouple import config
-
 from marketplace.core.types.base import AppType
 from marketplace.applications.models import App
 from .views import WhatsAppViewSet
