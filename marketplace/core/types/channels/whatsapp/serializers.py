@@ -93,3 +93,9 @@ class WhatsAppProfileSerializer(serializers.Serializer):
     business = WhatsAppBusinessProfileSerializer(required=False)
     photo_url = serializers.URLField(read_only=True)
     photo = Base64ImageField(write_only=True, required=False)
+
+
+class WhatsAppBusinessContactSerializer(serializers.Serializer):
+    websites = serializers.ListField()
+    email = serializers.CharField()
+    address = serializers.CharField()
