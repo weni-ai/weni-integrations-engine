@@ -14,8 +14,8 @@ if TYPE_CHECKING:
 
 from marketplace.core.types import views
 from marketplace.accounts.permissions import ProjectViewPermission
-from .serializers import WhatsAppSerializer, WhatsAppProfileSerializer
-from .apis import FacebookConversationAPI
+from .serializers import WhatsAppSerializer, WhatsAppProfileSerializer, WhatsAppBusinessContactSerializer
+from .apis import FacebookConversationAPI, OnPremiseBusinessProfileAPI
 from .facades import OnPremiseProfileFacade
 from .exceptions import FacebookApiException, UnableProcessProfilePhoto
 
@@ -127,6 +127,34 @@ class WhatsAppViewSet(views.BaseAppTypeViewSet):
 
         except UnableProcessProfilePhoto as error:
             raise ValidationError(error)
+
+    @action(detail=True, methods=["GET"], serializer_class=WhatsAppBusinessContactSerializer)
+    def contact(self, request: "Request", **kwargs) -> Response:
+        app = self.get_object()
+        base_url = app.config.get("base_url", None)
+        auth_token = app.config.get("auth_token", None)
+
+        if base_url is None:
+            raise ValidationError("The On-Premise URL is not configured")
+
+        if auth_token is None:
+            raise ValidationError("On-Premise authentication token is not configured")
+
+        profile_api = OnPremiseBusinessProfileAPI(base_url, auth_token)
+
+        try:
+            serializer: WhatsAppProfileSerializer = None
+
+            if request.method == "GET":
+                profile = profile_api.get_profile()
+                serializer = self.get_serializer(profile)
+
+            return Response(serializer.data)
+
+        except FacebookApiException:
+            raise ValidationError(
+                "There was a problem requesting the On-Premise API, check if your authentication token is correct"
+            )
 
     @action(detail=False, methods=["GET"], url_name="shared-wabas", url_path="shared-wabas")
     def shared_wabas(self, request: "Request", **kwargs):
