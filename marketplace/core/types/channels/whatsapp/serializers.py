@@ -98,3 +98,4 @@ class WhatsAppProfileSerializer(serializers.Serializer):
 class WhatsAppBusinessContactSerializer(serializers.Serializer):
     websites = serializers.ListField()
     email = serializers.CharField()
+    address = serializers.CharField()
