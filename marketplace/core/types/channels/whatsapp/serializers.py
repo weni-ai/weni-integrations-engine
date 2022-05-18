@@ -11,6 +11,7 @@ class WhatsAppConfigWABASerializer(serializers.Serializer):
     name = serializers.CharField(required=False)
     timezone = serializers.SerializerMethodField(required=False)
     namespace = serializers.CharField(required=False, source="message_template_namespace")
+    message_on_behalf_name = serializers.CharField(required=False, source="on_behalf_of_business_info")
 
     def get_timezone(self, instance):
         timezone_id = instance.get("timezone_id")
