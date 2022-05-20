@@ -82,6 +82,7 @@ class OnPremiseBusinessProfile(object):
     email: str = None
     vertical: str = None
     websites: str = None
+    address: str = None
 
     def __init__(self, profile_settings: dict):
         self._business_profile = profile_settings.get("business", {}).get("profile")

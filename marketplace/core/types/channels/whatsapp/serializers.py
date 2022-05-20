@@ -93,3 +93,15 @@ class WhatsAppProfileSerializer(serializers.Serializer):
     business = WhatsAppBusinessProfileSerializer(required=False)
     photo_url = serializers.URLField(read_only=True)
     photo = Base64ImageField(write_only=True, required=False)
+
+
+class WhatsAppBusinessContactSerializer(serializers.Serializer):
+    websites = serializers.ListField(required=False)
+    email = serializers.CharField(required=False)
+    address = serializers.CharField(required=False)
+
+    def validate_websites(self, websites):
+        if len(websites) > 2:
+            raise serializers.ValidationError("Each app can only contain 2 websites!")
+
+        return websites
