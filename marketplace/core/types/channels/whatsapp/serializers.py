@@ -96,6 +96,12 @@ class WhatsAppProfileSerializer(serializers.Serializer):
 
 
 class WhatsAppBusinessContactSerializer(serializers.Serializer):
-    websites = serializers.ListField()
-    email = serializers.CharField()
-    address = serializers.CharField()
+    websites = serializers.ListField(required=False)
+    email = serializers.CharField(required=False)
+    address = serializers.CharField(required=False)
+
+    def validate_websites(self, websites):
+        if len(websites) > 2:
+            raise serializers.ValidationError("Each app can only contain 2 websites!")
+
+        return websites

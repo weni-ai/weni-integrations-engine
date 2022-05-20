@@ -128,7 +128,7 @@ class WhatsAppViewSet(views.BaseAppTypeViewSet):
         except UnableProcessProfilePhoto as error:
             raise ValidationError(error)
 
-    @action(detail=True, methods=["GET"], serializer_class=WhatsAppBusinessContactSerializer)
+    @action(detail=True, methods=["GET", "PATCH"], serializer_class=WhatsAppBusinessContactSerializer)
     def contact(self, request: "Request", **kwargs) -> Response:
         app = self.get_object()
         base_url = app.config.get("base_url", None)
@@ -143,11 +143,16 @@ class WhatsAppViewSet(views.BaseAppTypeViewSet):
         profile_api = OnPremiseBusinessProfileAPI(base_url, auth_token)
 
         try:
-            serializer: WhatsAppProfileSerializer = None
+            serializer: WhatsAppBusinessContactSerializer = None
 
             if request.method == "GET":
                 profile = profile_api.get_profile()
                 serializer = self.get_serializer(profile)
+
+            if request.method == "PATCH":
+                serializer = self.get_serializer(data=request.data)
+                serializer.is_valid(raise_exception=True)
+                profile_api.set_profile(serializer.validated_data)
 
             return Response(serializer.data)
 
