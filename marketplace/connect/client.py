@@ -7,7 +7,6 @@ from rest_framework import serializers
 from marketplace.celery import app as celery_app
 
 class ConnectAuth:
-    api_url = "http://localhost:8080/v1/"
     bearer_token = ""
 
     def get_auth_token(self) -> str:
@@ -30,23 +29,25 @@ class ConnectAuth:
 
 class ConnectProjectClient(ConnectAuth):
 
+    base_url = settings.CONNECT_ENGINE_BASE_URL
+
     def list_channels(self, channeltype_code: str):
         json = {
             "channel_type": channeltype_code
         }
-        request = requests.get(url=self.base_url + '/organization/project/list_channel/', json=json headers=self.auth_header())
-        return request.text
+        request = requests.get(url=self.base_url + '/organization/project/list_channel/', json=json, headers=self.auth_header())
+        return json.loads(request.text)
 
-    def create_channel(self, user: str, project_uuid: str, data: dict, channeltype_code: str) -> str:
-        json = {
+    def create_channel(self, user: str, project_uuid: str, data: dict, channeltype_code: str) -> dict:
+        data = {
             "user": user,
             "project_uuid": project_uuid,
             "data": data,
             "channeltype_code": channeltype_code
         }
-        request = requests.post(url=self.base_url + '/organization/project/create_channel/', json=json, headers=self.auth_header())
+        request = requests.post(url=self.base_url + '/organization/project/create_channel/', json=data, headers=self.auth_header())
 
-        return request.text
+        return json.loads(request.text)
 
     def release_channel(self, channel_uuid: str, user_email: str) -> None: #informar o jackson sobre o input
         json = {
@@ -60,4 +61,8 @@ class ConnectProjectClient(ConnectAuth):
 
 
 class ConnectChannelClient(ConnectAuth):
-    ...
+    base_url = settings.ROUTER_BASE_URL
+    
+
+    def get_channel_token(self, uuid: str, name: str) -> str:
+        return None
