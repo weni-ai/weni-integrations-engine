@@ -1,3 +1,7 @@
+v1.4.2
+----------
+ * WhatsApp contact endpoint
+
 v1.4.1
 ----------
  * Adjust task that syncs whatsapp apps
