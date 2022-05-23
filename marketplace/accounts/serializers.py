@@ -5,7 +5,6 @@ from django_grpc_framework import proto_serializers
 from .models import ProjectAuthorization
 from weni.protobuf.integrations import user_pb2
 
-
 User = get_user_model()
 
 
@@ -33,3 +32,16 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ("first_name", "last_name", "email", "photo_url")
+
+
+class ProjectAuthorizationSerializer(serializers.Serializer):
+    project_uuid = serializers.CharField()
+    user = serializers.CharField()
+    role = serializers.IntegerField()
+
+
+class UserPermissionSerializer(serializers.Serializer):
+    email = serializers.CharField()
+    photo_url = serializers.CharField()
+    first_name = serializers.CharField()
+    last_name = serializers.CharField()
