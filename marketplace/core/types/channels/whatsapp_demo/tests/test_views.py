@@ -35,16 +35,19 @@ class CreateWhatsAppDemoAppTestCase(APIBaseTestCase):
     def view(self):
         return self.view_class.as_view(APIBaseTestCase.ACTION_CREATE)
 
-    @patch("marketplace.celery.app.send_task")
-    def test_request_ok(self, task):
+    #@patch("marketplace.celery.app.send_task")
+    @patch("marketplace.connect.client.ConnectChannelClient.get_channel_token")
+    @patch("marketplace.connect.client.ConnectProjectClient.create_channel")
+    def test_request_ok(self, create_channel_request, get_channel_token_request):
 
         self.view_class.type_class.NUMBER = "+559999998888"
         channel_uuid = str(uuid.uuid4())
-
-        task.side_effect = [
-            CeleryResponse(dict(name="WhatsApp: +559999998888", uuid=channel_uuid)),
-            CeleryResponse("WhatsApp:+559999998888-whatsapp-demo-v5ciobe7te"),
+        
+        create_channel_request.side_effect = [
+            dict(name="WhatsApp: +559999998888", uuid=channel_uuid)
         ]
+
+        get_channel_token_request.side_effect = ["WhatsApp:+559999998888-whatsapp-demo-v5ciobe7te"]
 
         response = self.request.post(self.url, self.body)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -67,28 +70,32 @@ class CreateWhatsAppDemoAppTestCase(APIBaseTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    @patch("marketplace.celery.app.send_task")
-    def test_create_app_platform(self, task):
+    @patch("marketplace.connect.client.ConnectChannelClient.get_channel_token")
+    @patch("marketplace.connect.client.ConnectProjectClient.create_channel")
+    def test_create_app_platform(self, create_channel_request, get_channel_token_request):
         self.view_class.type_class.NUMBER = "+559999998888"
         channel_uuid = str(uuid.uuid4())
 
-        task.side_effect = [
-            CeleryResponse(dict(name="WhatsApp: +559999998888", uuid=channel_uuid)),
-            CeleryResponse("WhatsApp:+559999998888-whatsapp-demo-v5ciobe7te"),
+        create_channel_request.side_effect = [
+            dict(name="WhatsApp: +559999998888", uuid=channel_uuid)
         ]
+
+        get_channel_token_request.side_effect = ["WhatsApp:+559999998888-whatsapp-demo-v5ciobe7te"]
 
         response = self.request.post(self.url, self.body)
         self.assertEqual(response.json["platform"], App.PLATFORM_WENI_FLOWS)
 
-    @patch("marketplace.celery.app.send_task")
-    def test_get_app_with_respective_project_uuid(self, task):
+    @patch("marketplace.connect.client.ConnectChannelClient.get_channel_token")
+    @patch("marketplace.connect.client.ConnectProjectClient.create_channel")
+    def test_get_app_with_respective_project_uuid(self, create_channel_request, get_channel_token_request):
         self.view_class.type_class.NUMBER = "+559999998888"
         channel_uuid = str(uuid.uuid4())
 
-        task.side_effect = [
-            CeleryResponse(dict(name="WhatsApp: +559999998888", uuid=channel_uuid)),
-            CeleryResponse("WhatsApp:+559999998888-whatsapp-demo-v5ciobe7te"),
+        create_channel_request.side_effect = [
+            dict(name="WhatsApp: +559999998888", uuid=channel_uuid)
         ]
+
+        get_channel_token_request.side_effect = ["WhatsApp:+559999998888-whatsapp-demo-v5ciobe7te"]
 
         self.request.post(self.url, self.body)
         App.objects.get(project_uuid=self.body.get("project_uuid"))

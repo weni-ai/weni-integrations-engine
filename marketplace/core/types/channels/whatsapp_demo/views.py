@@ -1,7 +1,7 @@
 from marketplace.core.types import views
 from .serializers import WhatsAppDemoSerializer
 from marketplace.celery import app as celery_app
-
+from marketplace.connect.client import ConnectProjectClient, ConnectChannelClient
 
 class WhatsAppDemoViewSet(views.BaseAppTypeViewSet):
 
@@ -28,20 +28,16 @@ class WhatsAppDemoViewSet(views.BaseAppTypeViewSet):
             facebook_access_token="null",
         )
 
-        task = celery_app.send_task(
-            name="create_channel", args=[user.email, str(instance.project_uuid), data, instance.channeltype_code]
-        )
-        task.wait()
-
-        result = task.result
+        client = ConnectProjectClient()
+        result = client.create_channel(user.email, str(instance.project_uuid), data, instance.channeltype_code)
 
         instance.config["title"] = result.get("name")
         instance.config["channelUuid"] = result.get("uuid")
 
-        task = celery_app.send_task(name="get_channel_token", args=[result.get("uuid"), result.get("name")])
-        task.wait()
+        ch_client = ConnectChannelClient()
+        ch_result = ch_client.get_channel_token(result.get("uuid"), result.get("name"))
 
-        instance.config["routerToken"] = task.result
-        instance.config["redirect_url"] = f"https://wa.me/{type_class.NUMBER}?text={task.result}"
+        instance.config["routerToken"] = ch_result
+        instance.config["redirect_url"] = f"https://wa.me/{type_class.NUMBER}?text={ch_result}"
         instance.modified_by = user
         instance.save()

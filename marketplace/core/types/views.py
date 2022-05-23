@@ -8,6 +8,8 @@ from marketplace.applications.models import App
 from marketplace.accounts.permissions import ProjectManagePermission
 from marketplace.celery import app as celery_app
 
+from marketplace.connect.client import ConnectProjectClient
+
 
 class BaseAppTypeViewSet(CreateModelMixin, RetrieveModelMixin, UpdateModelMixin, DestroyModelMixin, GenericViewSet):
 
@@ -30,4 +32,5 @@ class BaseAppTypeViewSet(CreateModelMixin, RetrieveModelMixin, UpdateModelMixin,
         channel_uuid = instance.config.get("channelUuid")
 
         if channel_uuid is not None and settings.USE_GRPC:
-            celery_app.send_task(name="release_channel", args=[channel_uuid, self.request.user.email]).wait()
+            client = ConnectProjectClient()
+            client.release_channel(channel_uuid, self.request.user.email)

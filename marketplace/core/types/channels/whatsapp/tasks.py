@@ -13,7 +13,7 @@ from marketplace.core.types import APPTYPES
 from marketplace.applications.models import App
 from .apis import FacebookWABAApi, FacebookPhoneNumbersAPI
 from .exceptions import FacebookApiException
-
+from marketplace.connect.client import ConnectProjectClient
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -27,7 +27,8 @@ SYNC_WHATSAPP_PHONE_NUMBER_LOCK_KEY = "sync-whatsapp-phone-number-lock-app:{app_
 @celery_app.task(name="sync_whatsapp_apps")
 def sync_whatsapp_apps():
     apptype = APPTYPES.get("wpp")
-    response = ConnectGRPCClient().list_channels(apptype.channeltype_code)
+    client = ConnectProjectClient()
+    response = client.list_channels(apptype.channeltype_code)
 
     redis = get_redis_connection()
 
