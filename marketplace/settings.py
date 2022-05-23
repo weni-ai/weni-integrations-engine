@@ -217,7 +217,7 @@ CORS_ALLOW_HEADERS = list(default_headers) + ["project-uuid"]
 
 
 # gRPC Connect Client
-CONNECT_ENGINE_BASE_URL = "http://localhost:8080/v1"
+CONNECT_ENGINE_BASE_URL = env.str("CONNECT_ENGINE_BASE_URL")
 
 
 SOCKET_BASE_URL = env.str("SOCKET_BASE_URL", "")
