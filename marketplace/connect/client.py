@@ -55,12 +55,17 @@ class ConnectProjectClient(ConnectAuth):
             "user": user_email
         }
         request = requests.post(url=self.base_url + '/organization/project/release_channel/', json=payload, headers=self.auth_header())
-        return request.text
+        return None
 
 
-class ConnectChannelClient(ConnectAuth):
+class WPPRouterChannelClient(ConnectAuth):
     base_url = settings.ROUTER_BASE_URL
     
-
     def get_channel_token(self, uuid: str, name: str) -> str:
-        return None
+        payload = {
+            "channel_uuid": uuid,
+            "user": name
+        }
+
+        request = requests.post(url=self.base_url + '/integrations/channel', json=payload, headers=self.auth_header())
+        return json.loads(request)['token']

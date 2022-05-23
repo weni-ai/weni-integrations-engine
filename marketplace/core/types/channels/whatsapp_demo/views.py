@@ -1,7 +1,7 @@
 from marketplace.core.types import views
 from .serializers import WhatsAppDemoSerializer
 from marketplace.celery import app as celery_app
-from marketplace.connect.client import ConnectProjectClient, ConnectChannelClient
+from marketplace.connect.client import ConnectProjectClient, WPPRouterChannelClient
 
 class WhatsAppDemoViewSet(views.BaseAppTypeViewSet):
 
@@ -34,7 +34,7 @@ class WhatsAppDemoViewSet(views.BaseAppTypeViewSet):
         instance.config["title"] = result.get("name")
         instance.config["channelUuid"] = result.get("uuid")
 
-        ch_client = ConnectChannelClient()
+        ch_client = WPPRouterChannelClient()
         ch_result = ch_client.get_channel_token(result.get("uuid"), result.get("name"))
 
         instance.config["routerToken"] = ch_result

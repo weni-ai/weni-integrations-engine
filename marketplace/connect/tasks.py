@@ -1,5 +1,5 @@
 from django.conf import settings
-from .client import ConnectProjectClient, ConnectChannelClient
+from .client import ConnectProjectClient, WPPRouterChannelClient
 from marketplace.celery import app as celery_app
 
 @celery_app.task(name="create_channel")
@@ -18,5 +18,5 @@ def release_channel(channel_uuid: str, user_email: str) -> None:
 
 @celery_app.task(name="get_channel_token")
 def get_channel_token(uuid: str, name: str) -> str:
-    client = ConnectChannelClient()
+    client = WPPRouterChannelClient()
     return client.get_channel_token(uuid, name).token
