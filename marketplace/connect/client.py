@@ -7,7 +7,6 @@ from rest_framework import serializers
 from marketplace.celery import app as celery_app
 
 class ConnectAuth:
-    bearer_token = ""
 
     def get_auth_token(self) -> str:
         request = requests.post(
@@ -19,12 +18,12 @@ class ConnectAuth:
             },
         )
         token = request.json().get("access_token")
-        self.bearer_token = "Bearer {token}"
+        return f"Bearer {token}"
 
 
     def auth_header(self, headers: dict = {}) -> dict:
         if 'Authorization' not in headers:
-            headers['Authorization'] = self.bearer_token
+            headers['Authorization'] = self.get_auth_token()
         return headers
 
 class ConnectProjectClient(ConnectAuth):
@@ -68,4 +67,4 @@ class WPPRouterChannelClient(ConnectAuth):
         }
 
         request = requests.post(url=self.base_url + '/integrations/channel', json=payload, headers=self.auth_header())
-        return json.loads(request)['token']
+        return json.loads(request.text)['token']
