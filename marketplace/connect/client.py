@@ -34,8 +34,7 @@ class ConnectProjectClient(ConnectAuth):
         payload = {
             "channel_type": channeltype_code
         }
-        request = requests.get(url=self.base_url + '/organization/project/list_channel/', json=payload, headers=self.auth_header(), timeout=30)
-        print(request.text)
+        request = requests.get(url=self.base_url + '/organization/project/list_channel/', json=payload, headers=self.auth_header())
         return json.loads(request.text)
 
     def create_channel(self, user: str, project_uuid: str, data: dict, channeltype_code: str) -> dict:
