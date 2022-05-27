@@ -3,6 +3,7 @@ import requests
 
 from django.conf import settings
 from rest_framework import serializers
+from collections import namedtuple
 
 from marketplace.celery import app as celery_app
 
@@ -30,12 +31,15 @@ class ConnectProjectClient(ConnectAuth):
 
     base_url = settings.CONNECT_ENGINE_BASE_URL
 
+    def response(self, response):
+        return namedtuple("response", response.keys())(*response.values())
+
     def list_channels(self, channeltype_code: str):
         payload = {
             "channel_type": channeltype_code
         }
         request = requests.get(url=self.base_url + '/organization/project/list_channel/', json=payload, headers=self.auth_header())
-        return json.loads(request.text)['data']
+        return self.response(json.loads(request.text)['data'])
 
     def create_channel(self, user: str, project_uuid: str, data: dict, channeltype_code: str) -> dict:
         payload = {
@@ -45,7 +49,7 @@ class ConnectProjectClient(ConnectAuth):
             "channeltype_code": channeltype_code
         }
         request = requests.post(url=self.base_url + '/organization/project/create_channel/', json=payload, headers=self.auth_header())
-        return json.loads(request.text)['data']
+        return self.response(json.loads(request.text)['data'])
 
     def release_channel(self, channel_uuid: str, user_email: str) -> None:
         payload = {
