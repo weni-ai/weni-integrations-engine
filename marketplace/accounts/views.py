@@ -57,7 +57,7 @@ class UserPermissionViewSet(viewsets.ViewSet):
 
     def partial_update(self, request, project_uuid):
 
-        if not request.user.has_perm("authentication.can_communicate_internally"):
+        if not request.user.has_perm("accounts.can_communicate_internally"):
             return Response({"error": "Not Allowed"}, status=status.HTTP_400_BAD_REQUEST)
 
         user_email = request.data.get("user", "")
