@@ -31,15 +31,12 @@ class ConnectProjectClient(ConnectAuth):
 
     base_url = settings.CONNECT_ENGINE_BASE_URL
 
-    def response(self, response):
-        return namedtuple("response", response.keys())(*response.values())
-
     def list_channels(self, channeltype_code: str):
         payload = {
             "channel_type": channeltype_code
         }
         request = requests.get(url=self.base_url + '/organization/project/list_channel/', json=payload, headers=self.auth_header())
-        return self.response(json.loads(request.text)['data'])
+        return json.loads(request.text)['data']
 
     def create_channel(self, user: str, project_uuid: str, data: dict, channeltype_code: str) -> dict:
         payload = {
@@ -49,14 +46,14 @@ class ConnectProjectClient(ConnectAuth):
             "channeltype_code": channeltype_code
         }
         request = requests.post(url=self.base_url + '/organization/project/create_channel/', json=payload, headers=self.auth_header())
-        return self.response(json.loads(request.text)['data'])
+        return json.loads(request.text)
 
     def release_channel(self, channel_uuid: str, user_email: str) -> None:
         payload = {
             "channel_uuid": channel_uuid,
             "user": user_email
         }
-        request = requests.post(url=self.base_url + '/organization/project/release_channel/', json=payload, headers=self.auth_header())
+        request = requests.get(url=self.base_url + '/organization/project/release_channel/', json=payload, headers=self.auth_header())
         return None
 
 
