@@ -1,0 +1,2 @@
+class FacebookApiException(Exception):
+    pass
