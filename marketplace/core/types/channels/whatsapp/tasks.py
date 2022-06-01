@@ -38,31 +38,32 @@ def sync_whatsapp_apps():
 
     else:
         with redis.lock(SYNC_WHATSAPP_LOCK_KEY):
-            for channel in response:
-                channel_config = json.loads(channel.config)
+            for project in response:
+                for channel in project.channels:
+                    channel_config = json.loads(channel.get("config"))
 
-                # Skipping WhatsApp demo channels, change to environment variable later
-                if "558231420933" in channel.address:
-                    continue
+                    # Skipping WhatsApp demo channels, change to environment variable later
+                    if "558231420933" in channel.get("address"):
+                        continue
 
-                config = {"title": channel.address}
-                config.update(channel_config)
+                    config = {"title": channel.get("address")}
+                    config.update(channel_config)
 
-                app, created = App.objects.get_or_create(
-                    code=apptype.code,
-                    platform=apptype.platform,
-                    project_uuid=channel.project_uuid,
-                    flow_object_uuid=channel.uuid,
-                    defaults=dict(config=config, created_by=User.objects.get_admin_user()),
-                )
+                    app, created = App.objects.get_or_create(
+                        code=apptype.code,
+                        platform=apptype.platform,
+                        project_uuid=project.get("project_uuid"),
+                        flow_object_uuid=channel.get("uuid"),
+                        defaults=dict(config=config, created_by=User.objects.get_admin_user()),
+                    )
 
-                if created:
-                    logger.info(f"A new whatsapp app was created automatically. UUID: {app.uuid}")
+                    if created:
+                        logger.info(f"A new whatsapp app was created automatically. UUID: {app.uuid}")
 
-                if app.config.get("auth_token") != config.get("auth_token"):
-                    app.config["auth_token"] = config.get("auth_token")
-                    app.modified_by = User.objects.get_admin_user()
-                    app.save()
+                    if app.config.get("auth_token") != config.get("auth_token"):
+                        app.config["auth_token"] = config.get("auth_token")
+                        app.modified_by = User.objects.get_admin_user()
+                        app.save()
 
 
 @celery_app.task(name="sync_whatsapp_wabas")
