@@ -41,7 +41,7 @@ class ProjectAuthorizationSerializer(serializers.Serializer):
 
 
 class UserPermissionSerializer(serializers.Serializer):
-    email = serializers.CharField()
-    photo_url = serializers.CharField()
-    first_name = serializers.CharField()
-    last_name = serializers.CharField()
+    email = serializers.CharField(required=True, allow_blank=False)
+    photo_url = serializers.CharField(required=False, allow_blank=True)
+    first_name = serializers.CharField(required=False, allow_blank=True)
+    last_name = serializers.CharField(required=False, allow_blank=True)

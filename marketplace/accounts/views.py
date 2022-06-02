@@ -23,24 +23,21 @@ class UserViewSet(viewsets.ViewSet):
         if not request.user.has_perm("accounts.can_communicate_internally"):
             return Response({"error": "Not Allowed"}, status=status.HTTP_400_BAD_REQUEST)
 
-        user_email = request.data.get("email", None)
-        photo_url = request.data.get("photo_url", "")
-        first_name = request.data.get("first_name", "")
-        last_name = request.data.get("last_name", "")
+        serializer = UserPermissionSerializer(data=request.data)
 
-        if "email" not in request.data:
-            return Response({"error": "email not found in request"}, status=status.HTTP_400_BAD_REQUEST)
+        if not serializer.is_valid():
+            return Response({"error": "invalid json format"}, status=status.HTTP_400_BAD_REQUEST)
 
-        user = User.objects.get_or_create(email=user_email)[0]
-    
-        if "photo_url" in request.data:
-            user.photo_url = photo_url
+        user = User.objects.get_or_create(email=serializer.data.get("email"))[0]
 
-        if "first_name" in request.data:
-            user.first_name = first_name
+        if "photo_url" in serializer.data:
+            user.photo_url = serializer.data.get("photo_url")
 
-        if "last_name" in request.data:
-            user.last_name = last_name
+        if "first_name" in serializer.data:
+            user.first_name = serializer.data.get("first_name")
+
+        if "last_name" in serializer.data:
+            user.last_name = serializer.data.get("last_name")
 
         user.save()
 
