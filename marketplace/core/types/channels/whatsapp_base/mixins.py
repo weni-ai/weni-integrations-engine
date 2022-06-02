@@ -49,7 +49,7 @@ class QueryParamsParser(object):
         raise ValidationError(self.ERROR_MESSAGE.format(field))
 
 
-class WhatsAppWhatsAppConversationsMixin(object):
+class WhatsAppConversationsMixin(object):
     @action(detail=True, methods=["GET"], permission_classes=[ProjectViewPermission])
     def conversations(self, request: "Request", **kwargs) -> Response:
         app = self.get_object()
