@@ -35,9 +35,9 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class ProjectAuthorizationSerializer(serializers.Serializer):
-    project_uuid = serializers.CharField()
-    user = serializers.CharField()
-    role = serializers.IntegerField()
+    project_uuid = serializers.CharField(read_only=True)
+    user = serializers.CharField(required=True, allow_blank=False)
+    role = serializers.IntegerField(required=True, min_value=0, max_value=3)
 
 
 class UserPermissionSerializer(serializers.Serializer):

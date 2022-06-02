@@ -26,7 +26,7 @@ class UserViewSet(viewsets.ViewSet):
         serializer = UserPermissionSerializer(data=request.data)
 
         if not serializer.is_valid():
-            return Response({"error": "invalid json format"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "invalid data"}, status=status.HTTP_400_BAD_REQUEST)
 
         user = User.objects.get_or_create(email=serializer.data.get("email"))[0]
 
@@ -57,17 +57,16 @@ class UserPermissionViewSet(viewsets.ViewSet):
         if not request.user.has_perm("accounts.can_communicate_internally"):
             return Response({"error": "Not Allowed"}, status=status.HTTP_400_BAD_REQUEST)
 
-        user_email = request.data.get("user", "")
-        role = request.data.get("role", 1)
+        serializer = ProjectAuthorizationSerializer(data=request.data)
 
-        if "user" not in request.data:
-            return Response({"error": "user not found in request"}, status=status.HTTP_400_BAD_REQUEST)
+        if not serializer.is_valid():
+            return Response({"error": "invalid data"}, status=status.HTTP_400_BAD_REQUEST)
 
-        user = User.objects.get_or_create(email=user_email)[0]
+        user = User.objects.get_or_create(email=serializer.data.get("user"))[0]
 
         project_authorization = ProjectAuthorization.objects.get_or_create(user=user, project_uuid=project_uuid)[0]
 
-        project_authorization.role = role
+        project_authorization.role = serializer.data.get("role")
         project_authorization.save()
 
         serializer = ProjectAuthorizationSerializer(project_authorization)
