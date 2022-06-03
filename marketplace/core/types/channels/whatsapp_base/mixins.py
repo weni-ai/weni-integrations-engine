@@ -1,3 +1,4 @@
+import abc
 import calendar
 from typing import TYPE_CHECKING
 from datetime import datetime
@@ -8,11 +9,12 @@ from rest_framework.exceptions import ValidationError
 
 if TYPE_CHECKING:
     from rest_framework.request import Request
+    from .interfaces import ProfileHandlerInterface, BusinessProfileHandlerInterface
 
 from marketplace.accounts.permissions import ProjectViewPermission
 from .requests.facebook import FacebookConversationAPI
-from .exceptions import FacebookApiException
-from .serializers import WhatsAppBusinessContactSerializer
+from .exceptions import FacebookApiException, UnableProcessProfilePhoto
+from .serializers import WhatsAppBusinessContactSerializer, WhatsAppProfileSerializer
 
 
 class QueryParamsParser(object):
@@ -75,7 +77,11 @@ class WhatsAppConversationsMixin(object):
         return Response(conversations.__dict__())
 
 
-class WhatsAppContactMixin(object):
+class WhatsAppContactMixin(object, metaclass=abc.ABCMeta):
+    @abc.abstractproperty
+    def business_profile_class(self) -> "BusinessProfileHandlerInterface":
+        pass  # pragma: no cover
+
     @action(detail=True, methods=["GET", "PATCH"], serializer_class=WhatsAppBusinessContactSerializer)
     def contact(self, request: "Request", **kwargs) -> Response:
         app = self.get_object()
@@ -88,19 +94,19 @@ class WhatsAppContactMixin(object):
         if auth_token is None:
             raise ValidationError("On-Premise authentication token is not configured")
 
-        profile_api = self.profile_api_class(base_url, auth_token)
+        profile_handler = self.business_profile_class(base_url, auth_token)
 
         try:
             serializer: WhatsAppBusinessContactSerializer = None
 
             if request.method == "GET":
-                profile = profile_api.get_profile()
+                profile = profile_handler.get_profile()
                 serializer = self.get_serializer(profile)
 
             if request.method == "PATCH":
                 serializer = self.get_serializer(data=request.data)
                 serializer.is_valid(raise_exception=True)
-                profile_api.set_profile(serializer.validated_data)
+                profile_handler.set_profile(serializer.validated_data)
 
             return Response(serializer.data)
 
@@ -108,3 +114,49 @@ class WhatsAppContactMixin(object):
             raise ValidationError(
                 "There was a problem requesting the On-Premise API, check if your authentication token is correct"
             )
+
+
+class WhatsAppProfileMixin(object, metaclass=abc.ABCMeta):
+    @abc.abstractproperty
+    def profile_class(self) -> "ProfileHandlerInterface":
+        pass  # pragma: no cover
+
+    @action(detail=True, methods=["GET", "PATCH", "DELETE"], serializer_class=WhatsAppProfileSerializer)
+    def profile(self, request: "Request", **kwargs) -> Response:
+        # TODO: Split this view in a APIView
+        app = self.get_object()
+        base_url = app.config.get("base_url", None)
+        auth_token = app.config.get("auth_token", None)
+
+        if base_url is None:
+            raise ValidationError("The On-Premise URL is not configured")
+
+        if auth_token is None:
+            raise ValidationError("On-Premise authentication token is not configured")
+
+        profile_handler = self.profile_class(base_url, auth_token)
+
+        try:
+            serializer: WhatsAppProfileSerializer = None
+
+            if request.method == "GET":
+                profile = profile_handler.get_profile()
+                serializer = self.get_serializer(profile)
+
+            elif request.method == "PATCH":
+                serializer = self.get_serializer(data=request.data)
+                serializer.is_valid(raise_exception=True)
+                profile_handler.set_profile(**serializer.validated_data)
+
+            elif request.method == "DELETE":
+                profile_handler.delete_profile()
+
+            return Response(getattr(serializer, "data", None))
+
+        except FacebookApiException:
+            raise ValidationError(
+                "There was a problem requesting the On-Premise API, check if your authentication token is correct"
+            )
+
+        except UnableProcessProfilePhoto as error:
+            raise ValidationError(error)
