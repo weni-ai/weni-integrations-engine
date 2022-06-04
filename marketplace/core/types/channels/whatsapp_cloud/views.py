@@ -3,7 +3,13 @@ from .serializers import WhatsAppCloudSerializer
 from ..whatsapp_base import mixins
 
 
-class WhatsAppCloudViewSet(views.BaseAppTypeViewSet, mixins.WhatsAppConversationsMixin):
+class WhatsAppCloudViewSet(
+    views.BaseAppTypeViewSet,
+    mixins.WhatsAppConversationsMixin,
+    mixins.WhatsAppContactMixin,
+    mixins.WhatsAppProfileMixin,
+):
 
     serializer_class = WhatsAppCloudSerializer
-    profile_api_class = None  # TODO: Make a OnPremiseBusinessProfileAPI
+    business_profile_class = None
+    profile_class = None
