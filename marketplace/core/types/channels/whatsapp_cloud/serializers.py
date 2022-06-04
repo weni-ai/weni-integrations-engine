@@ -3,7 +3,6 @@ from marketplace.core.serializers import AppTypeBaseSerializer
 
 
 class WhatsAppCloudSerializer(AppTypeBaseSerializer):
-
     class Meta:
         model = App
         fields = (

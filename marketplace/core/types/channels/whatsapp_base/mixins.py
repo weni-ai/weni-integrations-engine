@@ -149,7 +149,7 @@ class WhatsAppProfileMixin(object, metaclass=abc.ABCMeta):
                 profile_handler.set_profile(**serializer.validated_data)
 
             elif request.method == "DELETE":
-                profile_handler.delete_profile()
+                profile_handler.delete_profile_photo()
 
             return Response(getattr(serializer, "data", None))
 

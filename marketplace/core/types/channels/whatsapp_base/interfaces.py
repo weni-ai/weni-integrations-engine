@@ -11,7 +11,7 @@ class ProfileHandlerInterface(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def delete_profile(self):
+    def delete_profile_photo(self):
         pass
 
 
