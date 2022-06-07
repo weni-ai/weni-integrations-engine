@@ -79,22 +79,15 @@ class WhatsAppConversationsMixin(object):
 
 class WhatsAppContactMixin(object, metaclass=abc.ABCMeta):
     @abc.abstractproperty
+    def profile_config_credentials(self) -> dict:
+        pass  # pragma: no cover
+
     def business_profile_class(self) -> "BusinessProfileHandlerInterface":
         pass  # pragma: no cover
 
     @action(detail=True, methods=["GET", "PATCH"], serializer_class=WhatsAppBusinessContactSerializer)
     def contact(self, request: "Request", **kwargs) -> Response:
-        app = self.get_object()
-        base_url = app.config.get("base_url", None)
-        auth_token = app.config.get("auth_token", None)
-
-        if base_url is None:
-            raise ValidationError("The On-Premise URL is not configured")
-
-        if auth_token is None:
-            raise ValidationError("On-Premise authentication token is not configured")
-
-        profile_handler = self.business_profile_class(base_url, auth_token)
+        profile_handler = self.business_profile_class(**self.profile_config_credentials)
 
         try:
             serializer: WhatsAppBusinessContactSerializer = None
@@ -121,20 +114,14 @@ class WhatsAppProfileMixin(object, metaclass=abc.ABCMeta):
     def profile_class(self) -> "ProfileHandlerInterface":
         pass  # pragma: no cover
 
+    @abc.abstractproperty
+    def profile_config_credentials(self) -> dict:
+        pass  # pragma: no cover
+
     @action(detail=True, methods=["GET", "PATCH", "DELETE"], serializer_class=WhatsAppProfileSerializer)
     def profile(self, request: "Request", **kwargs) -> Response:
         # TODO: Split this view in a APIView
-        app = self.get_object()
-        base_url = app.config.get("base_url", None)
-        auth_token = app.config.get("auth_token", None)
-
-        if base_url is None:
-            raise ValidationError("The On-Premise URL is not configured")
-
-        if auth_token is None:
-            raise ValidationError("On-Premise authentication token is not configured")
-
-        profile_handler = self.profile_class(base_url, auth_token)
+        profile_handler = self.profile_class(**self.profile_config_credentials)
 
         try:
             serializer: WhatsAppProfileSerializer = None

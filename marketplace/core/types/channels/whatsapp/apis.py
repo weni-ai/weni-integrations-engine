@@ -4,7 +4,7 @@ import requests
 from requests.models import Response
 from django.conf import settings
 
-from .exceptions import FacebookApiException, UnableProcessProfilePhoto
+from ..whatsapp_base.exceptions import FacebookApiException, UnableProcessProfilePhoto
 
 
 def _request(url: str, method: str = "GET", *args, **kwargs):

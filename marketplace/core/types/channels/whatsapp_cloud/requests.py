@@ -40,7 +40,7 @@ class CloudProfileRequest(ProfileHandlerInterface):
         data = dict(messaging_product="whatsapp")
         data.update(kwargs)
 
-        response = requests.post(self._url, headers=self._headers, data=json.dumps(data))
+        requests.post(self._url, headers=self._headers, data=json.dumps(data))
 
     def delete_profile_photo(self):
         ...

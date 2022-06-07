@@ -33,6 +33,20 @@ class WhatsAppViewSet(
     def destroy(self, request, *args, **kwargs):
         return Response("This channel cannot be deleted", status=status.HTTP_403_FORBIDDEN)
 
+    @property
+    def profile_config_credentials(self) -> dict:
+        config = self.get_object().config
+        base_url = config.get("base_url", None)
+        auth_token = config.get("auth_token", None)
+
+        if base_url is None:
+            raise ValidationError("The On-Premise URL is not configured")
+
+        if auth_token is None:
+            raise ValidationError("On-Premise authentication token is not configured")
+
+        return dict(base_url=base_url, auth_token=auth_token)
+
     @action(detail=False, methods=["GET"], url_name="shared-wabas", url_path="shared-wabas")
     def shared_wabas(self, request: "Request", **kwargs):
         input_token = request.query_params.get("input_token", None)
