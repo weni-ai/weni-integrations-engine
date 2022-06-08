@@ -23,7 +23,7 @@ class CloudProfileFacade(object):  # TODO: Interface
         "Other": "OTHER",
     }
 
-    def __init__(self, phone_number_id: "str") -> None:  # TODO: VAlidate if phone_number_id is str
+    def __init__(self, phone_number_id: "str") -> None:
         self._profile_api = CloudProfileRequest(phone_number_id)
 
     def get_profile(self):
@@ -48,7 +48,7 @@ class CloudProfileFacade(object):  # TODO: Interface
 
 
 class CloudProfileContactFacade(object):  # TODO: Interface
-    def __init__(self, phone_number_id: "str") -> None:  # TODO: VAlidate if phone_number_id is str
+    def __init__(self, phone_number_id: "str") -> None:
         self._profile_api = CloudProfileRequest(phone_number_id)
 
     def get_profile(self):

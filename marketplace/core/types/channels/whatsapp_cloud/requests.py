@@ -1,17 +1,19 @@
 import json
 
 import requests
+from rest_framework import status
 
 from django.conf import settings
 from ..whatsapp_base.interfaces import ProfileHandlerInterface
+from ..whatsapp_base.exceptions import FacebookApiException
 
 
 class CloudProfileRequest(ProfileHandlerInterface):
-
+    # TODO: Validate response status
     _endpoint = "/whatsapp_business_profile"
     _fields = dict(fields="about,address,description,email,profile_picture_url,websites,vertical")
 
-    def __init__(self, phone_number_id: "str") -> None:  # TODO: VAlidate if phone_number_id is str
+    def __init__(self, phone_number_id: "str") -> None:
         self._phone_number_id = phone_number_id
 
     @property
@@ -44,3 +46,24 @@ class CloudProfileRequest(ProfileHandlerInterface):
 
     def delete_profile_photo(self):
         ...
+
+
+class PhoneNumbersRequest(object):
+    def __init__(self, access_token: str) -> None:
+        self._access_token = access_token
+
+    @property
+    def _headers(self) -> dict:
+        return {"Authorization": f"Bearer {self._access_token}"}
+
+    def _get_url(self, endpoint: str) -> str:
+        return f"{settings.WHATSAPP_API_URL}/{endpoint}"
+
+    def get_phone_numbers(self, waba_id: str) -> list:
+        url = self._get_url(f"{waba_id}/phone_numbers")
+        response = requests.get(url, headers=self._headers)
+
+        if response.status_code != status.HTTP_200_OK:
+            raise FacebookApiException(response.json())
+
+        return response.json().get("data", [])
