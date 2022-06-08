@@ -22,7 +22,7 @@ class CloudProfileRequest(ProfileHandlerInterface):
 
     @property
     def _headers(self) -> dict:
-        access_token = settings.WHATSAPP_CLOUD_ACCESS_TOKEN
+        access_token = settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
         return {"Content-Type": "application/json", "Authorization": f"Bearer {access_token}"}
 
     def get_profile(self):
