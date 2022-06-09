@@ -12,7 +12,7 @@ from marketplace.grpc.client import ConnectGRPCClient
 from marketplace.core.types import APPTYPES
 from marketplace.applications.models import App
 from .apis import FacebookWABAApi, FacebookPhoneNumbersAPI
-from .exceptions import FacebookApiException
+from ..whatsapp_base.exceptions import FacebookApiException
 
 
 User = get_user_model()
@@ -91,6 +91,43 @@ def sync_whatsapp_wabas():
 
             try:
                 waba = api.get_waba(business_id)
+                app.config["waba"] = waba
+                app.modified_by = User.objects.get_admin_user()
+                app.save()
+
+                redis.set(key, "synced", settings.WHATSAPP_TIME_BETWEEN_SYNC_WABA_IN_HOURS)
+            except FacebookApiException as error:
+                logger.error(f"An error occurred while trying to sync the app. UUID: {app.uuid}. Error: {error}")
+                continue
+
+        else:
+            logger.info(
+                f"Skipping the app because it was recently synced. {redis.ttl(key)} seconds left. UUID: {app.uuid}"
+            )
+
+
+@celery_app.task(name="sync_whatsapp_cloud_wabas")
+def sync_whatsapp_cloud_wabas():
+    apptype = APPTYPES.get("wpp-cloud")
+    redis = get_redis_connection()
+
+    for app in apptype.apps:
+        key = SYNC_WHATSAPP_WABA_LOCK_KEY.format(app_uuid=str(app.uuid))
+
+        if redis.get(key) is None:
+            config = app.config
+            wa_waba_id = config.get("wa_waba_id", None)
+
+            if wa_waba_id is None:
+                logger.info(f"Skipping the app because it doesn't contain `wa_waba_id`. UUID: {app.uuid}")
+                continue
+
+            logger.info(f"Syncing app WABA. UUID: {app.uuid}")
+
+            api = FacebookWABAApi(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
+
+            try:
+                waba = api.get_waba(wa_waba_id)
                 app.config["waba"] = waba
                 app.modified_by = User.objects.get_admin_user()
                 app.save()

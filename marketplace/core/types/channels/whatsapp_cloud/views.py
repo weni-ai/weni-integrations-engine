@@ -11,8 +11,8 @@ if TYPE_CHECKING:
     from rest_framework.request import Request
 
 from marketplace.core.types import views
-from .serializers import WhatsAppCloudSerializer
 from ..whatsapp_base import mixins
+from ..whatsapp_base.serializers import WhatsAppSerializer
 from ..whatsapp_base.exceptions import FacebookApiException
 from .facades import CloudProfileFacade, CloudProfileContactFacade
 from .requests import PhoneNumbersRequest
@@ -25,7 +25,7 @@ class WhatsAppCloudViewSet(
     mixins.WhatsAppProfileMixin,
 ):
 
-    serializer_class = WhatsAppCloudSerializer
+    serializer_class = WhatsAppSerializer
 
     business_profile_class = CloudProfileContactFacade
     profile_class = CloudProfileFacade

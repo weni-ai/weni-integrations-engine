@@ -11,9 +11,9 @@ if TYPE_CHECKING:
     from rest_framework.request import Request
 
 from marketplace.core.types import views
-from ..whatsapp_base.serializers import WhatsAppSerializer
 from .apis import OnPremiseBusinessProfileAPI
 from .facades import OnPremiseProfileFacade
+from ..whatsapp_base.serializers import WhatsAppSerializer
 from ..whatsapp_base import mixins
 
 
