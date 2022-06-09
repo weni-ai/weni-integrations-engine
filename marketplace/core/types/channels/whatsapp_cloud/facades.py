@@ -27,9 +27,17 @@ class CloudProfileFacade(object):  # TODO: Interface
         self._profile_api = CloudProfileRequest(phone_number_id)
 
     def get_profile(self):
-        return self._profile_api.get_profile()
+        profile = self._profile_api.get_profile()
+        vertical = profile["business"]["vertical"]
 
-    def set_profile(self, photo, status: str = None, business: dict = {}):
+        if vertical is not None:
+            for key, value in self.VERTICAl_MAP.items():
+                if value == vertical:
+                    profile["business"]["vertical"] = key
+
+        return profile
+
+    def set_profile(self, photo: str = None, status: str = None, business: dict = {}):
         data = dict()
 
         if status is not None:
