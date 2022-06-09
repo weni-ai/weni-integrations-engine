@@ -1,3 +1,5 @@
+import string
+import json
 from typing import TYPE_CHECKING
 
 from rest_framework.response import Response
@@ -5,6 +7,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework import status
 from rest_framework.decorators import action
 from django.conf import settings
+from django.utils.crypto import get_random_string
 import requests
 
 if TYPE_CHECKING:
@@ -16,6 +19,7 @@ from ..whatsapp_base.serializers import WhatsAppSerializer
 from ..whatsapp_base.exceptions import FacebookApiException
 from .facades import CloudProfileFacade, CloudProfileContactFacade
 from .requests import PhoneNumbersRequest
+from .serializers import WhatsAppCloudConfigureSerializer
 
 
 class WhatsAppCloudViewSet(
@@ -120,3 +124,54 @@ class WhatsAppCloudViewSet(
             return Response(request.get_phone_numbers(waba_id))
         except FacebookApiException as error:
             raise ValidationError(error)
+
+    @action(detail=True, methods=["PATCH"], serializer_class=WhatsAppCloudConfigureSerializer)
+    def configure(self, request, **kwargs):  # TODO: refactor this method
+        app = self.get_object()
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        input_token = serializer.validated_data.get("input_token")
+        waba_id = serializer.validated_data.get("waba_id")
+        phone_number_id = serializer.validated_data.get("phone_number_id")
+
+        base_url = settings.WHATSAPP_API_URL
+        headers = {"Authorization": f"Bearer {settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN}"}
+
+        url = f"{base_url}/{waba_id}/assigned_users"
+        params = dict(user=settings.WHATSAPP_CLOUD_SYSTEM_USER_ID, access_token=input_token, tasks="MANAGE")
+        response = requests.post(url, params=params, headers=headers)
+
+        if response.status_code != status.HTTP_200_OK:
+            raise ValidationError(response.json())
+
+        url = f"{base_url}/{settings.WHATSAPP_CLOUD_EXTENDED_CREDIT_ID}/whatsapp_credit_sharing_and_attach"
+        params = dict(waba_id=waba_id, waba_currency="USD")
+        response = requests.post(url, params=params, headers=headers)
+
+        if response.status_code != status.HTTP_200_OK:
+            raise ValidationError(response.json())
+
+        allocation_config_id = response.json().get("allocation_config_id")
+
+        url = f"{base_url}/{waba_id}/subscribed_apps"
+        response = requests.post(url, headers=headers)
+
+        if response.status_code != status.HTTP_200_OK:
+            raise ValidationError(response.json())
+
+        url = f"{base_url}/{phone_number_id}/register"
+        pin = get_random_string(6, string.digits)
+        data = dict(messaging_product="whatsapp", pin=pin)
+        response = requests.post(url, headers=headers, data=data)
+
+        if response.status_code != status.HTTP_200_OK:
+            raise ValidationError(response.json())
+
+        app.config["allocation_config_id"] = allocation_config_id
+        app.config["wa_pin"] = pin
+        app.save()
+
+        # TODO: Create channel in flows
+
+        return Response(serializer.validated_data)

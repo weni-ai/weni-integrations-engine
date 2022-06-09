@@ -1,7 +1,9 @@
+from rest_framework import serializers
+
 from marketplace.applications.models import App
 from marketplace.core.serializers import AppTypeBaseSerializer
 
-
+# TODO: Remove unnecessary serializers
 class WhatsAppCloudSerializer(AppTypeBaseSerializer):
     class Meta:
         model = App
@@ -18,3 +20,9 @@ class WhatsAppCloudSerializer(AppTypeBaseSerializer):
         read_only_fields = ("code", "uuid", "platform")
 
         # TODO: Validate fields
+
+
+class WhatsAppCloudConfigureSerializer(serializers.Serializer):
+    input_token = serializers.CharField(required=True)
+    waba_id = serializers.CharField(required=True)
+    phone_number_id = serializers.CharField(required=True)
