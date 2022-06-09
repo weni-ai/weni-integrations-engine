@@ -3,6 +3,8 @@ from .requests import CloudProfileRequest
 
 class CloudProfileFacade(object):  # TODO: Interface
 
+    # TODO: Put vertical rule in respective serializer
+
     VERTICAl_MAP = {
         "Automotive": "AUTOMOTIVE",
         "Beauty, Spa and Salon": "BEAUTY",
