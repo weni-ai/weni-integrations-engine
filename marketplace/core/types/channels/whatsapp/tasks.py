@@ -258,6 +258,8 @@ def sync_whatsapp_cloud_phone_numbers():
             if certificate is not None:
                 app.config["phone_number"]["certificate"] = certificate
 
+            app.modified_by = User.objects.get_admin_user()
+
             app.save()
             redis.set(key, "synced", settings.WHATSAPP_TIME_BETWEEN_SYNC_PHONE_NUMBERS_IN_HOURS)
 
