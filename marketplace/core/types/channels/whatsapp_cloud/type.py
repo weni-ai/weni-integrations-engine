@@ -10,8 +10,8 @@ class WhatsAppCloudType(AppType):
     code = "wpp-cloud"
     channeltype_code = "WAC"
     name = "WhatsApp"
-    description = "WhatsApp.data.description"
-    summary = "WhatsApp.data.summary"
+    description = "WhatsAppCloud.data.description"
+    summary = "WhatsAppCloud.data.summary"
     category = AppType.CATEGORY_CHANNEL
     developer = "Weni"
     bg_color = "#d1fcc9cc"  # TODO: Change to real color
