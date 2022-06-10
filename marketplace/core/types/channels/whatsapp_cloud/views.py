@@ -133,6 +133,9 @@ class WhatsAppCloudViewSet(
             flow_object_uuid=task.result.get("uuid"),
         )
 
+        celery_app.send_task(name="sync_whatsapp_cloud_wabas")
+        celery_app.send_task(name="sync_whatsapp_cloud_phone_numbers")
+
         return Response(serializer.validated_data)
 
     @action(detail=False, methods=["GET"])
