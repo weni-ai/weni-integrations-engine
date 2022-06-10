@@ -116,7 +116,7 @@ class WhatsAppCloudViewSet(
         )
 
         task = celery_app.send_task(
-            name="create_wac_channel", args=[request.user.email, project_uuid, data, self.app_type.channeltype_code]
+            name="create_wac_channel", args=[request.user.email, project_uuid, data, self.type_class.channeltype_code]
         )
         task.wait()
 
