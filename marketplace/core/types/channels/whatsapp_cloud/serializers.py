@@ -3,6 +3,7 @@ from rest_framework import serializers
 from marketplace.applications.models import App
 from marketplace.core.serializers import AppTypeBaseSerializer
 
+
 # TODO: Remove unnecessary serializers
 class WhatsAppCloudSerializer(AppTypeBaseSerializer):
     class Meta:
@@ -26,3 +27,4 @@ class WhatsAppCloudConfigureSerializer(serializers.Serializer):
     input_token = serializers.CharField(required=True)
     waba_id = serializers.CharField(required=True)
     phone_number_id = serializers.CharField(required=True)
+    business_id = serializers.CharField(required=True)

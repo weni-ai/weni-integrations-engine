@@ -232,10 +232,10 @@ def sync_whatsapp_cloud_phone_numbers():
         key = SYNC_WHATSAPP_PHONE_NUMBER_LOCK_KEY.format(app_uuid=str(app.uuid))
 
         if redis.get(key) is None:
-            phone_number_id = app.config.get("address", None)
+            phone_number_id = app.config.get("wa_phone_number_id", None)
 
             if phone_number_id is None:
-                logger.info(f"Skipping the app because it doesn't contain `address`. UUID: {app.uuid}")
+                logger.info(f"Skipping the app because it doesn't contain `wa_phone_number_id`. UUID: {app.uuid}")
 
             api = FacebookPhoneNumbersAPI(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
             phone_number = api.get_phone_number(phone_number_id)

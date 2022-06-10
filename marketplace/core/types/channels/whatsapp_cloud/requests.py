@@ -42,7 +42,9 @@ class CloudProfileRequest(ProfileHandlerInterface):
         data = dict(messaging_product="whatsapp")
         data.update(kwargs)
 
-        requests.post(self._url, headers=self._headers, data=json.dumps(data))
+        response = requests.post(self._url, headers=self._headers, data=json.dumps(data))
+        if response.status_code != status.HTTP_200_OK:
+            raise FacebookApiException(response.json())
 
     def delete_profile_photo(self):
         ...
@@ -67,3 +69,12 @@ class PhoneNumbersRequest(object):
             raise FacebookApiException(response.json())
 
         return response.json().get("data", [])
+
+    def get_phone_number(self, phone_number_id: str):
+        url = self._get_url(phone_number_id)
+        response = requests.get(url, headers=self._headers)
+
+        if response.status_code != status.HTTP_200_OK:
+            raise FacebookApiException(response.json())
+
+        return response.json()
