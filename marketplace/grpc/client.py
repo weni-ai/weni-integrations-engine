@@ -57,9 +57,7 @@ class ConnectGRPCClient:
             )
 
         except grpc.RpcError as error:
-            if error.code() is grpc.StatusCode.INVALID_ARGUMENT:
-                raise serializers.ValidationError()
-            raise error
+            raise serializers.ValidationError(error)
 
     def release_channel(self, channel_uuid: str, user_email: str) -> None:
         response = self.project_stub.ReleaseChannel(

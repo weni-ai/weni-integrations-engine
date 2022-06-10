@@ -68,7 +68,7 @@ class WhatsAppCloudViewSet(
 
         url = f"{base_url}/{waba_id}"
         params = dict(fields="message_template_namespace")
-        response = requests.post(url, params=params, headers=headers)
+        response = requests.get(url, params=params, headers=headers)
 
         message_template_namespace = response.json().get("message_template_namespace")
 
@@ -121,7 +121,7 @@ class WhatsAppCloudViewSet(
         task.wait()
 
         config["title"] = config.get("wa_number")
-        config["wa_allocation_config_id"] = (allocation_config_id,)
+        config["wa_allocation_config_id"] = allocation_config_id
         config["wa_phone_number_id"] = phone_number_id
 
         App.objects.create(
