@@ -48,6 +48,19 @@ class ConnectGRPCClient:
 
         return response
 
+    def create_wac_channel(self, user: str, project_uuid: str, phone_number_id: str, config: dict):
+        try:
+            return self.project_stub.CreateWACChannel(
+                project_pb2.ChannelWACCreateRequest(
+                    user=user, project_uuid=project_uuid, phone_number_id=phone_number_id, config=json.dumps(config)
+                )
+            )
+
+        except grpc.RpcError as error:
+            if error.code() is grpc.StatusCode.INVALID_ARGUMENT:
+                raise serializers.ValidationError()
+            raise error
+
     def release_channel(self, channel_uuid: str, user_email: str) -> None:
         response = self.project_stub.ReleaseChannel(
             project_pb2.ReleaseChannelRequest(channel_uuid=channel_uuid, user=user_email)
@@ -78,6 +91,13 @@ class RouterGRPCClient:
 def create_channel(user: str, project_uuid: str, data: dict, channeltype_code: str):
     client = ConnectGRPCClient()
     channel = client.create_channel(user, project_uuid, data, channeltype_code)
+    return dict(uuid=channel.uuid, name=channel.name, config=channel.config, address=channel.address)
+
+
+@celery_app.task(name="create_wac_channel")
+def create_wac_channel(user: str, project_uuid: str, phone_number_id: str, config: dict):
+    client = ConnectGRPCClient()
+    channel = client.create_wac_channel(user, project_uuid, phone_number_id, config)
     return dict(uuid=channel.uuid, name=channel.name, config=channel.config, address=channel.address)
 
 
