@@ -32,11 +32,40 @@ class ConnectProjectClient(ConnectAuth):
     base_url = settings.CONNECT_ENGINE_BASE_URL
 
     def list_channels(self, channeltype_code: str):
+        channels = []
+
         payload = {
             "channel_type": channeltype_code
         }
         request = requests.get(url=self.base_url + '/organization/project/list_channel/', json=payload, headers=self.auth_header())
-        return json.loads(request.text)['data']
+        response = json.loads(request.text)
+
+        """
+        limit = 20
+        offset = 20
+        pages = round(response.get("count")/limit)+1
+
+        for i in range(1, pages):
+            if not response.get("results"):
+                continue
+
+            for channel in response.get("results"):
+                channels.append(channel)
+
+            request = requests.get(url=self.base_url + f'/organization/project/list_channel/?limit={limit}&offset={offset*i}', json=payload, headers=self.auth_header())
+            response = json.loads(request.text)
+
+        return channels
+        """
+
+        while response.get("next") != None and request.status_code == 200:
+            for channel in response.get("results"):
+                channels.append(channel)
+            request = requests.get(url=response.get("next"), json=payload, headers=self.auth_header())
+            response = json.loads(request.text)
+
+        return channels
+        
 
     def create_channel(self, user: str, project_uuid: str, data: dict, channeltype_code: str) -> dict:
         payload = {
