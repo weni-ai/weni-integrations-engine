@@ -40,24 +40,6 @@ class ConnectProjectClient(ConnectAuth):
         request = requests.get(url=self.base_url + '/organization/project/list_channel/', json=payload, headers=self.auth_header())
         response = json.loads(request.text)
 
-        """
-        limit = 20
-        offset = 20
-        pages = round(response.get("count")/limit)+1
-
-        for i in range(1, pages):
-            if not response.get("results"):
-                continue
-
-            for channel in response.get("results"):
-                channels.append(channel)
-
-            request = requests.get(url=self.base_url + f'/organization/project/list_channel/?limit={limit}&offset={offset*i}', json=payload, headers=self.auth_header())
-            response = json.loads(request.text)
-
-        return channels
-        """
-
         while response.get("next") != None and request.status_code == 200:
             for channel in response.get("results"):
                 channels.append(channel)
