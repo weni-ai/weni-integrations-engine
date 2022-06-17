@@ -27,7 +27,7 @@ class CloudProfileFacade(object):  # TODO: Interface
 
     def __init__(self, phone_number_id: "str") -> None:
         self._profile_api = CloudProfileRequest(phone_number_id)
-        self._photo_api = PhotoAPIRequest(base_url, auth_token)
+        self._photo_api = PhotoAPIRequest(auth_token, phone_number_id)
 
     def get_profile(self):
         profile = self._profile_api.get_profile()
