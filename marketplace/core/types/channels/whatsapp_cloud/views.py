@@ -68,7 +68,7 @@ class WhatsAppCloudViewSet(
         return super().get_queryset().filter(code=self.type_class.code)
 
     def destroy(self, request, *args, **kwargs) -> Response:
-        serializer = WhatsAppCloudConfigureSerializer(data=request.data)
+        serializer = WhatsAppCloudDeleteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         headers = {"Authorization": f"Bearer {settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN}"}
@@ -78,7 +78,7 @@ class WhatsAppCloudViewSet(
         url = f"{base_url}/{phone_number_id}/deregister"
     
         response = requests.post(url, headers=headers)
-        
+
         if response.status_code != status.HTTP_200_OK:
             raise ValidationError(response.json())
 
