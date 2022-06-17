@@ -28,6 +28,7 @@ from .facades import CloudProfileFacade, CloudProfileContactFacade
 from .requests import PhoneNumbersRequest
 
 from .serializers import WhatsAppCloudConfigureSerializer
+from .serializers import  WhatsAppCloudDeleteSerializer
 
 
 class WhatsAppCloudViewSet(
