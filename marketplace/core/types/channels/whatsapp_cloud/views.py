@@ -68,9 +68,21 @@ class WhatsAppCloudViewSet(
         return super().get_queryset().filter(code=self.type_class.code)
 
     def destroy(self, request, *args, **kwargs) -> Response:
-        return Response(
-            "This channel cannot be deleted", status=status.HTTP_403_FORBIDDEN
-        )
+        serializer = WhatsAppCloudConfigureSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        headers = {"Authorization": f"Bearer {settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN}"}
+        base_url = settings.WHATSAPP_API_URL
+        phone_number_id = serializer.validated_data.get("phone_number_id")
+
+        url = f"{base_url}/{phone_number_id}/deregister"
+    
+        response = requests.post(url, headers=headers)
+        
+        if response.status_code != status.HTTP_200_OK:
+            raise ValidationError(response.json())
+
+        Response("Channel deleted.", status=status.HTTP_200_OK)
 
     def create(self, request, *args, **kwargs):
         serializer = WhatsAppCloudConfigureSerializer(data=request.data)
