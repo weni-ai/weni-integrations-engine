@@ -78,3 +78,61 @@ class PhoneNumbersRequest(object):
             raise FacebookApiException(response.json())
 
         return response.json()
+
+class PhotoAPIRequest(object):
+
+    def __init__(self, access_token: str, phone_number_id: str) -> None:
+        self._access_token = access_token
+        self._phone_number_id = phone_number_id
+
+    @property
+    def _headers(self) -> dict:
+        return {"Authorization": f"Bearer {self._access_token}"}
+    
+    def _get_url(self, endpoint: str) -> str:
+        return f"{settings.WHATSAPP_API_URL}/{endpoint}"
+
+    def create_upload_session(self, access_token : str, file_length : int, file_type : str) -> str:
+        url = self._get_url(f"/app/uploads?access_token={self._access_token}&file_length={file_length}&file_type={file_type}")
+        response = requests.post(url, headers=self._headers)
+
+        if response.status_code != status.HTTP_200_OK:
+            raise FacebookApiException(response.json())
+
+        return response.json().get("id", "")
+        
+    def upload_photo(self, upload_session_id: str, photo : str, is_uploading : bool = False) -> str:
+        url = self._get_url(f"/{upload_session_id}")
+
+        headers = {
+            "Content-Type": photo.content_type,
+            "Authorization": f"OAuth {self._access_token}"
+        }
+
+        if not is_uploading:
+            headers["file_offset"] = 0
+
+        response = requests.post(url, headers=headers, data=photo.file.getvalue())
+
+        if response.status_code != status.HTTP_200_OK:
+            raise FacebookApiException(response.json())
+
+        return response.json().get("h", "")
+
+
+    def set_photo(self, photo):
+        url = self._get_url(f"/{self._phone_number_id}/whatsapp_business_profile")
+        
+        upload_session_id = self.create_upload_session(self._access_token, len(photo.file.getvalue()), file_type=photo.content_type)
+
+        upload_handle = upload_photo(upload_session_id, photo)
+
+        payload = {
+            "messaging_product": "whatsapp",
+            "profile_picture_handle": upload_handle
+        }
+
+        response = requests.post(url, headers=self._headers, json=payload)
+
+        if response.status_code != status.HTTP_200_OK:
+            raise FacebookApiException(response.json())
