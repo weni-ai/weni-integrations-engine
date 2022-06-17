@@ -20,7 +20,7 @@ from ..whatsapp_base.serializers import WhatsAppSerializer
 from ..whatsapp_base.exceptions import FacebookApiException
 from .facades import CloudProfileFacade, CloudProfileContactFacade
 from .requests import PhoneNumbersRequest
-from .serializers import WhatsAppCloudConfigureSerializer
+from .serializers import WhatsAppCloudConfigureSerializer, WhatsAppCloudDeleteSerializer
 
 
 class WhatsAppCloudViewSet(
