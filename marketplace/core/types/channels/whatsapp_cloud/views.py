@@ -1,6 +1,7 @@
 import string
 from typing import TYPE_CHECKING
 
+from billiard.pool import MaybeEncodingError
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from rest_framework import status
@@ -118,7 +119,10 @@ class WhatsAppCloudViewSet(
         task = celery_app.send_task(
             name="create_wac_channel", args=[request.user.email, project_uuid, phone_number_id, config]
         )
-        task.wait()
+        try:
+            task.wait()
+        except MaybeEncodingError:
+            raise ValidationError("Maybe a Channel with that 'phone_number_id' alredy exists")
 
         config["title"] = config.get("wa_number")
         config["wa_allocation_config_id"] = allocation_config_id
