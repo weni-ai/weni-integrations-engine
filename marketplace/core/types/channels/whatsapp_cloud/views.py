@@ -156,7 +156,7 @@ class WhatsAppCloudViewSet(
 
         url = f"{settings.WHATSAPP_API_URL}/debug_token"
         params = dict(input_token=input_token)
-        headers = {"Authorization": f"Bearer {input_token}"}
+        headers = {"Authorization": f"Bearer {settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN}"}
 
         response = requests.get(url, params=params, headers=headers)
 
@@ -201,16 +201,12 @@ class WhatsAppCloudViewSet(
             ]
         """
 
-        input_token = request.query_params.get("input_token", None)
         waba_id = request.query_params.get("waba_id", None)
-
-        if input_token is None:
-            raise ValidationError("input_token is a required parameter!")
 
         if waba_id is None:
             raise ValidationError("waba_id is a required parameter!")
 
-        request = PhoneNumbersRequest(input_token)
+        request = PhoneNumbersRequest(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
 
         try:
             return Response(request.get_phone_numbers(waba_id))
