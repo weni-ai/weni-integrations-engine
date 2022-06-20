@@ -81,8 +81,8 @@ class PhoneNumbersRequest(object):
 
 class PhotoAPIRequest(object):
 
-    def __init__(self, access_token: str, phone_number_id: str) -> None:
-        self._access_token = access_token
+    def __init__(self, phone_number_id: str) -> None:
+        self._access_token = settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
         self._phone_number_id = phone_number_id
 
     @property
