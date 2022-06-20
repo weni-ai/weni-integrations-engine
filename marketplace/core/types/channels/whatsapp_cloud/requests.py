@@ -125,7 +125,7 @@ class PhotoAPIRequest(object):
         
         upload_session_id = self.create_upload_session(self._access_token, len(photo.file.getvalue()), file_type=photo.content_type)
 
-        upload_handle = upload_photo(upload_session_id, photo)
+        upload_handle = self.upload_photo(upload_session_id, photo)
 
         payload = {
             "messaging_product": "whatsapp",
