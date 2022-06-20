@@ -34,6 +34,7 @@ class CloudProfileRequest(ProfileHandlerInterface):
             email=content.get("email"),
             websites=content.get("websites"),
             address=content.get("address"),
+            profile_picture_url=content.get("profile_picture_url")
             business=dict(description=content.get("description"), vertical=content.get("vertical")),
         )
 
