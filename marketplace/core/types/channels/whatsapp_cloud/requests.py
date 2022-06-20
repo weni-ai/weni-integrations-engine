@@ -93,7 +93,7 @@ class PhotoAPIRequest(object):
         return f"{settings.WHATSAPP_API_URL}/{endpoint}"
 
     def create_upload_session(self, access_token : str, file_length : int, file_type : str) -> str:
-        url = self._get_url(f"/app/uploads?access_token={self._access_token}&file_length={file_length}&file_type={file_type}")
+        url = self._get_url(f"app/uploads?access_token={self._access_token}&file_length={file_length}&file_type={file_type}")
         response = requests.post(url, headers=self._headers)
 
         if response.status_code != status.HTTP_200_OK:
@@ -102,7 +102,7 @@ class PhotoAPIRequest(object):
         return response.json().get("id", "")
         
     def upload_photo(self, upload_session_id: str, photo : str, is_uploading : bool = False) -> str:
-        url = self._get_url(f"/{upload_session_id}")
+        url = self._get_url(upload_session_id)
 
         headers = {
             "Content-Type": photo.content_type,
@@ -110,7 +110,7 @@ class PhotoAPIRequest(object):
         }
 
         if not is_uploading:
-            headers["file_offset"] = 0
+            headers["file_offset"] = "0"
 
         response = requests.post(url, headers=headers, data=photo.file.getvalue())
 
@@ -121,7 +121,7 @@ class PhotoAPIRequest(object):
 
 
     def set_photo(self, photo):
-        url = self._get_url(f"/{self._phone_number_id}/whatsapp_business_profile")
+        url = self._get_url(f"{self._phone_number_id}/whatsapp_business_profile")
         
         upload_session_id = self.create_upload_session(self._access_token, len(photo.file.getvalue()), file_type=photo.content_type)
 
