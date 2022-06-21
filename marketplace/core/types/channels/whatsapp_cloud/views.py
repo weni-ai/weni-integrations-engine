@@ -49,7 +49,9 @@ class WhatsAppCloudViewSet(
         return super().get_queryset().filter(code=self.type_class.code)
 
     def destroy(self, request, *args, **kwargs) -> Response:
-        return Response("This channel cannot be deleted", status=status.HTTP_403_FORBIDDEN)
+        return Response(
+            "This channel cannot be deleted", status=status.HTTP_403_FORBIDDEN
+        )
 
     def create(self, request, *args, **kwargs):
         serializer = WhatsAppCloudConfigureSerializer(data=request.data)
@@ -64,7 +66,9 @@ class WhatsAppCloudViewSet(
         waba_currency = "USD"
 
         base_url = settings.WHATSAPP_API_URL
-        headers = {"Authorization": f"Bearer {settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN}"}
+        headers = {
+            "Authorization": f"Bearer {settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN}"
+        }
 
         url = f"{base_url}/{waba_id}"
         params = dict(fields="message_template_namespace")
@@ -73,7 +77,11 @@ class WhatsAppCloudViewSet(
         message_template_namespace = response.json().get("message_template_namespace")
 
         url = f"{base_url}/{waba_id}/assigned_users"
-        params = dict(user=settings.WHATSAPP_CLOUD_SYSTEM_USER_ID, access_token=input_token, tasks="MANAGE")
+        params = dict(
+            user=settings.WHATSAPP_CLOUD_SYSTEM_USER_ID,
+            access_token=settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN,
+            tasks="MANAGE",
+        )
         response = requests.post(url, params=params, headers=headers)
 
         if response.status_code != status.HTTP_200_OK:
@@ -116,7 +124,8 @@ class WhatsAppCloudViewSet(
         )
 
         task = celery_app.send_task(
-            name="create_wac_channel", args=[request.user.email, project_uuid, phone_number_id, config]
+            name="create_wac_channel",
+            args=[request.user.email, project_uuid, phone_number_id, config],
         )
         task.wait()
 
@@ -156,7 +165,9 @@ class WhatsAppCloudViewSet(
 
         url = f"{settings.WHATSAPP_API_URL}/debug_token"
         params = dict(input_token=input_token)
-        headers = {"Authorization": f"Bearer {settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN}"}
+        headers = {
+            "Authorization": f"Bearer {settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN}"
+        }
 
         response = requests.get(url, params=params, headers=headers)
 
@@ -167,10 +178,16 @@ class WhatsAppCloudViewSet(
 
         try:
             whatsapp_business_management = next(
-                filter(lambda scope: scope.get("scope") == "whatsapp_business_management", data.get("granular_scopes"))
+                filter(
+                    lambda scope: scope.get("scope") == "whatsapp_business_management",
+                    data.get("granular_scopes"),
+                )
             )
             business_management = next(
-                filter(lambda scope: scope.get("scope") == "business_management", data.get("granular_scopes"))
+                filter(
+                    lambda scope: scope.get("scope") == "business_management",
+                    data.get("granular_scopes"),
+                )
             )
         except StopIteration:
             raise ValidationError("Invalid token permissions")
