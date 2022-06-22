@@ -1,4 +1,4 @@
-from .requests import CloudProfileRequest
+from .requests import CloudProfileRequest, PhotoAPIRequest
 
 
 class CloudProfileFacade(object):  # TODO: Interface
@@ -27,6 +27,7 @@ class CloudProfileFacade(object):  # TODO: Interface
 
     def __init__(self, phone_number_id: "str") -> None:
         self._profile_api = CloudProfileRequest(phone_number_id)
+        self._photo_api = PhotoAPIRequest(phone_number_id)
 
     def get_profile(self):
         profile = self._profile_api.get_profile()
@@ -40,6 +41,10 @@ class CloudProfileFacade(object):  # TODO: Interface
         return profile
 
     def set_profile(self, photo: str = None, status: str = None, business: dict = {}):
+
+        if photo is not None:
+            self._photo_api.set_photo(photo)
+
         data = dict()
 
         if status is not None:
