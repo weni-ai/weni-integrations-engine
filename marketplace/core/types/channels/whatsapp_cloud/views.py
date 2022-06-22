@@ -1,5 +1,6 @@
 import string
 from typing import TYPE_CHECKING
+from django.http import JsonResponse
 
 from billiard.pool import MaybeEncodingError
 from rest_framework.response import Response
@@ -122,7 +123,7 @@ class WhatsAppCloudViewSet(
         try:
             task.wait()
         except MaybeEncodingError:
-            raise ValidationError("Maybe a Channel with that 'phone_number_id' alredy exists")
+            return JsonResponse({"error": "Maybe a Channel with that 'phone_number_id' alredy exists", "error_type": "WhatsApp.config.error.channel_already_exists"}, status=status.HTTP_409_CONFLICT)
 
         config["title"] = config.get("wa_number")
         config["wa_allocation_config_id"] = allocation_config_id
