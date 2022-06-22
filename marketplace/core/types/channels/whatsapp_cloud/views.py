@@ -83,6 +83,11 @@ class WhatsAppCloudViewSet(
         if response.status_code != status.HTTP_200_OK:
             raise ValidationError(response.json())
 
+        task = celery_app.send_task(
+            name="release_channel", args=[serializer.validated_data.get("channel_uuid"), serializer.validated_data.get("user_email")]
+        )
+        task.wait()
+
         Response("Channel deleted.", status=status.HTTP_200_OK)
 
     def create(self, request, *args, **kwargs):
