@@ -123,7 +123,13 @@ class WhatsAppCloudViewSet(
         try:
             task.wait()
         except MaybeEncodingError:
-            return JsonResponse({"error": "Maybe a Channel with that 'phone_number_id' alredy exists", "error_type": "WhatsApp.config.error.channel_already_exists"}, status=status.HTTP_409_CONFLICT)
+            return JsonResponse(
+                {
+                    "error": "Maybe a Channel with that 'phone_number_id' alredy exists",
+                    "error_type": "WhatsApp.config.error.channel_already_exists",
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
 
         config["title"] = config.get("wa_number")
         config["wa_allocation_config_id"] = allocation_config_id
