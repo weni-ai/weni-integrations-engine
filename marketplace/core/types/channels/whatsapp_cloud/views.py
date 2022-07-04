@@ -195,16 +195,21 @@ class WhatsAppCloudViewSet(
         try:
             waba_id = whatsapp_business_management.get("target_ids")[0]
 
-            url = f"{settings.WHATSAPP_API_URL}/{waba_id}/"
-            params = dict(
-                access_token=settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN,
-                fields="owner_business_info,on_behalf_of_business_info"
-                )
+            business_ids = business_management.get("target_ids")
 
-            business_id = requests.get(url, params=params, headers=headers).json().get("owner_business_info", {"id": None}).get("id")
+            business_id = business_ids[0] if len(business_ids) > 0 else None
 
             if business_id is None:
-                raise ValidationError("Missing WhatsApp Business Accound Id")
+                url = f"{settings.WHATSAPP_API_URL}/{waba_id}/"
+                params = dict(
+                    access_token=settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN,
+                    fields="owner_business_info,on_behalf_of_business_info"
+                    )
+
+                business_id = requests.get(url, params=params, headers=headers).json().get("owner_business_info", {"id": None}).get("id")
+
+                if business_id is None:
+                    raise ValidationError("Missing WhatsApp Business Accound Id")
 
         except IndexError:
             raise ValidationError("Missing WhatsApp Business Accound Id")
