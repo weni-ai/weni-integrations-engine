@@ -52,7 +52,7 @@ class ConnectProjectClient(ConnectAuth):
     def create_channel(self, user: str, project_uuid: str, data: dict, channeltype_code: str) -> dict:
         payload = {
             "user": user,
-            "project_uuid": project_uuid,
+            "project_uuid": str(project_uuid),
             "data": data,
             "channeltype_code": channeltype_code
         }
@@ -77,5 +77,5 @@ class WPPRouterChannelClient(ConnectAuth):
             "user": name
         }
 
-        request = requests.post(url=self.base_url + '/integrations/channel', json=payload, headers=self.auth_header())
-        return json.loads(request.text)['token']
+        response = requests.post(url=self.base_url + '/integrations/channel', json=payload, headers=self.auth_header())
+        return response.json().get("token", "")
