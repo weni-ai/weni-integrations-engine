@@ -1,4 +1,5 @@
 import json
+import time
 
 import requests
 from rest_framework import status
@@ -65,6 +66,11 @@ class PhoneNumbersRequest(object):
     def get_phone_numbers(self, waba_id: str) -> list:
         url = self._get_url(f"{waba_id}/phone_numbers")
         response = requests.get(url, headers=self._headers)
+
+        for i in range(3):
+            if response.status_code != status.HTTP_200_OK:
+                time.sleep(10)
+                response = requests.get(url, headers=self._headers)
 
         if response.status_code != status.HTTP_200_OK:
             raise FacebookApiException(response.json())
