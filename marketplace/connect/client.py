@@ -37,7 +37,7 @@ class ConnectProjectClient(ConnectAuth):
         payload = {
             "channel_type": channeltype_code
         }
-        request = requests.get(url=self.base_url + '/organization/project/list_channel/', json=payload, headers=self.auth_header())
+        request = requests.get(url=self.base_url + '/v1/organization/project/list_channel/', json=payload, headers=self.auth_header())
         response = json.loads(request.text)
 
         while response.get("next") != None and request.status_code == 200:
@@ -56,7 +56,7 @@ class ConnectProjectClient(ConnectAuth):
             "data": data,
             "channeltype_code": channeltype_code
         }
-        request = requests.post(url=self.base_url + '/organization/project/create_channel/', json=payload, headers=self.auth_header())
+        request = requests.post(url=self.base_url + '/v1/organization/project/create_channel/', json=payload, headers=self.auth_header())
         return json.loads(request.text)
 
     def release_channel(self, channel_uuid: str, user_email: str) -> None:
@@ -64,7 +64,7 @@ class ConnectProjectClient(ConnectAuth):
             "channel_uuid": channel_uuid,
             "user": user_email
         }
-        request = requests.get(url=self.base_url + '/organization/project/release_channel/', json=payload, headers=self.auth_header())
+        request = requests.get(url=self.base_url + '/v1/organization/project/release_channel/', json=payload, headers=self.auth_header())
         return None
 
 
@@ -78,4 +78,7 @@ class WPPRouterChannelClient(ConnectAuth):
         }
 
         response = requests.post(url=self.base_url + '/integrations/channel', json=payload, headers=self.auth_header())
+        #if response.status_code != 200:
+        #    return ""
+
         return response.json().get("token", "")
