@@ -6,7 +6,6 @@ from rest_framework.response import Response
 
 from marketplace.applications.models import App
 from marketplace.accounts.permissions import ProjectManagePermission
-from marketplace.celery import app as celery_app
 
 from marketplace.connect.client import ConnectProjectClient
 

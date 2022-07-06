@@ -8,7 +8,6 @@ from django_redis import get_redis_connection
 from phonenumbers.phonenumberutil import NumberParseException
 
 from marketplace.celery import app as celery_app
-from marketplace.grpc.client import ConnectGRPCClient
 from marketplace.core.types import APPTYPES
 from marketplace.applications.models import App
 from .apis import FacebookWABAApi, FacebookPhoneNumbersAPI

@@ -5,7 +5,6 @@ from mozilla_django_oidc.auth import OIDCAuthenticationBackend
 
 
 class WeniOIDCAuthenticationBackend(OIDCAuthenticationBackend):  # pragma: no cover
-
     def check_module_permission(self, claims, user) -> None:
         if claims.get("can_communicate_internally", False):
             content_type = ContentType.objects.get_for_model(User)

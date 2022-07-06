@@ -8,7 +8,6 @@ from marketplace.core.fields import Base64ImageField
 from marketplace.applications.models import App
 from marketplace.core.serializers import AppTypeBaseSerializer
 from marketplace.core.storage import AppStorage
-from marketplace.celery import app as celery_app
 from . import type as type_
 
 from marketplace.connect.client import ConnectProjectClient
@@ -109,7 +108,6 @@ class ConfigSerializer(serializers.Serializer):
 
         client = ConnectProjectClient()
         return client.create_channel(user.email, self.app.project_uuid, data, self.app.channeltype_code)
-        
 
     def generate_script(self, attrs):
         """

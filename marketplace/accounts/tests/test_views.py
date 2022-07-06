@@ -1,17 +1,15 @@
 import uuid
-import requests
 from django.urls import reverse
-from rest_framework import status
-from rest_framework.test import APIRequestFactory
 
 from marketplace.accounts.views import UserPermissionViewSet, UserViewSet
 from marketplace.core.tests.base import APIBaseTestCase
-from marketplace.accounts.models import User, ProjectAuthorization
+from marketplace.accounts.models import User
 
 
 class BaseTest(APIBaseTestCase):
     def setUp(self):
         super().setUp()
+
 
 class UserPermissionViewTestCase(BaseTest):
     project_uuid = uuid.uuid4()
@@ -28,7 +26,8 @@ class UserPermissionViewTestCase(BaseTest):
             "user": "test",
             "project_uuid": str(self.project_uuid),
             "data": "18-05-2022",
-            "channeltype_code": "test"
+            "channeltype_code": "test",
+            "role": 3
         }
         patch_user = self.request.patch(url=self.url, project_uuid=self.project_uuid, body=data)
 
@@ -49,15 +48,9 @@ class UserViewTestCase(BaseTest):
 
         test_user = User.objects.create(email="test@weni.ai", first_name="User", last_name="Test")
 
-        data = {
-            "email": "test@weni.ai",
-            "photo_url": "",
-            "first_name": "User1",
-            "last_name": "Test"
-        }
+        data = {"email": "test@weni.ai", "photo_url": "", "first_name": "User1", "last_name": "Test"}
         patch_user = self.request.post(url=self.url, body=data)
 
         test_user = User.objects.get(email="test@weni.ai")
 
         self.assertEqual(patch_user.json["first_name"], test_user.first_name)
-

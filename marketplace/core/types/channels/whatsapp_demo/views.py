@@ -1,7 +1,7 @@
 from marketplace.core.types import views
 from .serializers import WhatsAppDemoSerializer
-from marketplace.celery import app as celery_app
 from marketplace.connect.client import ConnectProjectClient, WPPRouterChannelClient
+
 
 class WhatsAppDemoViewSet(views.BaseAppTypeViewSet):
 

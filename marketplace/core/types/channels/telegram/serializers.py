@@ -2,8 +2,8 @@ from rest_framework import serializers
 
 from marketplace.core.serializers import AppTypeBaseSerializer
 from marketplace.applications.models import App
-from marketplace.celery import app as celery_app
 from marketplace.connect.client import ConnectProjectClient
+
 
 class TelegramSerializer(AppTypeBaseSerializer):
     class Meta:
@@ -37,7 +37,9 @@ class ConfigSerializer(serializers.Serializer):
     def _create_channel(self, attrs: dict, app: App) -> str:
         user = self.context.get("request").user
         client = ConnectProjectClient()
-        return client.create_channel(user.email, app.project_uuid, {"auth_token": attrs.get("token")}, app.channeltype_code)
+        return client.create_channel(
+            user.email, app.project_uuid, {"auth_token": attrs.get("token")}, app.channeltype_code
+        )
 
 
 class TelegramConfigureSerializer(AppTypeBaseSerializer):
