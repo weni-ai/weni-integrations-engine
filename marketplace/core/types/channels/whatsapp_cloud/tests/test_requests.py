@@ -1,13 +1,7 @@
-import uuid
-
 from django.test import TestCase
-from django.urls import reverse
 from unittest.mock import patch
-from rest_framework import status
 
 from marketplace.core.tests.base import FakeRequestsResponse
-from marketplace.applications.models import App
-from marketplace.accounts.models import ProjectAuthorization
 
 from ..requests import PhoneNumbersRequest
 from ...whatsapp_base.exceptions import FacebookApiException
@@ -41,4 +35,4 @@ class PhoneNumbersRequestTestCase(TestCase):
         mock.side_effect = [fake_response, fake_response, fake_response]
 
         with self.assertRaises(FacebookApiException):
-            response = self.phone_numbers_request.get_phone_numbers("431332")
+            self.phone_numbers_request.get_phone_numbers("431332")
