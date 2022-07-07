@@ -49,9 +49,7 @@ class WhatsAppCloudViewSet(
         return super().get_queryset().filter(code=self.type_class.code)
 
     def destroy(self, request, *args, **kwargs) -> Response:
-        return Response(
-            "This channel cannot be deleted", status=status.HTTP_403_FORBIDDEN
-        )
+        return Response("This channel cannot be deleted", status=status.HTTP_403_FORBIDDEN)
 
     def create(self, request, *args, **kwargs):
         serializer = WhatsAppCloudConfigureSerializer(data=request.data)
@@ -66,9 +64,7 @@ class WhatsAppCloudViewSet(
         waba_currency = "USD"
 
         base_url = settings.WHATSAPP_API_URL
-        headers = {
-            "Authorization": f"Bearer {settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN}"
-        }
+        headers = {"Authorization": f"Bearer {settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN}"}
 
         url = f"{base_url}/{waba_id}"
         params = dict(fields="message_template_namespace")
@@ -165,9 +161,7 @@ class WhatsAppCloudViewSet(
 
         url = f"{settings.WHATSAPP_API_URL}/debug_token"
         params = dict(input_token=input_token)
-        headers = {
-            "Authorization": f"Bearer {settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN}"
-        }
+        headers = {"Authorization": f"Bearer {settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN}"}
 
         response = requests.get(url, params=params, headers=headers)
 
@@ -194,9 +188,24 @@ class WhatsAppCloudViewSet(
 
         try:
             waba_id = whatsapp_business_management.get("target_ids")[0]
-            business_id = business_management.get("target_ids")[0]
         except IndexError:
             raise ValidationError("Missing WhatsApp Business Accound Id")
+
+        try:
+            business_id = business_management.get("target_ids", [])[0]
+        except IndexError:
+            url = f"{settings.WHATSAPP_API_URL}/{waba_id}/"
+            params = dict(
+                access_token=settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN,
+                fields="owner_business_info,on_behalf_of_business_info",
+            )
+
+            business_id = (
+                requests.get(url, params=params, headers=headers)
+                .json()
+                .get("owner_business_info", {"id": None})
+                .get("id")
+            )
 
         return Response(dict(waba_id=waba_id, business_id=business_id))
 
