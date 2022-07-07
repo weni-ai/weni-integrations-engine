@@ -88,7 +88,7 @@ class WhatsAppCloudViewSet(
         )
         task.wait()
 
-        #self.get_object().delete()
+        self.get_object().delete()
 
         Response("Channel deleted.", status=status.HTTP_200_OK)
 
