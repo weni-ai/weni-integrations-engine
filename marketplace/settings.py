@@ -264,24 +264,27 @@ APPTYPE_WENI_WEB_CHAT_PATH = "channels.weni_web_chat.type.WeniWebChatType"
 APPTYPE_TELEGRAM_PATH = "channels.telegram.type.TelegramType"
 APPTYPE_WHATSAPP_DEMO_PATH = "channels.whatsapp_demo.type.WhatsAppDemoType"
 APPTYPE_WHATSAPP_PATH = "channels.whatsapp.type.WhatsAppType"
+APPTYPE_WHATSAPP_CLOUD_PATH = "channels.whatsapp_cloud.type.WhatsAppCloudType"
 
 APPTYPES_CLASSES = [
     APPTYPE_WENI_WEB_CHAT_PATH,
     APPTYPE_TELEGRAM_PATH,
     APPTYPE_WHATSAPP_DEMO_PATH,
     APPTYPE_WHATSAPP_PATH,
+    APPTYPE_WHATSAPP_CLOUD_PATH,
 ]
 
 # These conditions avoid dependence between apptypes,
 # if you want to run the application without using any apptype,
 # just comment it in APPTYPES_CLASSES
 
+WHATSAPP_SYSTEM_USER_ACCESS_TOKEN = env.str("WHATSAPP_SYSTEM_USER_ACCESS_TOKEN", default="")
+WHATSAPP_VERSION = env.str("WHATSAPP_VERSION", default="v13.0")
+WHATSAPP_API_URL = urllib.parse.urljoin(
+    env.str("WHATSAPP_API_URL", default="https://graph.facebook.com/"), WHATSAPP_VERSION
+)
+
 if APPTYPE_WHATSAPP_PATH in APPTYPES_CLASSES:
-    WHATSAPP_SYSTEM_USER_ACCESS_TOKEN = env.str("WHATSAPP_SYSTEM_USER_ACCESS_TOKEN")
-    WHATSAPP_VERSION = env.str("WHATSAPP_VERSION", default="v13.0")
-    WHATSAPP_API_URL = urllib.parse.urljoin(
-        env.str("WHATSAPP_API_URL", default="https://graph.facebook.com/"), WHATSAPP_VERSION
-    )
     WHATSAPP_TIME_BETWEEN_SYNC_WABA_IN_HOURS = (
         env.int("WHATSAPP_TIME_BETWEEN_SYNC_WABA_IN_HOURS", default=10) * 60 * 60
     )
@@ -289,6 +292,10 @@ if APPTYPE_WHATSAPP_PATH in APPTYPES_CLASSES:
         env.int("WHATSAPP_TIME_BETWEEN_SYNC_PHONE_NUMBERS_IN_HOURS", default=10) * 60 * 60
     )
 
+
+if APPTYPE_WHATSAPP_CLOUD_PATH in APPTYPES_CLASSES:
+    WHATSAPP_CLOUD_SYSTEM_USER_ID = env.str("WHATSAPP_CLOUD_SYSTEM_USER_ID")
+    WHATSAPP_CLOUD_EXTENDED_CREDIT_ID = env.str("WHATSAPP_CLOUD_EXTENDED_CREDIT_ID")
 
 # Sentry configuration
 
@@ -315,5 +322,7 @@ USE_GRPC = env.bool("USE_GRPC", default=False)
 CELERY_BEAT_SCHEDULE = {
     "sync-whatsapp-apps": {"task": "sync_whatsapp_apps", "schedule": timedelta(hours=2)},
     "sync-whatsapp-wabas": {"task": "sync_whatsapp_wabas", "schedule": timedelta(hours=5)},
+    "sync-whatsapp-cloud-wabas": {"task": "sync_whatsapp_cloud_wabas", "schedule": timedelta(hours=5)},
     "sync-whatsapp-phone-numbers": {"task": "sync_whatsapp_phone_numbers", "schedule": timedelta(hours=5)},
+    "sync-whatsapp-cloud-phone-numbers": {"task": "sync_whatsapp_cloud_phone_numbers", "schedule": timedelta(hours=5)},
 }
