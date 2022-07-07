@@ -28,7 +28,7 @@ class CloudProfileRequest(ProfileHandlerInterface):
 
     def get_profile(self):
         response = requests.get(self._url, params=self._fields, headers=self._headers)
-        content = response.json().get("data", [])[0]
+        content = response.json().get("data", [{}])[0]
 
         return dict(
             status=content.get("about"),
@@ -44,7 +44,7 @@ class CloudProfileRequest(ProfileHandlerInterface):
         data = dict(messaging_product="whatsapp")
         data.update(kwargs)
 
-        response = requests.post(self._url, headers=self._headers, data=json.dumps(data))
+        response = requests.post(self._url, headers=self._headers, json=data)
         if response.status_code != status.HTTP_200_OK:
             raise FacebookApiException(response.json())
 
