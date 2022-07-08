@@ -120,7 +120,6 @@ class WhatsAppCloudViewSet(
             wa_pin=pin,
         )
 
-
         client = ConnectProjectClient()
         channel = client.create_wac_channel(request.user.email, project_uuid, phone_number_id, config)
 
@@ -169,6 +168,8 @@ class WhatsAppCloudViewSet(
 
         data = response.json().get("data")
 
+        #TODO: This code snippet needs refactoring
+
         try:
             whatsapp_business_management = next(
                 filter(
@@ -176,6 +177,10 @@ class WhatsAppCloudViewSet(
                     data.get("granular_scopes"),
                 )
             )
+        except StopIteration:
+            raise ValidationError("Invalid token permissions")
+
+        try:
             business_management = next(
                 filter(
                     lambda scope: scope.get("scope") == "business_management",
@@ -183,7 +188,7 @@ class WhatsAppCloudViewSet(
                 )
             )
         except StopIteration:
-            raise ValidationError("Invalid token permissions")
+            business_management = dict()
 
         try:
             waba_id = whatsapp_business_management.get("target_ids")[0]
