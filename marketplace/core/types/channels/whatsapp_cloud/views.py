@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 from marketplace.core.types import views
 from marketplace.applications.models import App
 from marketplace.celery import app as celery_app
+from marketplace.connect.client import ConnectProjectClient
 from ..whatsapp_base import mixins
 from ..whatsapp_base.serializers import WhatsAppSerializer
 from ..whatsapp_base.exceptions import FacebookApiException
@@ -119,11 +120,9 @@ class WhatsAppCloudViewSet(
             wa_pin=pin,
         )
 
-        task = celery_app.send_task(
-            name="create_wac_channel",
-            args=[request.user.email, project_uuid, phone_number_id, config],
-        )
-        task.wait()
+
+        client = ConnectProjectClient()
+        channel = client.create_wac_channel(request.user.email, project_uuid, phone_number_id, config)
 
         config["title"] = config.get("wa_number")
         config["wa_allocation_config_id"] = allocation_config_id
@@ -135,7 +134,7 @@ class WhatsAppCloudViewSet(
             project_uuid=project_uuid,
             platform=App.PLATFORM_WENI_FLOWS,
             created_by=request.user,
-            flow_object_uuid=task.result.get("uuid"),
+            flow_object_uuid=channel.get("uuid"),
         )
 
         celery_app.send_task(name="sync_whatsapp_cloud_wabas")
