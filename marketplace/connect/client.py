@@ -63,10 +63,8 @@ class WPPRouterChannelClient(ConnectAuth):
     base_url = settings.ROUTER_BASE_URL
 
     def get_channel_token(self, uuid: str, name: str) -> str:
-        payload = {"channel_uuid": uuid, "user": name}
+        payload = {"uuid": uuid, "name": name}
 
         response = requests.post(url=self.base_url + "/integrations/channel", json=payload, headers=self.auth_header())
-        # if response.status_code != 200:
-        #    return ""
 
         return response.json().get("token", "")
