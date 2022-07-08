@@ -51,6 +51,13 @@ class ConnectProjectClient(ConnectAuth):
         )
         return json.loads(request.text)
 
+    def create_wac_channel(self, user: str, project_uuid: str, phone_number_id: str, config: dict):
+        payload = {"user": user, "project_uuid": str(project_uuid), "config": data, "phone_number_id": phone_number_id}
+        response = requests.post(
+            url=self.base_url + "/v1/organization/project/create_wac_channel/", json=payload, headers=self.auth_header()
+        )
+        return response.json()
+
     def release_channel(self, channel_uuid: str, user_email: str) -> None:
         payload = {"channel_uuid": channel_uuid, "user": user_email}
         requests.get(
