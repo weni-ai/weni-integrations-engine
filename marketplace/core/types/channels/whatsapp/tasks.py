@@ -38,7 +38,7 @@ def sync_whatsapp_apps():
     else:
         with redis.lock(SYNC_WHATSAPP_LOCK_KEY):
             for project in response:
-                for channel in project.channels:
+                for channel in project.get("channel_data").get("channels"):
                     channel_config = json.loads(channel.get("config"))
 
                     # Skipping WhatsApp demo channels, change to environment variable later
@@ -51,7 +51,7 @@ def sync_whatsapp_apps():
                     app, created = App.objects.get_or_create(
                         code=apptype.code,
                         platform=apptype.platform,
-                        project_uuid=project.get("project_uuid"),
+                        project_uuid=project.get("channel_data").get("project_uuid"),
                         flow_object_uuid=channel.get("uuid"),
                         defaults=dict(config=config, created_by=User.objects.get_admin_user()),
                     )
