@@ -73,7 +73,7 @@ FROM build as build-pip
 COPY --from=build-poetry /requirements.txt .
 
 RUN mkdir /install \
-  && pip install --no-cache-dir --prefix=/install --require-hashes -r requirements.txt
+  && pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 FROM base
 
