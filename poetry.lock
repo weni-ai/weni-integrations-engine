@@ -392,6 +392,27 @@ uritemplate = ">=3.0.0"
 validation = ["swagger-spec-validator (>=2.1.0)"]
 
 [[package]]
+name = "elastic-apm"
+version = "6.10.1"
+description = "The official Python module for Elastic APM"
+category = "main"
+optional = false
+python-versions = "<4,>=3.6"
+
+[package.dependencies]
+certifi = "*"
+urllib3 = "*"
+
+[package.extras]
+aiohttp = ["aiohttp"]
+flask = ["blinker"]
+opentelemetry = ["opentelemetry-api", "opentelemetry-sdk"]
+opentracing = ["opentracing (>=2.0.0)"]
+sanic = ["sanic"]
+starlette = ["starlette"]
+tornado = ["tornado"]
+
+[[package]]
 name = "flake8"
 version = "3.9.2"
 description = "the modular source code checker: pep8 pyflakes and co"
@@ -904,7 +925,7 @@ protobuf = ">=3.17.3,<4.0.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "f50b5fbeeadf38952f5130d92461234ab508137692269f40ad0be934a1226a8d"
+content-hash = "0a667fff31a0d44d9a7b932a10f8217e1fedd7ee2b12466a1b2f844a2f77b579"
 
 [metadata.files]
 amqp = [
@@ -1133,6 +1154,7 @@ drf-yasg = [
     {file = "drf-yasg-1.20.0.tar.gz", hash = "sha256:d50f197c7f02545d0b736df88c6d5cf874f8fea2507ad85ad7de6ae5bf2d9e5a"},
     {file = "drf_yasg-1.20.0-py2.py3-none-any.whl", hash = "sha256:8b72e5b1875931a8d11af407be3a9a5ba8776541492947a0df5bafda6b7f8267"},
 ]
+elastic-apm = []
 flake8 = [
     {file = "flake8-3.9.2-py2.py3-none-any.whl", hash = "sha256:bf8fd333346d844f616e8d47905ef3a3384edae6b4e9beb0c5101e25e3110907"},
     {file = "flake8-3.9.2.tar.gz", hash = "sha256:07528381786f2a6237b061f6e96610a4167b226cb926e2aa2b6b1d78057c576b"},
