@@ -39,7 +39,7 @@ class ConnectProjectClient(ConnectAuth):
         while response.get("next") is not None and request.status_code == 200:
             for channel in response.get("results"):
                 channels.append(channel)
-            request = requests.get(url=response.get("next"), json=payload, headers=self.auth_header())
+            request = requests.get(url=response.get("next").replace("http:", "https:"), json=payload, headers=self.auth_header())
             response = json.loads(request.text)
 
         return channels
