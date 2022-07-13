@@ -1,4 +1,5 @@
 import string
+import logging
 from typing import TYPE_CHECKING
 
 from rest_framework.response import Response
@@ -21,6 +22,9 @@ from ..whatsapp_base.exceptions import FacebookApiException
 from .facades import CloudProfileFacade, CloudProfileContactFacade
 from .requests import PhoneNumbersRequest
 from .serializers import WhatsAppCloudConfigureSerializer
+
+
+logger = logging.getLogger(__name__)
 
 
 class WhatsAppCloudViewSet(
@@ -81,6 +85,7 @@ class WhatsAppCloudViewSet(
         response = requests.post(url, params=params, headers=headers)
 
         if response.status_code != status.HTTP_200_OK:
+            logger.error(response.json())
             raise ValidationError(response.json())
 
         url = f"{base_url}/{settings.WHATSAPP_CLOUD_EXTENDED_CREDIT_ID}/whatsapp_credit_sharing_and_attach"
@@ -88,6 +93,7 @@ class WhatsAppCloudViewSet(
         response = requests.post(url, params=params, headers=headers)
 
         if response.status_code != status.HTTP_200_OK:
+            logger.error(response.json())
             raise ValidationError(response.json())
 
         allocation_config_id = response.json().get("allocation_config_id")
@@ -96,6 +102,7 @@ class WhatsAppCloudViewSet(
         response = requests.post(url, headers=headers)
 
         if response.status_code != status.HTTP_200_OK:
+            logger.error(response.json())
             raise ValidationError(response.json())
 
         url = f"{base_url}/{phone_number_id}/register"
@@ -104,6 +111,7 @@ class WhatsAppCloudViewSet(
         response = requests.post(url, headers=headers, data=data)
 
         if response.status_code != status.HTTP_200_OK:
+            logger.error(response.json())
             raise ValidationError(response.json())
 
         phone_number_request = PhoneNumbersRequest(input_token)
