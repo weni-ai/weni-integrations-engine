@@ -20,7 +20,7 @@ class UserPermissionViewTestCase(APIBaseTestCase):
     def view(self):
         return self.view_class.as_view({"patch": "partial_update"})
 
-    def test_patch(self):
+    def test_update_user_permission_patch(self):
         data = {
             "user": "test",
             "project_uuid": str(self.project_uuid),
@@ -46,8 +46,7 @@ class UserViewTestCase(APIBaseTestCase):
     def view(self):
         return self.view_class.as_view({"post": "create"})
 
-    def test_patch(self):
-
+    def test_update_user_patch(self):
         test_user = User.objects.create(email="test@weni.ai", first_name="User", last_name="Test")
 
         data = {"email": "test@weni.ai", "photo_url": "", "first_name": "User1", "last_name": "Test"}
