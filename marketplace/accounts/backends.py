@@ -1,7 +1,9 @@
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
-from marketplace.accounts.models import User
+from django.contrib.auth import get_user_model
 from mozilla_django_oidc.auth import OIDCAuthenticationBackend
+
+User = get_user_model()
 
 
 class WeniOIDCAuthenticationBackend(OIDCAuthenticationBackend):  # pragma: no cover
