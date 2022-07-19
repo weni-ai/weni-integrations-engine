@@ -5,6 +5,7 @@ from .models import ProjectAuthorization
 
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -17,12 +18,12 @@ class UserViewSet(viewsets.ViewSet):
     def create(self, request):
 
         if not request.user.has_perm("accounts.can_communicate_internally"):
-            return Response({"error": "Not Allowed"}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationError("Not Allowed!")
 
         serializer = UserPermissionSerializer(data=request.data)
 
         if not serializer.is_valid():
-            return Response({"error": "invalid data"}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationError("invalid data!")
 
         user = User.objects.get_or_create(email=serializer.data.get("email"))[0]
 
@@ -51,12 +52,12 @@ class UserPermissionViewSet(viewsets.ViewSet):
     def partial_update(self, request, project_uuid):
 
         if not request.user.has_perm("accounts.can_communicate_internally"):
-            return Response({"error": "Not Allowed"}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationError("Not Allowed!")
 
         serializer = ProjectAuthorizationSerializer(data=request.data)
 
         if not serializer.is_valid():
-            return Response({"error": "invalid data"}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationError("invalid data!")
 
         user = User.objects.get_or_create(email=serializer.data.get("user"))[0]
 
