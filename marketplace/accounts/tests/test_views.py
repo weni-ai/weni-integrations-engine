@@ -1,4 +1,5 @@
 import uuid
+
 from django.urls import reverse
 
 from marketplace.accounts.views import UserPermissionViewSet, UserViewSet
@@ -6,16 +7,14 @@ from marketplace.core.tests.base import APIBaseTestCase
 from marketplace.accounts.models import User
 
 
-class BaseTest(APIBaseTestCase):
-    def setUp(self):
-        super().setUp()
-
-
-class UserPermissionViewTestCase(BaseTest):
+class UserPermissionViewTestCase(APIBaseTestCase):
     project_uuid = uuid.uuid4()
     url = reverse("user_permission-detail", args=[project_uuid])
 
     view_class = UserPermissionViewSet
+
+    def setUp(self):
+        super().setUp()
 
     @property
     def view(self):
@@ -34,11 +33,14 @@ class UserPermissionViewTestCase(BaseTest):
         self.assertEqual(patch_user.json["project_uuid"], str(self.project_uuid))
 
 
-class UserViewTestCase(BaseTest):
+class UserViewTestCase(APIBaseTestCase):
     project_uuid = uuid.uuid4()
     url = reverse("user-list")
 
     view_class = UserViewSet
+
+    def setUp(self):
+        super().setUp()
 
     @property
     def view(self):
