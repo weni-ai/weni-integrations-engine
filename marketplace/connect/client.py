@@ -27,31 +27,29 @@ class ConnectProjectClient(ConnectAuth):
 
     base_url = settings.CONNECT_ENGINE_BASE_URL
 
-    def list_channels(self, channeltype_code: str):
+    def list_channels(self, channeltype_code: str) -> list:
         channels = []
 
         payload = {"channel_type": channeltype_code}
-        request = requests.get(
+        response = requests.get(
             url=self.base_url + "/v1/organization/project/list_channel/", json=payload, headers=self.auth_header()
-        )
-        response = json.loads(request.text)
+        ).json()
 
         while response.get("next") is not None and request.status_code == 200:
             for channel in response.get("results"):
                 channels.append(channel)
-            request = requests.get(url=response.get("next"), json=payload, headers=self.auth_header())
-            response = json.loads(request.text)
+            response = requests.get(url=response.get("next"), json=payload, headers=self.auth_header()).json()
 
         return channels
 
     def create_channel(self, user: str, project_uuid: str, data: dict, channeltype_code: str) -> dict:
         payload = {"user": user, "project_uuid": str(project_uuid), "data": data, "channeltype_code": channeltype_code}
-        request = requests.post(
+        response = requests.post(
             url=self.base_url + "/v1/organization/project/create_channel/", json=payload, headers=self.auth_header()
         )
-        return json.loads(request.text)
+        return response.json()
 
-    def create_wac_channel(self, user: str, project_uuid: str, phone_number_id: str, config: dict):
+    def create_wac_channel(self, user: str, project_uuid: str, phone_number_id: str, config: dict) -> dict:
         payload = {"user": user, "project_uuid": str(project_uuid), "config": json.dumps(config), "phone_number_id": phone_number_id}
         response = requests.post(
             url=self.base_url + "/v1/organization/project/create_wac_channel/", json=payload, headers=self.auth_header()

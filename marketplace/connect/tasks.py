@@ -3,7 +3,7 @@ from marketplace.celery import app as celery_app
 
 
 @celery_app.task(name="create_channel")
-def create_channel(user: str, project_uuid: str, data: dict, channeltype_code: str):
+def create_channel(user: str, project_uuid: str, data: dict, channeltype_code: str) -> dict:
     client = ConnectProjectClient()
     channel = client.create_channel(user, project_uuid, data, channeltype_code)
     return dict(

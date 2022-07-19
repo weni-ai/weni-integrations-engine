@@ -34,10 +34,10 @@ class WhatsAppDemoViewSet(views.BaseAppTypeViewSet):
         instance.config["title"] = result.get("name")
         instance.config["channelUuid"] = result.get("uuid")
 
-        ch_client = WPPRouterChannelClient()
-        ch_result = ch_client.get_channel_token(result.get("uuid"), result.get("name"))
+        channel_client = WPPRouterChannelClient()
+        channel_token = channel_client.get_channel_token(result.get("uuid"), result.get("name"))
 
-        instance.config["routerToken"] = ch_result
+        instance.config["routerToken"] = channel_token
         instance.config["redirect_url"] = f"https://wa.me/{type_class.NUMBER}?text={ch_result}"
         instance.modified_by = user
         instance.save()
