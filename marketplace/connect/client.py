@@ -17,10 +17,8 @@ class ConnectAuth:
         token = request.json().get("access_token")
         return f"Bearer {token}"
 
-    def auth_header(self, headers: dict = {}) -> dict:
-        if "Authorization" not in headers:
-            headers["Authorization"] = self.get_auth_token()
-        return headers
+    def auth_header(self) -> dict:
+        return dict(Authorization=self.get_auth_token())
 
 
 class ConnectProjectClient(ConnectAuth):
