@@ -38,6 +38,6 @@ class WhatsAppDemoViewSet(views.BaseAppTypeViewSet):
         channel_token = channel_client.get_channel_token(result.get("uuid"), result.get("name"))
 
         instance.config["routerToken"] = channel_token
-        instance.config["redirect_url"] = f"https://wa.me/{type_class.NUMBER}?text={ch_result}"
+        instance.config["redirect_url"] = f"https://wa.me/{type_class.NUMBER}?text={channel_token}"
         instance.modified_by = user
         instance.save()
