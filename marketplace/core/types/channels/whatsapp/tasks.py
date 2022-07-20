@@ -10,6 +10,7 @@ from phonenumbers.phonenumberutil import NumberParseException
 from marketplace.celery import app as celery_app
 from marketplace.core.types import APPTYPES
 from marketplace.applications.models import App
+from marketplace.connect.client import ConnectProjectClient
 from .apis import FacebookWABAApi, FacebookPhoneNumbersAPI
 from ..whatsapp_base.exceptions import FacebookApiException
 
@@ -59,8 +60,8 @@ def sync_whatsapp_apps():
                     if created:
                         logger.info(f"A new whatsapp app was created automatically. UUID: {app.uuid}")
 
-                    if app.config.get("auth_token") != config.get("auth_token"):
-                        app.config["auth_token"] = config.get("auth_token")
+                    elif app.config != config:
+                        app.config = config
                         app.modified_by = User.objects.get_admin_user()
                         app.save()
 
