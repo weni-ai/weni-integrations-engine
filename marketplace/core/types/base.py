@@ -111,3 +111,6 @@ class AppType(AbstractAppType):
 
     def can_add(self, project_uuid: str) -> bool:
         return True
+
+    def create_app(self, *args, **kwargs) -> App:
+        return App.objects.create(*args, **kwargs, code=self.code, platform=self.platform)
