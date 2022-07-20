@@ -5,7 +5,7 @@ from django.conf import settings
 
 
 class ConnectAuth:
-    def get_auth_token(self) -> str:
+    def __get_auth_token(self) -> str:
         request = requests.post(
             url=settings.OIDC_OP_TOKEN_ENDPOINT,
             data={
@@ -17,10 +17,8 @@ class ConnectAuth:
         token = request.json().get("access_token")
         return f"Bearer {token}"
 
-    def auth_header(self, headers: dict = {}) -> dict:
-        if "Authorization" not in headers:
-            headers["Authorization"] = self.get_auth_token()
-        return headers
+    def auth_header(self) -> dict:
+        return {"Authorization": self.__get_auth_token()}
 
 
 class ConnectProjectClient(ConnectAuth):
