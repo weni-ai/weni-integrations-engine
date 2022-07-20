@@ -30,7 +30,9 @@ class UserPermissionViewTestCase(APIBaseTestCase):
         }
         patch_user = self.request.patch(url=self.url, project_uuid=self.project_uuid, body=data)
 
+        self.assertEqual(patch_user.json["user"], "test")
         self.assertEqual(patch_user.json["project_uuid"], str(self.project_uuid))
+        self.assertEqual(patch_user.json["role"], 3)
 
 
 class UserViewTestCase(APIBaseTestCase):
@@ -49,9 +51,11 @@ class UserViewTestCase(APIBaseTestCase):
     def test_update_user_patch(self):
         test_user = User.objects.create(email="test@weni.ai", first_name="User", last_name="Test")
 
-        data = {"email": "test@weni.ai", "photo_url": "", "first_name": "User1", "last_name": "Test"}
-        patch_user = self.request.post(url=self.url, body=data)
+        data = {"email": "test@weni.ai", "photo_url": "https://photo.com", "first_name": "User1", "last_name": "Test1"}
+        self.request.post(url=self.url, body=data)
 
-        test_user = User.objects.get(email="test@weni.ai")
+        test_user_changed = User.objects.get(email="test@weni.ai")
 
-        self.assertEqual(patch_user.json["first_name"], test_user.first_name)
+        self.assertNotEqual(test_user.first_name, test_user_changed.first_name)
+        self.assertNotEqual(test_user.last_name, test_user_changed.last_name)
+        self.assertNotEqual(test_user.photo_url, test_user_changed.photo_url)
