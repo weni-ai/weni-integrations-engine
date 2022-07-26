@@ -4,7 +4,6 @@ from marketplace.accounts.serializers import ProjectAuthorizationSerializer, Use
 from .models import ProjectAuthorization
 
 from rest_framework.response import Response
-from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 

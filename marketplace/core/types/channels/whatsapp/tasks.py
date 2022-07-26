@@ -10,6 +10,7 @@ from phonenumbers.phonenumberutil import NumberParseException
 from marketplace.celery import app as celery_app
 from marketplace.core.types import APPTYPES
 from marketplace.applications.models import App
+from marketplace.connect.client import ConnectProjectClient
 from .apis import FacebookWABAApi, FacebookPhoneNumbersAPI
 from ..whatsapp_base.exceptions import FacebookApiException
 

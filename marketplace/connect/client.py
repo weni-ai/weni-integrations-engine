@@ -31,12 +31,12 @@ class ConnectProjectClient(ConnectAuth):
         payload = {"channel_type": channeltype_code}
         response = requests.get(
             url=self.base_url + "/v1/organization/project/list_channel/", json=payload, headers=self.auth_header()
-        ).json()
+        )
 
-        while response.get("next") is not None and request.status_code == 200:
-            for channel in response.get("results"):
+        while response.json().get("next") is not None and response.status_code == 200:
+            for channel in response.json().get("results"):
                 channels.append(channel)
-            response = requests.get(url=response.get("next"), json=payload, headers=self.auth_header()).json()
+            response = requests.get(url=response.json().get("next"), json=payload, headers=self.auth_header())
 
         return channels
 
@@ -48,9 +48,16 @@ class ConnectProjectClient(ConnectAuth):
         return response.json()
 
     def create_wac_channel(self, user: str, project_uuid: str, phone_number_id: str, config: dict) -> dict:
-        payload = {"user": user, "project_uuid": str(project_uuid), "config": json.dumps(config), "phone_number_id": phone_number_id}
+        payload = {
+            "user": user,
+            "project_uuid": str(project_uuid),
+            "config": json.dumps(config),
+            "phone_number_id": phone_number_id
+        }
         response = requests.post(
-            url=self.base_url + "/v1/organization/project/create_wac_channel/", json=payload, headers=self.auth_header()
+            url=self.base_url + "/v1/organization/project/create_wac_channel/",
+            json=payload,
+            headers=self.auth_header()
         )
         return response.json()
 

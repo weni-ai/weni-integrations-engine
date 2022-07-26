@@ -168,7 +168,7 @@ class WhatsAppCloudViewSet(
 
         data = response.json().get("data")
 
-        #TODO: This code snippet needs refactoring
+        # TODO: This code snippet needs refactoring
 
         try:
             whatsapp_business_management = next(
