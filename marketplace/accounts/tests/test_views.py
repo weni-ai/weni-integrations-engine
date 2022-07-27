@@ -4,7 +4,7 @@ from django.urls import reverse
 
 from marketplace.accounts.views import UserPermissionViewSet, UserViewSet
 from marketplace.core.tests.base import APIBaseTestCase
-from marketplace.accounts.models import User
+from marketplace.accounts.models import User, ProjectAuthorization
 
 
 class UserPermissionViewTestCase(APIBaseTestCase):
@@ -28,11 +28,13 @@ class UserPermissionViewTestCase(APIBaseTestCase):
             "channeltype_code": "test",
             "role": 3
         }
-        patch_user = self.request.patch(url=self.url, project_uuid=self.project_uuid, body=data)
+        self.request.patch(url=self.url, project_uuid=self.project_uuid, body=data)
 
-        self.assertEqual(patch_user.json["user"], "test")
-        self.assertEqual(patch_user.json["project_uuid"], str(self.project_uuid))
-        self.assertEqual(patch_user.json["role"], 3)
+        user = ProjectAuthorization.objects.get(project_uuid=self.project_uuid)
+
+        self.assertEqual(str(user.user), "test")
+        self.assertEqual(user.project_uuid, self.project_uuid)
+        self.assertEqual(user.role, 3)
 
 
 class UserViewTestCase(APIBaseTestCase):
