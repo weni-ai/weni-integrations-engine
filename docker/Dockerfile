@@ -55,29 +55,7 @@ RUN addgroup --gid "${APP_GID}" app_group \
 # set work directory
 WORKDIR ${PROJECT_PATH}
 
-FROM base AS build
-
-RUN if [ ! "x${BUILD_DEPS}" = "x" ] ; then apt-get update \
-  && apt-get install -y --no-install-recommends ${BUILD_DEPS} ; fi
-
-FROM build as build-poetry
-
-COPY ./pyproject.toml .
-COPY ./poetry.lock .
-
-RUN python -m pip install -U poetry \
-  && poetry export --output /requirements.txt
-
-FROM build as build-pip
-
-COPY --from=build-poetry /requirements.txt .
-
-RUN mkdir /install \
-  && pip install --no-cache-dir --prefix=/install --require-hashes -r requirements.txt
-
 FROM base
-
-COPY --from=build-pip /install /usr/local
 
 # Clear image and install runtime dependences
 RUN apt-get update \
@@ -88,7 +66,19 @@ RUN apt-get update \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
+# TODO: Move it to build stage
+RUN if [ ! "x${BUILD_DEPS}" = "x" ] ; then apt-get update \
+  && apt-get install -y --no-install-recommends ${BUILD_DEPS} ; fi
+
 # copy project
 COPY --chown=app_user:app_group . .
+
+# Install project dependencies 
+RUN python -m pip install --no-cache-dir --upgrade pip \
+  && python -m pip install --no-cache-dir -U poetry \
+  && poetry config virtualenvs.create false \
+  && poetry install --no-dev \
+  && pip uninstall --yes poetry
+
 
 ENTRYPOINT ["/marketplace/docker-entrypoint.sh"]
