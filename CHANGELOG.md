@@ -1,3 +1,17 @@
+v1.5.0
+----------
+ * Put 'https' in 'next' field on list_channels pagination #159
+ * Adjust auth_header method #155
+ * Adjust internal communication by converting gRPC to REST #154
+ * Add and configure Elastic APM #151
+ * Add request Retry to get_phone_numbers #150
+ * Handles the return of the dubug token API if it does not have a business id #149
+ * WhatsApp Cloud App #147
+ * WhatsAppCloud Profile Picture #145
+ * Wpp cloud assigned users access_token #143
+ * invalid auth_token issue on Whatsapp Cloud API Calls #142
+ * Convert user and permission to API REST #138
+
 v1.4.2
 ----------
  * WhatsApp contact endpoint
