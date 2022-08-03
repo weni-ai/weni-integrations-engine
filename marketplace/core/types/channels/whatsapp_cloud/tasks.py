@@ -37,8 +37,12 @@ def sync_whatsapp_cloud_apps():
 
         for channel in channel_data.get("channels"):
             uuid = channel.get("uuid")
-            config = json.loads(channel.get("config"))
+            address = channel.get("address")
             user = User.objects.get_admin_user()
+
+            config = json.loads(channel.get("config"))
+            config["title"] = config.get("wa_number")
+            config["wa_phone_number_id"] = address
 
             # TODO: Add title and address to config
 
@@ -48,6 +52,7 @@ def sync_whatsapp_cloud_apps():
                 app = apps.first()
 
                 if app.code != apptype.code:
+                    logger.info(f"Migrating an {app.code} to WhatsApp Cloud Type. App: {app.uuid}")
                     app.code = apptype.code
 
                 app.config = config
@@ -55,6 +60,7 @@ def sync_whatsapp_cloud_apps():
                 app.save()
 
             else:
+                logger.info(f"Creating a new WhatsApp Cloud app for the flow_object_uuid: {uuid}")
                 apptype.create_app(
                     created_by=user,
                     project_uuid=project_uuid,
