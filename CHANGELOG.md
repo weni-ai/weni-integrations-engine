@@ -1,3 +1,8 @@
+v1.5.1
+----------
+ * Set the url field of the AppTypeAsset template to receive a string instead of a URL #160
+ * Adjust Dockerfile to install packages from poetry #161
+
 v1.5.0
 ----------
  * Put 'https' in 'next' field on list_channels pagination #159
