@@ -35,7 +35,7 @@ def sync_whatsapp_cloud_apps():
         channel_data = project.get("channel_data", {})
         project_uuid = channel_data.get("project_uuid")
 
-        for channel in channel_data.get("channels"):
+        for channel in channel_data.get("channels", []):
             uuid = channel.get("uuid")
             address = channel.get("address")
             user = User.objects.get_admin_user()
