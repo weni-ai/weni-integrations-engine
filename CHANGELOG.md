@@ -1,3 +1,7 @@
+v1.5.2
+----------
+ * Task to sync WhatsApp Cloud apps #156
+
 v1.5.1
 ----------
  * Set the url field of the AppTypeAsset template to receive a string instead of a URL #160
