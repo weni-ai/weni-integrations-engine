@@ -34,6 +34,16 @@ class WhatsAppViewSet(
         return Response("This channel cannot be deleted", status=status.HTTP_403_FORBIDDEN)
 
     @property
+    def app_waba_id(self) -> dict:
+        config = self.get_object().config
+        waba_id = config.get("fb_business_id", None)
+
+        if waba_id is None:
+            raise ValidationError("This app does not have WABA (Whatsapp Business Account ID) configured")
+
+        return waba_id
+
+    @property
     def profile_config_credentials(self) -> dict:
         config = self.get_object().config
         base_url = config.get("base_url", None)
