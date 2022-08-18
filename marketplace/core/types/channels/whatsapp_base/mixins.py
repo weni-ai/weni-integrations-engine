@@ -3,6 +3,7 @@ import calendar
 from typing import TYPE_CHECKING
 from datetime import datetime
 
+from django.conf import settings
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
@@ -52,24 +53,21 @@ class QueryParamsParser(object):
         raise ValidationError(self.ERROR_MESSAGE.format(field))
 
 
-class WhatsAppConversationsMixin(object):
+class WhatsAppConversationsMixin(object, metaclass=abc.ABCMeta):
+    @abc.abstractproperty
+    def app_waba_id(self) -> dict:
+        pass  # pragma: no cover
+
     @action(detail=True, methods=["GET"], permission_classes=[ProjectViewPermission])
     def conversations(self, request: "Request", **kwargs) -> Response:
-        app = self.get_object()
-        waba_id = app.config.get("fb_business_id", None)
-        access_token = app.config.get("fb_access_token", None)
-
-        if waba_id is None:
-            raise ValidationError("This app does not have WABA (Whatsapp Business Account ID) configured")
-
-        if access_token is None:
-            raise ValidationError("This app does not have the Facebook Access Token configured")
-
         date_params = QueryParamsParser(request.query_params)
 
         try:
             conversations = FacebookConversationAPI().conversations(
-                waba_id, access_token, date_params.start, date_params.end
+                waba_id=self.app_waba_id,
+                access_token=settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN,
+                start=date_params.start,
+                end=date_params.end,
             )
         except FacebookApiException as error:
             raise ValidationError(error)
