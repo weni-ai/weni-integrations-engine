@@ -37,6 +37,16 @@ class WhatsAppCloudViewSet(
     profile_class = CloudProfileFacade
 
     @property
+    def app_waba_id(self) -> dict:
+        config = self.get_object().config
+        waba_id = config.get("wa_waba_id", None)
+
+        if waba_id is None:
+            raise ValidationError("This app does not have WABA (Whatsapp Business Account ID) configured")
+
+        return waba_id
+
+    @property
     def profile_config_credentials(self) -> dict:
         config = self.get_object().config
         phone_numbrer_id = config.get("wa_phone_number_id", None)
