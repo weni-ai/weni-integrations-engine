@@ -1,3 +1,7 @@
+v1.5.3
+----------
+ * Whatsapp Conversation WABA Fix #169
+
 v1.5.2
 ----------
  * Task to sync WhatsApp Cloud apps #156
