@@ -26,21 +26,12 @@ class ConnectProjectClient(ConnectAuth):
     base_url = settings.CONNECT_ENGINE_BASE_URL
 
     def list_channels(self, channeltype_code: str) -> list:
-        channels = []
 
-        payload = {"channel_type": channeltype_code}
+        params = {"channel_type": channeltype_code}
         response = requests.get(
-            url=self.base_url + "/v1/organization/project/list_channel/", json=payload, headers=self.auth_header()
+            url=self.base_url + "/v1/organization/project/list_channels/", params=params, headers=self.auth_header()
         )
-
-        while response.json().get("next") is not None and response.status_code == 200:
-            for channel in response.json().get("results"):
-                channels.append(channel)
-            response = requests.get(
-                url=response.json().get("next").replace("http:", "https:"), json=payload, headers=self.auth_header()
-            )
-
-        return channels
+        return response.json()
 
     def create_channel(self, user: str, project_uuid: str, data: dict, channeltype_code: str) -> dict:
         payload = {"user": user, "project_uuid": str(project_uuid), "data": data, "channeltype_code": channeltype_code}
