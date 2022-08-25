@@ -20,7 +20,7 @@ User = get_user_model()
 class SyncWhatsAppCloudAppsTaskTestCase(TestCase):
     def setUp(self) -> None:
 
-        wpp_type = APPTYPES.get("wpp-cloud")
+        wpp_type = APPTYPES.get("wpp")
         wpp_cloud_type = APPTYPES.get("wpp-cloud")
 
         self.wpp_app = wpp_type.create_app(
@@ -42,12 +42,12 @@ class SyncWhatsAppCloudAppsTaskTestCase(TestCase):
     def _get_mock_value(self, project_uuid: str, flow_object_uuid: str) -> list:
         return [
             {
-                "channel_data": {
-                    "project_uuid": project_uuid,
-                    "channels": [
-                        {"uuid": flow_object_uuid, "name": "Fake Name", "config": "{}", "address": "+55829946542"}
-                    ],
-                }
+                "uuid": flow_object_uuid,
+                "name": "teste",
+                "config": "{}",
+                "address": "f234234",
+                "project_uuid": project_uuid,
+                "is_active": True,
             }
         ]
 
