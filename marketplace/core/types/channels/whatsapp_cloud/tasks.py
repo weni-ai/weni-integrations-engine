@@ -52,8 +52,11 @@ def sync_whatsapp_cloud_apps():
             if app.code != apptype.code:
                 logger.info(f"Migrating an {app.code} to WhatsApp Cloud Type. App: {app.uuid}")
                 app.code = apptype.code
+                config["config_before_migration"] = app.config
+                app.config = config
+            else:
+                app.config.update(config)
 
-            app.config = config
             app.modified_by = user
             app.save()
 

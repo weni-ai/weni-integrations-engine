@@ -24,14 +24,14 @@ class SyncWhatsAppCloudAppsTaskTestCase(TestCase):
         wpp_cloud_type = APPTYPES.get("wpp-cloud")
 
         self.wpp_app = wpp_type.create_app(
-            config={},
+            config={"have_to_stay": "fake"},
             project_uuid=uuid4(),
             flow_object_uuid=uuid4(),
             created_by=User.objects.get_admin_user(),
         )
 
         self.wpp_cloud_app = wpp_cloud_type.create_app(
-            config={},
+            config={"have_to_stay": "fake"},
             project_uuid=uuid4(),
             flow_object_uuid=uuid4(),
             created_by=User.objects.get_admin_user(),
@@ -61,6 +61,20 @@ class SyncWhatsAppCloudAppsTaskTestCase(TestCase):
 
         app = App.objects.get(id=self.wpp_app.id)
         self.assertEqual(app.code, "wpp-cloud")
+        self.assertIn("config_before_migration", app.config)
+        self.assertIn("have_to_stay", app.config.get("config_before_migration"))
+
+    @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
+    def test_sync_for_non_migrated_channels(self, list_channel_mock: "MagicMock") -> None:
+        list_channel_mock.return_value = self._get_mock_value(
+            str(self.wpp_cloud_app.project_uuid), str(self.wpp_cloud_app.flow_object_uuid)
+        )
+
+        sync_whatsapp_cloud_apps()
+
+        app = App.objects.get(id=self.wpp_cloud_app.id)
+        self.assertEqual(app.code, "wpp-cloud")
+        self.assertIn("have_to_stay", app.config)
 
     @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
     def test_create_new_whatsapp_cloud(self, list_channel_mock: "MagicMock") -> None:
