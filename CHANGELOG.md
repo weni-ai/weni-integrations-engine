@@ -1,3 +1,11 @@
+v1.5.4
+----------
+ * Adjust the call to Connect in the list channels endpoint
+ * Adjust task that syncs WhatsApp Cloud channels
+ * Adjust task that syncs WhatsApp channels
+ * Revert "Adjust the way the config is being saved in the WAC sync task"
+ * Adjust the way the config is being saved in the WAC sync task
+
 v1.5.3
 ----------
  * Whatsapp Conversation WABA Fix #169
