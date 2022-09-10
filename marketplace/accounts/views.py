@@ -1,11 +1,19 @@
+from typing import TYPE_CHECKING
+
 from rest_framework import viewsets
-from marketplace.accounts.serializers import ProjectAuthorizationSerializer, UserPermissionSerializer
-
-from .models import ProjectAuthorization
-
+from rest_framework import views
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from django.contrib.auth import get_user_model
+
+from marketplace.accounts.serializers import ProjectAuthorizationSerializer, UserPermissionSerializer
+from marketplace.connect.client import ConnectProjectClient
+from .models import ProjectAuthorization
+
+
+if TYPE_CHECKING:
+    from rest_framework.request import Request
+
 
 User = get_user_model()
 
@@ -68,3 +76,16 @@ class UserPermissionViewSet(viewsets.ViewSet):
         serializer = ProjectAuthorizationSerializer(project_authorization)
 
         return Response(serializer.data)
+
+
+class UserAPITokenAPIView(views.APIView):
+    def get(self, request: "Request") -> Response:
+        project_uuid = request.headers.get("project-uuid", None)
+
+        if project_uuid is None:
+            raise ValidationError(dict(detail="The project-uuid needs to be sent in headers!"))
+
+        client = ConnectProjectClient()
+        response = client.get_user_api_token(request.user.email, project_uuid)
+
+        return Response(response.json(), status=response.status_code)
