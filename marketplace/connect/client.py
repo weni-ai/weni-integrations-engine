@@ -61,6 +61,13 @@ class ConnectProjectClient(ConnectAuth):
         )
         return None
 
+    def get_user_api_token(self, user: str, project_uuid: str):
+        params = dict(user=user, project_uuid=str(project_uuid))
+        response = requests.get(
+            self.base_url + "/v1/organization/project/user-api-token/", params=params, headers=self.auth_header()
+        )
+        return response
+
 
 class WPPRouterChannelClient(ConnectAuth):
     base_url = settings.ROUTER_BASE_URL
