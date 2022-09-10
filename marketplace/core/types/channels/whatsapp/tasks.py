@@ -48,21 +48,32 @@ def sync_whatsapp_apps():
                 config = {"title": channel.get("address")}
                 config.update(channel_config)
 
-                app, created = App.objects.get_or_create(
-                    code=apptype.code,
-                    platform=apptype.platform,
-                    project_uuid=channel.get("project_uuid"),
-                    flow_object_uuid=channel.get("uuid"),
-                    defaults=dict(config=config, created_by=User.objects.get_admin_user()),
-                )
+                apps = App.objects.filter(flow_object_uuid=channel.get("uuid"))
 
-                if created:
+                if apps.exists():
+                    app = apps.first()
+
+                    if app.code != apptype.code:
+                        logger.error(
+                            f"This app: {app.uuid} has been migrated from {app.code} to wpp "
+                            "we don't support it so it will be ignored"
+                        )
+                        continue
+
+                    if app.config.get("auth_token") != config.get("auth_token"):
+                        app.config["auth_token"] = config.get("auth_token")
+                        app.modified_by = User.objects.get_admin_user()
+                        app.save()
+
+                else:
+                    app = apptype.create_app(
+                        project_uuid=channel.get("project_uuid"),
+                        flow_object_uuid=channel.get("uuid"),
+                        config=config,
+                        created_by=User.objects.get_admin_user(),
+                    )
+
                     logger.info(f"A new whatsapp app was created automatically. UUID: {app.uuid}")
-
-                if app.config.get("auth_token") != config.get("auth_token"):
-                    app.config["auth_token"] = config.get("auth_token")
-                    app.modified_by = User.objects.get_admin_user()
-                    app.save()
 
 
 @celery_app.task(name="sync_whatsapp_wabas")
