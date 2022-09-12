@@ -6,37 +6,84 @@ from django.conf import settings
 from rest_framework import serializers
 from rest_framework.relations import SlugRelatedField
 
-from .models import TemplateMessage, TemplateTranslation
+from .models import TemplateMessage, TemplateTranslation, TemplateButton, TemplateHeader
 from .requests import TemplateMessageRequest
 
 User = get_user_model()
 
 
+class HeaderSerializer(serializers.Serializer):
+    class Meta:
+        model = TemplateHeader
+        fields = '__all__'
+
+class ButtonSerializer(serializers.Serializer):
+    class Meta:
+        model = TemplateButton
+        fields = '__all__'
+
 class TemplateTranslationSerializer(serializers.Serializer):
+    template_uuid = serializers.CharField(write_only=True)
+    #template = SlugRelatedField(slug_field="uuid", queryset=TemplateMessage.objects.all(), write_only=True)
+
     uuid = serializers.UUIDField(read_only=True)
     status = serializers.CharField()
     language = serializers.CharField()
     country = serializers.CharField()
+    header = HeaderSerializer(read_only=True)
+    body = serializers.CharField(read_only=True)
+    footer = serializers.CharField(read_only=True)
+    buttons = ButtonSerializer(many=True, read_only=True)
+    variable_count = serializers.IntegerField(read_only=True)
+
+    def create(self, validated_data: dict) -> TemplateTranslation:
+        template = TemplateMessage.objects.get(uuid=validated_data.get("template_uuid"))
+
+        return TemplateTranslation.objects.create(
+            template=template,
+            status=validated_data.get("status"),
+            language=validated_data.get("language"),
+            country=validated_data.get("country"),
+            variable_count=0,
+        )
+
+
+class ButtonSerializer(serializers.Serializer):
+    ...
 
 
 class TemplateTranslationCreateSerializer(serializers.Serializer):
-    translations = TemplateTranslationSerializer(many=True)
+    #translations = TemplateTranslationSerializer(many=True)
     template_uuid = serializers.CharField()
     template = SlugRelatedField(slug_field="uuid", queryset=TemplateMessage.objects.all())
 
     def create(self, validated_data: dict) -> object:
-        translations = list()
+        #translations = list()
+        #print(validated_data)
 
+        """
         for translaction in validated_data.get("translations", []):
             translations.append(TemplateTranslation(
                 template=validated_data.get("template"),
                 status=translaction.get("status"),
                 language=translaction.get("language"),
-                country=translaction.get("country"),
+                #country=translaction.get("country"),
                 variable_count=0,
             ))
+        """
+        """
+        TemplateTranslation.objects.create(
+            template=validated_data.get("template"),
+            status=validated_data.get("status"),
+            language=validated_data.get("language"),
+            #country=translaction.get("country"),
+            variable_count=0,
+        )
+        """
 
-        TemplateTranslation.objects.bulk_create(translations)
+        print(validated_data.get("template"))
+
+        #emplateTranslation.objects.bulk_create(translations)
         return dict(success=True)
 
 
@@ -49,19 +96,22 @@ class TemplateQuerySetSerializer(serializers.Serializer):
 
 class TemplateMessageSerializer(serializers.Serializer):
     uuid = serializers.UUIDField(read_only=True)
-    waba_id = serializers.CharField(write_only=True)
+    #waba_id = serializers.CharField(write_only=True)
     name = serializers.CharField()
     created_on = serializers.CharField(read_only=True)
     category = serializers.CharField()
-    template_type = serializers.CharField()
-    namespace = serializers.CharField()
+    #template_type = serializers.CharField()
+    #namespace = serializers.CharField()
 
-    text_preview = serializers.CharField(required=False)
+    app = serializers.CharField(write_only=True)
+
+    text_preview = serializers.CharField(required=False, read_only=True)
 
     translations = TemplateTranslationSerializer(many=True, read_only=True)
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
+
         if instance.translations.first():
             data['text_preview'] = instance.translations.first().body
         return data
@@ -83,7 +133,7 @@ class TemplateMessageSerializer(serializers.Serializer):
             created_on=datetime.now(),
             template_type=validated_data.get("template_type"),
             namespace=validated_data.get("namespace"),
-            code="wwc",
-            project_uuid=uuid.uuid4(),
+            #code="wwc",
+            #project_uuid=uuid.uuid4(),
             created_by_id=User.objects.get_admin_user().id,
         )

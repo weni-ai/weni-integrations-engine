@@ -28,8 +28,8 @@ class WhatsappTemplateListTestCase(APIBaseTestCase):
             created_on=datetime.now(),
             template_type="TEXT",
             namespace="teste-namespace",
-            code="wwc",
-            project_uuid=uuid.uuid4(),
+            #code="wwc",
+            #project_uuid=uuid.uuid4(),
             created_by_id=User.objects.get_admin_user().id,
         )
 
@@ -37,7 +37,7 @@ class WhatsappTemplateListTestCase(APIBaseTestCase):
             template=self.template_message,
             status="APPROVED",
             language="pt_br",
-            country="Brasil",
+            #country="Brasil",
             variable_count=1,
             body="Teste",
         )
@@ -98,10 +98,10 @@ class WhatsappTemplateDestroyTestCase(APIBaseTestCase):
             created_on=datetime.now(),
             template_type="TEXT",
             namespace="teste-namespace",
-            code="wwc",
-            project_uuid=uuid.uuid4(),
+            #code="wwc",
+            #project_uuid=uuid.uuid4(),
             created_by_id=User.objects.get_admin_user().id,
-            config=dict(waba_id="1312321321"),
+            #config=dict(waba_id="1312321321"),
         )
 
         super().setUp()
@@ -134,9 +134,18 @@ class WhatsappTemplateRetrieveTestCase(APIBaseTestCase):
             created_on=datetime.now(),
             template_type="TEXT",
             namespace="teste-namespace",
-            code="wwc",
-            project_uuid=uuid.uuid4(),
+            #code="wwc",
+            #project_uuid=uuid.uuid4(),
             created_by_id=User.objects.get_admin_user().id,
+        )
+
+        self.template_translation = TemplateTranslation.objects.create(
+            template=self.template_message,
+            status="APPROVED",
+            language="pt_br",
+            #country="Brasil",
+            variable_count=1,
+            body="Teste",
         )
 
         super().setUp()
@@ -181,13 +190,14 @@ class WhatsappTranslactionCreateTestCase(APIBaseTestCase):
             created_on=datetime.now(),
             template_type="TEXT",
             namespace="teste-namespace",
-            code="wwc",
-            project_uuid=uuid.uuid4(),
+            #code="wwc",
+            #project_uuid=uuid.uuid4(),
             created_by_id=User.objects.get_admin_user().id,
         )
 
         self.url = reverse("templates-translations", kwargs={"uuid": self.template_message.uuid})
 
+        """
         self.body = dict(translations=list(), template=str(self.template_message.uuid))
 
         self.body.get("translations").append(
@@ -196,6 +206,13 @@ class WhatsappTranslactionCreateTestCase(APIBaseTestCase):
                 language="pt_br",
                 country="Brasil",
             )
+        )
+        """
+
+        self.body = dict(
+            status="APPROVED",
+            language="pt_br",
+            country="Brasil",
         )
 
         super().setUp()
@@ -210,3 +227,6 @@ class WhatsappTranslactionCreateTestCase(APIBaseTestCase):
         total_template_messages = TemplateTranslation.objects.all().count()
 
         self.assertNotEqual(before_template_messages, total_template_messages)
+
+    def test_create_whatsapp_translaction_media(self):
+        print(self.url)

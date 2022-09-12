@@ -8,7 +8,7 @@ from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 
 from .models import TemplateMessage
-from .serializers import TemplateMessageSerializer, TemplateTranslationCreateSerializer, TemplateQuerySetSerializer
+from .serializers import TemplateMessageSerializer, TemplateTranslationCreateSerializer, TemplateQuerySetSerializer, TemplateTranslationSerializer
 from .requests import TemplateMessageRequest
 from .languages import LANGUAGES
 
@@ -35,7 +35,7 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         template_request = TemplateMessageRequest(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
 
-        template_request.delete_template_message(waba_id=instance.config.get("waba_id"), name=instance.name)
+        #template_request.delete_template_message(waba_id=instance.config.get("waba_id"), name=instance.name)
 
         instance.delete()
 
@@ -43,9 +43,9 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
     def translations(self, request, uuid):
         request.data["template_uuid"] = uuid
 
-        serializer = TemplateTranslationCreateSerializer(data=request.data)
+        serializer = TemplateTranslationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        serializer.save()        
 
         return Response(status=status.HTTP_200_OK)
 

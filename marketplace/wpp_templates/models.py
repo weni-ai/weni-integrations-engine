@@ -1,13 +1,15 @@
 import uuid
 
+from django.contrib.auth import get_user_model
 from django.db import models
 from django.db.models.constraints import CheckConstraint
 from django.db.models import Q
 
 from marketplace.applications.models import App
 
+User = get_user_model()
 
-class TemplateMessage(App):
+class TemplateMessage(models.Model):
     CATEGORY_CHOICES = (
         ("ACCOUNT_UPDATE", "WhatsApp.data.templates.category.account_update"),
         ("PAYMENT_UPDATE", "WhatsApp.data.templates.category.payment_update"),
@@ -31,9 +33,15 @@ class TemplateMessage(App):
         ("TEXT", "WhatsApp.data.templates.type.text"),
     )
 
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+
     name = models.CharField(max_length=60)
 
     category = models.CharField(max_length=200, choices=CATEGORY_CHOICES)
+
+    created_on = models.DateTimeField("Created on", editable=False, auto_now_add=True)
+
+    created_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="created_%(class)ss")
 
     template_type = models.CharField(max_length=100, choices=TEMPLATE_TYPES_CHOICES)
     namespace = models.CharField(max_length=60)
