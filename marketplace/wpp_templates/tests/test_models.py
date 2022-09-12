@@ -18,12 +18,12 @@ class TemplateButtonModelTestCase(TestCase):
             created_on=datetime.now(),
             template_type="TEXT",
             namespace="teste-namespace",
-            code="wwc",
-            project_uuid=uuid.uuid4(),
+            #code="wwc",
+            #project_uuid=uuid.uuid4(),
             created_by_id=User.objects.get_admin_user().id,
         )
         self.template_translation = TemplateTranslation.objects.create(
-            template=self.template_message, status="APPROVED", language="pt_br", country="Brasil", variable_count=1
+            template=self.template_message, status="APPROVED", language="pt_br", variable_count=1
         )
         super().setUp()
 
@@ -48,12 +48,12 @@ class TemplateHeaderModelTestCase(TestCase):
             created_on=datetime.now(),
             template_type="TEXT",
             namespace="teste-namespace",
-            code="wwc",
-            project_uuid=uuid.uuid4(),
+            #code="wwc",
+            #project_uuid=uuid.uuid4(),
             created_by_id=User.objects.get_admin_user().id,
         )
         self.template_translation = TemplateTranslation.objects.create(
-            template=self.template_message, status="APPROVED", language="pt_br", country="Brasil", variable_count=1
+            template=self.template_message, status="APPROVED", language="pt_br", variable_count=1
         )
         super().setUp()
 
