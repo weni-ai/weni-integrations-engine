@@ -64,7 +64,7 @@ class ConnectProjectClient(ConnectAuth):
     def get_user_api_token(self, user: str, project_uuid: str):
         params = dict(user=user, project_uuid=str(project_uuid))
         response = requests.get(
-            self.base_url + "/v1/organization/project/user-api-token/", params=params, headers=self.auth_header()
+            self.base_url + "/v1/organization/project/user_api_token/", params=params, headers=self.auth_header()
         )
         return response
 
