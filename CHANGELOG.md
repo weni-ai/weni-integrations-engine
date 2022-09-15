@@ -1,3 +1,8 @@
+v1.5.5
+----------
+ * Adds view that returns a user's api token in a project #176
+ * Integrity error creating app with existing uuid object #177
+
 v1.5.4
 ----------
  * Adjust the call to Connect in the list channels endpoint
