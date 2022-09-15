@@ -21,6 +21,8 @@ class CustomResultsPagination(PageNumberPagination):
     max_page_size = 500
 
 class AppsViewSet(viewsets.ViewSet):
+    lookup_field = "uuid"
+
     def list(self, request):
         pass
 
