@@ -5,7 +5,7 @@ from weni.protobuf.integrations import user_pb2_grpc
 
 from .services import UserPermissionService, UserService
 
-from .views import UserPermissionViewSet, UserViewSet
+from .views import UserPermissionViewSet, UserViewSet, UserAPITokenAPIView
 
 
 def grpc_handlers(server):
@@ -18,6 +18,8 @@ router = DefaultRouter()
 router.register("user", UserViewSet, basename="user")
 router.register("user-permission", UserPermissionViewSet, basename="user_permission")
 
+
 urlpatterns = [
     path("", include(router.urls)),
+    path("user-api-token", UserAPITokenAPIView.as_view(), name="user_api_token"),
 ]

@@ -1,8 +1,9 @@
 import uuid
 
 from django.urls import reverse
+from rest_framework import status
 
-from marketplace.accounts.views import UserPermissionViewSet, UserViewSet
+from marketplace.accounts.views import UserPermissionViewSet, UserViewSet, UserAPITokenAPIView
 from marketplace.core.tests.base import APIBaseTestCase
 from marketplace.accounts.models import User, ProjectAuthorization
 
@@ -26,7 +27,7 @@ class UserPermissionViewTestCase(APIBaseTestCase):
             "project_uuid": str(self.project_uuid),
             "data": "18-05-2022",
             "channeltype_code": "test",
-            "role": 3
+            "role": 3,
         }
         self.request.patch(url=self.url, project_uuid=self.project_uuid, body=data)
 
@@ -61,3 +62,17 @@ class UserViewTestCase(APIBaseTestCase):
         self.assertNotEqual(test_user.first_name, test_user_changed.first_name)
         self.assertNotEqual(test_user.last_name, test_user_changed.last_name)
         self.assertNotEqual(test_user.photo_url, test_user_changed.photo_url)
+
+
+class UserAPITokenTestCase(APIBaseTestCase):
+
+    view_class = UserAPITokenAPIView
+    url = reverse("user_api_token")
+
+    @property
+    def view(self):
+        return self.view_class.as_view()
+
+    def test_returns_400_when_not_sent_project_uuid(self):
+        response = self.request.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
