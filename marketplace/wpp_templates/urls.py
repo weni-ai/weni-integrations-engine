@@ -1,5 +1,4 @@
 from django.urls import path, include
-#from rest_framework import routers
 from rest_framework_nested import routers
 
 from marketplace.wpp_templates import views
@@ -14,3 +13,5 @@ urlpatterns = [
     path("", include(router.urls)),
     path("", include(templates_router.urls)),
 ]
+
+print(templates_router.urls)

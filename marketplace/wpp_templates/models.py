@@ -35,6 +35,8 @@ class TemplateMessage(models.Model):
 
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
+    app = models.ForeignKey(App, on_delete=models.PROTECT, related_name="template")
+
     name = models.CharField(max_length=60)
 
     category = models.CharField(max_length=200, choices=CATEGORY_CHOICES)

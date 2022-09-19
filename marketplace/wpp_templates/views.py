@@ -7,6 +7,8 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 
+from marketplace.applications.models import App
+
 from .models import TemplateMessage
 from .serializers import TemplateMessageSerializer, TemplateTranslationCreateSerializer, TemplateQuerySetSerializer, TemplateTranslationSerializer
 from .requests import TemplateMessageRequest
@@ -22,9 +24,7 @@ class CustomResultsPagination(PageNumberPagination):
 
 class AppsViewSet(viewsets.ViewSet):
     lookup_field = "uuid"
-
-    def list(self, request):
-        pass
+    
 
 class TemplateMessageViewSet(viewsets.ModelViewSet):
     lookup_field = "uuid"
@@ -32,16 +32,17 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
     pagination_class = CustomResultsPagination
 
     def get_queryset(self):
-        serializer = TemplateQuerySetSerializer(self.request.query_params.dict())
-        queryset = TemplateMessage.objects.filter(**serializer.data).order_by("created_by")
+        app = App.objects.get(uuid=self.kwargs["app_uuid"])
+        queryset = TemplateMessage.objects.filter(app=app).order_by("created_by")
 
         return queryset
+
 
     def perform_destroy(self, instance):
         template_request = TemplateMessageRequest(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
 
         #template_request.delete_template_message(waba_id=instance.config.get("waba_id"), name=instance.name)
-
+        print(instance)
         instance.delete()
 
     @action(detail=True, methods=["POST"])
