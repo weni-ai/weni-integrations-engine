@@ -42,7 +42,6 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         template_request = TemplateMessageRequest(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
 
         #template_request.delete_template_message(waba_id=instance.config.get("waba_id"), name=instance.name)
-        print(instance)
         instance.delete()
 
     @action(detail=True, methods=["POST"])
@@ -56,5 +55,5 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["GET"])
-    def languages(self, request):
+    def languages(self, request, app_uuid=None):
         return Response(data=LANGUAGES, status=status.HTTP_200_OK)
