@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.db.utils import IntegrityError
 
+from marketplace.applications.models import App
 from marketplace.wpp_templates.models import TemplateMessage, TemplateTranslation, TemplateButton, TemplateHeader
 
 User = get_user_model()
@@ -12,8 +13,18 @@ User = get_user_model()
 
 class TemplateButtonModelTestCase(TestCase):
     def setUp(self):
+
+        self.app = App.objects.create(
+            config=dict(waba_id="432321321"),
+            project_uuid=uuid.uuid4(),
+            platform=App.PLATFORM_WENI_FLOWS,
+            code="wwc",
+            created_by=User.objects.get_admin_user(),
+        )
+        
         self.template_message = TemplateMessage.objects.create(
             name="teste",
+            app=self.app,
             category="ACCOUNT_UPDATE",
             created_on=datetime.now(),
             template_type="TEXT",
@@ -42,8 +53,18 @@ class TemplateButtonModelTestCase(TestCase):
 
 class TemplateHeaderModelTestCase(TestCase):
     def setUp(self):
+
+        self.app = App.objects.create(
+            config=dict(waba_id="432321321"),
+            project_uuid=uuid.uuid4(),
+            platform=App.PLATFORM_WENI_FLOWS,
+            code="wwc",
+            created_by=User.objects.get_admin_user(),
+        )
+
         self.template_message = TemplateMessage.objects.create(
             name="teste",
+            app=self.app,
             category="ACCOUNT_UPDATE",
             created_on=datetime.now(),
             template_type="TEXT",
