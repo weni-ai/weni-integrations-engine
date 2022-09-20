@@ -6,6 +6,8 @@ from django.conf import settings
 from rest_framework import serializers
 from rest_framework.relations import SlugRelatedField
 
+from marketplace.applications.models import App
+
 from .models import TemplateMessage, TemplateTranslation, TemplateButton, TemplateHeader
 from .requests import TemplateMessageRequest
 
@@ -35,6 +37,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
     footer = serializers.CharField(read_only=True)
     buttons = ButtonSerializer(many=True, read_only=True)
     variable_count = serializers.IntegerField(read_only=True)
+
 
     def create(self, validated_data: dict) -> TemplateTranslation:
         template = TemplateMessage.objects.get(uuid=validated_data.get("template_uuid"))
@@ -103,7 +106,7 @@ class TemplateMessageSerializer(serializers.Serializer):
     #template_type = serializers.CharField()
     #namespace = serializers.CharField()
 
-    app = serializers.CharField(write_only=True)
+    app_uuid = serializers.CharField(write_only=True)
 
     text_preview = serializers.CharField(required=False, read_only=True)
 
@@ -119,6 +122,8 @@ class TemplateMessageSerializer(serializers.Serializer):
     def create(self, validated_data: dict) -> TemplateMessage:
         template_message_request = TemplateMessageRequest(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
 
+        app = App.objects.get(uuid=validated_data.get("app_uuid"))
+
         template_message_request.create_template_message(
             waba_id=validated_data.get("waba_id"),
             name=validated_data.get("name"),
@@ -129,11 +134,10 @@ class TemplateMessageSerializer(serializers.Serializer):
 
         return TemplateMessage.objects.create(
             name=validated_data.get("name"),
+            app=app,
             category=validated_data.get("category"),
             created_on=datetime.now(),
-            template_type=validated_data.get("template_type"),
-            namespace=validated_data.get("namespace"),
-            #code="wwc",
-            #project_uuid=uuid.uuid4(),
+            template_type="TEXT",
+            namespace="teste-namespace",
             created_by_id=User.objects.get_admin_user().id,
         )

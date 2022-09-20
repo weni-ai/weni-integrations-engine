@@ -38,8 +38,6 @@ class WhatsappTemplateListTestCase(APIBaseTestCase):
             created_on=datetime.now(),
             template_type="TEXT",
             namespace="teste-namespace",
-            #code="wwc",
-            #project_uuid=uuid.uuid4(),
             created_by_id=User.objects.get_admin_user().id,
         )
 
@@ -66,7 +64,7 @@ class WhatsappTemplateListTestCase(APIBaseTestCase):
             response.json.get("results")[0].get("translations")[0].get("uuid"), str(self.template_translation.uuid)
         )
 
-"""
+
 class WhatsappTemplateCreateTestCase(APIBaseTestCase):
     url = reverse("app-template-list", kwargs={"app_uuid":"8c2a8e9e-9833-4710-9df0-548bcfeaf596"})
     view_class = TemplateMessageViewSet
@@ -81,11 +79,11 @@ class WhatsappTemplateCreateTestCase(APIBaseTestCase):
         )
 
         self.body = dict(
-            waba_id="324234234432",
+            #waba_id="324234234432",
             name="teste",
             category="ACCOUNT_UPDATE",
-            template_type="TEXT",
-            namespace="teste-namespace",
+            #template_type="TEXT",
+            #namespace="teste-namespace",
         )
 
         super().setUp()
@@ -98,13 +96,13 @@ class WhatsappTemplateCreateTestCase(APIBaseTestCase):
     def test_create_whatsapp_templates(self, mock: MagicMock):
         mock.return_value = FakeFacebookResponse({"success": True})
 
-        before_template_messages = TemplateMessage.objects.all()
+        before_template_messages = TemplateMessage.objects.all().count()
         self.request.post(self.url, app_uuid=str(self.app.uuid), body=self.body)
-        total_template_messages = TemplateMessage.objects.all()
+        total_template_messages = TemplateMessage.objects.all().count()
 
-        self.assertNotEqual(before_template_messages.count(), total_template_messages.count())
+        self.assertNotEqual(before_template_messages, total_template_messages)
 
-"""
+
 class WhatsappTemplateDestroyTestCase(APIBaseTestCase):
     url = reverse("app-template-list", kwargs={"app_uuid":"8c2a8e9e-9833-4710-9df0-548bcfeaf596"})
     view_class = TemplateMessageViewSet
