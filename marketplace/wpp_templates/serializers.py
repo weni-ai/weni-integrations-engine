@@ -43,7 +43,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
         template_message_request = TemplateMessageRequest(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
 
         template = TemplateMessage.objects.get(uuid=validated_data.get("template_uuid"))
-        
+
         """
         template_message_request.create_template_message(
             waba_id=template.app.config.get("wa_waba_id"),
@@ -51,11 +51,13 @@ class TemplateTranslationSerializer(serializers.Serializer):
             category=template.category,
             components=list(),
             language=validated_data.get("language"),
-        )"""
+        )
+        """
 
         template = TemplateTranslation.objects.create(
             template=template,
             status="PENDING",
+            body=validated_data.get("body"),
             language=validated_data.get("language"),
             country=validated_data.get("country", "Brasil"),
             variable_count=0,
