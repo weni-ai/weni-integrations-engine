@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 
 from marketplace.applications.models import App
-from marketplace.wpp_templates.models import TemplateMessage, TemplateTranslation
+from marketplace.wpp_templates.models import TemplateMessage, TemplateTranslation, TemplateButton
 from marketplace.core.tests.base import APIBaseTestCase
 from marketplace.core.tests.base import FakeRequestsResponse
 from ..views import TemplateMessageViewSet
@@ -37,7 +37,6 @@ class WhatsappTemplateListTestCase(APIBaseTestCase):
             category="ACCOUNT_UPDATE",
             created_on=datetime.now(),
             template_type="TEXT",
-            namespace="teste-namespace",
             created_by_id=User.objects.get_admin_user().id,
         )
 
@@ -92,9 +91,9 @@ class WhatsappTemplateCreateTestCase(APIBaseTestCase):
     def view(self):
         return self.view_class.as_view(APIBaseTestCase.ACTION_CREATE)
 
-    @patch("requests.post")
-    def test_create_whatsapp_templates(self, mock: MagicMock):
-        mock.return_value = FakeFacebookResponse({"success": True})
+    #@patch("requests.post")
+    def test_create_whatsapp_templates(self):
+        #mock.return_value = FakeFacebookResponse({"success": True})
 
         before_template_messages = TemplateMessage.objects.all().count()
         self.request.post(self.url, app_uuid=str(self.app.uuid), body=self.body)
@@ -122,7 +121,6 @@ class WhatsappTemplateDestroyTestCase(APIBaseTestCase):
             category="ACCOUNT_UPDATE",
             created_on=datetime.now(),
             template_type="TEXT",
-            namespace="teste-namespace",
             #code="wwc",
             #project_uuid=uuid.uuid4(),
             created_by_id=User.objects.get_admin_user().id,
@@ -167,9 +165,6 @@ class WhatsappTemplateRetrieveTestCase(APIBaseTestCase):
             category="ACCOUNT_UPDATE",
             created_on=datetime.now(),
             template_type="TEXT",
-            namespace="teste-namespace",
-            #code="wwc",
-            #project_uuid=uuid.uuid4(),
             created_by_id=User.objects.get_admin_user().id,
         )
 
@@ -177,7 +172,6 @@ class WhatsappTemplateRetrieveTestCase(APIBaseTestCase):
             template=self.template_message,
             status="APPROVED",
             language="pt_br",
-            #country="Brasil",
             variable_count=1,
             body="Teste",
         )
@@ -214,7 +208,7 @@ class WhatsappTemplateLanguagesTestCase(APIBaseTestCase):
         self.assertEqual(response.status_code, 200)
 
 
-class WhatsappTranslactionCreateTestCase(APIBaseTestCase):
+class WhatsappTranslationCreateTestCase(APIBaseTestCase):
     view_class = TemplateMessageViewSet
 
     def setUp(self):
@@ -232,19 +226,27 @@ class WhatsappTranslactionCreateTestCase(APIBaseTestCase):
             category="ACCOUNT_UPDATE",
             created_on=datetime.now(),
             template_type="TEXT",
-            namespace="teste-namespace",
-            #code="wwc",
-            #project_uuid=uuid.uuid4(),
             created_by_id=User.objects.get_admin_user().id,
         )
 
         self.url = reverse("app-template-translations", kwargs={"app_uuid": self.app.uuid, "uuid": self.template_message.uuid})
 
+        self.buttons = list()
+        self.buttons.append(
+            dict(
+                button_type="PHONE_NUMBER",
+                country_code=55,
+                phone_number="619983071",
+                text="test_button",
+            )
+        )
 
         self.body = dict(
-            status="APPROVED",
+            #status="APPROVED",
             language="pt_br",
+            body={"text": "test"},
             country="Brasil",
+            buttons=self.buttons,
         )
 
         super().setUp()
@@ -253,13 +255,20 @@ class WhatsappTranslactionCreateTestCase(APIBaseTestCase):
     def view(self):
         return self.view_class.as_view(dict(post="translations"))
 
-    def test_create_whatsapp_translaction(self):
+
+    @patch("requests.post")
+    def test_create_whatsapp_translation(self, mock):
+        mock.return_value = FakeFacebookResponse({"success": True})
+
         before_template_messages = TemplateTranslation.objects.all().count()
-        self.request.post(self.url, body=self.body, uuid=str(self.template_message.uuid))
+        t = self.request.post(self.url, body=self.body, uuid=str(self.template_message.uuid))
+        print(t.json)
         total_template_messages = TemplateTranslation.objects.all().count()
+
+        print(TemplateButton.objects.all())
 
         self.assertNotEqual(before_template_messages, total_template_messages)
 
-    def test_create_whatsapp_translaction_media(self):
+    def test_create_whatsapp_translation_media(self):
         print(self.url)
 
