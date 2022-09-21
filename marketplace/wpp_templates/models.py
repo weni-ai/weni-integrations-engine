@@ -92,9 +92,9 @@ class TemplateButton(models.Model):
 
     button_type = models.CharField(max_length=20, choices=BUTTON_TYPE_CHOICES)
     text = models.CharField(max_length=25)
-    country_code = models.IntegerField()
-    phone_number = models.CharField(max_length=20, default=None)
-    url = models.CharField(max_length=2000, default=None)
+    country_code = models.IntegerField(null=True)
+    phone_number = models.CharField(max_length=20, null=True)
+    url = models.CharField(max_length=2000, null=True)
 
     class Meta:
         constraints = [
