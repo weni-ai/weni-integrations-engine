@@ -36,6 +36,11 @@ class TemplateButtonModelTestCase(TestCase):
             template=self.template_message, status="APPROVED", language="pt_br", variable_count=1
         )
         super().setUp()
+        
+    def test_create_template_button_url(self):
+        TemplateButton.objects.create(
+            translation=self.template_translation, button_type="URL", url="teste"
+        )
 
     def test_create_template_button_url_required_fail(self):
         with self.assertRaises(IntegrityError):
