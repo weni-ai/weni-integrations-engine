@@ -55,7 +55,7 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         instance.delete()
 
     @action(detail=True, methods=["POST"])
-    def translations(self, request, uuid):
+    def translations(self, request, app_uuid = None, uuid = None):
         request.data["template_uuid"] = uuid
 
         serializer = TemplateTranslationSerializer(data=request.data)
