@@ -44,16 +44,14 @@ class TemplateTranslationSerializer(serializers.Serializer):
 
         template = TemplateMessage.objects.get(uuid=validated_data.get("template_uuid"))
         
-        print(validated_data.get("buttons"))
-
-        
+        """
         template_message_request.create_template_message(
-            waba_id=template.app.config.get("waba_id"),
+            waba_id=template.app.config.get("wa_waba_id"),
             name=template.name,
             category=template.category,
             components=list(),
             language=validated_data.get("language"),
-        )
+        )"""
 
         template = TemplateTranslation.objects.create(
             template=template,
