@@ -31,7 +31,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
     uuid = serializers.UUIDField(read_only=True)
     #status = serializers.CharField()
     language = serializers.CharField()
-    country = serializers.CharField()
+    country = serializers.CharField(required=False)
     header = HeaderSerializer(required=False)
     body = serializers.JSONField(required=False)
     footer = serializers.JSONField(required=False)
@@ -46,20 +46,20 @@ class TemplateTranslationSerializer(serializers.Serializer):
         
         print(validated_data.get("buttons"))
 
-        """
+        
         template_message_request.create_template_message(
             waba_id=template.app.config.get("waba_id"),
             name=template.name,
             category=template.category,
             components=list(),
             language=validated_data.get("language"),
-        )"""
+        )
 
         template = TemplateTranslation.objects.create(
             template=template,
             status="PENDING",
             language=validated_data.get("language"),
-            country=validated_data.get("country"),
+            country=validated_data.get("country", "Brasil"),
             variable_count=0,
         )
 
