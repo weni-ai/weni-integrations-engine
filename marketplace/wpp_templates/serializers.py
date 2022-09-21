@@ -29,26 +29,40 @@ class TemplateTranslationSerializer(serializers.Serializer):
     #template = SlugRelatedField(slug_field="uuid", queryset=TemplateMessage.objects.all(), write_only=True)
 
     uuid = serializers.UUIDField(read_only=True)
-    status = serializers.CharField()
+    #status = serializers.CharField()
     language = serializers.CharField()
     country = serializers.CharField()
-    header = HeaderSerializer(read_only=True)
-    body = serializers.CharField(read_only=True)
-    footer = serializers.CharField(read_only=True)
-    buttons = ButtonSerializer(many=True, read_only=True)
+    header = HeaderSerializer(required=False)
+    body = serializers.JSONField(required=False)
+    footer = serializers.CharField(required=False)
+    buttons = ButtonSerializer(many=True, required=False)
     variable_count = serializers.IntegerField(read_only=True)
 
 
-    def create(self, validated_data: dict) -> TemplateTranslation:
-        template = TemplateMessage.objects.get(uuid=validated_data.get("template_uuid"))
+    def create(self, validated_data: dict) -> None:
+        template_message_request = TemplateMessageRequest(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
 
-        return TemplateTranslation.objects.create(
+        template = TemplateMessage.objects.get(uuid=validated_data.get("template_uuid"))
+        
+        print(validated_data.get("buttons"))
+
+        template_message_request.create_template_message(
+            waba_id=template.app.config.get("waba_id"),
+            name=template.name,
+            category=template.category,
+            components=list(),
+            language=validated_data.get("language"),
+        )
+
+        template = TemplateTranslation.objects.create(
             template=template,
-            status=validated_data.get("status"),
+            status="PENDING",
             language=validated_data.get("language"),
             country=validated_data.get("country"),
             variable_count=0,
         )
+
+        return template
 
 
 class ButtonSerializer(serializers.Serializer):
@@ -84,7 +98,7 @@ class TemplateTranslationCreateSerializer(serializers.Serializer):
         )
         """
 
-        print(validated_data.get("template"))
+        #print(validated_data.get("template"))
 
         #emplateTranslation.objects.bulk_create(translations)
         return dict(success=True)
@@ -120,17 +134,7 @@ class TemplateMessageSerializer(serializers.Serializer):
         return data
 
     def create(self, validated_data: dict) -> TemplateMessage:
-        template_message_request = TemplateMessageRequest(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
-
         app = App.objects.get(uuid=validated_data.get("app_uuid"))
-
-        template_message_request.create_template_message(
-            waba_id=validated_data.get("waba_id"),
-            name=validated_data.get("name"),
-            category=validated_data.get("category"),
-            components=list(),
-            language="pt_br",
-        )
 
         return TemplateMessage.objects.create(
             name=validated_data.get("name"),
@@ -138,6 +142,5 @@ class TemplateMessageSerializer(serializers.Serializer):
             category=validated_data.get("category"),
             created_on=datetime.now(),
             template_type="TEXT",
-            namespace="teste-namespace",
             created_by_id=User.objects.get_admin_user().id,
         )

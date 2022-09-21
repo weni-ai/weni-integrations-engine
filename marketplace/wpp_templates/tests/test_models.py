@@ -28,7 +28,6 @@ class TemplateButtonModelTestCase(TestCase):
             category="ACCOUNT_UPDATE",
             created_on=datetime.now(),
             template_type="TEXT",
-            namespace="teste-namespace",
             #code="wwc",
             #project_uuid=uuid.uuid4(),
             created_by_id=User.objects.get_admin_user().id,
@@ -68,9 +67,6 @@ class TemplateHeaderModelTestCase(TestCase):
             category="ACCOUNT_UPDATE",
             created_on=datetime.now(),
             template_type="TEXT",
-            namespace="teste-namespace",
-            #code="wwc",
-            #project_uuid=uuid.uuid4(),
             created_by_id=User.objects.get_admin_user().id,
         )
         self.template_translation = TemplateTranslation.objects.create(

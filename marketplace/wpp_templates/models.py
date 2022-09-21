@@ -46,7 +46,7 @@ class TemplateMessage(models.Model):
     created_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="created_%(class)ss")
 
     template_type = models.CharField(max_length=100, choices=TEMPLATE_TYPES_CHOICES)
-    namespace = models.CharField(max_length=60)
+    #namespace = models.CharField(max_length=60)
 
     def verify_namespace():
         pass
