@@ -96,17 +96,19 @@ class TemplateButton(models.Model):
     phone_number = models.CharField(max_length=20, null=True)
     url = models.CharField(max_length=2000, null=True)
 
+    """
     class Meta:
         constraints = [
             CheckConstraint(
-                check=Q(button_type__exact="URL") & Q(url__isnull=False),
+                check=Q(button_type__exact="URL") & Q(url__isnull=True),
                 name="button_type_exact_url_and_url_isnull_false",
             ),
             CheckConstraint(
-                check=Q(button_type__exact="PHONE_NUMBER") & Q(phone_number__isnull=False),
+                check=Q(button_type__exact="PHONE_NUMBER") & Q(phone_number__isnull=True),
                 name="button_type_exact_phone_number_and_phone_number_isnull_false",
             ),
         ]
+    """
 
 
 class TemplateHeader(models.Model):
@@ -124,6 +126,7 @@ class TemplateHeader(models.Model):
     header_type = models.CharField(max_length=20, choices=HEADER_TYPE_CHOICES)
     text = models.CharField(max_length=60, default=None)
 
+    """
     class Meta:
         constraints = [
             CheckConstraint(
@@ -131,3 +134,4 @@ class TemplateHeader(models.Model):
                 name="header_type_exact_text_and_text_isnull_false",
             ),
         ]
+    """
