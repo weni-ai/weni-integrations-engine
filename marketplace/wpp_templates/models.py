@@ -66,7 +66,7 @@ class TemplateTranslation(models.Model):
 
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
-    template = models.ForeignKey(TemplateMessage, on_delete=models.PROTECT, related_name="translations")
+    template = models.ForeignKey(TemplateMessage, on_delete=models.CASCADE, related_name="translations")
 
     status = models.CharField(max_length=20, choices=STATUS_CHOICES)
 
@@ -88,7 +88,7 @@ class TemplateButton(models.Model):
 
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
-    translation = models.ForeignKey(TemplateTranslation, on_delete=models.PROTECT, related_name="buttons")
+    translation = models.ForeignKey(TemplateTranslation, on_delete=models.CASCADE, related_name="buttons")
 
     button_type = models.CharField(max_length=20, choices=BUTTON_TYPE_CHOICES)
     text = models.CharField(max_length=25)
@@ -121,7 +121,7 @@ class TemplateHeader(models.Model):
 
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
-    translation = models.ForeignKey(TemplateTranslation, on_delete=models.PROTECT, related_name="headers")
+    translation = models.ForeignKey(TemplateTranslation, on_delete=models.CASCADE, related_name="headers")
 
     header_type = models.CharField(max_length=20, choices=HEADER_TYPE_CHOICES)
     text = models.CharField(max_length=60, default=None)
