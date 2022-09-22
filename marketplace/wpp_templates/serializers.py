@@ -57,9 +57,18 @@ class TemplateTranslationSerializer(serializers.Serializer):
         template = TemplateMessage.objects.get(uuid=validated_data.get("template_uuid"))
 
         components = [validated_data.get("body", {})]
-        components = self.append_to_components(components, validated_data.get("header"))
+        
+        header = validated_data.get("header")
+
+        if header:
+            header = dict(header)
+            header["type"] = "HEADER"
+            header["format"] = header.get("header_type", "TEXT")
+            header.pop("header_type")
+
+        components = self.append_to_components(components, header)
         components = self.append_to_components(components, validated_data.get("footer"))
-        #components.update(validated_data.get("buttons", dict()))
+
 
         buttons = validated_data.get("buttons", {})
 
