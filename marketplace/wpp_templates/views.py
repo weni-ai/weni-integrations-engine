@@ -18,7 +18,7 @@ User = get_user_model()
 
 
 class CustomResultsPagination(PageNumberPagination):
-    page_size = 10
+    page_size = 12
     page_size_query_param = "page_size"
     max_page_size = 500
 
@@ -36,7 +36,6 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         queryset = TemplateMessage.objects.filter(app=app).order_by("created_by")
 
         return queryset
-
 
     def create(self, request, *args, **kwargs):
         request.data.update(self.kwargs)

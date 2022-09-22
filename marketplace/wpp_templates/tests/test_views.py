@@ -243,7 +243,7 @@ class WhatsappTranslationCreateTestCase(APIBaseTestCase):
 
         before_template_messages = TemplateTranslation.objects.all().count()
         t = self.request.post(self.url, body=self.body, uuid=str(self.template_message.uuid))
-        print(t.json)
+        #print(t.json)
         total_template_messages = TemplateTranslation.objects.all().count()
 
         self.assertNotEqual(before_template_messages, total_template_messages)
