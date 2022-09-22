@@ -85,7 +85,9 @@ class TemplateTranslationSerializer(serializers.Serializer):
                 button["phone_number"] = f'+{button.get("country_code")} {button.get("phone_number")}'
             
             if button.get("button_type") != "URL":
-                buttons_component.get("buttons").append(button)
+                button_component = button
+                button_component.pop("button_type")
+                buttons_component.get("buttons").append(button_component)
 
 
         if buttons_component.get("buttons"):
