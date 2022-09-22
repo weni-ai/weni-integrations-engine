@@ -228,7 +228,7 @@ class WhatsappTranslationCreateTestCase(APIBaseTestCase):
             header={"header_type": "TEXT", "text": "teste_header"},
             footer={"type":"FOOTER","text":"Not interested? Tap Stop promotions"},
             buttons=[{"button_type":"PHONE_NUMBER", "country_code":55, "phone_number":"61994308420", "text": "phone-button-text"}],
-            #buttons=[{"button_type":"URL", "text": "phone-button-text", "url":}],
+            #buttons=[{"button_type":"URL", "text": "phone-button-text", "url": ""}],
         )
 
         super().setUp()
