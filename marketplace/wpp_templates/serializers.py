@@ -105,7 +105,8 @@ class TemplateTranslationSerializer(serializers.Serializer):
             button = dict(button)
             TemplateButton.objects.create(translation=translation, **button)
 
-        TemplateHeader.objects.create(translation=translation, **dict(validated_data.get("header")))
+        if validated_data.get("header"):
+            TemplateHeader.objects.create(translation=translation, **dict(validated_data.get("header")))
 
         return translation
 
@@ -117,32 +118,6 @@ class TemplateTranslationCreateSerializer(serializers.Serializer):
     template = SlugRelatedField(slug_field="uuid", queryset=TemplateMessage.objects.all())
 
     def create(self, validated_data: dict) -> object:
-        #translations = list()
-        #print(validated_data)
-
-        """
-        for translaction in validated_data.get("translations", []):
-            translations.append(TemplateTranslation(
-                template=validated_data.get("template"),
-                status=translaction.get("status"),
-                language=translaction.get("language"),
-                #country=translaction.get("country"),
-                variable_count=0,
-            ))
-        """
-        """
-        TemplateTranslation.objects.create(
-            template=validated_data.get("template"),
-            status=validated_data.get("status"),
-            language=validated_data.get("language"),
-            #country=translaction.get("country"),
-            variable_count=0,
-        )
-        """
-
-        #print(validated_data.get("template"))
-
-        #emplateTranslation.objects.bulk_create(translations)
         return dict(success=True)
 
 
@@ -155,12 +130,9 @@ class TemplateQuerySetSerializer(serializers.Serializer):
 
 class TemplateMessageSerializer(serializers.Serializer):
     uuid = serializers.UUIDField(read_only=True)
-    #waba_id = serializers.CharField(write_only=True)
     name = serializers.CharField()
     created_on = serializers.CharField(read_only=True)
     category = serializers.CharField()
-    #template_type = serializers.CharField()
-    #namespace = serializers.CharField()
 
     app_uuid = serializers.CharField(write_only=True)
 

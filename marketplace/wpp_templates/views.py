@@ -24,7 +24,7 @@ class CustomResultsPagination(PageNumberPagination):
 
 class AppsViewSet(viewsets.ViewSet):
     lookup_field = "uuid"
-    
+
 
 class TemplateMessageViewSet(viewsets.ModelViewSet):
     lookup_field = "uuid"
@@ -47,11 +47,10 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
-
     def perform_destroy(self, instance):
         template_request = TemplateMessageRequest(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
 
-        template_request.delete_template_message(waba_id=instance.app.config.get("waba_id"), name=instance.name)
+        template_request.delete_template_message(waba_id=instance.app.config.get("wa_waba_id"), name=instance.name)
         instance.delete()
 
     @action(detail=True, methods=["POST"])
