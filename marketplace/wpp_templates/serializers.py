@@ -1,4 +1,5 @@
 import uuid
+import json
 from datetime import datetime
 
 from django.contrib.auth import get_user_model
@@ -90,8 +91,6 @@ class TemplateTranslationSerializer(serializers.Serializer):
         if buttons_component.get("buttons"):
             components = self.append_to_components(components, buttons_component)
 
-        #print(type(components))
-
         template_message_request.create_template_message(
             waba_id=template.app.config.get("wa_waba_id"),
             #waba_id="109552365187427",
@@ -104,7 +103,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
         translation = TemplateTranslation.objects.create(
             template=template,
             status="PENDING",
-            body=validated_data.get("body"),
+            body=validated_data.get("body").get("text", ""),
             language=validated_data.get("language"),
             country=validated_data.get("country", "Brasil"),
             variable_count=0,
