@@ -71,3 +71,14 @@ class WPPRouterChannelClient(ConnectAuth):
         response = requests.post(url=self.base_url + "/integrations/channel", json=payload, headers=self.auth_header())
 
         return response.json().get("token", "")
+
+    def set_flows_starts(self, flows_starts: dict, channel_uuid: str) -> None:
+        payload = {
+            "flows_starts": flows_starts,
+            "channel_uuid": channel_uuid
+        } 
+
+        response = requests.post(url=self.base_url + "/integrations/flows", json=payload, headers=self.auth_header())
+        
+        return None
+        
