@@ -130,6 +130,49 @@ class RetrieveWhatsAppDemoAppTestCase(APIBaseTestCase):
         self.assertEqual(response.json["config"], {})
 
 
+class UpdateWhatsAppDemoAppTestCase(APIBaseTestCase):
+    view_class = WhatsAppDemoViewSet
+
+    def setUp(self):
+        super().setUp()
+
+        self.app = App.objects.create(
+            code="wpp-demo", created_by=self.user, project_uuid=str(uuid.uuid4()), platform=App.PLATFORM_WENI_FLOWS
+        )
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid, role=ProjectAuthorization.ROLE_ADMIN
+        )
+        self.url = reverse("wpp-demo-app-detail", kwargs={"uuid": self.app.uuid})
+
+    @property
+    def view(self):
+        return self.view_class.as_view({"patch": "partial_update"})
+    
+    def test_partial_update(self): 
+        """
+        Partial update to flows
+        """    
+        data = {
+                "flows_starts": [
+                    {
+                        "flow_name": "flow_vinculado_01",
+                        "flow_uuid": "3a624a22-c825-461c-9bcf-2fdf7c38eb74",
+                        "keyword": "olá"
+                    },
+                    {
+                        "flow_name": "flow_vinculado_01",
+                        "flow_uuid": "3a624a22-c825-461c-9bcf-2fdf7c38eb74",
+                        "keyword": "hello"
+                    }
+                ]
+            
+            }
+        response = self.request.patch(self.url, uuid=self.app.uuid, body=data) 
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data.get("config").get("flows_starts"), data.get("flows_starts"))
+        
+
 class DestroyWhatsAppDemoAppTestCase(APIBaseTestCase):
     view_class = WhatsAppDemoViewSet
 
