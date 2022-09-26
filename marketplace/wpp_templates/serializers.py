@@ -50,7 +50,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
             components.append(dict(component))
 
         return components
-        
+
 
     def create(self, validated_data: dict) -> None:
         template_message_request = TemplateMessageRequest(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
@@ -58,7 +58,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
         template = TemplateMessage.objects.get(uuid=validated_data.get("template_uuid"))
 
         components = [validated_data.get("body", {})]
-        
+
         header = validated_data.get("header")
 
         if header:
@@ -111,6 +111,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
             template=template,
             status="PENDING",
             body=validated_data.get("body").get("text", ""),
+            footer=validated_data.get("footer", ""),
             language=validated_data.get("language"),
             country=validated_data.get("country", "Brasil"),
             variable_count=0,

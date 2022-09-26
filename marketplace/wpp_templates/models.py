@@ -121,10 +121,10 @@ class TemplateHeader(models.Model):
 
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
-    translation = models.ForeignKey(TemplateTranslation, on_delete=models.CASCADE, related_name="headers")
+    translation = models.ForeignKey(TemplateTranslation, on_delete=models.CASCADE, related_name="header")
 
     header_type = models.CharField(max_length=20, choices=HEADER_TYPE_CHOICES)
-    text = models.CharField(max_length=60, default=None)
+    text = models.CharField(max_length=60, default=None, null=True)
 
     """
     class Meta:
