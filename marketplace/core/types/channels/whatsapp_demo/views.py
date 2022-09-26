@@ -3,7 +3,6 @@ from .serializers import WhatsAppDemoSerializer
 from marketplace.connect.client import ConnectProjectClient, WPPRouterChannelClient
 
 from rest_framework.response import Response
-import requests
 
 
 class WhatsAppDemoViewSet(views.BaseAppTypeViewSet):
