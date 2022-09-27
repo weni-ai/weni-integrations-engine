@@ -90,25 +90,25 @@ class TemplateTranslationSerializer(serializers.Serializer):
             if button.get("phone_number"):
                 button["phone_number"] = f'+{button.get("country_code")} {button.get("phone_number")}'
             
-            if button.get("button_type") != "URL":
-                button_component = button
-                button_component.pop("button_type")
+            #if button.get("button_type") != "URL":
+            button_component = button
+            button_component.pop("button_type")
 
-                if button_component.get("country_code"):
-                    button_component.pop("country_code")
+            if button_component.get("country_code"):
+                button_component.pop("country_code")
 
-                buttons_component.get("buttons").append(button_component)
+            buttons_component.get("buttons").append(button_component)
 
-            if button.get("button_type") == "URL":
-                #print(button)
-                url_component["text"] = button.get("text")
-                url_component["url"] = button.get("url")
+            #if button.get("button_type") == "URL":
+            #print(button)
+            #    url_component["text"] = button.get("text")
+            #    url_component["url"] = button.get("url")
 
         if buttons_component.get("buttons"):
             components = self.append_to_components(components, buttons_component)
 
-        if url_component.get("url"):
-            components = self.append_to_components(components, url_component)
+        #if url_component.get("url"):
+        #    components = self.append_to_components(components, url_component)
 
         print(components)
 
