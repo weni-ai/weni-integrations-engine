@@ -12,6 +12,7 @@ from marketplace.applications.models import App
 from .models import TemplateMessage, TemplateTranslation, TemplateButton, TemplateHeader
 from .requests import TemplateMessageRequest
 from marketplace.core.types.channels.whatsapp_cloud.requests import PhotoAPIRequest
+from marketplace.core.types.channels.whatsapp_base.exceptions import FacebookApiException
 
 User = get_user_model()
 
@@ -80,7 +81,22 @@ class TemplateTranslationSerializer(serializers.Serializer):
 
                 upload_handle = photo_api_request.upload_photo(upload_session_id, photo)
                 
+                url = f"{settings.WHATSAPP_API_URL}/{upload_session_id}"
+
+                headers = {"Content-Type": "image/jpeg", "Authorization": f"OAuth {settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN}"}
+                headers["file_offset"] = "0"
+
+                response = requests.post(url, headers=headers, data=photo)
+
+                if response.status_code != status.HTTP_200_OK:
+                    raise FacebookApiException(response.json())
+
+                return response.json().get("h", "")
+
+                #upload_handle = photo_api_request.upload_photo(upload_session_id, photo)
+
                 header.get("example")["header_handle"] = upload_handle
+
 
         components = self.append_to_components(components, header)
         components = self.append_to_components(components, validated_data.get("footer"))
