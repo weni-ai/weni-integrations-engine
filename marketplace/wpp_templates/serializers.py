@@ -11,6 +11,7 @@ from marketplace.applications.models import App
 
 from .models import TemplateMessage, TemplateTranslation, TemplateButton, TemplateHeader
 from .requests import TemplateMessageRequest
+from marketplace.core.types.channels.whatsapp_cloud.requests import PhotoAPIRequest
 
 User = get_user_model()
 
@@ -67,9 +68,20 @@ class TemplateTranslationSerializer(serializers.Serializer):
             header["format"] = header.get("header_type", "TEXT")
             header.pop("header_type")
 
+            if header.get("format") == "IMAGE":
+
+                photo_api_request = PhotoAPIRequest(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN, template.app.config.get("wa_waba_id"))
+
+                photo = header.get("example")
+
+                upload_session_id = photo_api_request.create_upload_session(
+                    settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN, len(photo), file_type="image/jpeg"
+                )
+
+                upload_handle = self.upload_photo(upload_session_id, photo)
+
         components = self.append_to_components(components, header)
         components = self.append_to_components(components, validated_data.get("footer"))
-
 
         buttons = validated_data.get("buttons", {})
 
@@ -80,8 +92,6 @@ class TemplateTranslationSerializer(serializers.Serializer):
 
         url_component = {
             "type": "URL",
-            #"text" :"",
-            #"url" : ""
         }
 
         for button in buttons:
@@ -90,7 +100,6 @@ class TemplateTranslationSerializer(serializers.Serializer):
             if button.get("phone_number"):
                 button["phone_number"] = f'+{button.get("country_code")} {button.get("phone_number")}'
             
-            #if button.get("button_type") != "URL":
             button_component = button
             button_component.pop("button_type")
 
@@ -99,22 +108,13 @@ class TemplateTranslationSerializer(serializers.Serializer):
 
             buttons_component.get("buttons").append(button_component)
 
-            #if button.get("button_type") == "URL":
-            #print(button)
-            #    url_component["text"] = button.get("text")
-            #    url_component["url"] = button.get("url")
-
         if buttons_component.get("buttons"):
             components = self.append_to_components(components, buttons_component)
-
-        #if url_component.get("url"):
-        #    components = self.append_to_components(components, url_component)
 
         print(components)
 
         template_message_request.create_template_message(
             waba_id=template.app.config.get("wa_waba_id"),
-            #waba_id="109552365187427",
             name=template.name,
             category=template.category,
             components=components,
