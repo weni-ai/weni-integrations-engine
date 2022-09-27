@@ -78,7 +78,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
                     settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN, len(photo), file_type="image/jpeg"
                 )
 
-                upload_handle = self.upload_photo(upload_session_id, photo)
+                upload_handle = photo_api_request.upload_photo(upload_session_id, photo)
 
         components = self.append_to_components(components, header)
         components = self.append_to_components(components, validated_data.get("footer"))
