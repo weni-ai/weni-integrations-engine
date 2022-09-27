@@ -79,6 +79,8 @@ class TemplateTranslationSerializer(serializers.Serializer):
                 )
 
                 upload_handle = photo_api_request.upload_photo(upload_session_id, photo)
+                
+                header.get("example")["header_handle"] = upload_handle
 
         components = self.append_to_components(components, header)
         components = self.append_to_components(components, validated_data.get("footer"))
