@@ -78,6 +78,12 @@ class TemplateTranslationSerializer(serializers.Serializer):
             "buttons": [],
         }
 
+        url_component = {
+            "type": "URL",
+            #"text" :"",
+            #"url" : ""
+        }
+
         for button in buttons:
             button = dict(button)
             button["type"] = button.get("button_type")
@@ -93,10 +99,18 @@ class TemplateTranslationSerializer(serializers.Serializer):
 
                 buttons_component.get("buttons").append(button_component)
 
-
+            if button.get("button_type") == "URL":
+                #print(button)
+                url_component["text"] = button.get("text")
+                url_component["url"] = button.get("url")
 
         if buttons_component.get("buttons"):
             components = self.append_to_components(components, buttons_component)
+
+        if url_component.get("url"):
+            components = self.append_to_components(components, url_component)
+
+        print(components)
 
         template_message_request.create_template_message(
             waba_id=template.app.config.get("wa_waba_id"),
