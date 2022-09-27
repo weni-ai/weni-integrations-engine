@@ -125,7 +125,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
             template=template,
             status="PENDING",
             body=validated_data.get("body").get("text", ""),
-            footer=validated_data.get("footer").get("text", ""),
+            footer=validated_data.get("footer", {}).get("text", ""),
             language=validated_data.get("language"),
             country=validated_data.get("country", "Brasil"),
             variable_count=0,
