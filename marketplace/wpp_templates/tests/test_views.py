@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 
 from marketplace.applications.models import App
-from marketplace.wpp_templates.models import TemplateMessage, TemplateTranslation, TemplateButton
+from marketplace.wpp_templates.models import TemplateMessage, TemplateTranslation, TemplateButton, TemplateHeader
 from marketplace.core.tests.base import APIBaseTestCase
 from marketplace.core.tests.base import FakeRequestsResponse
 from ..views import TemplateMessageViewSet
@@ -48,6 +48,10 @@ class WhatsappTemplateListTestCase(APIBaseTestCase):
             body="Teste",
         )
 
+        TemplateHeader.objects.create(translation=self.template_translation, header_type="TEXT", text="teste")
+
+        print(self.template_translation.headers)
+
         super().setUp()
 
     @property
@@ -56,6 +60,8 @@ class WhatsappTemplateListTestCase(APIBaseTestCase):
 
     def test_list_whatsapp_templates(self):
         response = self.request.get(self.url, app_uuid=str(self.app.uuid))
+
+        #print(response.json)
 
         self.assertEqual(response.json.get("results")[0].get("uuid"), str(self.template_message.uuid))
         self.assertEqual(
@@ -227,8 +233,8 @@ class WhatsappTranslationCreateTestCase(APIBaseTestCase):
             country="Brasil",
             header={"header_type": "TEXT", "text": "teste_header"},
             footer={"type":"FOOTER","text":"Not interested? Tap Stop promotions"},
-            buttons=[{"button_type":"PHONE_NUMBER", "country_code":55, "phone_number":"61994308420", "text": "phone-button-text"}],
-            #buttons=[{"button_type":"URL", "text": "phone-button-text", "url": ""}],
+            #buttons=[{"button_type":"PHONE_NUMBER", "country_code":55, "phone_number":"61994308420", "text": "phone-button-text"}],
+            buttons=[{"button_type":"URL", "text": "phone-button-text", "url": "teste"}],
         )
 
         super().setUp()
