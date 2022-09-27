@@ -18,11 +18,11 @@ User = get_user_model()
 
 class HeaderSerializer(serializers.ModelSerializer):
     text = serializers.CharField(required=False)
-    media = serializers.CharField(required=False)
+    example = serializers.CharField(required=False)
 
     class Meta:
         model = TemplateHeader
-        fields = ["header_type", "text", "media"]
+        fields = ["header_type", "text", "example"]
 
 class ButtonSerializer(serializers.ModelSerializer):
     country_code = serializers.CharField(required=False)
