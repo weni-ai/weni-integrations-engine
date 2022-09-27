@@ -70,7 +70,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
 
             if header.get("format") == "IMAGE":
 
-                photo_api_request = PhotoAPIRequest(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN, template.app.config.get("wa_waba_id"))
+                photo_api_request = PhotoAPIRequest(template.app.config.get("wa_waba_id"))
 
                 photo = header.get("example")
 
