@@ -1,6 +1,7 @@
 import requests
 import uuid
 import json
+import re
 from datetime import datetime
 
 from django.contrib.auth import get_user_model
@@ -70,18 +71,20 @@ class TemplateTranslationSerializer(serializers.Serializer):
             header["format"] = header.get("header_type", "TEXT")
             header.pop("header_type")
 
-            if header.get("format") == "IMAGE":
+            if header.get("format") == "IMAGE" or header.get("format") == "DOCUMENT":
                 photo_api_request = PhotoAPIRequest(template.app.config.get("wa_waba_id"))
 
                 photo = header.get("example")
 
+                file_type = re.search('(?<=data:)(.*)(?=;base64)', photo).group(0)
+
                 upload_session_id = photo_api_request.create_upload_session(
-                    settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN, len(photo), file_type="image/jpeg"
+                    settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN, len(photo), file_type=file_type
                 )
                 
                 url = f"https://graph.facebook.com/v14.0/{upload_session_id}"
 
-                headers = {"Content-Type": "image/jpeg", "Authorization": f"OAuth {settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN}"}
+                headers = {"Content-Type": file_type, "Authorization": f"OAuth {settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN}"}
                 headers["file_offset"] = "0"
 
                 response = requests.post(url, headers=headers, data=photo)
@@ -127,7 +130,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
         if buttons_component.get("buttons"):
             components = self.append_to_components(components, buttons_component)
 
-        print(components)
+        #print(components)
 
         template_message_request.create_template_message(
             waba_id=template.app.config.get("wa_waba_id"),
@@ -152,7 +155,9 @@ class TemplateTranslationSerializer(serializers.Serializer):
             TemplateButton.objects.create(translation=translation, **button)
 
         if validated_data.get("header"):
-            TemplateHeader.objects.create(translation=translation, **dict(validated_data.get("header")))
+            hh = dict(validated_data.get("header"))
+            hh.pop("example")
+            TemplateHeader.objects.create(translation=translation, **hh)
 
         return translation
 
