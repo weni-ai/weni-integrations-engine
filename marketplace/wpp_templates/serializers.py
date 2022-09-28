@@ -71,7 +71,6 @@ class TemplateTranslationSerializer(serializers.Serializer):
             header.pop("header_type")
 
             if header.get("format") == "IMAGE":
-
                 photo_api_request = PhotoAPIRequest(template.app.config.get("wa_waba_id"))
 
                 photo = header.get("example")
@@ -79,10 +78,8 @@ class TemplateTranslationSerializer(serializers.Serializer):
                 upload_session_id = photo_api_request.create_upload_session(
                     settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN, len(photo), file_type="image/jpeg"
                 )
-
-                #upload_handle = photo_api_request.upload_photo(upload_session_id, photo)
                 
-                url = f"{settings.WHATSAPP_API_URL}/{upload_session_id}"
+                url = f"https://graph.facebook.com/v14.0/{upload_session_id}"
 
                 headers = {"Content-Type": "image/jpeg", "Authorization": f"OAuth {settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN}"}
                 headers["file_offset"] = "0"
@@ -92,11 +89,11 @@ class TemplateTranslationSerializer(serializers.Serializer):
                 if response.status_code != 200:
                     raise FacebookApiException(response.json())
 
-                return response.json().get("h", "")
+                upload_handle = response.json().get("h", "")
 
-                #upload_handle = photo_api_request.upload_photo(upload_session_id, photo)
+                header.pop("example")
 
-                header.get("example")["header_handle"] = upload_handle
+                header["example"] = dict(header_handle=upload_handle)
 
 
         components = self.append_to_components(components, header)
