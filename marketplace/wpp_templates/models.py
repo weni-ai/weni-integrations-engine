@@ -125,6 +125,7 @@ class TemplateHeader(models.Model):
 
     header_type = models.CharField(max_length=20, choices=HEADER_TYPE_CHOICES)
     text = models.CharField(max_length=60, default=None, null=True)
+    example = models.CharField(max_length=1024, default=None, null=True)
 
     """
     class Meta:
