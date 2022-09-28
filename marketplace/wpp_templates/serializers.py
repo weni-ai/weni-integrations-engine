@@ -2,6 +2,7 @@ import requests
 import uuid
 import json
 import re
+import base64
 from datetime import datetime
 
 from django.contrib.auth import get_user_model
@@ -36,6 +37,7 @@ class ButtonSerializer(serializers.ModelSerializer):
         model = TemplateButton
         fields = ["button_type", "text", "country_code", "phone_number", "url"]
 
+
 class TemplateTranslationSerializer(serializers.Serializer):
     template_uuid = serializers.CharField(write_only=True)
     #template = SlugRelatedField(slug_field="uuid", queryset=TemplateMessage.objects.all(), write_only=True)
@@ -49,6 +51,14 @@ class TemplateTranslationSerializer(serializers.Serializer):
     footer = serializers.JSONField(required=False)
     buttons = ButtonSerializer(many=True, required=False)
     variable_count = serializers.IntegerField(read_only=True)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+
+        if instance.headers.first():
+            print(instance.headers.first().to_dict())
+            data['header'] = instance.headers.first().to_dict()
+        return data
 
     def append_to_components(self, components: list() = [], component = None):
         if component:
@@ -71,32 +81,34 @@ class TemplateTranslationSerializer(serializers.Serializer):
             header["format"] = header.get("header_type", "TEXT")
             header.pop("header_type")
 
-            if header.get("format") == "IMAGE" or header.get("format") == "DOCUMENT":
+            if header.get("format") == "IMAGE" or header.get("format") == "DOCUMENT" or header.get("format") == "VIDEO":
                 photo_api_request = PhotoAPIRequest(template.app.config.get("wa_waba_id"))
 
                 photo = header.get("example")
 
                 file_type = re.search('(?<=data:)(.*)(?=;base64)', photo).group(0)
 
+                photo = photo.split(";base64,")[1]
+                
                 upload_session_id = photo_api_request.create_upload_session(
-                    settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN, len(photo), file_type=file_type
+                    settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN, len(base64.b64decode(photo)), file_type=file_type
                 )
                 
                 url = f"https://graph.facebook.com/v14.0/{upload_session_id}"
-
                 headers = {"Content-Type": file_type, "Authorization": f"OAuth {settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN}"}
                 headers["file_offset"] = "0"
-
-                response = requests.post(url, headers=headers, data=photo)
+                response = requests.post(url, headers=headers, data=base64.b64decode(photo))
 
                 if response.status_code != 200:
                     raise FacebookApiException(response.json())
 
                 upload_handle = response.json().get("h", "")
 
+
                 header.pop("example")
 
                 header["example"] = dict(header_handle=upload_handle)
+
 
 
         components = self.append_to_components(components, header)
@@ -156,7 +168,8 @@ class TemplateTranslationSerializer(serializers.Serializer):
 
         if validated_data.get("header"):
             hh = dict(validated_data.get("header"))
-            hh.pop("example")
+            if hh.get("example"):
+                hh.pop("example")
             TemplateHeader.objects.create(translation=translation, **hh)
 
         return translation

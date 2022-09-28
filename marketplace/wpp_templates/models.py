@@ -127,6 +127,13 @@ class TemplateHeader(models.Model):
     text = models.CharField(max_length=60, default=None, null=True)
     example = models.CharField(max_length=1024, default=None, null=True)
 
+    def to_dict(self):
+        return dict(
+            header_type=self.header_type,
+            text=self.text,
+            #example=self.example,
+        )
+
     """
     class Meta:
         constraints = [
