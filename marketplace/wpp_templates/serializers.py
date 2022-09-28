@@ -89,9 +89,6 @@ class TemplateTranslationSerializer(serializers.Serializer):
 
                 response = requests.post(url, headers=headers, data=photo)
 
-                if response.status_code != status.HTTP_200_OK:
-                    raise FacebookApiException(response.json())
-
                 return response.json().get("h", "")
 
                 #upload_handle = photo_api_request.upload_photo(upload_session_id, photo)
