@@ -13,5 +13,3 @@ urlpatterns = [
     path("", include(router.urls)),
     path("", include(templates_router.urls)),
 ]
-
-print(templates_router.urls)
