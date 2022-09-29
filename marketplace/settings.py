@@ -158,7 +158,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [],
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.IsAuthenticated",
+        "rest_framework.permissions.AllowAny",
     ],
 }
 
@@ -276,7 +276,7 @@ APPTYPES_CLASSES = [
 # if you want to run the application without using any apptype,
 # just comment it in APPTYPES_CLASSES
 
-WHATSAPP_SYSTEM_USER_ACCESS_TOKEN = env.str("WHATSAPP_SYSTEM_USER_ACCESS_TOKEN", default="")
+WHATSAPP_SYSTEM_USER_ACCESS_TOKEN = env.str("WHATSAPP_SYSTEM_USER_ACCESS_TOKEN")
 WHATSAPP_VERSION = env.str("WHATSAPP_VERSION", default="v13.0")
 WHATSAPP_API_URL = urllib.parse.urljoin(
     env.str("WHATSAPP_API_URL", default="https://graph.facebook.com/"), WHATSAPP_VERSION
@@ -323,6 +323,7 @@ CELERY_BEAT_SCHEDULE = {
     "sync-whatsapp-cloud-wabas": {"task": "sync_whatsapp_cloud_wabas", "schedule": timedelta(hours=5)},
     "sync-whatsapp-phone-numbers": {"task": "sync_whatsapp_phone_numbers", "schedule": timedelta(hours=5)},
     "sync-whatsapp-cloud-phone-numbers": {"task": "sync_whatsapp_cloud_phone_numbers", "schedule": timedelta(hours=5)},
+    "refresh-whatsapp-templates-from-facebook": {"task": "refresh_whatsapp_templates_from_facebook", "schedule": timedelta(hours=1)},
 }
 
 

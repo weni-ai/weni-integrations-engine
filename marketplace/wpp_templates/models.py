@@ -1,6 +1,7 @@
 import uuid
 
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from django.db import models
 from django.db.models.constraints import CheckConstraint
 from django.db.models import Q
@@ -41,9 +42,9 @@ class TemplateMessage(models.Model):
 
     category = models.CharField(max_length=200, choices=CATEGORY_CHOICES)
 
-    created_on = models.DateTimeField("Created on", editable=False, auto_now_add=True)
+    created_on = models.DateTimeField("Created on", editable=False, default=timezone.now)
 
-    created_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="created_%(class)ss")
+    created_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="created_%(class)ss", null=True)
 
     template_type = models.CharField(max_length=100, choices=TEMPLATE_TYPES_CHOICES)
     #namespace = models.CharField(max_length=60)
@@ -68,15 +69,15 @@ class TemplateTranslation(models.Model):
 
     template = models.ForeignKey(TemplateMessage, on_delete=models.CASCADE, related_name="translations")
 
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, null=True)
 
-    body = models.CharField(max_length=1024)
-    footer = models.CharField(max_length=60)
-    variable_count = models.IntegerField()
-    language = models.CharField(max_length=60)
-    country = models.CharField(max_length=60)
-    namespace = models.CharField(max_length=60)
-    external_id = models.CharField(max_length=60)
+    body = models.CharField(max_length=1024, null=True)
+    footer = models.CharField(max_length=60, null=True)
+    variable_count = models.IntegerField(null=True)
+    language = models.CharField(max_length=60, null=True)
+    country = models.CharField(max_length=60, null=True)
+    namespace = models.CharField(max_length=60, null=True)
+    external_id = models.CharField(max_length=60, null=True)
 
 
 class TemplateButton(models.Model):
@@ -91,7 +92,7 @@ class TemplateButton(models.Model):
     translation = models.ForeignKey(TemplateTranslation, on_delete=models.CASCADE, related_name="buttons")
 
     button_type = models.CharField(max_length=20, choices=BUTTON_TYPE_CHOICES)
-    text = models.CharField(max_length=25)
+    text = models.CharField(max_length=25, null=True)
     country_code = models.IntegerField(null=True)
     phone_number = models.CharField(max_length=20, null=True)
     url = models.CharField(max_length=2000, null=True)
