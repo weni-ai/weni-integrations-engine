@@ -25,7 +25,6 @@ urlpatterns = [
     path("api/v1/", include(api_urls)),
 ]
 
-
 # Static files
 
 if settings.DEBUG:

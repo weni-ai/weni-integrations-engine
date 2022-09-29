@@ -5,7 +5,9 @@ from marketplace.applications import views as applications_views
 from marketplace.interactions import views as interactions_views
 from marketplace.accounts import urls as account_urls
 from marketplace.core.types import urls as apps_urls
+from marketplace.wpp_templates import urls as wpp_templates_urls
 
+from marketplace.wpp_templates import views as tt
 
 router = routers.SimpleRouter()
 router.register("apptypes", applications_views.AppTypeViewSet, basename="apptype")
@@ -18,10 +20,14 @@ rating_router = routers.NestedSimpleRouter(router, r"apptypes", lookup="apptype"
 rating_router.register("ratings", interactions_views.RatingViewSet, basename="apptype-rating")
 
 
+#test_router = routers.NestedSimpleRouter(router, r"apptypes", lookup="apptype")
+#test_router.register("templates", tt.TemplateMessageViewSet, basename="apptype-templates")
+
 urlpatterns = [
     path("", include(router.urls)),
     path("", include(comments_router.urls)),
     path("", include(rating_router.urls)),
     path("", include(apps_urls)),
     path("internal/", include(account_urls), name="internal"),
+    path("", include(wpp_templates_urls)),
 ]
