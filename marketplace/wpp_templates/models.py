@@ -71,7 +71,7 @@ class TemplateTranslation(models.Model):
 
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, null=True)
 
-    body = models.CharField(max_length=1024, null=True)
+    body = models.CharField(max_length=2048, null=True)
     footer = models.CharField(max_length=60, null=True)
     variable_count = models.IntegerField(null=True)
     language = models.CharField(max_length=60, null=True)
@@ -126,7 +126,7 @@ class TemplateHeader(models.Model):
 
     header_type = models.CharField(max_length=20, choices=HEADER_TYPE_CHOICES)
     text = models.CharField(max_length=60, default=None, null=True)
-    example = models.CharField(max_length=1024, default=None, null=True)
+    example = models.CharField(max_length=2048, default=None, null=True)
 
     def to_dict(self):
         return dict(
