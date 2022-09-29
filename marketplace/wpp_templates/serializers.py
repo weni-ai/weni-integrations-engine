@@ -43,7 +43,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
     #template = SlugRelatedField(slug_field="uuid", queryset=TemplateMessage.objects.all(), write_only=True)
 
     uuid = serializers.UUIDField(read_only=True)
-    status = serializers.CharField()
+    status = serializers.CharField(required=False)
     language = serializers.CharField()
     country = serializers.CharField(required=False)
     header = HeaderSerializer(required=False)
