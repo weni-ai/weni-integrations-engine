@@ -55,7 +55,7 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         response = template_request.delete_template_message(waba_id=instance.app.config.get("wa_waba_id"), name=instance.name)
 
         if response.status_code != status.HTTP_200_OK:
-            capture_exception(response.json())
+            capture_exception(FacebookApiException(response.json()))
             
             if response.json().get("error", {}).get("error_subcode", 0) == 2388094:
                 return Response(data=dict(error="WhatsApp.templates.error.delete_sample"), status=status.HTTP_200_OK)
