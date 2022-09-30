@@ -58,9 +58,10 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
             capture_exception(FacebookApiException(response.json()))
             
             if response.json().get("error", {}).get("error_subcode", 0) == 2388094:
-                return Response(data=dict(error="WhatsApp.templates.error.delete_sample"), status=status.HTTP_200_OK)
+                return Response(data=dict(error="WhatsApp.templates.error.delete_sample"), status=status.HTTP_400_BAD_REQUEST)
 
         instance.delete()
+        return Response(status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["POST"])
     def translations(self, request, app_uuid = None, uuid = None):
