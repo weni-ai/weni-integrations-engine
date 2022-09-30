@@ -204,6 +204,12 @@ class TemplateMessageSerializer(serializers.Serializer):
 
     translations = TemplateTranslationSerializer(many=True, read_only=True)
 
+    def validate_name(self, name):
+        if bool(re.match("\w*[A-Z]\w*", name)) or " " in name:
+            raise serializers.ValidationError("WhatsApp.templates.error.invalid_name_format")
+
+        return name
+
     def to_representation(self, instance):
         data = super().to_representation(instance)
 
