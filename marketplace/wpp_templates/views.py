@@ -59,9 +59,15 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
             
             if response.json().get("error", {}).get("error_subcode", 0) == 2388094:
                 return Response(data=dict(error="WhatsApp.templates.error.delete_sample"), status=status.HTTP_400_BAD_REQUEST)
+            
+            return Response(status=status.HTTP_400_BAD_REQUEST)
 
         instance.delete()
         return Response(status=status.HTTP_200_OK)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        return self.perform_destroy(instance)
 
     @action(detail=True, methods=["POST"])
     def translations(self, request, app_uuid = None, uuid = None):
