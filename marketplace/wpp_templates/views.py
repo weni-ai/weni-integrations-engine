@@ -1,6 +1,8 @@
 from django.contrib.auth import get_user_model
 from django.conf import settings
 
+from sentry_sdk import capture_exception
+
 from rest_framework import viewsets
 from rest_framework import status
 from rest_framework.response import Response
@@ -8,6 +10,7 @@ from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 
 from marketplace.applications.models import App
+from marketplace.core.types.channels.whatsapp_base.exceptions import FacebookApiException
 
 from .models import TemplateMessage
 from .serializers import TemplateMessageSerializer, TemplateTranslationCreateSerializer, TemplateQuerySetSerializer, TemplateTranslationSerializer
@@ -49,7 +52,14 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         template_request = TemplateMessageRequest(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
 
-        template_request.delete_template_message(waba_id=instance.app.config.get("wa_waba_id"), name=instance.name)
+        response = template_request.delete_template_message(waba_id=instance.app.config.get("wa_waba_id"), name=instance.name)
+
+        if response.status_code != status.HTTP_200_OK:
+            capture_exception(response.json())
+            
+            if response.json().get("error", {}).get("error_subcode", 0) == 2388094:
+                return Response(data=dict(error="WhatsApp.templates.error.delete_sample"), status=status.HTTP_200_OK)
+
         instance.delete()
 
     @action(detail=True, methods=["POST"])
