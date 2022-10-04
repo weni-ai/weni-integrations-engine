@@ -38,7 +38,7 @@ class TemplateMessage(models.Model):
 
     app = models.ForeignKey(App, on_delete=models.PROTECT, related_name="template")
 
-    name = models.CharField(max_length=60)
+    name = models.CharField(max_length=512)
 
     category = models.CharField(max_length=200, choices=CATEGORY_CHOICES)
 

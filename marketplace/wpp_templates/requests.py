@@ -16,6 +16,7 @@ class TemplateMessageRequest(object):
 
     def list_template_messages(self, waba_id: str) -> dict:
         params = dict(
+            limit=999,
             access_token=self._access_token,
         )
 
