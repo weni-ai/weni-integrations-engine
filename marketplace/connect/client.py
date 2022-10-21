@@ -61,6 +61,26 @@ class ConnectProjectClient(ConnectAuth):
         )
         return None
 
+    def list_flows(self, project_uuid):
+        """ This function return
+            {
+            "uuid": "...", # flows uuid
+            "name": "...", # flows name
+            "triggers": [
+                {
+                    "keyword": "...",
+                    "trigger_type": "...",
+                    "id": 1
+                },
+            ...
+            ]
+        }
+        """
+        response = requests.get(
+            url=self.base_url + f"/v1/organization/project/{project_uuid}/list_flows/?project_uuid={project_uuid}",
+            headers=self.auth_header()
+        )
+        return response.json()
 
 class WPPRouterChannelClient(ConnectAuth):
     base_url = settings.ROUTER_BASE_URL
@@ -76,9 +96,6 @@ class WPPRouterChannelClient(ConnectAuth):
         payload = {
             "flows_starts": flows_starts,
             "channel_uuid": channel_uuid
-        } 
-
-        response = requests.post(url=self.base_url + "/integrations/flows", json=payload, headers=self.auth_header())
-        
+        }
+        requests.post(url=self.base_url + "/integrations/flows", json=payload, headers=self.auth_header())
         return None
-        
