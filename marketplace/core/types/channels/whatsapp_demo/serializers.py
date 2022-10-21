@@ -2,12 +2,13 @@ from rest_framework import serializers
 
 from marketplace.applications.models import App
 from marketplace.core.serializers import AppTypeBaseSerializer
+from marketplace.connect.client import ConnectProjectClient
 
 
 class WhatsAppDemoSerializer(AppTypeBaseSerializer):
 
     redirect_url = serializers.SerializerMethodField()
-    flows = serializers.SerializerMethodField()
+    flows_starts = serializers.SerializerMethodField()
 
     class Meta:
         model = App
@@ -21,7 +22,7 @@ class WhatsAppDemoSerializer(AppTypeBaseSerializer):
             "created_on",
             "modified_by",
             "redirect_url",
-            "flows",
+            "flows_starts",
         )
         read_only_fields = ("code", "uuid", "platform")
 
@@ -35,14 +36,10 @@ class WhatsAppDemoSerializer(AppTypeBaseSerializer):
     def get_redirect_url(self, instance) -> str:
         return instance.config.get("redirect_url")
 
-    def get_flows(self, instance):
+    def get_flows_starts(self, instance):
         """
         Returns entity-related flows
         """
-        flows = None
-        flows = [{'flow_name':'flow_disponivel_01', 'flow_uuid':'3a624a22-c825-461c-9bcf-2fdf7c38eb74', 'keyword':"olá"}, 
-                 {'flow_name':'flow_disponivel_02', 'flow_uuid':'3a624a22-c825-461c-9bcf-2fdf7c38eb74', 'keyword':"hello"}, 
-                 {'flow_name':'flow_disponivel_03', 'flow_uuid':'3a624a22-c825-461c-9bcf-2fdf7c38eb74', 'keyword':"cupom20"}] 
-        
-        return flows
-
+        client = ConnectProjectClient()
+        flows_starts = client.list_flows(instance.project_uuid.hex)
+        return flows_starts
