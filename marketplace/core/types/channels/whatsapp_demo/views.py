@@ -13,7 +13,7 @@ class WhatsAppDemoViewSet(views.BaseAppTypeViewSet):
         return super().get_queryset().filter(code=self.type_class.code)
 
     def perform_create(self, serializer):
-        
+
         user = self.request.user
         type_class = self.type_class
         instance = serializer.save(code=self.type_class.code)
@@ -47,15 +47,13 @@ class WhatsAppDemoViewSet(views.BaseAppTypeViewSet):
     def partial_update(self, request, *args, **kwargs):
         instance = self.get_object()
         flows_starts = request.data.get("flows_starts")
-
         if flows_starts:
             instance.config["flows_starts"] = flows_starts
             instance.modified_by = self.request.user
             instance.save()
-            
+
             channel_client = WPPRouterChannelClient()
             channel_client.set_flows_starts(flows_starts, instance.flow_object_uuid.hex)
 
         serializer = self.get_serializer(instance)
-
         return Response(serializer.data)
