@@ -134,10 +134,15 @@ class UpdateWhatsAppDemoAppTestCase(APIBaseTestCase):
     view_class = WhatsAppDemoViewSet
 
     def setUp(self):
+        """ App creation and authorization configuration """
         super().setUp()
 
         self.app = App.objects.create(
-            code="wpp-demo", created_by=self.user, project_uuid=str(uuid.uuid4()), platform=App.PLATFORM_WENI_FLOWS
+            code="wpp-demo",
+            created_by=self.user,
+            project_uuid=str(uuid.uuid4()),
+            flow_object_uuid=str(uuid.uuid4()),
+            platform=App.PLATFORM_WENI_FLOWS
         )
         self.user_authorization = self.user.authorizations.create(
             project_uuid=self.app.project_uuid, role=ProjectAuthorization.ROLE_ADMIN
@@ -147,31 +152,28 @@ class UpdateWhatsAppDemoAppTestCase(APIBaseTestCase):
     @property
     def view(self):
         return self.view_class.as_view({"patch": "partial_update"})
-    
-    def test_partial_update(self): 
+
+    def test_partial_update(self):
         """
         Partial update to flows
-        """    
+        """
         data = {
-                "flows_starts": [
-                    {
-                        "flow_name": "flow_vinculado_01",
-                        "flow_uuid": "3a624a22-c825-461c-9bcf-2fdf7c38eb74",
-                        "keyword": "olá"
-                    },
-                    {
-                        "flow_name": "flow_vinculado_01",
-                        "flow_uuid": "3a624a22-c825-461c-9bcf-2fdf7c38eb74",
-                        "keyword": "hello"
-                    }
-                ]
-            
-            }
-        response = self.request.patch(self.url, uuid=self.app.uuid, body=data) 
-        
+                "flows_starts": {
+                    "uuid": "3a624a22-c825-461c-9bcf-2fdf7c38eb74",
+                    "name": "flow_02",
+                    "triggers": [
+                        {
+                            "keyword": "hello",
+                            "trigger_type": "...",
+                            "id": 1
+                        },
+
+                    ],
+                }
+        }
+        response = self.request.patch(self.url, uuid=self.app.uuid, body=data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data.get("config").get("flows_starts"), data.get("flows_starts"))
-        
 
 class DestroyWhatsAppDemoAppTestCase(APIBaseTestCase):
     view_class = WhatsAppDemoViewSet
