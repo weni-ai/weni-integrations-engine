@@ -32,6 +32,8 @@ class ProjectManagePermission(permissions.IsAuthenticated):
 
     def has_object_permission(self, request, view, obj):
         if request.method in OBJECT_METHODS:
+            if isinstance(request.user, AnonymousUser):
+                return False
             try:
                 authorization = request.user.authorizations.get(project_uuid=obj.project_uuid)
             except ProjectAuthorization.DoesNotExist:
