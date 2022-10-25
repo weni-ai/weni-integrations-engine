@@ -3,6 +3,7 @@ from .serializers import WhatsAppDemoSerializer
 from marketplace.connect.client import ConnectProjectClient, WPPRouterChannelClient
 
 from rest_framework.response import Response
+from rest_framework import status
 
 
 class WhatsAppDemoViewSet(views.BaseAppTypeViewSet):
@@ -46,14 +47,19 @@ class WhatsAppDemoViewSet(views.BaseAppTypeViewSet):
 
     def partial_update(self, request, *args, **kwargs):
         instance = self.get_object()
+        print('debug# 1')
         flows_starts = request.data.get("flows_starts")
-        if flows_starts:
-            instance.config["flows_starts"] = flows_starts
-            instance.modified_by = self.request.user
-            instance.save()
-
-            channel_client = WPPRouterChannelClient()
-            channel_client.set_flows_starts(flows_starts, instance.flow_object_uuid.hex)
-
+        if not flows_starts:
+            print('debug# 2')
+            return Response({'message':f'the flows_starts not found in request: {request.data}'},
+                            status=status.HTTP_404_NOT_FOUND)
+        print('debug# 3')
+        instance.config["flows_starts"] = flows_starts
+        instance.modified_by = self.request.user
+        instance.save()
+        print('debug# 4')
+        channel_client = WPPRouterChannelClient()
+        channel_client.set_flows_starts(flows_starts, instance.flow_object_uuid.hex)
         serializer = self.get_serializer(instance)
-        return Response(serializer.data)
+        print('debug# 5')
+        return Response(serializer.data, status.HTTP_201_CREATED)
