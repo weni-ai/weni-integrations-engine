@@ -172,7 +172,7 @@ class UpdateWhatsAppDemoAppTestCase(APIBaseTestCase):
                 }
         }
         response = self.request.patch(self.url, uuid=self.app.uuid, body=data)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data.get("config").get("flows_starts"), data.get("flows_starts"))
 
 class DestroyWhatsAppDemoAppTestCase(APIBaseTestCase):
