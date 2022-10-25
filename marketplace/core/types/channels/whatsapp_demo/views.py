@@ -51,7 +51,7 @@ class WhatsAppDemoViewSet(views.BaseAppTypeViewSet):
         flows_starts = request.data.get("flows_starts")
         if not flows_starts:
             print('debug# 2')
-            return Response({'message':f'the flows_starts not found in request: {request.data}'},
+            return Response({'message': f'the flows_starts not found in request: {request.data}'},
                             status=status.HTTP_404_NOT_FOUND)
         print('debug# 3')
         instance.config["flows_starts"] = flows_starts

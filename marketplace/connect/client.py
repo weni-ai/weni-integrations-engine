@@ -82,6 +82,7 @@ class ConnectProjectClient(ConnectAuth):
         )
         return response.json()
 
+
 class WPPRouterChannelClient(ConnectAuth):
     base_url = settings.ROUTER_BASE_URL
 

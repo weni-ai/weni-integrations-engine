@@ -32,7 +32,6 @@ class WhatsAppDemoSerializer(AppTypeBaseSerializer):
         validated_data["platform"] = WhatsAppDemoType.platform
         return super().create(validated_data)
 
-
     def get_redirect_url(self, instance) -> str:
         return instance.config.get("redirect_url")
 
