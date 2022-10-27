@@ -23,6 +23,7 @@ class CustomResultsPagination(PageNumberPagination):
 
 class TemplateMessageViewSet(viewsets.ModelViewSet):
     lookup_field = "uuid"
+    permission = "templates.template_api"
     serializer_class = TemplateMessageSerializer
     pagination_class = CustomResultsPagination
 
