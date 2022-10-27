@@ -2,9 +2,11 @@ import uuid
 
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+
 from django.db import models
 from django.db.models.constraints import CheckConstraint
-from django.db.models import Q
+from django.db.models import Q, F
+from django.db.utils import IntegrityError
 
 from marketplace.applications.models import App
 
@@ -47,7 +49,6 @@ class TemplateMessage(models.Model):
     created_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="created_%(class)ss", null=True)
 
     template_type = models.CharField(max_length=100, choices=TEMPLATE_TYPES_CHOICES)
-    #namespace = models.CharField(max_length=60)
 
     def verify_namespace():
         pass
@@ -97,6 +98,15 @@ class TemplateButton(models.Model):
     phone_number = models.CharField(max_length=20, null=True)
     url = models.CharField(max_length=2000, null=True)
 
+    def save(self, *args, **kwargs):
+        if self.button_type == "URL" and self.url == None:
+            raise IntegrityError()
+        
+        if self.button_type == "PHONE_NUMBER" and self.phone_number == None:
+            raise IntegrityError()
+    
+        super(TemplateButton, self).save(*args, **kwargs)
+
     """
     class Meta:
         constraints = [
@@ -125,21 +135,26 @@ class TemplateHeader(models.Model):
     translation = models.ForeignKey(TemplateTranslation, on_delete=models.CASCADE, related_name="headers")
 
     header_type = models.CharField(max_length=20, choices=HEADER_TYPE_CHOICES)
-    text = models.CharField(max_length=60, default=None, null=True)
-    example = models.CharField(max_length=2048, default=None, null=True)
+    text = models.CharField(max_length=60, null=True)
+    media = models.CharField(max_length=2048, null=True)
 
     def to_dict(self):
         return dict(
             header_type=self.header_type,
             text=self.text,
-            #example=self.example,
         )
+
+    def save(self, *args, **kwargs):
+        if self.header_type == "TEXT" and self.text == None:
+            raise IntegrityError()
+
+        super(TemplateHeader, self).save(*args, **kwargs)
 
     """
     class Meta:
         constraints = [
             CheckConstraint(
-                check=Q(header_type__exact="TEXT") & Q(text__isnull=False),
+                check=(Q(header_type="TEXT") & Q(text__isnull=False)),
                 name="header_type_exact_text_and_text_isnull_false",
             ),
         ]

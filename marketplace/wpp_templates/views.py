@@ -28,7 +28,6 @@ class CustomResultsPagination(PageNumberPagination):
 class AppsViewSet(viewsets.ViewSet):
     lookup_field = "uuid"
 
-
 class TemplateMessageViewSet(viewsets.ModelViewSet):
     lookup_field = "uuid"
     serializer_class = TemplateMessageSerializer
@@ -49,25 +48,23 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
-    def perform_destroy(self, instance):
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+
         template_request = TemplateMessageRequest(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
 
         response = template_request.delete_template_message(waba_id=instance.app.config.get("wa_waba_id"), name=instance.name)
 
         if response.status_code != status.HTTP_200_OK:
             capture_exception(FacebookApiException(response.json()))
-            
+
             if response.json().get("error", {}).get("error_subcode", 0) == 2388094:
                 return Response(data=dict(error="WhatsApp.templates.error.delete_sample"), status=status.HTTP_400_BAD_REQUEST)
-            
+
             return Response(status=status.HTTP_400_BAD_REQUEST)
 
         instance.delete()
         return Response(status=status.HTTP_200_OK)
-
-    def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
-        return self.perform_destroy(instance)
 
     @action(detail=True, methods=["POST"])
     def translations(self, request, app_uuid = None, uuid = None):

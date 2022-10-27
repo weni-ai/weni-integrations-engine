@@ -22,11 +22,59 @@ User = get_user_model()
 
 class HeaderSerializer(serializers.ModelSerializer):
     text = serializers.CharField(required=False)
-    example = serializers.CharField(required=False)
+    #example = serializers.CharField(required=False)
+    media = serializers.CharField(required=False)
+
+    """
+    def to_internal_value(self, data):
+        data["media"] = data.get("example")
+
+        if data.get("example"):
+            data.pop("example")
+        
+        return data
+    """
+    
+    def create(self, validated_data: dict) -> None:
+        header = validated_data
+
+        if header.get("header_type") in ["IMAGE", "DOCUMENT", "VIDEO"]:
+            photo_api_request = PhotoAPIRequest(template.app.config.get("wa_waba_id"))
+
+            photo = header.get("example")
+
+            file_type = re.search('(?<=data:)(.*)(?=;base64)', photo).group(0)
+
+            photo = photo.split(";base64,")[1]
+
+            upload_session_id = photo_api_request.create_upload_session(
+                settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN, len(base64.b64decode(photo)), file_type=file_type
+            )
+
+            url = f"https://graph.facebook.com/v14.0/{upload_session_id}"
+            headers = {"Content-Type": file_type, "Authorization": f"OAuth {settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN}"}
+            headers["file_offset"] = "0"
+            response = requests.post(url, headers=headers, data=base64.b64decode(photo))
+
+            if response.status_code != 200:
+                raise FacebookApiException(response.json())
+
+            upload_handle = response.json().get("h", "")
+
+
+            header.pop("example")
+
+            header["example"] = dict(header_handle=upload_handle)
+
+        #header["format"] = header.get("header_type", "TEXT")
+
+        return object()
+    #print("=====================")
 
     class Meta:
         model = TemplateHeader
-        fields = ["header_type", "text", "example"]
+        fields = ["header_type", "text", "media"]
+
 
 class ButtonSerializer(serializers.ModelSerializer):
     country_code = serializers.CharField(required=False)
@@ -40,7 +88,6 @@ class ButtonSerializer(serializers.ModelSerializer):
 
 class TemplateTranslationSerializer(serializers.Serializer):
     template_uuid = serializers.CharField(write_only=True)
-    #template = SlugRelatedField(slug_field="uuid", queryset=TemplateMessage.objects.all(), write_only=True)
 
     uuid = serializers.UUIDField(read_only=True)
     status = serializers.CharField(required=False)
@@ -56,7 +103,6 @@ class TemplateTranslationSerializer(serializers.Serializer):
         data = super().to_representation(instance)
 
         if instance.headers.first():
-            print(instance.headers.first().to_dict())
             data['header'] = instance.headers.first().to_dict()
         return data
 
@@ -73,8 +119,16 @@ class TemplateTranslationSerializer(serializers.Serializer):
 
         components = [validated_data.get("body", {})]
 
-        header = validated_data.get("header")
+        if validated_data.get("header"):
+            header = HeaderSerializer(data=validated_data.get("header"))
+            header.is_valid()
+            header.save()
+            #print(header)
 
+
+        #return object()
+
+        """
         if header:
             header = dict(header)
             header["type"] = "HEADER"
@@ -108,10 +162,10 @@ class TemplateTranslationSerializer(serializers.Serializer):
                 header.pop("example")
 
                 header["example"] = dict(header_handle=upload_handle)
+        """
+        #print(header)
 
-
-
-        components = self.append_to_components(components, header)
+        #components = self.append_to_components(components, header)
         components = self.append_to_components(components, validated_data.get("footer"))
 
         buttons = validated_data.get("buttons", {})
@@ -142,8 +196,6 @@ class TemplateTranslationSerializer(serializers.Serializer):
         if buttons_component.get("buttons"):
             components = self.append_to_components(components, buttons_component)
 
-        #print(components)
-
         template_message_request.create_template_message(
             waba_id=template.app.config.get("wa_waba_id"),
             name=template.name,
@@ -169,15 +221,16 @@ class TemplateTranslationSerializer(serializers.Serializer):
         if validated_data.get("header"):
             hh = dict(validated_data.get("header"))
             if hh.get("example"):
+                hh.pop("media")
                 hh.pop("example")
-            TemplateHeader.objects.create(translation=translation, **hh)
+            
+            #TemplateHeader.objects.create(translation=translation, **hh)
 
         return translation
-
+        
 
 
 class TemplateTranslationCreateSerializer(serializers.Serializer):
-    #translations = TemplateTranslationSerializer(many=True)
     template_uuid = serializers.CharField()
     template = SlugRelatedField(slug_field="uuid", queryset=TemplateMessage.objects.all())
 
@@ -224,7 +277,6 @@ class TemplateMessageSerializer(serializers.Serializer):
             name=validated_data.get("name"),
             app=app,
             category=validated_data.get("category"),
-            created_on=datetime.now(),
             template_type="TEXT",
             created_by_id=User.objects.get_admin_user().id,
         )
