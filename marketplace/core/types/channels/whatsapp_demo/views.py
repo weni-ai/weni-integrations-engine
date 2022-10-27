@@ -47,17 +47,18 @@ class WhatsAppDemoViewSet(views.BaseAppTypeViewSet):
 
     def update(self, request, *args, **kwargs):
         """ saves the sent flows_starts inside the config and sends it to the router """
-        instance = self.get_object()
-        flows_starts = request.data.get("flows_starts")
-        if not flows_starts:
-            return Response({'message': f'the flows_starts not found in request: {request.data}'},
-                            status=status.HTTP_404_NOT_FOUND)
+        return Response(status.HTTP_404_NOT_FOUND)
+        # instance = self.get_object()
+        # flows_starts = request.data.get("flows_starts")
+        # if not flows_starts:
+        #     return Response({'message': f'the flows_starts not found in request: {request.data}'},
+        #                     status=status.HTTP_404_NOT_FOUND)
 
-        instance.config["flows_starts"] = flows_starts
-        instance.modified_by = self.request.user
-        instance.save(update_fields=['config','modified_by'])
+        # instance.config["flows_starts"] = flows_starts
+        # instance.modified_by = self.request.user
+        # instance.save(update_fields=['config','modified_by'])
 
-        channel_client = WPPRouterChannelClient()
-        channel_client.set_flows_starts(flows_starts, instance.flow_object_uuid.hex)
-        serializer = self.get_serializer(instance)
-        return Response(serializer.data, status.HTTP_201_CREATED)
+        # channel_client = WPPRouterChannelClient()
+        # channel_client.set_flows_starts(flows_starts, instance.flow_object_uuid.hex)
+        # serializer = self.get_serializer(instance)
+        # return Response(serializer.data, status.HTTP_201_CREATED)
