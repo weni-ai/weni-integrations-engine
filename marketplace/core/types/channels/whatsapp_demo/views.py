@@ -50,7 +50,7 @@ class WhatsAppDemoViewSet(views.BaseAppTypeViewSet):
         instance = self.get_object()
         flows_starts = request.data.get("flows_starts")
         if not flows_starts:
-            return Response({'message': f'the flows_starts not found in request: {request.data}'},
+            return Response({'message': f'the flows_starts not found in request data: {request.data}, args : {args} , kwargs: {kwargs}'},
                             status=status.HTTP_404_NOT_FOUND)
 
         instance.config["flows_starts"] = flows_starts
@@ -61,3 +61,4 @@ class WhatsAppDemoViewSet(views.BaseAppTypeViewSet):
         channel_client.set_flows_starts(flows_starts, instance.flow_object_uuid.hex)
         serializer = self.get_serializer(instance)
         return Response(serializer.data, status.HTTP_201_CREATED)
+    
