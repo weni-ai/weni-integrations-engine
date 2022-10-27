@@ -52,10 +52,11 @@ class WhatsAppDemoViewSet(views.BaseAppTypeViewSet):
         if not flows_starts:
             return Response({'message': f'the flows_starts not found in request: {request.data}'},
                             status=status.HTTP_404_NOT_FOUND)
-        
+
         instance.config["flows_starts"] = flows_starts
         instance.modified_by = self.request.user
-        instance.save()
+        instance.save(update_fields=['config','modified_by'])
+
         channel_client = WPPRouterChannelClient()
         channel_client.set_flows_starts(flows_starts, instance.flow_object_uuid.hex)
         serializer = self.get_serializer(instance)
