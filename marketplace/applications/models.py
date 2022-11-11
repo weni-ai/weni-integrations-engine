@@ -42,14 +42,13 @@ class App(AppTypeBaseModel):
         return self.code
 
     def __init__(self, *args, **kwargs):
-        """
-        Copy some properties from their respective AppType
-        """
+        """ Copy some properties from their respective AppType """
         super().__init__(*args, **kwargs)
-        self.name = self.apptype.name
-        self.description = self.apptype.description
-        self.summary = self.apptype.summary
-        self.channeltype_code = self.apptype.channeltype_code
+        app_type = self.apptype
+        self.name = app_type.name
+        self.description = app_type.description
+        self.summary = app_type.summary
+        self.channeltype_code = app_type.channeltype_code
         # TODO: Add `icon` property
 
 
