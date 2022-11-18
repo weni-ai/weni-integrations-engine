@@ -1,3 +1,7 @@
+v1.5.6
+----------
+ * Fix Release Channel work correctly without using USE_GRPC key in settings #181
+
 v1.5.5
 ----------
  * Adds view that returns a user's api token in a project #176
