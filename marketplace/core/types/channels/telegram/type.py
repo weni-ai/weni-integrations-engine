@@ -16,3 +16,4 @@ class TelegramType(AppType):
     bg_color = "#039be533"
     platform = App.PLATFORM_WENI_FLOWS
     config_design = "sidebar"
+    channels_available = None

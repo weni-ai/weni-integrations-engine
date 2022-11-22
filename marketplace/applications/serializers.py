@@ -7,6 +7,7 @@ from marketplace.core.types.base import AppType
 class AppTypeSerializer(serializers.Serializer):
     code = serializers.CharField()
     name = serializers.CharField()
+    channels_available = serializers.ListField()
     description = serializers.CharField()
     summary = serializers.CharField()
     category = serializers.ChoiceField(choices=AppType.CATEGORY_CHOICES, source="get_category_display")
@@ -18,7 +19,6 @@ class AppTypeSerializer(serializers.Serializer):
     integrations_count = serializers.SerializerMethodField()
     metrics = serializers.SerializerMethodField()
     can_add = serializers.SerializerMethodField()
-
     assets = serializers.SerializerMethodField()
 
     def get_assets(self, obj):
