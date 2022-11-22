@@ -7,8 +7,6 @@ from marketplace.core.types.base import AppType
 class AppTypesDict(dict):
     def get(self, code: str) -> AppType:
         apptype = super().get(code, None)
-        if apptype is None:
-            raise KeyError(f"Invalid code: {code} No AppType found")
         return apptype
 
     def filter(self, function) -> dict:
@@ -17,7 +15,6 @@ class AppTypesDict(dict):
             if function(value):
                 filtered[key] = value
         return filtered
-
 
 APPTYPES = AppTypesDict()
 
