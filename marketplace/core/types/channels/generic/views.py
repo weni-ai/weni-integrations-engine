@@ -43,6 +43,6 @@ class GenericChannelViewSet(views.BaseAppTypeViewSet):
 class DetailChannels(viewsets.ViewSet):
     lookup_field = "code_channel"
 
-    def retrieve(self, code_channel=None):
+    def retrieve(self, request, code_channel=None):
         client = ConnectProjectClient()
         return Response(client.get_available_channel(channel_code=code_channel))
