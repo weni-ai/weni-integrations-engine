@@ -262,6 +262,7 @@ APPTYPE_TELEGRAM_PATH = "channels.telegram.type.TelegramType"
 APPTYPE_WHATSAPP_DEMO_PATH = "channels.whatsapp_demo.type.WhatsAppDemoType"
 APPTYPE_WHATSAPP_PATH = "channels.whatsapp.type.WhatsAppType"
 APPTYPE_WHATSAPP_CLOUD_PATH = "channels.whatsapp_cloud.type.WhatsAppCloudType"
+APPTYPE_GENERIC_CHANNEL_PATH = "channels.generic.type.GenericType"
 
 APPTYPES_CLASSES = [
     APPTYPE_WENI_WEB_CHAT_PATH,
@@ -269,6 +270,7 @@ APPTYPES_CLASSES = [
     APPTYPE_WHATSAPP_DEMO_PATH,
     APPTYPE_WHATSAPP_PATH,
     APPTYPE_WHATSAPP_CLOUD_PATH,
+    APPTYPE_GENERIC_CHANNEL_PATH
 ]
 
 # These conditions avoid dependence between apptypes,
