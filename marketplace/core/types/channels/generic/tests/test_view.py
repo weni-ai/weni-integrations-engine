@@ -11,7 +11,7 @@ from marketplace.accounts.models import ProjectAuthorization
 
 
 class CreateTelegramAppTestCase(APIBaseTestCase):
-    url = '/api/v1/apptypes/generic'
+    url = '/api/v1/apptypes/generic/apps/'
     view_class = GenericChannelViewSet
     channels_code = ['tg', 'ac', 'wwc', 'wpp-demo', 'wpp-cloud', 'wpp']
     
@@ -31,8 +31,8 @@ class CreateTelegramAppTestCase(APIBaseTestCase):
     def test_create_list_of_channels(self):
         """ Testing list of channels """
         for channel in self.channels_code:
-            url = f'{self.url}/{channel}/apps/'
-            response = self.request.post(url, self.body, code=channel)
+            self.body["channel_code"] = channel
+            response = self.request.post(self.url, self.body, code=channel)
             self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_create_channel_empty_code(self):
@@ -51,15 +51,15 @@ class CreateTelegramAppTestCase(APIBaseTestCase):
         """ Testing if create channels have platform"""
         response = self.request.post(self.url, self.body)
         for channel in self.channels_code:
-            url = f'{self.url}/{channel}/apps/'
-            response = self.request.post(url, self.body, code=channel)
+            self.body["channel_code"] = channel
+            response = self.request.post(self.url, self.body, code=channel)
             self.assertEqual(response.json["platform"], App.PLATFORM_WENI_FLOWS)
 
     def test_create_app_without_permission(self):
         """ Testing create generic channels without permission"""
         self.user_authorization.delete()
         for channel in self.channels_code:
-            url = f'{self.url}/{channel}/apps/'
+            url = f'{self.url}/apps/'
             response = self.request.post(url, self.body, code=channel)
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
@@ -76,7 +76,7 @@ class RetrieveGenericAppTestCase(APIBaseTestCase):
         
         self.user_authorization = self.user.authorizations.create(project_uuid=self.app.project_uuid)
         self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
-        self.url = reverse("generic-detail", kwargs={"uuid": self.app.uuid, "code": "generic"})
+        self.url = reverse("generic-app-detail", kwargs={"uuid": self.app.uuid})
 
     @property
     def view(self):
@@ -109,7 +109,7 @@ class DestroyTelegramAppTestCase(APIBaseTestCase):
             project_uuid=self.app.project_uuid, role=ProjectAuthorization.ROLE_ADMIN
         )
         self.code = "generic"
-        self.url = reverse("generic-detail", kwargs={"uuid": self.app.uuid, "code": self.code})
+        self.url = reverse("generic-app-detail", kwargs={"uuid": self.app.uuid})
 
     @property
     def view(self):

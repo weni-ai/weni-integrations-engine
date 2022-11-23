@@ -7,7 +7,6 @@ from .views import GenericChannelViewSet
 from marketplace.connect.client import ConnectProjectClient
 
 
-
 class GenericType(AppType):    
     view_class = GenericChannelViewSet
     code = "generic"

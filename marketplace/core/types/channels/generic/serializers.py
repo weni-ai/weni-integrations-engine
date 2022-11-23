@@ -37,7 +37,7 @@ class GenericConfigSerializer(serializers.Serializer):
     def _create_channel(self, attrs: dict, app: App) -> str:
         request = self.context.get("request")
         user = request.user
-        channeltype_code = request.data.get("code", app.channeltype_code)
+        channeltype_code = request.data.get("channel_code", app.config.get("channel_code"))
         client = ConnectProjectClient()
         return client.create_channel(
             user.email, app.project_uuid, attrs, channeltype_code.upper()

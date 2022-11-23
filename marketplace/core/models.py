@@ -52,11 +52,8 @@ class AppTypeBaseModel(BaseModel):
         Returns the respective AppType
         """
         from marketplace.core.types import APPTYPES
-        app_type = APPTYPES.get(self.code)
-        if not app_type:
-            app_type = APPTYPES.get('generic')
 
-        return app_type
+        return APPTYPES.get(self.code)
 
     class Meta:
         abstract = True
