@@ -19,6 +19,7 @@ class GenericChannelViewSet(views.BaseAppTypeViewSet):
 
     def perform_create(self, serializer):
         channel_code = self.request.data.get("channel_code", None)
+        channel_name = self.request.data.get("channel_name", None)
         if channel_code:
             channel_code = channel_code.strip()
 
@@ -28,6 +29,7 @@ class GenericChannelViewSet(views.BaseAppTypeViewSet):
         instance = serializer.save(code="generic")
         instance.config["channel_code"] = channel_code
         instance.modified_by = self.request.user
+        instance.name = channel_name
         instance.save()
 
     @action(detail=True, methods=["PATCH"])
