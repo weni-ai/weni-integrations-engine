@@ -33,7 +33,7 @@ class GenericChannelViewSet(views.BaseAppTypeViewSet):
         instance.save()
 
     @action(detail=True, methods=["PATCH"])
-    def configure(self, request):
+    def configure(self, request, uuid=None):
         """ Add the generic channel in weni-flows """
         self.serializer_class = GenericConfigureSerializer
         data = request.data
@@ -42,9 +42,10 @@ class GenericChannelViewSet(views.BaseAppTypeViewSet):
         self.perform_update(serializer)
         return Response(serializer.data)
 
-class DetailChannels(viewsets.ViewSet):
+class DetailChannelType(viewsets.ViewSet):
     lookup_field = "code_channel"
 
     def retrieve(self, request, code_channel=None):
         client = ConnectProjectClient()
-        return Response(client.get_available_channel(channel_code=code_channel))
+        response = client.detail_channel_type(channel_code=code_channel)
+        return Response(response.json(),status=response.status_code)

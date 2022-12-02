@@ -8,13 +8,18 @@ from marketplace.core.tests.base import APIBaseTestCase
 from ..views import GenericChannelViewSet
 from marketplace.applications.models import App
 from marketplace.accounts.models import ProjectAuthorization
+from marketplace.core.tests.base import FakeRequestsResponse
+from marketplace.connect.client import ConnectProjectClient
+
+from unittest import TestCase
+from unittest.mock import patch
 
 
 class CreateTelegramAppTestCase(APIBaseTestCase):
     url = '/api/v1/apptypes/generic/apps/'
     view_class = GenericChannelViewSet
     channels_code = ['tg', 'ac', 'wwc', 'wpp-demo', 'wpp-cloud', 'wpp']
-    
+
     @property
     def view(self):
         return self.view_class.as_view(APIBaseTestCase.ACTION_CREATE)
@@ -143,3 +148,46 @@ class DestroyTelegramAppTestCase(APIBaseTestCase):
         self.user_authorization.set_role(ProjectAuthorization.ROLE_NOT_SETTED)
         response = self.request.delete(self.url, uuid=self.app.uuid, code=self.code)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class ConnectChannelTypesTestCase(TestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.channels_code = ["AC", "WA", "WWC"]
+    
+    # @patch("requests.get")
+    # def test_list_channel_types(self, mock):
+    #     fake_response = FakeRequestsResponse(data={})
+    #     fake_response.status_code = 400
+    #     mock.side_effect = [fake_response, fake_response, fake_response]
+    #     client = ConnectProjectClient()
+    #     response = client.list_availables_channels()
+    #     print(f"response{response}")
+    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        
+    def test_retrieve_channel_types(self):
+        payload = {
+            "AC" : { "attributes" : {"code": "AC"}},
+            "WA" : { "attributes" : {"code": "WA"}},
+            "WWC" : { "attributes" : {"code": "WWC"}}
+        }
+        success_fake_response = FakeRequestsResponse(data=payload)
+        success_fake_response.status_code = 200
+
+        client = ConnectProjectClient()
+        for channel in self.channels_code:
+            response = client.detail_channel_type(channel_code=channel)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertEqual(response.json().get("attributes").get("code"), channel)
+
+    @patch("requests.get")
+    def test_retrieve_channel_types_error(self, mock):
+        fake_response = FakeRequestsResponse(data={})
+        fake_response.status_code = 400
+        mock.side_effect = [fake_response, fake_response, fake_response]
+
+        client = ConnectProjectClient()
+        for channel in self.channels_code:
+            response = client.detail_channel_type(channel_code=channel)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
