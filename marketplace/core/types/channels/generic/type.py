@@ -19,4 +19,4 @@ class GenericType(AppType):
     bg_color = "#d1fcc9cc"
     platform = App.PLATFORM_WENI_FLOWS
     config_design = "popup"
-    channels_available = ConnectProjectClient().list_availables_channels()
+    channels_available = [ConnectProjectClient().list_availables_channels()]
