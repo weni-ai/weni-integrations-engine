@@ -76,15 +76,7 @@ class ConnectProjectClient(ConnectAuth):
             headers=self.auth_header(),
             timeout=60
         )
-
-        channel_types = response.json().get("channel_types")
-        if channel_types:
-            for channel in channel_types.keys():
-                attribute_channel_types = channel_types.get(channel)
-                channel_types[channel]["attributes"] = search_icon(attribute_channel_types["attributes"])
-
-
-        return channel_types
+        return response
 
     def detail_channel_type(self, channel_code: str):
         params = {"channel_type_code": channel_code}
@@ -105,15 +97,3 @@ class WPPRouterChannelClient(ConnectAuth):
         response = requests.post(url=self.base_url + "/integrations/channel", json=payload, headers=self.auth_header())
         
         return response.json().get("token", "")
-    
-
-def search_icon(attributes):
-    # apptype_asset = AppTypeAsset.objects.filter(code=attributes.get("code").lower())
-    # if apptype_asset.exists():
-    #     apptype_asset = apptype_asset.first()
-    #     icon_url = apptype_asset.url
-    # else:
-    icon_url = None
-
-    attributes["icon_url"] = icon_url
-    return attributes
