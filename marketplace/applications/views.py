@@ -76,13 +76,22 @@ class MyAppViewSet(viewsets.ReadOnlyModelViewSet):
             raise PermissionDenied()
 
         queryset = queryset.filter(project_uuid=project_uuid)
+        configured_uuid_list = []
+        unconfigured_uuid_list = []
+
+        for app in queryset:
+            app.config.pop("channel_code", None)
+            if app.config:
+                configured_uuid_list.append(app.uuid.hex)
+            else:
+                unconfigured_uuid_list.append(app.uuid.hex)
 
         if configured is not None:
             if configured == "true":
-                queryset = queryset.exclude(config={})
+                queryset = queryset.filter(uuid__in=configured_uuid_list)
 
             elif configured == "false":
-                queryset = queryset.filter(config={})
+                queryset = queryset.filter(uuid__in=unconfigured_uuid_list)
 
             else:
                 raise ValidationError(f"Expected a boolean param in configured, but recived `{configured}`")
