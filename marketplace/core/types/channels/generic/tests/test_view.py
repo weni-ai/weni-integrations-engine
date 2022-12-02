@@ -155,17 +155,34 @@ class ConnectChannelTypesTestCase(TestCase):
     def setUp(self):
         super().setUp()
         self.channels_code = ["AC", "WA", "WWC"]
-    
-    # @patch("requests.get")
-    # def test_list_channel_types(self, mock):
-    #     fake_response = FakeRequestsResponse(data={})
-    #     fake_response.status_code = 400
-    #     mock.side_effect = [fake_response, fake_response, fake_response]
-    #     client = ConnectProjectClient()
-    #     response = client.list_availables_channels()
-    #     print(f"response{response}")
-    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        
+
+    @patch("requests.get")
+    def test_list_channel_types_error(self, mock):
+        fake_response = FakeRequestsResponse(data={})
+        fake_response.status_code = 400
+        mock.side_effect = [fake_response, fake_response, fake_response]
+
+        client = ConnectProjectClient()
+        response = client.list_availables_channels()
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    @patch("requests.get")
+    def test_list_channel_types(self, mock):
+        payload = {
+            "AC" : { "attributes" : {"code": "AC"}},
+            "WA" : { "attributes" : {"code": "WA"}},
+            "WWC" : { "attributes" : {"code": "WWC"}}
+        }
+        success_fake_response = FakeRequestsResponse(data=payload)
+        success_fake_response.status_code = 200
+        mock.side_effect = [success_fake_response, success_fake_response, success_fake_response]
+
+        client = ConnectProjectClient()
+        response = client.list_availables_channels()
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        for channel in payload:
+            self.assertEqual(response.json().get(channel), payload.get(channel))
+
     def test_retrieve_channel_types(self):
         payload = {
             "AC" : { "attributes" : {"code": "AC"}},
