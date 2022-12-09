@@ -16,6 +16,7 @@ from .models import TemplateMessage
 from .serializers import TemplateMessageSerializer, TemplateTranslationCreateSerializer, TemplateQuerySetSerializer, TemplateTranslationSerializer
 from .requests import TemplateMessageRequest
 from .languages import LANGUAGES
+from .permissions import IsProjectAdmin
 
 User = get_user_model()
 
@@ -32,6 +33,7 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
     lookup_field = "uuid"
     serializer_class = TemplateMessageSerializer
     pagination_class = CustomResultsPagination
+    permission_classes = [IsProjectAdmin]
 
     def get_queryset(self):
         app = App.objects.get(uuid=self.kwargs["app_uuid"])
