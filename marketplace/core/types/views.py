@@ -30,6 +30,6 @@ class BaseAppTypeViewSet(CreateModelMixin, RetrieveModelMixin, UpdateModelMixin,
 
         channel_uuid = instance.config.get("channelUuid")
 
-        if channel_uuid is not None and settings.USE_GRPC:
+        if channel_uuid:
             client = ConnectProjectClient()
             client.release_channel(channel_uuid, self.request.user.email)
