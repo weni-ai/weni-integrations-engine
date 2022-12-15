@@ -22,9 +22,13 @@ class GenericConfigSerializer(serializers.Serializer):
     def validate(self, attrs: dict):
         request = self.context.get("request")
         app = self.parent.instance
+        app_data = app.config
         data = request.data.get("config")
         for field in data.items():
             attrs[field[0]] = field[1]
+
+        for value in app_data.items():
+            attrs[value[0]] = value[1]
 
         attrs["channelUuid"] = app.config.get("channelUuid", None)
         if attrs["channelUuid"] is None:
@@ -37,7 +41,7 @@ class GenericConfigSerializer(serializers.Serializer):
     def _create_channel(self, attrs: dict, app: App) -> str:
         request = self.context.get("request")
         user = request.user
-        channeltype_code = request.data.get("channel_code", app.config.get("channel_code"))
+        channeltype_code = app.config.get("channel_code")
         client = ConnectProjectClient()
         return client.create_channel(
             user.email, app.project_uuid, attrs, channeltype_code.upper()
