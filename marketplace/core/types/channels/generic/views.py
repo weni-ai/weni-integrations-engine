@@ -28,8 +28,8 @@ class GenericChannelViewSet(views.BaseAppTypeViewSet):
 
         instance = serializer.save(code="generic")
         instance.config["channel_code"] = channel_code
+        instance.config["channel_name"] = channel_name
         instance.modified_by = self.request.user
-        instance.name = channel_name
         instance.save()
 
     @action(detail=True, methods=["PATCH"])
