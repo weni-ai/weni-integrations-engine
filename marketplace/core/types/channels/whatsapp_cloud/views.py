@@ -60,7 +60,50 @@ class WhatsAppCloudViewSet(
         return super().get_queryset().filter(code=self.type_class.code)
 
     def destroy(self, request, *args, **kwargs) -> Response:
-        return Response("This channel cannot be deleted", status=status.HTTP_403_FORBIDDEN)
+        serializer = WhatsAppCloudConfigureSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        base_url = settings.WHATSAPP_API_URL
+
+        waba_id = serializer.validated_data.get("waba_id")
+        
+        params = dict(
+            fields="id,legal_entity_name",
+            access_token=settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN,
+        )
+        response = requests.get(url=f"{base_url}/{waba_id}/extendedcredits", params=params)
+
+        credit_line_id = response.json().get("data")[0].get("id")
+
+        """
+        params = dict(
+            fields="owner_business_info",
+            access_token=settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN,
+        )
+        response = requests.get(url=f"{base_url}/{credit_line_id}/", params=params)
+
+        owner_business_info_id = response.json().get("id")
+        """
+
+        params = dict(
+            fields="id,receiving_business",
+            receiving_business_id=waba_id,
+            access_token=settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN,
+        )
+        response = requests.get(url=f"{base_url}/{credit_line_id}/owning_credit_allocation_configs", params=params)
+
+        allocation_config_id = response.json().get("id")
+
+
+        params = dict(
+            access_token=settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN,
+        )
+        response = requests.get(url=f"{base_url}/{allocation_config_id}/", params=params)
+
+        if response.json().get("success "):
+            return Response(status=status.HTTP_200_OK)
+
+        return Response("This channel cannot be deleted", status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
     def create(self, request, *args, **kwargs):
         serializer = WhatsAppCloudConfigureSerializer(data=request.data)
