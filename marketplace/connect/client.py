@@ -72,7 +72,7 @@ class ConnectProjectClient(ConnectAuth):
 
     def list_availables_channels(self):
         response = requests.get(
-            url=self.base_url + "/v1/organization/project/list_channel_types/",
+            url=self.base_url + "/v1/channel-types",
             headers=self.auth_header(),
             timeout=60
         )
@@ -81,7 +81,7 @@ class ConnectProjectClient(ConnectAuth):
     def detail_channel_type(self, channel_code: str):
         params = {"channel_type_code": channel_code}
         response = requests.get(
-            url=self.base_url + "/v1/organization/project/list_channel_types/",
+            url=self.base_url + "/v1/channel-types",
             params=params, headers=self.auth_header(),
             timeout=60
         )
