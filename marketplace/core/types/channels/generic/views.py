@@ -19,16 +19,31 @@ class GenericChannelViewSet(views.BaseAppTypeViewSet):
 
     def perform_create(self, serializer):
         channel_code = self.request.data.get("channel_code", None)
-        channel_name = self.request.data.get("channel_name", None)
+        channel_name = None
+        channel_claim_blurb = None
+
         if channel_code:
             channel_code = channel_code.strip()
 
         if not channel_code:
             raise serializers.ValidationError('Code not be empty.')
 
+        client = ConnectProjectClient()
+        response = client.detail_channel_type(channel_code=channel_code)
+
+        if response.status_code == 200:
+            response = response.json()
+            if response.get("attributes"):
+                if response.get("attributes").get("claim_blurb"):
+                    channel_claim_blurb = str(response.get("attributes").get("claim_blurb"))
+
+                if response.get("attributes").get("name"):
+                    channel_name = response.get("attributes").get("name")
+
         instance = serializer.save(code="generic")
         instance.config["channel_code"] = channel_code
         instance.config["channel_name"] = channel_name
+        instance.config["channel_claim_blurb"] = channel_claim_blurb
         instance.modified_by = self.request.user
         instance.save()
 
