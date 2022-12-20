@@ -81,6 +81,8 @@ class MyAppViewSet(viewsets.ReadOnlyModelViewSet):
 
         for app in queryset:
             app.config.pop("channel_code", None)
+            app.config.pop("channel_name", None)
+            app.config.pop("channel_claim_blurb", None)
             if app.config:
                 configured_uuid_list.append(app.uuid.hex)
             else:
