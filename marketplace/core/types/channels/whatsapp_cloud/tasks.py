@@ -42,8 +42,6 @@ def sync_whatsapp_cloud_apps():
         config["title"] = config.get("wa_number")
         config["wa_phone_number_id"] = address
 
-        # TODO: Add title and address to config
-
         apps = App.objects.filter(flow_object_uuid=uuid)
 
         if apps.exists():
