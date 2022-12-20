@@ -1,3 +1,8 @@
+v1.5.6
+----------
+* Fix: Whatsapp Cloud sync does not working
+* Fix: Remove unecessary to do
+
 v1.5.5
 ----------
  * Adds view that returns a user's api token in a project #176
