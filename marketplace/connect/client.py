@@ -44,7 +44,7 @@ class ConnectProjectClient(ConnectAuth):
         payload = {
             "user": user,
             "project_uuid": str(project_uuid),
-            "config": json.dumps(config),
+            "config": config,
             "phone_number_id": phone_number_id,
         }
         response = requests.post(
