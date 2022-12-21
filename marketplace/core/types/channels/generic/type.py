@@ -18,4 +18,4 @@ class GenericType(AppType):
     bg_color = "#d1fcc9cc"
     platform = App.PLATFORM_WENI_FLOWS
     config_design = "popup"
-    channels_available = None #[get_channel_types()]
+    channels_available = None
