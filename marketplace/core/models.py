@@ -53,7 +53,7 @@ class AppTypeBaseModel(BaseModel):
         """
         from marketplace.core.types import APPTYPES
         try:
-            APPTYPES.get(self.code)
+            return APPTYPES.get(self.code)
         except KeyError:
             return APPTYPES.get('generic')
 

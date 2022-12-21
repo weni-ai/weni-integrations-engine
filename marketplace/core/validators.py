@@ -11,6 +11,7 @@ def validate_app_code_exists(value):
             raise ValidationError(f"AppType ({value}) not exists!")
 
 
+
 def validate_generic_app_code_exists(code):
     """
         Checks if the code exists within the generic channels coming from rapidpro,
