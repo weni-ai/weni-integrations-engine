@@ -10,7 +10,6 @@ from .serializers import GenericChannelSerializer, GenericConfigureSerializer
 from marketplace.core.types import views
 from marketplace.connect.client import ConnectProjectClient
 
-from marketplace.core import types
 from marketplace.applications.models import AppTypeAsset
 
 from . import type as type_
@@ -116,6 +115,11 @@ def search_icon(code):
         apptype_asset = apptype_asset.first()
         icon_url = apptype_asset.url
     else:
-        icon_url = None
+        apptype_asset = AppTypeAsset.objects.filter(code='generic')
+        if apptype_asset.exists():
+            apptype_asset = apptype_asset.first()
+            icon_url = apptype_asset.url
+        else:
+            icon_url = None
 
     return icon_url
