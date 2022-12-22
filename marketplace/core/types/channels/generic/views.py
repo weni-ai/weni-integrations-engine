@@ -79,7 +79,10 @@ class DetailChannelType(viewsets.ViewSet):
     def retrieve(self, request, code_channel=None):
         client = ConnectProjectClient()
         response = client.detail_channel_type(channel_code=code_channel)
-        return Response(response.json(),status=response.status_code)
+        if response.status_code == 200:
+            return Response(response.json(),status=response.status_code)
+
+        return Response({'message': 'There was an error in the request'}, status=response.status_code)
 
 
 class GetIcons(viewsets.ViewSet):
@@ -94,12 +97,15 @@ class GetIcons(viewsets.ViewSet):
     def list(self, request):
         client = ConnectProjectClient()
         response = client.list_availables_channels()
-        response = response.json()
-        channels_icons = {}
-        for channel in response.get('channel_types').keys():
-            channels_icons[channel] = search_icon(channel)
+        if response.status_code == 200:
+            response = response.json()
+            channels_icons = {}
+            for channel in response.get('channel_types').keys():
+                channels_icons[channel] = search_icon(channel)
 
-        return Response(channels_icons)
+            return Response(channels_icons)
+
+        return Response({'message': 'There was an error in the request'}, status=response.status_code)
 
 
 def search_icon(code):

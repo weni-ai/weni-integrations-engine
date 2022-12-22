@@ -9,9 +9,10 @@ from .views import GenericChannelViewSet
 def get_channel_types():
         from marketplace.connect.client import ConnectProjectClient
         response = ConnectProjectClient().list_availables_channels()
-        channel_types = response.json().get("channel_types")
+        if response.status_code == 200:
+            return response.json().get("channel_types")
 
-        return channel_types
+        return None
 
 
 class GenericType(AppType):
