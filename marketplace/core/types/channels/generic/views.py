@@ -48,6 +48,7 @@ class GenericChannelViewSet(views.BaseAppTypeViewSet):
         instance = serializer.save(code="generic")
         instance.config["channel_code"] = channel_code
         instance.config["channel_name"] = channel_name
+        instance.config["channel_icon_url"] = search_icon(channel_code)
         instance.config["channel_claim_blurb"] = channel_claim_blurb
         instance.modified_by = self.request.user
         instance.save()
