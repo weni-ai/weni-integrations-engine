@@ -113,12 +113,12 @@ def search_icon(code):
     apptype_asset = AppTypeAsset.objects.filter(code=code.lower())
     if apptype_asset.exists():
         apptype_asset = apptype_asset.first()
-        icon_url = apptype_asset.url
+        icon_url = apptype_asset.attachment.url
     else:
         apptype_asset = AppTypeAsset.objects.filter(code='generic')
         if apptype_asset.exists():
             apptype_asset = apptype_asset.first()
-            icon_url = apptype_asset.url
+            icon_url = apptype_asset.attachment.url
         else:
             icon_url = None
 
