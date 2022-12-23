@@ -3,6 +3,8 @@ import requests
 
 from django.conf import settings
 
+from marketplace.applications.models import AppTypeAsset
+
 
 class ConnectAuth:
     def __get_auth_token(self) -> str:
@@ -68,13 +70,30 @@ class ConnectProjectClient(ConnectAuth):
         )
         return response
 
+    def list_availables_channels(self):
+        response = requests.get(
+            url=self.base_url + "/v1/channel-types",
+            headers=self.auth_header(),
+            timeout=60
+        )
+        return response
+
+    def detail_channel_type(self, channel_code: str):
+        params = {"channel_type_code": channel_code}
+        response = requests.get(
+            url=self.base_url + "/v1/channel-types",
+            params=params, headers=self.auth_header(),
+            timeout=60
+        )
+        return response
+
 
 class WPPRouterChannelClient(ConnectAuth):
     base_url = settings.ROUTER_BASE_URL
 
     def get_channel_token(self, uuid: str, name: str) -> str:
         payload = {"uuid": uuid, "name": name}
-
+        
         response = requests.post(url=self.base_url + "/integrations/channel", json=payload, headers=self.auth_header())
-
+        
         return response.json().get("token", "")

@@ -44,7 +44,6 @@ class BaseModel(models.Model):
 
 
 class AppTypeBaseModel(BaseModel):
-
     code = models.SlugField(validators=[validate_app_code_exists])
 
     @property
@@ -53,8 +52,10 @@ class AppTypeBaseModel(BaseModel):
         Returns the respective AppType
         """
         from marketplace.core.types import APPTYPES
-
-        return APPTYPES.get(self.code)
+        try:
+            return APPTYPES.get(self.code)
+        except KeyError:
+            return APPTYPES.get('generic')
 
     class Meta:
         abstract = True
