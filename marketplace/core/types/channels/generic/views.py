@@ -91,7 +91,7 @@ class GetIcons(viewsets.ViewSet):
         Returns:
         {
             'tg': "url.com",
-            'exemple': "url2.com"
+            'example': "url2.com"
         }
     """
     def list(self, request):
