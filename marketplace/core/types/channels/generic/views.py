@@ -9,8 +9,9 @@ from .serializers import GenericChannelSerializer, GenericConfigureSerializer
 
 from marketplace.core.types import views
 from marketplace.connect.client import ConnectProjectClient
-
 from marketplace.applications.models import AppTypeAsset
+from marketplace.applications.serializers import AppTypeSerializer
+from marketplace.core import types
 
 from . import type as type_
 
@@ -106,6 +107,30 @@ class GetIcons(viewsets.ViewSet):
             return Response(channels_icons)
 
         return Response({'message': 'There was an error in the request'}, status=response.status_code)
+
+
+class MyGenericApps(viewsets.ViewSet):
+    serializer_class = AppTypeSerializer
+
+    def get_serializer(self, *args, **kwargs):
+        kwargs["context"] = {"request": self.request}
+        return self.serializer_class(*args, **kwargs)
+
+    def list(self, request):
+        category = request.query_params.get("category", None)
+        apptypes = types.APPTYPES
+
+        if category is not None:
+            apptypes = apptypes.filter(
+                lambda apptype: apptype.get_category_display() == request.query_params.get("category")
+            )
+
+        # TODO: remove this filter, it is only while whatsapp is in beta
+        apptypes = apptypes.filter(lambda apptype: apptype.code != "wpp")
+
+        serializer = self.get_serializer(apptypes.values(), many=True)
+
+        return Response(serializer.data)
 
 
 def search_icon(code):
