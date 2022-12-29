@@ -25,6 +25,7 @@ class WhatsAppDemoType(AppType):
     bg_color = "#d1fcc9cc"
     platform = App.PLATFORM_WENI_FLOWS
     config_design = "popup"
+    channels_available = None
 
     def can_add(self, project_uuid: str) -> bool:
         return not App.objects.filter(code=self.code, project_uuid=project_uuid).exists()
