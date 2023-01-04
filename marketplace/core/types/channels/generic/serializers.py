@@ -4,6 +4,7 @@ from marketplace.applications.models import App
 from marketplace.core.serializers import AppTypeBaseSerializer
 from marketplace.connect.client import ConnectProjectClient
 
+
 class GenericChannelSerializer(AppTypeBaseSerializer):
     class Meta:
         model = App
@@ -33,6 +34,10 @@ class GenericConfigSerializer(serializers.Serializer):
         attrs["channelUuid"] = app.config.get("channelUuid", None)
         if attrs["channelUuid"] is None:
             channel = self._create_channel(data, app)
+            if channel.status_code != 200:
+                raise serializers.ValidationError(f'{channel.reason} - {channel.status_code}')
+
+            channel = channel.json()
             attrs["channelUuid"] = channel.get("uuid")
             attrs["title"] = channel.get("name")
 
@@ -43,9 +48,10 @@ class GenericConfigSerializer(serializers.Serializer):
         user = request.user
         channeltype_code = app.config.get("channel_code")
         client = ConnectProjectClient()
-        return client.create_channel(
+        response =  client.create_channel(
             user.email, app.project_uuid, attrs, channeltype_code.upper()
         )
+        return response
 
 
 class GenericConfigureSerializer(AppTypeBaseSerializer):
