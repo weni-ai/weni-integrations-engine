@@ -29,8 +29,7 @@ class GenericChannelViewSet(views.BaseAppTypeViewSet):
 
         if channel_code:
             channel_code = channel_code.strip()
-
-        if not channel_code:
+        else:
             raise serializers.ValidationError('Code not be empty.')
 
         client = ConnectProjectClient()

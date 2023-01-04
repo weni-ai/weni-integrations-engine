@@ -80,14 +80,16 @@ class MyAppViewSet(viewsets.ReadOnlyModelViewSet):
         unconfigured_uuid_list = []
 
         for app in queryset:
+            if not app.config:
+                unconfigured_uuid_list.append(app.uuid.hex)
+                continue
+
             app.config.pop("channel_code", None)
             app.config.pop("channel_name", None)
             app.config.pop("channel_claim_blurb", None)
             app.config.pop("channel_icon_url", None)
-            if app.config:
-                configured_uuid_list.append(app.uuid.hex)
-            else:
-                unconfigured_uuid_list.append(app.uuid.hex)
+            configured_uuid_list.append(app.uuid.hex)
+
 
         if configured is not None:
             if configured == "true":
