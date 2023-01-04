@@ -16,3 +16,4 @@ class WeniWebChatType(AppType):
     bg_color = "#00DED333"
     platform = App.PLATFORM_WENI_FLOWS
     config_design = "sidebar"
+    channels_available = None
