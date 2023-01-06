@@ -1,3 +1,8 @@
+v2.0.0
+----------
+* Adds whatsapp template message
+* Endpoint to transform flow channels into generic channels
+
 v1.5.6
 ----------
 * Fix: Whatsapp Cloud sync does not working
