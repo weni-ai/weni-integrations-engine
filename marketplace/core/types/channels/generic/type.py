@@ -1,5 +1,3 @@
-from decouple import config
-import json
 
 from marketplace.core.types.base import AppType
 from marketplace.applications.models import App
@@ -7,12 +5,12 @@ from .views import GenericChannelViewSet
 
 
 def get_channel_types():
-        from marketplace.connect.client import ConnectProjectClient
-        response = ConnectProjectClient().list_availables_channels()
-        if response.status_code == 200:
-            return response.json().get("channel_types")
+    from marketplace.connect.client import ConnectProjectClient
+    response = ConnectProjectClient().list_availables_channels()
+    if response.status_code == 200:
+        return response.json().get("channel_types")
 
-        return None
+    return None
 
 
 class GenericType(AppType):

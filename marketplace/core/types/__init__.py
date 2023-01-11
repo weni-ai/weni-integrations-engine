@@ -19,6 +19,7 @@ class AppTypesDict(dict):
                 filtered[key] = value
         return filtered
 
+
 APPTYPES = AppTypesDict()
 
 

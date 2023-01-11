@@ -13,7 +13,7 @@ from marketplace.applications.models import App
 from marketplace.core.types.channels.whatsapp_base.exceptions import FacebookApiException
 
 from .models import TemplateMessage
-from .serializers import TemplateMessageSerializer, TemplateTranslationCreateSerializer, TemplateQuerySetSerializer, TemplateTranslationSerializer
+from .serializers import TemplateMessageSerializer, TemplateTranslationSerializer
 from .requests import TemplateMessageRequest
 from .languages import LANGUAGES
 
@@ -24,6 +24,7 @@ class CustomResultsPagination(PageNumberPagination):
     page_size = 12
     page_size_query_param = "page_size"
     max_page_size = 500
+
 
 class AppsViewSet(viewsets.ViewSet):
     lookup_field = "uuid"
@@ -51,15 +52,15 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
 
     def perform_destroy(self, instance):
         template_request = TemplateMessageRequest(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
-
-        response = template_request.delete_template_message(waba_id=instance.app.config.get("wa_waba_id"), name=instance.name)
+        response = template_request.delete_template_message(waba_id=instance.app.config.get("wa_waba_id"),
+                                                            name=instance.name)
 
         if response.status_code != status.HTTP_200_OK:
             capture_exception(FacebookApiException(response.json()))
-            
             if response.json().get("error", {}).get("error_subcode", 0) == 2388094:
-                return Response(data=dict(error="WhatsApp.templates.error.delete_sample"), status=status.HTTP_400_BAD_REQUEST)
-            
+                return Response(data=dict(error="WhatsApp.templates.error.delete_sample"),
+                                status=status.HTTP_400_BAD_REQUEST)
+
             return Response(status=status.HTTP_400_BAD_REQUEST)
 
         instance.delete()
@@ -70,12 +71,12 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         return self.perform_destroy(instance)
 
     @action(detail=True, methods=["POST"])
-    def translations(self, request, app_uuid = None, uuid = None):
+    def translations(self, request, app_uuid=None, uuid=None):
         request.data["template_uuid"] = uuid
 
         serializer = TemplateTranslationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save()        
+        serializer.save()
 
         return Response(status=status.HTTP_200_OK)
 

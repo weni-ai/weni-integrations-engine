@@ -78,7 +78,7 @@ class RetrieveGenericAppTestCase(APIBaseTestCase):
         self.app = App.objects.create(
             code="generic", created_by=self.user, project_uuid=str(uuid.uuid4()), platform=App.PLATFORM_WENI_FLOWS
         )
-        
+
         self.user_authorization = self.user.authorizations.create(project_uuid=self.app.project_uuid)
         self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
         self.url = reverse("generic-app-detail", kwargs={"uuid": self.app.uuid})
@@ -169,9 +169,9 @@ class ConnectChannelTypesTestCase(TestCase):
     @patch("requests.get")
     def test_list_channel_types(self, mock):
         payload = {
-            "AC" : { "attributes" : {"code": "AC"}},
-            "WA" : { "attributes" : {"code": "WA"}},
-            "WWC" : { "attributes" : {"code": "WWC"}}
+            "AC": {"attributes": {"code": "AC"}},
+            "WA": {"attributes": {"code": "WA"}},
+            "WWC": {"attributes": {"code": "WWC"}}
         }
         success_fake_response = FakeRequestsResponse(data=payload)
         success_fake_response.status_code = 200
@@ -185,9 +185,9 @@ class ConnectChannelTypesTestCase(TestCase):
 
     def test_retrieve_channel_types(self):
         payload = {
-            "AC" : { "attributes" : {"code": "AC"}},
-            "WA" : { "attributes" : {"code": "WA"}},
-            "WWC" : { "attributes" : {"code": "WWC"}}
+            "AC": {"attributes": {"code": "AC"}},
+            "WA": {"attributes": {"code": "WA"}},
+            "WWC": {"attributes": {"code": "WWC"}}
         }
         success_fake_response = FakeRequestsResponse(data=payload)
         success_fake_response.status_code = 200

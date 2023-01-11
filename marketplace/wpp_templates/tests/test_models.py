@@ -3,7 +3,6 @@ from datetime import datetime
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
-from django.db.utils import IntegrityError
 
 from marketplace.applications.models import App
 from marketplace.wpp_templates.models import TemplateMessage, TemplateTranslation, TemplateButton, TemplateHeader
@@ -21,7 +20,7 @@ class TemplateButtonModelTestCase(TestCase):
             code="wwc",
             created_by=User.objects.get_admin_user(),
         )
-        
+
         self.template_message = TemplateMessage.objects.create(
             name="teste",
             app=self.app,
@@ -34,30 +33,15 @@ class TemplateButtonModelTestCase(TestCase):
             template=self.template_message, status="APPROVED", language="pt_br", variable_count=1
         )
         super().setUp()
-        
+
     def test_create_template_button_url(self):
         TemplateButton.objects.create(
             translation=self.template_translation, button_type="PHONE_NUMBER", country_code=55
         )
 
-    """
-    def test_create_template_button_url_required_fail(self):
-        with self.assertRaises(IntegrityError):
-            TemplateButton.objects.create(
-                translation=self.template_translation, button_type="URL", country_code=55
-            )
-
-    def test_create_template_button_phone_number_required_fail(self):
-        with self.assertRaises(IntegrityError):
-            TemplateButton.objects.create(
-                translation=self.template_translation, button_type="PHONE_NUMBER", country_code=55
-            )
-    """
-
 
 class TemplateHeaderModelTestCase(TestCase):
     def setUp(self):
-
         self.app = App.objects.create(
             config=dict(waba_id="432321321"),
             project_uuid=uuid.uuid4(),
@@ -78,12 +62,6 @@ class TemplateHeaderModelTestCase(TestCase):
             template=self.template_message, status="APPROVED", language="pt_br", variable_count=1
         )
         super().setUp()
-
-    """
-    def test_create_template_header_text_required_fail(self):
-        with self.assertRaises(IntegrityError):
-            TemplateHeader.objects.create(translation=self.template_translation, header_type="TEXT")
-    """
 
     def test_create_template_header_text(self):
         TemplateHeader.objects.create(translation=self.template_translation, header_type="TEXT", text="teste")
