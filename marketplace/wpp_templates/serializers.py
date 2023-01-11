@@ -185,7 +185,7 @@ class TemplateMessageSerializer(serializers.Serializer):
 
     def validate_name(self, name):
 
-        if bool(re.match("\w*[A-Z]\w*", name)) or " " in name:  # noqa: W605
+        if bool(re.match(r"\w*[A-Z]\w*", name)) or " " in name:
             raise serializers.ValidationError("WhatsApp.templates.error.invalid_name_format")
         return name
 
