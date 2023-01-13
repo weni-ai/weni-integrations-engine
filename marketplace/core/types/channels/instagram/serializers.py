@@ -33,7 +33,8 @@ class ConfigSerializer(serializers.Serializer):
         if attrs["channelUuid"] is None:
             channel = self._create_channel(attrs, app)
             if channel.status_code != 200:
-                raise serializers.ValidationError(f'{channel.reason} - {channel.status_code}')
+                reason = channel.text if channel.text else ''
+                raise serializers.ValidationError(f'{reason} - {channel.status_code}')
             attrs["channelUuid"] = channel.get("uuid")
             attrs["title"] = channel.get("name")
 
