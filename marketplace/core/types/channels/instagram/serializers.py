@@ -35,9 +35,16 @@ class ConfigSerializer(serializers.Serializer):
             if channel.status_code != 200:
                 reason = channel.text if channel.text else ''
                 raise serializers.ValidationError(f'{reason} - {channel.status_code}')
+
+            channel = channel.json()
+            flows_config = channel.get("config")
             attrs["channelUuid"] = channel.get("uuid")
             attrs["title"] = channel.get("name")
-
+            attrs["auth_token"] = flows_config.get("auth_token")
+            attrs["page_name"] = flows_config.get("page_name")
+            attrs["page_id"] = flows_config.get("page_id")
+            attrs["address"] = channel.get("address")
+            
         return super().validate(attrs)
 
     def _create_channel(self, attrs: dict, app: App) -> str:
