@@ -53,7 +53,6 @@ class TemplateTranslationSerializer(serializers.Serializer):
         data = super().to_representation(instance)
 
         if instance.headers.first():
-            print(instance.headers.first().to_dict())
             data['header'] = instance.headers.first().to_dict()
         return data
 
@@ -65,11 +64,8 @@ class TemplateTranslationSerializer(serializers.Serializer):
 
     def create(self, validated_data: dict) -> None:
         template_message_request = TemplateMessageRequest(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
-
         template = TemplateMessage.objects.get(uuid=validated_data.get("template_uuid"))
-
         components = [validated_data.get("body", {})]
-
         header = validated_data.get("header")
 
         if header:
