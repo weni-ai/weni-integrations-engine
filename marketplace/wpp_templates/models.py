@@ -3,12 +3,11 @@ import uuid
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.db import models
-from django.db.models.constraints import CheckConstraint
-from django.db.models import Q
 
 from marketplace.applications.models import App
 
 User = get_user_model()
+
 
 class TemplateMessage(models.Model):
     CATEGORY_CHOICES = (
@@ -33,21 +32,13 @@ class TemplateMessage(models.Model):
         ("INTERACTIVE", "WhatsApp.data.templates.type.interactive"),
         ("TEXT", "WhatsApp.data.templates.type.text"),
     )
-
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-
     app = models.ForeignKey(App, on_delete=models.PROTECT, related_name="template")
-
     name = models.CharField(max_length=512)
-
     category = models.CharField(max_length=200, choices=CATEGORY_CHOICES)
-
     created_on = models.DateTimeField("Created on", editable=False, default=timezone.now)
-
     created_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="created_%(class)ss", null=True)
-
     template_type = models.CharField(max_length=100, choices=TEMPLATE_TYPES_CHOICES)
-    #namespace = models.CharField(max_length=60)
 
     def verify_namespace():
         pass
@@ -97,20 +88,6 @@ class TemplateButton(models.Model):
     phone_number = models.CharField(max_length=20, null=True)
     url = models.CharField(max_length=2000, null=True)
 
-    """
-    class Meta:
-        constraints = [
-            CheckConstraint(
-                check=Q(button_type__exact="URL") & Q(url__isnull=True),
-                name="button_type_exact_url_and_url_isnull_false",
-            ),
-            CheckConstraint(
-                check=Q(button_type__exact="PHONE_NUMBER") & Q(phone_number__isnull=True),
-                name="button_type_exact_phone_number_and_phone_number_isnull_false",
-            ),
-        ]
-    """
-
 
 class TemplateHeader(models.Model):
     HEADER_TYPE_CHOICES = (
@@ -121,9 +98,7 @@ class TemplateHeader(models.Model):
     )
 
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-
     translation = models.ForeignKey(TemplateTranslation, on_delete=models.CASCADE, related_name="headers")
-
     header_type = models.CharField(max_length=20, choices=HEADER_TYPE_CHOICES)
     text = models.CharField(max_length=60, default=None, null=True)
     example = models.CharField(max_length=2048, default=None, null=True)
@@ -131,16 +106,5 @@ class TemplateHeader(models.Model):
     def to_dict(self):
         return dict(
             header_type=self.header_type,
-            text=self.text,
-            #example=self.example,
+            text=self.text
         )
-
-    """
-    class Meta:
-        constraints = [
-            CheckConstraint(
-                check=Q(header_type__exact="TEXT") & Q(text__isnull=False),
-                name="header_type_exact_text_and_text_isnull_false",
-            ),
-        ]
-    """

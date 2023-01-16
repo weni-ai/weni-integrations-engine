@@ -4,6 +4,7 @@ from marketplace.applications.models import App
 from marketplace.core.serializers import AppTypeBaseSerializer
 from marketplace.connect.client import ConnectProjectClient
 
+
 class GenericChannelSerializer(AppTypeBaseSerializer):
     class Meta:
         model = App
