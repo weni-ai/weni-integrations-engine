@@ -25,7 +25,6 @@ class ConfigSerializer(serializers.Serializer):
     page_name = serializers.CharField(required=True)
     page_id = serializers.CharField(required=True)
 
-
     def validate(self, attrs: dict):
         app = self.parent.instance
 
@@ -45,14 +44,13 @@ class ConfigSerializer(serializers.Serializer):
             attrs["page_name"] = flows_config.get("page_name")
             attrs["address"] = channel.get("address")
 
-            
         return super().validate(attrs)
 
     def _create_channel(self, attrs: dict, app: App) -> str:
         user = self.context.get("request").user
         client = ConnectProjectClient()
 
-        payload={
+        payload = {
             'user_access_token': attrs.get("user_access_token"),
             'fb_user_id': attrs.get("fb_user_id"),
             'page_name': attrs.get("page_name"),
