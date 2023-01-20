@@ -6,8 +6,8 @@ from . import views
 class FacebookType(AppType):
     view_class = views.FacebookViewSet
 
-    code = "fb"
-    channeltype_code = "FB"
+    code = "fba"
+    channeltype_code = "FBA"
     name = "Facebook"
     description = "facebook.data.description"
     summary = "facebook.data.summary"

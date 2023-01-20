@@ -20,9 +20,11 @@ class FacebookSerializer(AppTypeBaseSerializer):
 
 class ConfigSerializer(serializers.Serializer):
 
-    page_access_token = serializers.CharField(required=True)
+    user_access_token = serializers.CharField(required=True)
+    fb_user_id = serializers.CharField(required=True)
     page_name = serializers.CharField(required=True)
     page_id = serializers.CharField(required=True)
+
 
     def validate(self, attrs: dict):
         app = self.parent.instance
@@ -39,9 +41,10 @@ class ConfigSerializer(serializers.Serializer):
             flows_config = channel.get("config")
             attrs["channelUuid"] = channel.get("uuid")
             attrs["title"] = channel.get("name")
-            attrs["page_access_token"] = flows_config.get("page_access_token")
+            attrs["auth_token"] = flows_config.get("auth_token")
             attrs["page_name"] = flows_config.get("page_name")
-            attrs["page_id"] = channel.get("page_id")
+            attrs["address"] = channel.get("address")
+
             
         return super().validate(attrs)
 

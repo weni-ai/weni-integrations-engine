@@ -11,7 +11,7 @@ from marketplace.accounts.models import ProjectAuthorization
 
 
 class CreateFacebookAppTestCase(APIBaseTestCase):
-    url = reverse("fb-app-list")
+    url = reverse("fba-app-list")
     view_class = FacebookViewSet
 
     @property
@@ -54,11 +54,11 @@ class RetrieveFacebookAppTestCase(APIBaseTestCase):
         super().setUp()
 
         self.app = App.objects.create(
-            code="fb", created_by=self.user, project_uuid=str(uuid.uuid4()), platform=App.PLATFORM_WENI_FLOWS
+            code="fba", created_by=self.user, project_uuid=str(uuid.uuid4()), platform=App.PLATFORM_WENI_FLOWS
         )
         self.user_authorization = self.user.authorizations.create(project_uuid=self.app.project_uuid)
         self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
-        self.url = reverse("fb-app-detail", kwargs={"uuid": self.app.uuid})
+        self.url = reverse("fba-app-detail", kwargs={"uuid": self.app.uuid})
 
     @property
     def view(self):
@@ -85,12 +85,12 @@ class DestroyFacebookAppTestCase(APIBaseTestCase):
         super().setUp()
 
         self.app = App.objects.create(
-            code="fb", created_by=self.user, project_uuid=str(uuid.uuid4()), platform=App.PLATFORM_WENI_FLOWS
+            code="fba", created_by=self.user, project_uuid=str(uuid.uuid4()), platform=App.PLATFORM_WENI_FLOWS
         )
         self.user_authorization = self.user.authorizations.create(
             project_uuid=self.app.project_uuid, role=ProjectAuthorization.ROLE_ADMIN
         )
-        self.url = reverse("fb-app-detail", kwargs={"uuid": self.app.uuid})
+        self.url = reverse("fba-app-detail", kwargs={"uuid": self.app.uuid})
 
     @property
     def view(self):
