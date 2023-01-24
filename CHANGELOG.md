@@ -1,3 +1,7 @@
+v2.0.2
+----------
+* Fix: permissions code refactoring and allows viewer user to access app detail
+
 v2.0.1
 ----------
 * Remove unused imports and erase blank line with white space 
