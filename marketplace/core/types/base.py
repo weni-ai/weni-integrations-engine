@@ -15,11 +15,13 @@ class AbstractAppType(ABC):
     CATEGORY_CHANNEL = "CN"
     CATEGORY_CLASSIFIER = "CF"
     CATEGORY_TICKETER = "TK"
+    CATEGORY_EXTERNAL = "EXT"
 
     CATEGORY_CHOICES = (
         (CATEGORY_CHANNEL, "channel"),
         (CATEGORY_CLASSIFIER, "classifier"),
         (CATEGORY_TICKETER, "ticketer"),
+        (CATEGORY_EXTERNAL, "external"),
     )
 
     @abstractproperty
@@ -29,13 +31,6 @@ class AbstractAppType(ABC):
     @abstractproperty
     def code(self) -> str:
         ...  # pragma: no cover
-
-    @abstractproperty
-    def channeltype_code(self) -> str:
-        """
-        code referring to `ChannelType.code` in Weni Flows
-        """
-        ...
 
     @abstractproperty
     def name(self) -> str:
