@@ -152,7 +152,9 @@ class ConnectProjectClient(ConnectAuth):
 
     def create_external_service(self, user: str, project_uuid: str, type_fields: dict, type_code: str):
         payload = {"user": user, "project_uuid": str(project_uuid), "type_fields": type_fields, "type_code": type_code}
-        response = requests.post(self._get_url("/v1/organization/project/create_external/"), json=payload, headers=self.auth_header())
+        response = requests.post(
+            self._get_url("/v1/organization/project/create_external/"), json=payload, headers=self.auth_header()
+        )
         return response
 
 
