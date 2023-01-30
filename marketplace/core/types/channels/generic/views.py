@@ -29,8 +29,7 @@ class GenericChannelViewSet(views.BaseAppTypeViewSet):
 
         if channel_code:
             channel_code = channel_code.strip()
-
-        if not channel_code:
+        else:
             raise serializers.ValidationError('Code not be empty.')
 
         client = ConnectProjectClient()
@@ -80,7 +79,7 @@ class DetailChannelType(viewsets.ViewSet):
         client = ConnectProjectClient()
         response = client.detail_channel_type(channel_code=code_channel)
         if response.status_code == 200:
-            return Response(response.json(),status=response.status_code)
+            return Response(response.json(), status=response.status_code)
 
         return Response({'message': 'There was an error in the request'}, status=response.status_code)
 

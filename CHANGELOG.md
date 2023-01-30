@@ -1,3 +1,17 @@
+v2.0.2
+----------
+* Fix: permissions code refactoring and allows viewer user to access app detail
+
+v2.0.1
+----------
+* Remove unused imports and erase blank line with white space 
+* Fixes code that returns which channels are configured
+
+v2.0.0
+----------
+* Adds whatsapp template message
+* Endpoint to transform flow channels into generic channels
+
 v1.5.6
 ----------
 * Fix: Whatsapp Cloud sync does not working

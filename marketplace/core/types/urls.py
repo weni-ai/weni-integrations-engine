@@ -17,6 +17,6 @@ for apptype in types.APPTYPES.values():
     urlpatterns.append(path(f"apptypes/{apptype.code}/", include(router.urls)))
 
 router.register("channel-type", DetailChannelType, basename="channel-type")
-router.register("get-icons", GetIcons, basename="get-icons" )
+router.register("get-icons", GetIcons, basename="get-icons")
 router.register("apptypes", GenericAppTypes, basename="my-apps")
 urlpatterns.append(path("apptypes/generic/", include(router.urls)))
