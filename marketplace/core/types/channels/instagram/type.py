@@ -13,7 +13,7 @@ class InstagramType(AppType):
     summary = "instagram.data.summary"
     category = AppType.CATEGORY_CHANNEL
     developer = "Weni"
-    bg_color = "#039be533"
+    bg_color = "#de16ba14"
     platform = App.PLATFORM_WENI_FLOWS
     config_design = "sidebar"
     channels_available = None

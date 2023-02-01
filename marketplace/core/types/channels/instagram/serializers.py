@@ -33,8 +33,8 @@ class ConfigSerializer(serializers.Serializer):
         if attrs["channelUuid"] is None:
             channel = self._create_channel(attrs, app)
             if channel.status_code != 200:
-                reason = channel.text if channel.text else ''
-                raise serializers.ValidationError(f'{reason} - {channel.status_code}')
+                reason = channel.text if channel.text else ""
+                raise serializers.ValidationError(f"{reason} - {channel.status_code}")
 
             channel = channel.json()
             flows_config = channel.get("config")
@@ -44,22 +44,20 @@ class ConfigSerializer(serializers.Serializer):
             attrs["page_name"] = flows_config.get("page_name")
             attrs["page_id"] = flows_config.get("page_id")
             attrs["address"] = channel.get("address")
-            
+
         return super().validate(attrs)
 
     def _create_channel(self, attrs: dict, app: App) -> str:
         user = self.context.get("request").user
         client = ConnectProjectClient()
 
-        payload={
-            'user_access_token': attrs.get("user_access_token"),
-            'fb_user_id': attrs.get("fb_user_id"),
-            'page_name': attrs.get("page_name"),
-            'page_id': attrs.get("page_id")
+        payload = {
+            "user_access_token": attrs.get("user_access_token"),
+            "fb_user_id": attrs.get("fb_user_id"),
+            "page_name": attrs.get("page_name"),
+            "page_id": attrs.get("page_id"),
         }
-        response = client.create_channel(
-            user.email, app.project_uuid, payload, app.channeltype_code
-        )
+        response = client.create_channel(user.email, app.project_uuid, payload, app.channeltype_code)
 
         return response
 
