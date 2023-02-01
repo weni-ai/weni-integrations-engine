@@ -35,7 +35,7 @@ jobs:
             echo "IMAGE_SOURCE_URL=https://github.com/weni-ai/weni-integrations-engine" | tee -a "${GITHUB_ENV}"
             echo "MANIFESTS_REPOSITORY=Ilhasoft/kubernetes-manifests-platform" | tee -a "${GITHUB_ENV}"
             echo "MANIFESTS_APPLICATION=integrations-engine" | tee -a "${GITHUB_ENV}"
-            echo "MANIFESTS_PATCH_TARGET=deployment.json" | tee -a "${GITHUB_ENV}"
+            echo "MANIFESTS_PATCH_TARGET=deployment-engine.json" | tee -a "${GITHUB_ENV}"
             
       - name: Check out the repo
         uses: actions/checkout@v3
