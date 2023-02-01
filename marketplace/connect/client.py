@@ -26,13 +26,12 @@ class ConnectProjectClient(ConnectAuth):
     base_url = settings.CONNECT_ENGINE_BASE_URL
     use_connect_v2 = settings.USE_CONNECT_V2
 
-    def list_channels(self, channeltype_code: str, project_uuid: str) -> list:
+    def list_channels(self, channeltype_code: str) -> list:
         params = {
-            "channel_type": channeltype_code,
-            "project_uuid": str(project_uuid),
+            "channel_type": channeltype_code
         }
         if self.use_connect_v2:
-            url = self.base_url + "/v2/project/list_channels/"
+            url = self.base_url + "/v2/projects/channel"
         else:
             url = self.base_url + "/v1/organization/project/list_channels/"
 
@@ -53,23 +52,19 @@ class ConnectProjectClient(ConnectAuth):
         }
         if self.use_connect_v2:
             del payload["project_uuid"]
-            params = {"project_uuid": project_uuid}
-            response = requests.post(
-                url=self.base_url + "/v2/project/create_channel/",
-                json=payload,
-                params=params,
-                headers=self.auth_header(),
-                timeout=60
-            )
+            url = self.base_url + f"/v2/projects/{str(project_uuid)}/channel"
         else:
-            response = requests.post(
-                url=self.base_url + "/v1/organization/project/create_channel/",
-                json=payload,
-                headers=self.auth_header(),
-                timeout=60
-            )
+            url = self.base_url + "/v1/organization/project/create_channel/"
+
+        response = requests.post(
+            url=url,
+            json=payload,
+            headers=self.auth_header(),
+            timeout=60
+        )
+
         if response.status_code != 200:
-            return {"message": response.text}
+            return {"message": f'{response.status_code}: {response.text}'}
 
         return response.json()
 
@@ -82,32 +77,25 @@ class ConnectProjectClient(ConnectAuth):
         }
         if self.use_connect_v2:
             del payload["project_uuid"]
-            params = {"project_uuid": str(project_uuid)}
-            response = requests.post(
-                url=self.base_url + "/v2/project/create_wac_channel/",
-                json=payload,
-                params=params,
-                headers=self.auth_header(),
-                timeout=60
-            )
+            url=self.base_url + f"/v2/projects/{project_uuid}/create-wac-channel/",
         else:
-            response = requests.post(
-                url=self.base_url + "/v1/organization/project/create_wac_channel/",
-                json=payload,
-                headers=self.auth_header(),
-                timeout=60
-            )
+            url = self.base_url + "/v1/organization/project/create_wac_channel/"
+
+        response = requests.post(
+            url=url,
+            json=payload,
+            headers=self.auth_header(),
+            timeout=60
+        )
 
         return response.json()
 
     def release_channel(self, channel_uuid: str, project_uuid: str, user_email: str) -> None:
         payload = {"channel_uuid": channel_uuid, "user": user_email}
         if self.use_connect_v2:
-            params = {"project_uuid": str(project_uuid)}
-            requests.get(
-                url=self.base_url + "/v2/project/release_channel/",
+            requests.delete(
+                url=self.base_url + f"/v2/projects/{str(project_uuid)}/channel",
                 json=payload,
-                params=params,
                 headers=self.auth_header(),
                 timeout=60
             )
@@ -136,11 +124,7 @@ class ConnectProjectClient(ConnectAuth):
         return response
 
     def list_availables_channels(self):
-        if self.use_connect_v2:
-            url = self.base_url + "/v2/channel-types"
-        else:
-            url = self.base_url + "/v1/channel-types"
-
+        url = self.base_url + "/v1/channel-types"
         response = requests.get(
             url=url,
             headers=self.auth_header(),
@@ -150,11 +134,7 @@ class ConnectProjectClient(ConnectAuth):
 
     def detail_channel_type(self, channel_code: str):
         params = {"channel_type_code": channel_code}
-        if self.use_connect_v2:
-            url = self.base_url + "/v2/channel-types"
-        else:
-            url = self.base_url + "/v1/channel-types"
-
+        url = self.base_url + "/v1/channel-types"
         response = requests.get(
             url=url,
             params=params,

@@ -26,9 +26,8 @@ class BaseAppTypeViewSet(CreateModelMixin, RetrieveModelMixin, UpdateModelMixin,
 
     def perform_destroy(self, instance):
         super().perform_destroy(instance)
-
+        project_uuid = str(instance.project_uuid)
         channel_uuid = instance.config.get("channelUuid")
-
         if channel_uuid:
             client = ConnectProjectClient()
-            client.release_channel(channel_uuid, self.request.user.email)
+            client.release_channel(channel_uuid, project_uuid, self.request.user.email)
