@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
+from django.core.exceptions import ValidationError
 
 from marketplace.core.validators import validate_app_code_exists
 
@@ -29,11 +30,9 @@ class BaseModel(models.Model):
         null=True,
     )
 
-    def save(self, *args, **kwargs):
+    def clean(self):
         if self.id and not self.modified_by:
-            raise ValueError("modified_by can't be None")
-
-        super().save(*args, **kwargs)
+            raise ValidationError(_("The field 'modified_by' can't be None"))
 
     class Meta:
         abstract = True
