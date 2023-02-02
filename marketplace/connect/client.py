@@ -3,6 +3,8 @@ import requests
 
 from django.conf import settings
 
+from rest_framework.exceptions import ValidationError
+
 
 class ConnectAuth:
     def __get_auth_token(self) -> str:
@@ -31,7 +33,7 @@ class ConnectProjectClient(ConnectAuth):
             "channel_type": channeltype_code
         }
         if self.use_connect_v2:
-            url = self.base_url + "/v2/projects/channel"
+            url = self.base_url + "/v2/projects/channels"
         else:
             url = self.base_url + "/v1/organization/project/list_channels/"
 
@@ -63,8 +65,8 @@ class ConnectProjectClient(ConnectAuth):
             timeout=60
         )
 
-        if response.status_code != 200:
-            return {"message": f'{response.status_code}: {response.text}'}
+        if response.status_code not in [200, 201]:
+            raise ValidationError(f"{response.status_code}: {response.text}")
 
         return response.json()
 
@@ -77,7 +79,7 @@ class ConnectProjectClient(ConnectAuth):
         }
         if self.use_connect_v2:
             del payload["project_uuid"]
-            url=self.base_url + f"/v2/projects/{project_uuid}/create-wac-channel/",
+            url = self.base_url + f"/v2/projects/{project_uuid}/create-wac-channel/",
         else:
             url = self.base_url + "/v1/organization/project/create_wac_channel/"
 
