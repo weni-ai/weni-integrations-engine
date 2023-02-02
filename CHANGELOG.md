@@ -1,3 +1,7 @@
+v2.0.3
+----------
+* Create instagram apptype
+
 v2.0.2
 ----------
 * Fix: permissions code refactoring and allows viewer user to access app detail
