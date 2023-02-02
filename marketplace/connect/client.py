@@ -1,9 +1,7 @@
-import json
+
 import requests
 
 from django.conf import settings
-
-from marketplace.applications.models import AppTypeAsset
 
 
 class ConnectAuth:
@@ -93,7 +91,7 @@ class WPPRouterChannelClient(ConnectAuth):
 
     def get_channel_token(self, uuid: str, name: str) -> str:
         payload = {"uuid": uuid, "name": name}
-        
+
         response = requests.post(url=self.base_url + "/integrations/channel", json=payload, headers=self.auth_header())
-        
+
         return response.json().get("token", "")

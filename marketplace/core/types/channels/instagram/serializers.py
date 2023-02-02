@@ -29,14 +29,8 @@ class ConfigSerializer(serializers.Serializer):
         app = self.parent.instance
 
         attrs["channelUuid"] = app.config.get("channelUuid", None)
-
         if attrs["channelUuid"] is None:
             channel = self._create_channel(attrs, app)
-            if channel.status_code != 200:
-                reason = channel.text if channel.text else ""
-                raise serializers.ValidationError(f"{reason} - {channel.status_code}")
-
-            channel = channel.json()
             flows_config = channel.get("config")
             attrs["channelUuid"] = channel.get("uuid")
             attrs["title"] = channel.get("name")

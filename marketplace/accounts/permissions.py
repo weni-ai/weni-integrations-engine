@@ -5,7 +5,8 @@ from .models import ProjectAuthorization
 
 
 WRITE_METHODS = ["POST"]
-OBJECT_METHODS = ["DELETE", "PATCH", "PUT", "GET"]
+MODIFY_METHODS = ["DELETE", "PATCH", "PUT"]
+READ_METHODS = ["GET"]
 
 
 class ProjectManagePermission(permissions.IsAuthenticated):
@@ -31,12 +32,20 @@ class ProjectManagePermission(permissions.IsAuthenticated):
         return True
 
     def has_object_permission(self, request, view, obj):
-        if request.method in OBJECT_METHODS:
+        if request.method not in WRITE_METHODS:
             try:
                 authorization = request.user.authorizations.get(project_uuid=obj.project_uuid)
+                is_admin = authorization.is_admin
+                is_contributor = authorization.is_contributor
+                is_viewer = authorization.is_viewer
             except ProjectAuthorization.DoesNotExist:
                 return False
-            return authorization.can_contribute(obj) or authorization.is_admin
+
+            if request.method in MODIFY_METHODS:
+                return is_contributor or is_admin
+
+            if request.method in READ_METHODS:
+                return (is_viewer or is_contributor or is_admin)
 
         return True
 
