@@ -90,7 +90,8 @@ class TestModelAppTypeAssetMethods(TestCase):
 
     def test_str_method(self):
         self.assertEqual(
-            str(self.apptype_asset), f"{self.apptype_asset.apptype.name} - Icon"
+            str(self.apptype_asset),
+            f"{self.apptype_asset.apptype.name} - {(self.apptype_asset.apptype.code).upper()} - Icon",
         )
 
 
