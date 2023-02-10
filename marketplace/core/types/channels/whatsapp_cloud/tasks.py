@@ -38,7 +38,7 @@ def sync_whatsapp_cloud_apps():
         address = channel.get("address")
         user = User.objects.get_admin_user()
 
-        config = json.loads(channel.get("config"))
+        config = channel.get("config")
         config["title"] = config.get("wa_number")
         config["wa_phone_number_id"] = address
 

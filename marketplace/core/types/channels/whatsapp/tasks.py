@@ -39,7 +39,7 @@ def sync_whatsapp_apps():
     else:
         with redis.lock(SYNC_WHATSAPP_LOCK_KEY):
             for channel in channels:
-                channel_config = json.loads(channel.get("config"))
+                channel_config = channel.get("config")
 
                 # Skipping WhatsApp demo channels, change to environment variable later
                 if "558231420933" in channel.get("address"):
