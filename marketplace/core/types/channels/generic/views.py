@@ -8,7 +8,7 @@ from rest_framework import viewsets
 from .serializers import GenericChannelSerializer, GenericConfigureSerializer
 
 from marketplace.core.types import views
-from marketplace.connect.client import ConnectProjectClient
+from marketplace.flows.client import FlowsClient
 
 from marketplace.applications.models import AppTypeAsset
 
@@ -32,8 +32,8 @@ class GenericChannelViewSet(views.BaseAppTypeViewSet):
         else:
             raise serializers.ValidationError('Code not be empty.')
 
-        client = ConnectProjectClient()
-        response = client.detail_channel_type(channel_code=channel_code)
+        client = FlowsClient()
+        response = client.list_channel_types(channel_code=channel_code)
 
         if response.status_code == 200:
             response = response.json()
@@ -76,8 +76,8 @@ class DetailChannelType(viewsets.ViewSet):
     lookup_field = "code_channel"
 
     def retrieve(self, request, code_channel=None):
-        client = ConnectProjectClient()
-        response = client.detail_channel_type(channel_code=code_channel)
+        client = FlowsClient()
+        response = client.list_channel_types(channel_code=code_channel)
         if response.status_code == 200:
             return Response(response.json(), status=response.status_code)
 
@@ -94,8 +94,8 @@ class GetIcons(viewsets.ViewSet):
         }
     """
     def list(self, request):
-        client = ConnectProjectClient()
-        response = client.list_availables_channels()
+        client = FlowsClient()
+        response = client.list_channel_types(channel_code=None)
         if response.status_code == 200:
             response = response.json()
             channels_icons = {}

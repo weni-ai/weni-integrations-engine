@@ -5,8 +5,8 @@ from .views import GenericChannelViewSet
 
 
 def get_channel_types():
-    from marketplace.connect.client import ConnectProjectClient
-    response = ConnectProjectClient().list_availables_channels()
+    from marketplace.flows.client import FlowsClient
+    response = FlowsClient().list_channel_types(channel_code=None)
     if response.status_code == 200:
         return response.json().get("channel_types")
 

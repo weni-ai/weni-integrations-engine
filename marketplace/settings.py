@@ -348,3 +348,5 @@ if USE_APM:
         "ENVIRONMENT": env("APM_SERVICE_ENVIRONMENT", default="production"),
         "DEBUG": env.bool("APM_SERVICE_DEBUG", default=False),
     }
+
+FLOWS_REST_ENDPOINT = env.str("FLOWS_REST_ENDPOINT")

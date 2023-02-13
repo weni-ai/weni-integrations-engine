@@ -9,7 +9,7 @@ from ..views import GenericChannelViewSet
 from marketplace.applications.models import App
 from marketplace.accounts.models import ProjectAuthorization
 from marketplace.core.tests.base import FakeRequestsResponse
-from marketplace.connect.client import ConnectProjectClient
+from marketplace.flows.client import FlowsClient
 
 from unittest import TestCase
 from unittest.mock import patch
@@ -162,8 +162,8 @@ class ConnectChannelTypesTestCase(TestCase):
         fake_response.status_code = 400
         mock.side_effect = [fake_response, fake_response, fake_response]
 
-        client = ConnectProjectClient()
-        response = client.list_availables_channels()
+        client = FlowsClient()
+        response = client.list_channel_types(channel_code=None)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     @patch("requests.get")
@@ -177,8 +177,8 @@ class ConnectChannelTypesTestCase(TestCase):
         success_fake_response.status_code = 200
         mock.side_effect = [success_fake_response, success_fake_response, success_fake_response]
 
-        client = ConnectProjectClient()
-        response = client.list_availables_channels()
+        client = FlowsClient()
+        response = client.list_channel_types(channel_code=None)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         for channel in payload:
             self.assertEqual(response.json().get(channel), payload.get(channel))
@@ -192,9 +192,9 @@ class ConnectChannelTypesTestCase(TestCase):
         success_fake_response = FakeRequestsResponse(data=payload)
         success_fake_response.status_code = 200
 
-        client = ConnectProjectClient()
+        client = FlowsClient()
         for channel in self.channels_code:
-            response = client.detail_channel_type(channel_code=channel)
+            response = client.list_channel_types(channel_code=channel)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             self.assertEqual(response.json().get("attributes").get("code"), channel)
 
@@ -204,7 +204,7 @@ class ConnectChannelTypesTestCase(TestCase):
         fake_response.status_code = 400
         mock.side_effect = [fake_response, fake_response, fake_response]
 
-        client = ConnectProjectClient()
+        client = FlowsClient()
         for channel in self.channels_code:
-            response = client.detail_channel_type(channel_code=channel)
+            response = client.list_channel_types(channel_code=channel)
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
