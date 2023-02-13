@@ -349,4 +349,7 @@ if USE_APM:
         "DEBUG": env.bool("APM_SERVICE_DEBUG", default=False),
     }
 
+
 FLOWS_REST_ENDPOINT = env.str("FLOWS_REST_ENDPOINT")
+
+USE_CONNECT_V2 = env.bool("USE_CONNECT_V2", default=True)
