@@ -24,20 +24,53 @@ class ConnectAuth:
 class ConnectProjectClient(ConnectAuth):
 
     base_url = settings.CONNECT_ENGINE_BASE_URL
+    use_connect_v2 = settings.USE_CONNECT_V2
 
-    def list_channels(self, channeltype_code: str) -> list:
+    def list_channels(self, channeltype_code: str, project_uuid: str) -> list:
+        params = {
+            "channel_type": channeltype_code,
+            "project_uuid": str(project_uuid),
+        }
+        if self.use_connect_v2:
+            url = self.base_url + "/v2/project/list_channels/"
+        else:
+            url = self.base_url + "/v1/organization/project/list_channels/"
 
-        params = {"channel_type": channeltype_code}
         response = requests.get(
-            url=self.base_url + "/v1/organization/project/list_channels/", params=params, headers=self.auth_header()
+            url=url,
+            params=params,
+            headers=self.auth_header(),
+            timeout=60
         )
         return response.json().get("channels", None)
 
     def create_channel(self, user: str, project_uuid: str, data: dict, channeltype_code: str) -> dict:
-        payload = {"user": user, "project_uuid": str(project_uuid), "data": data, "channeltype_code": channeltype_code}
-        response = requests.post(
-            url=self.base_url + "/v1/organization/project/create_channel/", json=payload, headers=self.auth_header()
-        )
+        payload = {
+            "user": user,
+            "project_uuid": str(project_uuid),
+            "data": data,
+            "channeltype_code": channeltype_code
+        }
+        if self.use_connect_v2:
+            del payload["project_uuid"]
+            params = {"project_uuid": project_uuid}
+            response = requests.post(
+                url=self.base_url + "/v2/project/create_channel/",
+                json=payload,
+                params=params,
+                headers=self.auth_header(),
+                timeout=60
+            )
+        else:
+            response = requests.post(
+                url=self.base_url + "/v1/organization/project/create_channel/",
+                json=payload,
+                headers=self.auth_header(),
+                timeout=60
+            )
+        if response.status_code != 200:
+            return {"message": response.text}
+
         return response.json()
 
     def create_wac_channel(self, user: str, project_uuid: str, phone_number_id: str, config: dict) -> dict:
@@ -47,30 +80,69 @@ class ConnectProjectClient(ConnectAuth):
             "config": config,
             "phone_number_id": phone_number_id,
         }
-        response = requests.post(
-            url=self.base_url + "/v1/organization/project/create_wac_channel/",
-            json=payload,
-            headers=self.auth_header(),
-        )
+        if self.use_connect_v2:
+            del payload["project_uuid"]
+            params = {"project_uuid": str(project_uuid)}
+            response = requests.post(
+                url=self.base_url + "/v2/project/create_wac_channel/",
+                json=payload,
+                params=params,
+                headers=self.auth_header(),
+                timeout=60
+            )
+        else:
+            response = requests.post(
+                url=self.base_url + "/v1/organization/project/create_wac_channel/",
+                json=payload,
+                headers=self.auth_header(),
+                timeout=60
+            )
+
         return response.json()
 
-    def release_channel(self, channel_uuid: str, user_email: str) -> None:
+    def release_channel(self, channel_uuid: str, project_uuid: str, user_email: str) -> None:
         payload = {"channel_uuid": channel_uuid, "user": user_email}
-        requests.get(
-            url=self.base_url + "/v1/organization/project/release_channel/", json=payload, headers=self.auth_header()
-        )
+        if self.use_connect_v2:
+            params = {"project_uuid": str(project_uuid)}
+            requests.get(
+                url=self.base_url + "/v2/project/release_channel/",
+                json=payload,
+                params=params,
+                headers=self.auth_header(),
+                timeout=60
+            )
+        else:
+            requests.get(
+                url=self.base_url + "/v1/organization/project/release_channel/",
+                json=payload,
+                headers=self.auth_header(),
+                timeout=60
+            )
         return None
 
     def get_user_api_token(self, user: str, project_uuid: str):
         params = dict(user=user, project_uuid=str(project_uuid))
+        if self.use_connect_v2:
+            url = self.base_url + "/v2/project/user_api_token/"
+        else:
+            url = self.base_url + "/v1/organization/project/user_api_token/"
+
         response = requests.get(
-            self.base_url + "/v1/organization/project/user_api_token/", params=params, headers=self.auth_header()
+            url=url,
+            params=params,
+            headers=self.auth_header(),
+            timeout=60
         )
         return response
 
     def list_availables_channels(self):
+        if self.use_connect_v2:
+            url = self.base_url + "/v2/channel-types"
+        else:
+            url = self.base_url + "/v1/channel-types"
+
         response = requests.get(
-            url=self.base_url + "/v1/channel-types",
+            url=url,
             headers=self.auth_header(),
             timeout=60
         )
@@ -78,9 +150,15 @@ class ConnectProjectClient(ConnectAuth):
 
     def detail_channel_type(self, channel_code: str):
         params = {"channel_type_code": channel_code}
+        if self.use_connect_v2:
+            url = self.base_url + "/v2/channel-types"
+        else:
+            url = self.base_url + "/v1/channel-types"
+
         response = requests.get(
-            url=self.base_url + "/v1/channel-types",
-            params=params, headers=self.auth_header(),
+            url=url,
+            params=params,
+            headers=self.auth_header(),
             timeout=60
         )
         return response
@@ -91,7 +169,10 @@ class WPPRouterChannelClient(ConnectAuth):
 
     def get_channel_token(self, uuid: str, name: str) -> str:
         payload = {"uuid": uuid, "name": name}
-
-        response = requests.post(url=self.base_url + "/integrations/channel", json=payload, headers=self.auth_header())
-
+        response = requests.post(
+            url=self.base_url + "/integrations/channel",
+            json=payload,
+            headers=self.auth_header(),
+            timeout=60
+        )
         return response.json().get("token", "")
