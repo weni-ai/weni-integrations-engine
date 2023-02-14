@@ -16,14 +16,18 @@ class TestBaseModel(TestCase):
         super().setUp()
 
         self.fakemodel = self.__class__._base_model
-        self.user = User.objects.create_superuser(email="admin@marketplace.ai", password="fake@pass#$")
+        self.user = User.objects.create_superuser(
+            email="admin@marketplace.ai", password="fake@pass#$"
+        )
 
         self.fakemodel_instance = self.fakemodel.objects.create(created_by=self.user)
 
     @classmethod
     def setUpClass(cls):
         if not hasattr(cls, "_base_model"):
-            cls._base_model = ModelBase("FakeModel", (BaseModel,), {"__module__": BaseModel.__module__})
+            cls._base_model = ModelBase(
+                "FakeModel", (BaseModel,), {"__module__": BaseModel.__module__}
+            )
 
         try:
             with connection.schema_editor() as schema_editor:
