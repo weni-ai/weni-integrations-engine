@@ -44,7 +44,7 @@ class SyncWhatsAppCloudAppsTaskTestCase(TestCase):
             {
                 "uuid": flow_object_uuid,
                 "name": "teste",
-                "config": "{}",
+                "config": {},
                 "address": "f234234",
                 "project_uuid": project_uuid,
                 "is_active": True,

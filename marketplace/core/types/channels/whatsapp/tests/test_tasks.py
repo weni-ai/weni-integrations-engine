@@ -1,4 +1,3 @@
-import json
 from uuid import uuid4
 from typing import TYPE_CHECKING
 from unittest.mock import patch
@@ -43,7 +42,7 @@ class SyncWhatsAppAppsTaskTestCase(TestCase):
             {
                 "uuid": flow_object_uuid,
                 "name": "teste",
-                "config": json.dumps(config),
+                "config": config,
                 "address": "f234234",
                 "project_uuid": project_uuid,
                 "is_active": True,
