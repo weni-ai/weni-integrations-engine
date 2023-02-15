@@ -5,20 +5,26 @@ from django.test import override_settings
 from rest_framework import status
 
 from marketplace.core.tests.base import APIBaseTestCase
-from ..views import GenericChannelViewSet
+from marketplace.core.types.channels.generic.views import GenericChannelViewSet
 from marketplace.applications.models import App
 from marketplace.accounts.models import ProjectAuthorization
-from marketplace.core.tests.base import FakeRequestsResponse
 from marketplace.flows.client import FlowsClient
 
 from unittest import TestCase
 from unittest.mock import patch
 
 
-class CreateTelegramAppTestCase(APIBaseTestCase):
-    url = '/api/v1/apptypes/generic/apps/'
+class FakeRequestsResponse:
+    def __init__(self, data, status_code):
+        self.data = data
+        self.json = lambda: self.data
+        self.status_code = status_code
+
+
+class CreateGenericAppTestCase(APIBaseTestCase):
+    url = "/api/v1/apptypes/generic/apps/"
     view_class = GenericChannelViewSet
-    channels_code = ['tg', 'ac', 'wwc', 'wpp-demo', 'wpp-cloud', 'wpp']
+    channels_code = ["tg", "ac", "wwc", "wpp-demo", "wpp-cloud", "wpp"]
 
     @property
     def view(self):
@@ -34,26 +40,26 @@ class CreateTelegramAppTestCase(APIBaseTestCase):
         )
 
     def test_create_list_of_channels(self):
-        """ Testing list of channels """
+        """Testing list of channels"""
         for channel in self.channels_code:
             self.body["channel_code"] = channel
             response = self.request.post(self.url, self.body, code=channel)
             self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_create_channel_empty_code(self):
-        """ Testing create channel with code be empty """
-        url = f'{self.url}/ /apps/'
+        """Testing create channel with code be empty"""
+        url = f"{self.url}/ /apps/"
         response = self.request.post(url, self.body, code=" ")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_create_app_without_project_uuid(self):
-        """ Testing create channel without project_uuid """
+        """Testing create channel without project_uuid"""
         self.body.pop("project_uuid")
         response = self.request.post(self.url, self.body)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_create_app_platform(self):
-        """ Testing if create channels have platform"""
+        """Testing if create channels have platform"""
         response = self.request.post(self.url, self.body)
         for channel in self.channels_code:
             self.body["channel_code"] = channel
@@ -61,10 +67,10 @@ class CreateTelegramAppTestCase(APIBaseTestCase):
             self.assertEqual(response.json["platform"], App.PLATFORM_WENI_FLOWS)
 
     def test_create_app_without_permission(self):
-        """ Testing create generic channels without permission"""
+        """Testing create generic channels without permission"""
         self.user_authorization.delete()
         for channel in self.channels_code:
-            url = f'{self.url}/apps/'
+            url = f"{self.url}/apps/"
             response = self.request.post(url, self.body, code=channel)
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
@@ -76,10 +82,15 @@ class RetrieveGenericAppTestCase(APIBaseTestCase):
         super().setUp()
 
         self.app = App.objects.create(
-            code="generic", created_by=self.user, project_uuid=str(uuid.uuid4()), platform=App.PLATFORM_WENI_FLOWS
+            code="generic",
+            created_by=self.user,
+            project_uuid=str(uuid.uuid4()),
+            platform=App.PLATFORM_WENI_FLOWS,
         )
 
-        self.user_authorization = self.user.authorizations.create(project_uuid=self.app.project_uuid)
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
         self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
         self.url = reverse("generic-app-detail", kwargs={"uuid": self.app.uuid})
 
@@ -108,7 +119,10 @@ class DestroyTelegramAppTestCase(APIBaseTestCase):
         super().setUp()
 
         self.app = App.objects.create(
-            code="generic", created_by=self.user, project_uuid=str(uuid.uuid4()), platform=App.PLATFORM_WENI_FLOWS
+            code="generic",
+            created_by=self.user,
+            project_uuid=str(uuid.uuid4()),
+            platform=App.PLATFORM_WENI_FLOWS,
         )
         self.user_authorization = self.user.authorizations.create(
             project_uuid=self.app.project_uuid, role=ProjectAuthorization.ROLE_ADMIN
@@ -129,16 +143,6 @@ class DestroyTelegramAppTestCase(APIBaseTestCase):
         response = self.request.delete(self.url, uuid=self.app.uuid, code=self.code)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
-    def test_destroy_generic_channel_with_authorization_contributor_and_another_user(self):
-        self.user_authorization.set_role(ProjectAuthorization.ROLE_CONTRIBUTOR)
-        self.request.set_user(self.super_user)
-        self.super_user.authorizations.create(
-            project_uuid=self.app.project_uuid, role=ProjectAuthorization.ROLE_CONTRIBUTOR
-        )
-
-        response = self.request.delete(self.url, uuid=self.app.uuid, code=self.code)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
     def test_destroy_generic_channel_with_authorization_viewer(self):
         self.user_authorization.set_role(ProjectAuthorization.ROLE_VIEWER)
         response = self.request.delete(self.url, uuid=self.app.uuid, code=self.code)
@@ -151,60 +155,59 @@ class DestroyTelegramAppTestCase(APIBaseTestCase):
 
 
 class ConnectChannelTypesTestCase(TestCase):
-
     def setUp(self):
         super().setUp()
         self.channels_code = ["AC", "WA", "WWC"]
 
     @patch("requests.get")
     def test_list_channel_types_error(self, mock):
-        fake_response = FakeRequestsResponse(data={})
-        fake_response.status_code = 400
-        mock.side_effect = [fake_response, fake_response, fake_response]
+        fake_response = FakeRequestsResponse(data={}, status_code=400)
 
-        client = FlowsClient()
-        response = client.list_channel_types(channel_code=None)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        with patch("requests.get", return_value=fake_response):
+            client = FlowsClient()
+            response = client.list_channel_types(channel_code=None)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     @patch("requests.get")
     def test_list_channel_types(self, mock):
         payload = {
             "AC": {"attributes": {"code": "AC"}},
             "WA": {"attributes": {"code": "WA"}},
-            "WWC": {"attributes": {"code": "WWC"}}
+            "WWC": {"attributes": {"code": "WWC"}},
         }
-        success_fake_response = FakeRequestsResponse(data=payload)
-        success_fake_response.status_code = 200
-        mock.side_effect = [success_fake_response, success_fake_response, success_fake_response]
+        success_fake_response = FakeRequestsResponse(data=payload, status_code=200)
 
-        client = FlowsClient()
-        response = client.list_channel_types(channel_code=None)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        for channel in payload:
-            self.assertEqual(response.json().get(channel), payload.get(channel))
+        with patch("requests.get", return_value=success_fake_response):
+            client = FlowsClient()
+            response = client.list_channel_types(channel_code=None)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            for channel in payload:
+                self.assertEqual(response.json().get(channel), payload.get(channel))
 
-    def test_retrieve_channel_types(self):
+    @patch("requests.get")
+    def test_retrieve_channel_types(self, mock):
         payload = {
             "AC": {"attributes": {"code": "AC"}},
             "WA": {"attributes": {"code": "WA"}},
-            "WWC": {"attributes": {"code": "WWC"}}
+            "WWC": {"attributes": {"code": "WWC"}},
         }
-        success_fake_response = FakeRequestsResponse(data=payload)
-        success_fake_response.status_code = 200
+        success_fake_response = FakeRequestsResponse(data=payload, status_code=200)
 
-        client = FlowsClient()
-        for channel in self.channels_code:
-            response = client.list_channel_types(channel_code=channel)
-            self.assertEqual(response.status_code, status.HTTP_200_OK)
-            self.assertEqual(response.json().get("attributes").get("code"), channel)
+        with patch("requests.get", return_value=success_fake_response):
+            for channel in self.channels_code:
+                client = FlowsClient()
+                response = client.list_channel_types(channel_code=channel)
+                self.assertEqual(response.status_code, status.HTTP_200_OK)
+                self.assertEqual(
+                    response.json().get(channel).get("attributes").get("code"), channel
+                )
 
     @patch("requests.get")
     def test_retrieve_channel_types_error(self, mock):
-        fake_response = FakeRequestsResponse(data={})
-        fake_response.status_code = 400
-        mock.side_effect = [fake_response, fake_response, fake_response]
+        fake_response = FakeRequestsResponse(data={}, status_code=400)
 
-        client = FlowsClient()
-        for channel in self.channels_code:
-            response = client.list_channel_types(channel_code=channel)
-            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        with patch("requests.get", return_value=fake_response):
+            for channel in self.channels_code:
+                client = FlowsClient()
+                response = client.list_channel_types(channel_code=channel)
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

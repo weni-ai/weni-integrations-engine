@@ -83,7 +83,7 @@ class AppTypeAsset(AppTypeBaseModel):
         ]
 
     def __str__(self) -> str:
-        return f"{self.apptype.name} -  {(self.code).upper()} - {dict(self.ASSET_TYPE_CHOICES).get(self.asset_type)}"
+        return f"{self.apptype.name} - {(self.code).upper()} - {dict(self.ASSET_TYPE_CHOICES).get(self.asset_type)}"
 
 
 class AppTypeFeatured(AppTypeBaseModel):
