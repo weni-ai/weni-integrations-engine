@@ -265,6 +265,8 @@ APPTYPE_WHATSAPP_PATH = "channels.whatsapp.type.WhatsAppType"
 APPTYPE_WHATSAPP_CLOUD_PATH = "channels.whatsapp_cloud.type.WhatsAppCloudType"
 APPTYPE_GENERIC_CHANNEL_PATH = "channels.generic.type.GenericType"
 APPTYPE_INSTAGRAM_CHANNEL_PATH = "channels.instagram.type.InstagramType"
+APPTYPE_FACEBOOK_CHANNEL_PATH = "channels.facebook.type.FacebookType"
+
 
 APPTYPES_CLASSES = [
     APPTYPE_WENI_WEB_CHAT_PATH,
@@ -274,6 +276,8 @@ APPTYPES_CLASSES = [
     APPTYPE_WHATSAPP_CLOUD_PATH,
     APPTYPE_GENERIC_CHANNEL_PATH,
     APPTYPE_INSTAGRAM_CHANNEL_PATH,
+    APPTYPE_FACEBOOK_CHANNEL_PATH,
+
 ]
 
 # These conditions avoid dependence between apptypes,
