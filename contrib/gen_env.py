@@ -60,6 +60,8 @@ USE_SENTRY=False
 SENTRY_DSN=""
 
 USE_GRPC=False
+
+FLOWS_REST_ENDPOINT=""
 """.strip()
 
 env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
