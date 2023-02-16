@@ -17,4 +17,3 @@ class WhatsAppCloudType(AppType):
     bg_color = "#d1fcc9cc"  # TODO: Change to real color
     platform = App.PLATFORM_WENI_FLOWS
     config_design = "popup"
-    channels_available = None

@@ -7,7 +7,6 @@ from marketplace.core.types.base import AppType
 class AppTypeSerializer(serializers.Serializer):
     code = serializers.CharField()
     name = serializers.CharField()
-    channels_available = serializers.ListField()
     description = serializers.CharField()
     summary = serializers.CharField()
     category = serializers.ChoiceField(choices=AppType.CATEGORY_CHOICES, source="get_category_display")
