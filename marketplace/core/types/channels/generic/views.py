@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework import serializers
 from rest_framework import viewsets
+from rest_framework.exceptions import APIException
 
 from .serializers import GenericChannelSerializer, GenericConfigureSerializer
 
@@ -110,29 +111,32 @@ class GetIcons(viewsets.ViewSet):
 
 
 class GenericAppTypes(viewsets.ViewSet):
-    serializer_class = None
+    """Returns a dictionary of channel codes from the flows
 
-    def get_serializer(self, *args, **kwargs):
-        from marketplace.applications.serializers import AppTypeSerializer
-        self.serializer_class = AppTypeSerializer
-        kwargs["context"] = {"request": self.request}
-        return self.serializer_class(*args, **kwargs)
+    Returns:
+    {
+    "D3": {
+        "attributes": {...}
+    },
+    "ZVW": {
+        "attributes": {...}
+    }...
+    """
 
     def list(self, request):
-        category = request.query_params.get("category", None)
-        apptypes = types.APPTYPES
+        try:
+            client = FlowsClient()
+            response = client.list_channel_types(channel_code=None)
+            response.raise_for_status()
 
-        if category is not None:
-            apptypes = apptypes.filter(
-                lambda apptype: apptype.get_category_display() == request.query_params.get("category")
-            )
+        except Exception as _error:
+            error_message = str(_error)
+            status_code = getattr(_error, "response", {}).status_code or 500
+            raise APIException(error_message, code=status_code) from _error
 
-        # TODO: remove this filter, it is only while whatsapp is in beta
-        apptypes = apptypes.filter(lambda apptype: apptype.code != "wpp")
+        channel_types = response.json().get("channel_types")
+        return Response(channel_types, status=response.status_code)
 
-        serializer = self.get_serializer(apptypes.values(), many=True)
-
-        return Response(serializer.data)
 
 
 def search_icon(code):
