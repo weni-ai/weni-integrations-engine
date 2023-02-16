@@ -16,4 +16,3 @@ class InstagramType(AppType):
     bg_color = "#de16ba14"
     platform = App.PLATFORM_WENI_FLOWS
     config_design = "sidebar"
-    channels_available = None
