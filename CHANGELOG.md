@@ -1,3 +1,12 @@
+v2.0.4
+----------
+* Feature create client flows
+* Fix remove json.loads on get config in whatsapp tasks
+* Fix add connect v2 routes
+* Fix ci tests
+* Feature new generic-apptype listing
+* Fix remove generic apptype from apptype listing
+
 v2.0.3
 ----------
 * Create instagram apptype
