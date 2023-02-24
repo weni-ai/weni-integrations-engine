@@ -1,3 +1,7 @@
+v2.0.6
+----------
+* Create facebook apptype
+
 v2.0.5
 ----------
 * Removes `,` which was turning the URL into a tuple when concatenated
