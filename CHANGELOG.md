@@ -1,3 +1,7 @@
+v2.0.7
+----------
+* Remove v2 route slash from wac channel
+
 v2.0.6
 ----------
 * Create facebook apptype
