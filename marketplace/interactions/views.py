@@ -1,8 +1,9 @@
 from rest_framework import viewsets
 from rest_framework import mixins
+from rest_framework.permissions import IsAuthenticated
 
 from .models import Comment
-from .serializers import CommentSerializer, RatingSerializer
+from .serializers import CommentSerializer, RatingSerializer, FeedbackSerializer
 from .permissions import CommentManagePermission
 
 
@@ -26,3 +27,9 @@ class RatingViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
 
     def perform_create(self, serializer):
         serializer.save(code=self.kwargs["apptype_pk"])
+
+
+class FeedbackViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
+
+    serializer_class = FeedbackSerializer
+    permission_classes = [IsAuthenticated]
