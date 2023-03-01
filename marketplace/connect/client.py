@@ -79,7 +79,7 @@ class ConnectProjectClient(ConnectAuth):
         }
         if self.use_connect_v2:
             del payload["project_uuid"]
-            url = self.base_url + f"/v2/projects/{project_uuid}/create-wac-channel/"
+            url = self.base_url + f"/v2/projects/{project_uuid}/create-wac-channel"
         else:
             url = self.base_url + "/v1/organization/project/create_wac_channel/"
 
