@@ -1,3 +1,7 @@
+v2.1.0
+----------
+* Add endpoint that allows create feedbacks
+
 v2.0.7
 ----------
 * Remove v2 route slash from wac channel
