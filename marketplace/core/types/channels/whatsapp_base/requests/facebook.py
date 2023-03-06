@@ -3,6 +3,10 @@ from requests.models import Response
 
 from ..exceptions import FacebookApiException
 
+from django.conf import settings
+
+WHATSAPP_VERSION = settings.WHATSAPP_VERSION
+
 
 class Conversations(object):
 
@@ -69,7 +73,7 @@ class FacebookConversationAPI(object):  # TODO: Use BaseFacebookBaseApi
         fields = self._get_fields(start, end)
         params = dict(fields=fields, access_token=access_token)
         response = self._request(
-            f"https://graph.facebook.com/v13.0/{waba_id}", params=params
+            f"https://graph.facebook.com/{WHATSAPP_VERSION}/{waba_id}", params=params
         )  # TODO: Change to environment variables
         conversation_analytics = response.json().get("conversation_analytics")
 
