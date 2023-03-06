@@ -1,5 +1,6 @@
 """Client for connection with flows"""
 import requests
+import json
 
 from django.conf import settings
 
@@ -19,6 +20,21 @@ class FlowsClient:
 
         response = requests.get(
             url=request_url, headers=self.authentication_instance.headers, timeout=60
+        )
+        return response
+
+    def partial_config_update(self, key, data, flow_object_uuid):
+        payload = {"config": {key: data}}
+
+        if data:
+            request_url = (
+                f"{self.base_url}/api/v2/internals/channel/{flow_object_uuid}/"
+            )
+
+        headers = self.authentication_instance.headers_patch_json
+
+        response = requests.patch(
+            url=request_url, headers=headers, data=json.dumps(payload), timeout=60
         )
         return response
 
@@ -44,5 +60,12 @@ class InternalAuthentication:
     def headers(self):
         return {
             "Content-Type": "application/json; charset: utf-8",
+            "Authorization": self.__get_module_token(),
+        }
+
+    @property
+    def headers_patch_json(self):
+        return {
+            "Content-Type": "application/json-patch+json",
             "Authorization": self.__get_module_token(),
         }

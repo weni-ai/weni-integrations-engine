@@ -1,13 +1,15 @@
 import string
+import requests
 from typing import TYPE_CHECKING
 
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from rest_framework import status
 from rest_framework.decorators import action
+from rest_framework.exceptions import APIException
+
 from django.conf import settings
 from django.utils.crypto import get_random_string
-import requests
 
 if TYPE_CHECKING:
     from rest_framework.request import Request
@@ -16,11 +18,15 @@ from marketplace.core.types import views
 from marketplace.applications.models import App
 from marketplace.celery import app as celery_app
 from marketplace.connect.client import ConnectProjectClient
+from marketplace.flows.client import FlowsClient
+
 from ..whatsapp_base import mixins
 from ..whatsapp_base.serializers import WhatsAppSerializer
 from ..whatsapp_base.exceptions import FacebookApiException
+
 from .facades import CloudProfileFacade, CloudProfileContactFacade
 from .requests import PhoneNumbersRequest
+
 from .serializers import WhatsAppCloudConfigureSerializer
 
 
@@ -252,3 +258,47 @@ class WhatsAppCloudViewSet(
             return Response(request.get_phone_numbers(waba_id))
         except FacebookApiException as error:
             raise ValidationError(error)
+
+    @action(detail=True, methods=["PATCH"])
+    def update_webhook(self, request, uuid=None):
+        """
+        This method updates the flows config with the new  [webhook] information,
+        if the update is successful, the webhook is updated in integrations,
+        otherwise an exception will occur.
+        """
+
+        try:
+            app = self.get_object()
+            config = request.data["config"]
+            flows_client = FlowsClient()
+            response = flows_client.partial_config_update(
+                key="webhook",
+                data=config["webhook"],
+                flow_object_uuid=app.flow_object_uuid,
+            )
+            response.raise_for_status()
+
+        except requests.exceptions.HTTPError as exception:
+            # Handles HTTP exceptions
+            raise APIException(
+                detail=f"HTTPError: {str(exception)}",
+                code=400
+            ) from exception
+        except requests.exceptions.RequestException as exception:
+            # Handle general network exceptions
+            raise APIException(
+                detail=f"RequestException: {str(exception)}",
+                code=400
+            ) from exception
+        except KeyError as exception:
+            # Handle missing keys
+            raise APIException(
+                detail=f"Missing key: {str(exception)}",
+                code=400
+            ) from exception
+
+        app.config["webhook"] = config["webhook"]
+        app.save()
+
+        serializer = self.get_serializer(app)
+        return Response(serializer.data)
