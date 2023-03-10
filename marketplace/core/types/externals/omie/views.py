@@ -14,7 +14,6 @@ class OmieViewSet(views.BaseAppTypeViewSet):
         return super().get_queryset().filter(code=self.type_class.code)
 
     def perform_create(self, serializer):
-        print("chamando")
         serializer.save(code=self.type_class.code)
 
     @action(detail=True, methods=["PATCH"])
@@ -24,9 +23,6 @@ class OmieViewSet(views.BaseAppTypeViewSet):
         self.serializer_class = OmieConfigureSerializer
         serializer = self.get_serializer(app, data=request.data)
         serializer.is_valid(raise_exception=True)
-        config = serializer.validated_data.get("config")
-
-        self.type_class.update_app(app, request.user, config)
 
         self.perform_update(serializer)
 

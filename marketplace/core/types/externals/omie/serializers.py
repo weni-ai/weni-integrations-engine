@@ -23,22 +23,19 @@ class ConfigSerializer(serializers.Serializer):
     app_key = serializers.CharField()
     app_secret = serializers.CharField()
 
-    def create(self, validated_data):
-        print("called")
+    def validate(self, attrs: dict):
+        app = self.parent.instance
 
-    # def validate(self, attrs: dict):
-    #     app = self.parent.instance
+        attrs["channelUuid"] = app.config.get("channelUuid", None)
 
-    #     attrs["channelUuid"] = app.config.get("channelUuid", None)
+        if attrs["channelUuid"] is None:
+            response = self._create_channel(attrs, app)
+            channel = response.json()
 
-    #     if attrs["channelUuid"] is None:
-    #         response = self._create_channel(attrs, app)
-    #         channel = response.json()
+            attrs["channelUuid"] = channel.get("uuid")
+            attrs["title"] = channel.get("name")
 
-    #         attrs["channelUuid"] = channel.get("uuid")
-    #         attrs["title"] = channel.get("name")
-
-    #     return super().validate(attrs)
+        return super().validate(attrs)
 
     def _create_channel(self, attrs: dict, app: App) -> str:
         user = self.context.get("request").user
