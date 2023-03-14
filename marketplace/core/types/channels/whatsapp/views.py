@@ -2,15 +2,19 @@ from typing import TYPE_CHECKING
 
 import requests
 from django.conf import settings
+
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from rest_framework import status
+from rest_framework.exceptions import APIException
 
 if TYPE_CHECKING:
     from rest_framework.request import Request
 
 from marketplace.core.types import views
+from marketplace.flows.client import FlowsClient
+
 from .apis import OnPremiseBusinessProfileAPI
 from .facades import OnPremiseProfileFacade
 from ..whatsapp_base.serializers import WhatsAppSerializer
@@ -31,7 +35,9 @@ class WhatsAppViewSet(
         return super().get_queryset().filter(code=self.type_class.code)
 
     def destroy(self, request, *args, **kwargs):
-        return Response("This channel cannot be deleted", status=status.HTTP_403_FORBIDDEN)
+        return Response(
+            "This channel cannot be deleted", status=status.HTTP_403_FORBIDDEN
+        )
 
     @property
     def app_waba_id(self) -> dict:
@@ -39,7 +45,9 @@ class WhatsAppViewSet(
         waba_id = config.get("fb_business_id", None)
 
         if waba_id is None:
-            raise ValidationError("This app does not have WABA (Whatsapp Business Account ID) configured")
+            raise ValidationError(
+                "This app does not have WABA (Whatsapp Business Account ID) configured"
+            )
 
         return waba_id
 
@@ -57,16 +65,23 @@ class WhatsAppViewSet(
 
         return dict(base_url=base_url, auth_token=auth_token)
 
-    @action(detail=False, methods=["GET"], url_name="shared-wabas", url_path="shared-wabas")
+    @action(
+        detail=False, methods=["GET"], url_name="shared-wabas", url_path="shared-wabas"
+    )
     def shared_wabas(self, request: "Request", **kwargs):
         input_token = request.query_params.get("input_token", None)
 
         if input_token is None:
             raise ValidationError("input_token is a required parameter!")
 
-        headers = {"Authorization": f"Bearer {settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN}"}
+        headers = {
+            "Authorization": f"Bearer {settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN}"
+        }
 
-        response = requests.get(f"{settings.WHATSAPP_API_URL}/debug_token?input_token={input_token}", headers=headers)
+        response = requests.get(
+            f"{settings.WHATSAPP_API_URL}/debug_token?input_token={input_token}",
+            headers=headers,
+        )
         response.raise_for_status()
 
         data = response.json().get("data")
@@ -78,7 +93,12 @@ class WhatsAppViewSet(
         granular_scopes = data.get("granular_scopes")
 
         try:
-            scope = next(filter(lambda scope: scope.get("scope") == "whatsapp_business_management", granular_scopes))
+            scope = next(
+                filter(
+                    lambda scope: scope.get("scope") == "whatsapp_business_management",
+                    granular_scopes,
+                )
+            )
         except StopIteration:
             return Response([])
 
@@ -87,7 +107,9 @@ class WhatsAppViewSet(
         wabas = []
 
         for target_id in target_ids:
-            response = requests.get(f"{settings.WHATSAPP_API_URL}/{target_id}/?access_token={input_token}")
+            response = requests.get(
+                f"{settings.WHATSAPP_API_URL}/{target_id}/?access_token={input_token}"
+            )
             response.raise_for_status()
 
             response_json = response.json()
@@ -98,3 +120,40 @@ class WhatsAppViewSet(
             wabas.append(waba)
 
         return Response(wabas)
+
+    @action(detail=True, methods=["PATCH"])
+    def update_webhook(self, request, uuid=None):
+        """
+        This method updates the flows config with the new  [webhook] information,
+        if the update is successful, the webhook is updated in integrations,
+        otherwise an exception will occur.
+        """
+
+        try:
+            flows_client = FlowsClient()
+
+            app = self.get_object()
+            config = request.data["config"]
+
+            detail_channel = flows_client.detail_channel(app.flow_object_uuid)
+
+            flows_config = detail_channel["config"]
+            updated_config = flows_config
+            updated_config["webhook"] = config["webhook"]
+
+            response = flows_client.update_config(
+                data=updated_config, flow_object_uuid=app.flow_object_uuid
+            )
+            response.raise_for_status()
+
+        except KeyError as exception:
+            # Handle missing keys
+            raise APIException(
+                detail=f"Missing key: {str(exception)}", code=400
+            ) from exception
+
+        app.config["webhook"] = config["webhook"]
+        app.save()
+
+        serializer = self.get_serializer(app)
+        return Response(serializer.data)
