@@ -268,6 +268,8 @@ APPTYPE_INSTAGRAM_CHANNEL_PATH = "channels.instagram.type.InstagramType"
 APPTYPE_FACEBOOK_CHANNEL_PATH = "channels.facebook.type.FacebookType"
 
 
+APPTYPE_OMIE_PATH = "externals.omie.type.OmieType"
+
 APPTYPES_CLASSES = [
     APPTYPE_WENI_WEB_CHAT_PATH,
     APPTYPE_TELEGRAM_PATH,
@@ -277,7 +279,7 @@ APPTYPES_CLASSES = [
     APPTYPE_GENERIC_CHANNEL_PATH,
     APPTYPE_INSTAGRAM_CHANNEL_PATH,
     APPTYPE_FACEBOOK_CHANNEL_PATH,
-
+    APPTYPE_OMIE_PATH,
 ]
 
 # These conditions avoid dependence between apptypes,
