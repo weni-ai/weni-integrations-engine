@@ -2,15 +2,19 @@ from typing import TYPE_CHECKING
 
 import requests
 from django.conf import settings
+
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from rest_framework import status
+from rest_framework.exceptions import APIException
 
 if TYPE_CHECKING:
     from rest_framework.request import Request
 
 from marketplace.core.types import views
+from marketplace.flows.client import FlowsClient
+
 from .apis import OnPremiseBusinessProfileAPI
 from .facades import OnPremiseProfileFacade
 from ..whatsapp_base.serializers import WhatsAppSerializer
@@ -98,3 +102,47 @@ class WhatsAppViewSet(
             wabas.append(waba)
 
         return Response(wabas)
+
+    @action(detail=True, methods=["PATCH"])
+    def update_webhook(self, request, uuid=None):
+        """
+        This method updates the flows config with the new  [webhook] information,
+        if the update is successful, the webhook is updated in integrations,
+        otherwise an exception will occur.
+        """
+
+        try:
+            app = self.get_object()
+            config = request.data["config"]
+            flows_client = FlowsClient()
+            response = flows_client.partial_config_update(
+                key="webhook",
+                data=config["webhook"],
+                flow_object_uuid=app.flow_object_uuid,
+            )
+            response.raise_for_status()
+
+        except requests.exceptions.HTTPError as exception:
+            # Handles HTTP exceptions
+            raise APIException(
+                detail=f"HTTPError: {str(exception)}",
+                code=400
+            ) from exception
+        except requests.exceptions.RequestException as exception:
+            # Handle general network exceptions
+            raise APIException(
+                detail=f"RequestException: {str(exception)}",
+                code=400
+            ) from exception
+        except KeyError as exception:
+            # Handle missing keys
+            raise APIException(
+                detail=f"Missing key: {str(exception)}",
+                code=400
+            ) from exception
+
+        app.config["webhook"] = config["webhook"]
+        app.save()
+
+        serializer = self.get_serializer(app)
+        return Response(serializer.data)
