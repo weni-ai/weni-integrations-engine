@@ -6,12 +6,22 @@ from rest_framework import status
 
 from marketplace.core.tests.base import APIBaseTestCase
 from marketplace.core.types.channels.generic.views import GenericChannelViewSet
+from marketplace.core.types.channels.generic.views import DetailChannelType
+from marketplace.core.types.channels.generic.views import GetIcons
+from marketplace.core.types.channels.generic.views import GenericAppTypes
+
 from marketplace.applications.models import App
 from marketplace.accounts.models import ProjectAuthorization
 from marketplace.flows.client import FlowsClient
 
 from unittest import TestCase
 from unittest.mock import patch
+from unittest.mock import Mock
+
+from rest_framework.response import Response
+
+
+MOCK_DATA = {"channelUuid": str(uuid.uuid4())}
 
 
 class FakeRequestsResponse:
@@ -109,6 +119,128 @@ class RetrieveGenericAppTestCase(APIBaseTestCase):
         self.assertIn("platform", response.json)
         self.assertIn("created_on", response.json)
         self.assertEqual(response.json["config"], {})
+
+
+class ConfigureGenericAppTestCase(APIBaseTestCase):
+    view_class = GenericChannelViewSet
+
+    def setUp(self):
+        super().setUp()
+
+        data = {
+            "channel_code": "TWT",
+            "channel_name": "Twitter",
+            "channel_icon_url": "twitter/url/icon",
+            "channel_claim_blurb": "twitter/url/claim"
+        }
+
+        self.app = App.objects.create(
+            code="generic",
+            created_by=self.user,
+            project_uuid=str(uuid.uuid4()),
+            config=data,
+            platform=App.PLATFORM_WENI_FLOWS,
+            flow_object_uuid=str(uuid.uuid4()),
+        )
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+        self.url = reverse(
+            "generic-app-configure", kwargs={"uuid": self.app.uuid}
+            )
+
+    @property
+    def view(self):
+        return self.view_class.as_view({"patch": "configure"})
+
+    @patch("marketplace.core.types.channels.generic.serializers.GenericConfigSerializer._create_channel")
+    def test_configure_channel_success(self, mock_configure):
+        mock_configure.return_value = Response(MOCK_DATA, status=status.HTTP_200_OK)
+        keys_values = {
+            "api_key": str(uuid.uuid4()),
+            "api_secret": str(uuid.uuid4()),
+            "access_token": str(uuid.uuid4()),
+            "access_token_secret": str(uuid.uuid4()),
+            "env_name": "Teste",
+        }
+        payload = {
+            "user": str(self.user),
+            "project_uuid":  str(uuid.uuid4()),
+            "config": {
+                "auth_token":  keys_values
+            },
+            "channeltype_code": "TWT"
+        }
+
+        response = self.request.patch(self.url, payload, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    @patch("marketplace.core.types.channels.generic.serializers.GenericConfigSerializer._create_channel")
+    def test_configure_channel_without_config(self, mock_configure):
+        """ Request without config field """
+        response_data = {'config': ['This field is required.']}
+
+        mock_configure.return_value = Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+        payload = {
+            "user": str(self.user),
+            "project_uuid":  str(uuid.uuid4()),
+            "channeltype_code": "TWT"
+        }
+
+        response = self.request.patch(self.url, payload, uuid=self.app.uuid)
+
+        self.assertEqual(response_data, response.json)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class DetailChannelAppTestCase(APIBaseTestCase):
+    view_class = DetailChannelType
+
+    def setUp(self):
+        super().setUp()
+        self.url = reverse(
+            "channel-type-detail", kwargs={"code_channel": "tg"}
+            )
+
+    @property
+    def view(self):
+        return self.view_class.as_view({"get": "retrieve"})
+
+    @patch("marketplace.flows.client.FlowsClient.list_channel_types")
+    def test_retrieve_success(self, mock_list_channels_type):
+        response_data = {
+            "channel_types": {
+                "TG": {
+                    "attributes": {
+                        "code": "TG",
+                        "category": {
+                            "name": "SOCIAL_MEDIA",
+                            "value": 2
+                        }
+                    }
+                }
+            }
+        }
+        mock_response = Mock()
+        mock_response.json.return_value = response_data
+        mock_response.status_code = 200
+        mock_list_channels_type.return_value = mock_response
+
+        response = self.request.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json, response_data)
+
+    @patch("marketplace.flows.client.FlowsClient.list_channel_types")
+    def test_retrieve_fail(self, mock_list_channels_type):
+        response_data = None
+        mock_response = Mock()
+        mock_response.json.return_value = response_data
+        mock_response.status_code = 404
+        mock_list_channels_type.return_value = mock_response
+
+        response = self.request.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
 
 @override_settings(USE_GRPC=False)
@@ -211,3 +343,100 @@ class ConnectChannelTypesTestCase(TestCase):
                 client = FlowsClient()
                 response = client.list_channel_types(channel_code=channel)
                 self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class GetIconsTestCase(APIBaseTestCase):
+    view_class = GetIcons
+
+    def setUp(self):
+        super().setUp()
+        self.url = reverse("get-icons-list")
+
+    @property
+    def view(self):
+        return self.view_class.as_view({"get": "list"})
+
+    @patch("marketplace.flows.client.FlowsClient.list_channel_types")
+    @patch("marketplace.core.types.channels.generic.views.search_icon")
+    def test_get_icons_success(self, mock_search_icon, mock_list_channels_type):
+        response_data = {
+            "channel_types": {
+                "D3": "http://example.com/icon.png",
+                "ZVW": "http://example.com/icon.png",
+                "TMS": "http://example.com/icon.png",
+                "AT": "http://example.com/icon.png"
+            }
+        }
+
+        mock_response = Mock()
+        mock_response.json.return_value = response_data
+        mock_response.status_code = 200
+        mock_list_channels_type.return_value = mock_response
+
+        mock_search_icon.return_value = "http://example.com/icon.png"
+        response = self.request.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json, response_data["channel_types"])
+
+    @patch("marketplace.flows.client.FlowsClient.list_channel_types")
+    @patch("marketplace.core.types.channels.generic.views.search_icon")
+    def test_get_icons_fail(self, mock_search_icon, mock_list_channels_type):
+        mock_response = Mock()
+        mock_response.json.return_value = None
+        mock_response.status_code = status.HTTP_400_BAD_REQUEST
+        mock_list_channels_type.return_value = mock_response
+
+        mock_search_icon.return_value = None
+        response = self.request.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class GenericAppTypesTestCase(APIBaseTestCase):
+    view_class = GenericAppTypes
+
+    def setUp(self):
+        super().setUp()
+        self.url = reverse("my-apps-list")
+
+    @property
+    def view(self):
+        return self.view_class.as_view({"get": "list"})
+
+    @patch("marketplace.flows.client.FlowsClient.list_channel_types")
+    def test_get_genericapptypes_success(self, mock_list_channels_type):
+        response_data = {
+            "channel_types": {
+                "D3": {
+                    "attributes": {"key": "value"}
+                },
+                "TM": {
+                    "attributes": {"key": "value"}
+                },
+                "TWT": {
+                    "attributes": {"key": "value"}
+                }
+            }
+        }
+
+        mock_response = Mock()
+        mock_response.json.return_value = response_data
+        mock_response.status_code = 200
+        mock_list_channels_type.return_value = mock_response
+
+        response = self.request.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json, response_data["channel_types"])
+
+    # TODO: Create test to GenericAppTypes
+    # @patch("marketplace.flows.client.FlowsClient.list_channel_types")
+    # def test_get_genericapptypes_fail(self, mock_list_channels_type):
+    #     mock_response = MagicMock()
+    #     mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(
+    #         "HTTPError", response=requests.Response(status_code=500)
+    #     )
+    #     # mock_response.response.status_code = 500
+    #     mock_list_channels_type.return_value = mock_response
+    #     response = self.request.get(self.url)
+    #     self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # TODO: Create test to search_icon()
