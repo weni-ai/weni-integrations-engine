@@ -337,6 +337,7 @@ CELERY_BEAT_SCHEDULE = {
         "task": "refresh_whatsapp_templates_from_facebook",
         "schedule": timedelta(seconds=1800),
     },
+    "check-apps-uncreated-on-flow": {"task": "check_apps_uncreated_on_flow", "schedule": timedelta(hours=2)}
 }
 
 
