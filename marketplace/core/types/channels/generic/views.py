@@ -1,5 +1,7 @@
 """  this view manages all available channels configuring them in a generic way """
 
+import requests
+
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework import serializers
@@ -14,6 +16,10 @@ from marketplace.flows.client import FlowsClient
 from marketplace.applications.models import AppTypeAsset
 
 from . import type as type_
+
+from django.conf import settings
+
+IMPORTANCE_CHANNELS_ORDER = settings.IMPORTANCE_CHANNELS_ORDER
 
 
 class GenericChannelViewSet(views.BaseAppTypeViewSet):
@@ -138,12 +144,19 @@ class GenericAppTypes(viewsets.ViewSet):
             response = client.list_channel_types(channel_code=None)
             response.raise_for_status()
 
-        except Exception as _error:
-            error_message = str(_error)
-            status_code = getattr(_error, "response", {}).status_code or 500
-            raise APIException(error_message, code=status_code) from _error
+        except requests.exceptions.HTTPError as exception:
+            # Handles HTTP exceptions
+            raise APIException(
+                detail=f"HTTPError: {str(exception)}",
+                code=response.status_code
+            ) from exception
+        except requests.exceptions.RequestException as exception:
+            # Handle general network exceptions
+            raise APIException(
+                detail=f"RequestException: {str(exception)}"
+            ) from exception
 
-        channel_types = response.json().get("channel_types")
+        channel_types = sort_channel_types(response.json().get("channel_types"))
         return Response(channel_types, status=response.status_code)
 
 
@@ -169,3 +182,23 @@ def search_icon(code):
             icon_url = None
 
     return icon_url
+
+
+def sort_channel_types(channel_types):
+    """Receives a dictionary of channels and returns
+    them ordered by importance and alphabetical order of the channel code"""
+
+    importance_order = IMPORTANCE_CHANNELS_ORDER
+    keys_sorted = sorted(set(importance_order + list(channel_types.keys())))
+    items = [(key, channel_types[key]) for key in keys_sorted]
+
+    # Sort the list of tuples in order of importance and by name within the attributes
+    items_sorted = sorted(
+        items,
+        key=lambda x: (
+            importance_order.index(x[0]) if x[0] in importance_order else float("inf"),
+            x[0],
+        ),
+    )
+    channel_types_sorted = {key: value for key, value in items_sorted}
+    return channel_types_sorted
