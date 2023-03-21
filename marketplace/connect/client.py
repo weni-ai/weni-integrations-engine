@@ -3,7 +3,7 @@ import requests
 
 from django.conf import settings
 
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import APIException
 
 
 class ConnectAuth:
@@ -63,15 +63,27 @@ class ConnectProjectClient(ConnectAuth):
         else:
             url = self.base_url + "/v1/organization/project/create_channel/"
 
-        response = requests.post(
-            url=url,
-            json=payload,
-            headers=self.auth_header(),
-            timeout=60
-        )
-
-        if response.status_code not in [200, 201]:
-            raise ValidationError(f"{response.status_code}: {response.text}")
+        try:
+            response = requests.post(
+                url=url,
+                json=payload,
+                headers=self.auth_header(),
+                timeout=60
+            )
+            response.raise_for_status()
+    
+        except requests.exceptions.HTTPError as exception:
+            # Handles HTTP exceptions
+            raise APIException(
+                detail=f"HTTPError: {str(exception)}",
+                code=response.status_code
+            ) from exception
+        except requests.exceptions.RequestException as exception:
+            # Handle general network exceptions
+            raise APIException(
+                detail=f"RequestException: {str(exception)}",
+                code=response.status_code
+            ) from exception
 
         return response.json()
 
