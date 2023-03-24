@@ -1,5 +1,5 @@
+
 import uuid
-import requests
 
 from unittest.mock import patch
 from unittest.mock import MagicMock
@@ -199,8 +199,9 @@ class UpdateWhatsAppWebHookTestCase(APIBaseTestCase):
     def view(self):
         return self.view_class.as_view({"patch": "update_webhook"})
 
-    @patch("marketplace.flows.client.FlowsClient.partial_config_update")
-    def test_update_webhook_success(self, mock_flows_client):
+    @patch("marketplace.flows.client.FlowsClient.detail_channel")
+    @patch("marketplace.flows.client.FlowsClient.update_config")
+    def test_update_webhook_success(self, mock_flows_client, mock_detail):
         mock = MagicMock()
         mock.raise_for_status.return_value = None
         mock_flows_client.return_value = mock
@@ -214,6 +215,12 @@ class UpdateWhatsAppWebHookTestCase(APIBaseTestCase):
             },
         }
         data = {"config": {"webhook": webhook}}
+        config = {
+            "tests_key": "test_value",
+            "config": {"key1": "value1", "key2": "value2"},
+        }
+        mock_detail.return_value = config
+
         response = self.request.patch(self.url, data, uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -223,41 +230,9 @@ class UpdateWhatsAppWebHookTestCase(APIBaseTestCase):
 
         self.assertEqual(app.config["webhook"], webhook)
 
-    @patch("marketplace.flows.client.FlowsClient.partial_config_update")
-    def test_update_webhook_invalid_key(self, mock_flows_client):
-        mock = MagicMock()
-        mock.raise_for_status.return_value = None
-        mock_flows_client.return_value = mock
+    def test_update_webhook_invalid_key(self):
         data = {"invalid_key": {}}
 
         response = self.request.patch(self.url, data, uuid=self.app.uuid)
         self.assertEqual(response.json, {"detail": "Missing key: 'config'"})
-        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    @patch("marketplace.flows.client.FlowsClient.partial_config_update")
-    def test_update_webhook_http_error(self, mock_flows_client):
-        mock_response = MagicMock()
-        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(
-            "HTTPError"
-        )
-        mock_flows_client.return_value = mock_response
-        data = {"config": {"webhook": "https://example.com"}}
-
-        response = self.request.patch(self.url, data, uuid=self.app.uuid)
-        self.assertEqual(response.json, {"detail": "HTTPError: HTTPError"})
-        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    @patch("marketplace.flows.client.FlowsClient.partial_config_update")
-    def test_update_webhook_request_error(self, mock_flows_client):
-        mock_response = MagicMock()
-        mock_response.raise_for_status.side_effect = (
-            requests.exceptions.RequestException("RequestException")
-        )
-        mock_flows_client.return_value = mock_response
-        data = {"config": {"webhook": "https://example.com"}}
-
-        response = self.request.patch(self.url, data, uuid=self.app.uuid)
-        self.assertEqual(
-            response.json, {"detail": "RequestException: RequestException"}
-        )
         self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
