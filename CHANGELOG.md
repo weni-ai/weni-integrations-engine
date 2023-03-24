@@ -1,3 +1,12 @@
+v2.2.0
+----------
+* Create webhook route to wpp-cloud
+* Create webhook route to update whatsapp.config
+
+v2.1.1
+----------
+* Sort the list of generic channels
+
 v2.1.0
 ----------
 * Add endpoint that allows create feedbacks
