@@ -1,3 +1,7 @@
+v2.2.1
+----------
+* Change template ordering
+
 v2.2.0
 ----------
 * Create webhook route to wpp-cloud
