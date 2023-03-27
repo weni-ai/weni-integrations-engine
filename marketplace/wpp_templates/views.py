@@ -37,7 +37,7 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         app = App.objects.get(uuid=self.kwargs["app_uuid"])
-        queryset = TemplateMessage.objects.filter(app=app).order_by("created_by")
+        queryset = TemplateMessage.objects.filter(app=app).order_by("-created_on")
 
         return queryset
 
