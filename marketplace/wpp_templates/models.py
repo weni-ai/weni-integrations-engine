@@ -83,7 +83,7 @@ class TemplateButton(models.Model):
     translation = models.ForeignKey(TemplateTranslation, on_delete=models.CASCADE, related_name="buttons")
 
     button_type = models.CharField(max_length=20, choices=BUTTON_TYPE_CHOICES)
-    text = models.CharField(max_length=25, null=True)
+    text = models.CharField(max_length=30, null=True)
     country_code = models.IntegerField(null=True)
     phone_number = models.CharField(max_length=20, null=True)
     url = models.CharField(max_length=2000, null=True)
