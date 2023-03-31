@@ -72,7 +72,9 @@ def sync_whatsapp_apps():
                         created_by=User.objects.get_admin_user(),
                     )
 
-                    logger.info(f"A new whatsapp app was created automatically. UUID: {app.uuid}")
+                    logger.info(
+                        f"A new whatsapp app was created automatically. UUID: {app.uuid}"
+                    )
 
 
 @celery_app.task(name="sync_whatsapp_wabas")
@@ -89,11 +91,15 @@ def sync_whatsapp_wabas():
             business_id = config.get("fb_business_id", None)
 
             if access_token is None:
-                logger.info(f"Skipping the app because it doesn't contain `fb_access_token`. UUID: {app.uuid}")
+                logger.info(
+                    f"Skipping the app because it doesn't contain `fb_access_token`. UUID: {app.uuid}"
+                )
                 continue
 
             if business_id is None:
-                logger.info(f"Skipping the app because it doesn't contain `fb_business_id`. UUID: {app.uuid}")
+                logger.info(
+                    f"Skipping the app because it doesn't contain `fb_business_id`. UUID: {app.uuid}"
+                )
                 continue
 
             logger.info(f"Syncing app WABA. UUID: {app.uuid}")
@@ -106,9 +112,13 @@ def sync_whatsapp_wabas():
                 app.modified_by = User.objects.get_admin_user()
                 app.save()
 
-                redis.set(key, "synced", settings.WHATSAPP_TIME_BETWEEN_SYNC_WABA_IN_HOURS)
+                redis.set(
+                    key, "synced", settings.WHATSAPP_TIME_BETWEEN_SYNC_WABA_IN_HOURS
+                )
             except FacebookApiException as error:
-                logger.error(f"An error occurred while trying to sync the app. UUID: {app.uuid}. Error: {error}")
+                logger.error(
+                    f"An error occurred while trying to sync the app. UUID: {app.uuid}. Error: {error}"
+                )
                 continue
 
         else:
@@ -130,7 +140,9 @@ def sync_whatsapp_cloud_wabas():
             wa_waba_id = config.get("wa_waba_id", None)
 
             if wa_waba_id is None:
-                logger.info(f"Skipping the app because it doesn't contain `wa_waba_id`. UUID: {app.uuid}")
+                logger.info(
+                    f"Skipping the app because it doesn't contain `wa_waba_id`. UUID: {app.uuid}"
+                )
                 continue
 
             logger.info(f"Syncing app WABA. UUID: {app.uuid}")
@@ -143,9 +155,13 @@ def sync_whatsapp_cloud_wabas():
                 app.modified_by = User.objects.get_admin_user()
                 app.save()
 
-                redis.set(key, "synced", settings.WHATSAPP_TIME_BETWEEN_SYNC_WABA_IN_HOURS)
+                redis.set(
+                    key, "synced", settings.WHATSAPP_TIME_BETWEEN_SYNC_WABA_IN_HOURS
+                )
             except FacebookApiException as error:
-                logger.error(f"An error occurred while trying to sync the app. UUID: {app.uuid}. Error: {error}")
+                logger.error(
+                    f"An error occurred while trying to sync the app. UUID: {app.uuid}. Error: {error}"
+                )
                 continue
 
         else:
@@ -189,11 +205,15 @@ def sync_whatsapp_phone_numbers():
             business_id = config.get("fb_business_id", None)
 
             if access_token is None:
-                logger.info(f"Skipping the app because it doesn't contain `fb_access_token`. UUID: {app.uuid}")
+                logger.info(
+                    f"Skipping the app because it doesn't contain `fb_access_token`. UUID: {app.uuid}"
+                )
                 continue
 
             if business_id is None:
-                logger.info(f"Skipping the app because it doesn't contain `fb_business_id`. UUID: {app.uuid}")
+                logger.info(
+                    f"Skipping the app because it doesn't contain `fb_business_id`. UUID: {app.uuid}"
+                )
                 continue
 
             logger.info(f"Syncing app phone number. UUID: {app.uuid}")
@@ -211,7 +231,9 @@ def sync_whatsapp_phone_numbers():
                     try:
                         app_phone_number = phonenumbers.parse(config.get("title", None))
                     except NumberParseException:
-                        logger.info(f"Skipping the app because it doesn't contain `title`. UUID: {app.uuid}")
+                        logger.info(
+                            f"Skipping the app because it doesn't contain `title`. UUID: {app.uuid}"
+                        )
                         continue
 
                     phone_numbers = api.get_phone_numbers(business_id)
@@ -222,7 +244,11 @@ def sync_whatsapp_phone_numbers():
                         if phonenumbers.parse(display_phone_number) == app_phone_number:
                             config_app_phone_number(app, phone_number)
 
-                redis.set(key, "synced", settings.WHATSAPP_TIME_BETWEEN_SYNC_PHONE_NUMBERS_IN_HOURS)
+                redis.set(
+                    key,
+                    "synced",
+                    settings.WHATSAPP_TIME_BETWEEN_SYNC_PHONE_NUMBERS_IN_HOURS,
+                )
             except FacebookApiException as error:
                 logger.error(
                     f"An error occurred while trying to sync the app phone number. UUID: {app.uuid}. Error: {error}"
