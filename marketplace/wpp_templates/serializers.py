@@ -15,6 +15,8 @@ from .requests import TemplateMessageRequest
 from marketplace.core.types.channels.whatsapp_cloud.requests import PhotoAPIRequest
 from marketplace.core.types.channels.whatsapp_base.exceptions import FacebookApiException
 
+WHATSAPP_VERSION = settings.WHATSAPP_VERSION
+
 User = get_user_model()
 
 
@@ -85,7 +87,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
                     settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN, len(base64.b64decode(photo)), file_type=file_type
                 )
 
-                url = f"https://graph.facebook.com/v14.0/{upload_session_id}"
+                url = f"https://graph.facebook.com/{WHATSAPP_VERSION}/{upload_session_id}"
                 headers = {"Content-Type": file_type,
                            "Authorization": f"OAuth {settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN}"}
                 headers["file_offset"] = "0"
