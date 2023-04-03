@@ -1,3 +1,10 @@
+v2.3.0
+----------
+* Change code points to use whatsapp version in environment variable
+* Increases the size of the text field to 30
+* Fix Task sync wpp cloud phone number
+* Create task to create wpp-cloud channel at flow
+
 v2.2.1
 ----------
 * Change template ordering
