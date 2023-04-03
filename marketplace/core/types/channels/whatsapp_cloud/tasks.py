@@ -70,7 +70,7 @@ def sync_whatsapp_cloud_apps():
 
 @celery_app.task(name="check_apps_uncreated_on_flow")
 def check_apps_uncreated_on_flow():
-    """ Search all wpp-cloud channels that have the flow_object_uuid field empty, 
+    """ Search all wpp-cloud channels that have the flow_object_uuid field empty,
         to create the object in flows """
     apps = App.objects.filter(code="wpp-cloud", flow_object_uuid__isnull=True)
 
