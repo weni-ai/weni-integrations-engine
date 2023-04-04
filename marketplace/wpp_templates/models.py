@@ -25,6 +25,8 @@ class TemplateMessage(models.Model):
         ("TRANSACTIONAL", "WhatsApp.data.templates.category.transactional"),
         ("MARKETING", "WhatsApp.data.templates.category.marketing"),
         ("OTP", "WhatsApp.data.templates.category.otp"),
+        ("UTILITY", "WhatsApp.data.templates.category.utility"),
+        ("AUTHENTICATION", "WhatsApp.data.templates.category.authentication"),
     )
 
     TEMPLATE_TYPES_CHOICES = (
