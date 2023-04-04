@@ -1,7 +1,13 @@
+
 import uuid
+import re
+import textwrap
+
+from django.core.exceptions import ValidationError
 
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 from django.db import models
 
 from marketplace.applications.models import App
@@ -42,6 +48,22 @@ class TemplateMessage(models.Model):
 
     def verify_namespace():
         pass
+
+    def clean_fields(self, exclude=None):
+        super().clean_fields(exclude=exclude)
+        if not self.name:
+            return
+
+        if bool(re.match(r"\w*[A-Z]\w*", self.name)) or " " in self.name:
+            message = _(
+                """
+                    Invalid name format.
+                    The name must not contain spaces and must start with a lowercase letter
+                    followed by one or more uppercase or lowercase letters,
+                    digits, or underscores.
+                """)
+            error_message = textwrap.dedent(str(message))
+            raise ValidationError({"name": error_message})
 
 
 class TemplateTranslation(models.Model):

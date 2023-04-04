@@ -3,6 +3,8 @@ import re
 import base64
 from datetime import datetime
 
+from django.core.exceptions import ValidationError
+
 from django.contrib.auth import get_user_model
 from django.conf import settings
 from rest_framework import serializers
@@ -181,12 +183,6 @@ class TemplateMessageSerializer(serializers.Serializer):
     text_preview = serializers.CharField(required=False, read_only=True)
     translations = TemplateTranslationSerializer(many=True, read_only=True)
 
-    def validate_name(self, name):
-
-        if bool(re.match(r"\w*[A-Z]\w*", name)) or " " in name:
-            raise serializers.ValidationError("WhatsApp.templates.error.invalid_name_format")
-        return name
-
     def to_representation(self, instance):
         data = super().to_representation(instance)
 
@@ -197,7 +193,7 @@ class TemplateMessageSerializer(serializers.Serializer):
     def create(self, validated_data: dict) -> TemplateMessage:
         app = App.objects.get(uuid=validated_data.get("app_uuid"))
 
-        return TemplateMessage.objects.create(
+        template_message = TemplateMessage(
             name=validated_data.get("name"),
             app=app,
             category=validated_data.get("category"),
@@ -205,3 +201,10 @@ class TemplateMessageSerializer(serializers.Serializer):
             template_type="TEXT",
             created_by_id=User.objects.get_admin_user().id,
         )
+        try:
+            template_message.full_clean()
+        except ValidationError as e:
+            raise serializers.ValidationError(e.message_dict)
+
+        template_message.save()
+        return template_message
