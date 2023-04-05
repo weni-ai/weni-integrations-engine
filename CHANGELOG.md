@@ -1,3 +1,9 @@
+v2.3.1
+----------
+* Adds UTILITY and AUTHENTICATION categories in message template
+* Removes from the serializer the responsibility of validating
+* Correction in the task that checks wpp-cloud channels uncreated on flows
+
 v2.3.0
 ----------
 * Change code points to use whatsapp version in environment variable
