@@ -1,3 +1,12 @@
+v2.3.2
+----------
+* Add tests for generic view
+* Remove unused classes in wpp_template app
+* Replace real api request with mock client
+* Remove request test wpp template
+* Add new files in coverage omit list
+* Add migrations check in code_check
+
 v2.3.1
 ----------
 * Adds UTILITY and AUTHENTICATION categories in message template
