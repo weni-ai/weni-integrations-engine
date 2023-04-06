@@ -1,12 +1,8 @@
 """  this view manages all available channels configuring them in a generic way """
-
-import requests
-
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework import serializers
 from rest_framework import viewsets
-from rest_framework.exceptions import APIException
 
 from .serializers import GenericChannelSerializer, GenericConfigureSerializer
 
@@ -139,23 +135,8 @@ class GenericAppTypes(viewsets.ViewSet):
     """
 
     def list(self, request):
-        try:
-            client = FlowsClient()
-            response = client.list_channel_types(channel_code=None)
-            response.raise_for_status()
-
-        except requests.exceptions.HTTPError as exception:
-            # Handles HTTP exceptions
-            raise APIException(
-                detail=f"HTTPError: {str(exception)}",
-                code=response.status_code
-            ) from exception
-        except requests.exceptions.RequestException as exception:
-            # Handle general network exceptions
-            raise APIException(
-                detail=f"RequestException: {str(exception)}"
-            ) from exception
-
+        client = FlowsClient()
+        response = client.list_channel_types(channel_code=None)
         channel_types = sort_channel_types(response.json().get("channel_types"))
         return Response(channel_types, status=response.status_code)
 

@@ -12,16 +12,15 @@ class FlowsClient:
         self.authentication_instance = InternalAuthentication()
 
     def list_channel_types(self, channel_code):
-        # TODO: Change request structure to use make_request method
         if channel_code:
-            request_url = (
+            url = (
                 f"{self.base_url}/api/v2/internals/channels/{str(channel_code)}"
             )
         else:
-            request_url = f"{self.base_url}/api/v2/internals/channels"
+            url = f"{self.base_url}/api/v2/internals/channels"
 
-        response = requests.get(
-            url=request_url, headers=self.authentication_instance.headers, timeout=60
+        response = self.make_request(
+            url, method="GET", headers=self.authentication_instance.headers
         )
         return response
 
