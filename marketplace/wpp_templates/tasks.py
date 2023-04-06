@@ -10,7 +10,7 @@ from marketplace.applications.models import App
 from marketplace.wpp_templates.models import TemplateTranslation, TemplateHeader, TemplateButton
 
 
-@shared_task(track_started=True, name="refresh_whatsapp_templates_from_facebook")
+#@shared_task(track_started=True, name="refresh_whatsapp_templates_from_facebook")
 def refresh_whatsapp_templates_from_facebook():
 
     for app in App.objects.all():

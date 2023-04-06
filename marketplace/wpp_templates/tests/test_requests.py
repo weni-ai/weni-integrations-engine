@@ -32,3 +32,13 @@ class TemplateMessageRequestTestCase(TestCase):
 
         with self.assertRaises(FacebookApiException):
             self.template_message_request.delete_template_message("431332", "teste")
+
+    @patch("requests.put")
+    def test_put_template_message_error(self, mock):
+        fake_response = FakeRequestsResponse(data={})
+        fake_response.status_code = 400
+
+        mock.side_effect = [fake_response]
+
+        with self.assertRaises(FacebookApiException):
+            self.template_message_request.update_template_message("431332", "teste")
