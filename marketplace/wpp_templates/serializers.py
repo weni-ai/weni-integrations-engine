@@ -8,7 +8,6 @@ from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from django.conf import settings
 from rest_framework import serializers
-from rest_framework.relations import SlugRelatedField
 
 from marketplace.applications.models import App
 
@@ -157,21 +156,6 @@ class TemplateTranslationSerializer(serializers.Serializer):
             TemplateHeader.objects.create(translation=translation, **hh)
 
         return translation
-
-
-class TemplateTranslationCreateSerializer(serializers.Serializer):
-    template_uuid = serializers.CharField()
-    template = SlugRelatedField(slug_field="uuid", queryset=TemplateMessage.objects.all())
-
-    def create(self, validated_data: dict) -> object:
-        return dict(success=True)
-
-
-class TemplateQuerySetSerializer(serializers.Serializer):
-    name = serializers.CharField(required=False)
-    created_on = serializers.CharField(required=False)
-    category = serializers.CharField(required=False)
-    template_type = serializers.CharField(required=False)
 
 
 class TemplateMessageSerializer(serializers.Serializer):
