@@ -241,3 +241,51 @@ class WhatsappTranslationCreateTestCase(APIBaseTestCase):
         self.request.post(self.url, body=self.body, uuid=str(self.template_message.uuid))
         total_template_messages = TemplateTranslation.objects.all().count()
         self.assertNotEqual(before_template_messages, total_template_messages)
+
+
+class WhatsappTemplateUpdateTestCase(APIBaseTestCase):
+    url = reverse("app-template-list", kwargs={"app_uuid": "8c2a8e9e-9833-4710-9df0-548bcfeaf596"})
+    view_class = TemplateMessageViewSet
+
+    def setUp(self):
+        self.app = App.objects.create(
+            config=dict(wa_waba_id="432321321"),
+            project_uuid=uuid.uuid4(),
+            platform=App.PLATFORM_WENI_FLOWS,
+            code="wwc",
+            created_by=User.objects.get_admin_user(),
+        )
+
+        self.template_message = TemplateMessage.objects.create(
+            name="teste",
+            app=self.app,
+            category="ACCOUNT_UPDATE",
+            created_on=datetime.now(),
+            template_type="TEXT",
+            created_by_id=User.objects.get_admin_user().id,
+        )
+
+        self.body = dict(
+            body={"text": "test2", "type": "BODY"},
+            header={"header_type": "VIDEO", "example": "data:application/pdf;base64,test=="},
+            footer={"type": "FOOTER", "text": "Not interested? Tap Stop promotions"},
+            buttons=[{"button_type": "URL", "text": "phone-button-text", "url": "https://weni.ai"}],
+        )
+
+        super().setUp()
+
+    @property
+    def view(self):
+        return self.view_class.as_view(APIBaseTestCase.ACTION_UPDATE)
+
+    @patch("requests.update")
+    def test_update_whatsapp_template(self, mock):
+        fake_response = FakeRequestsResponse(data={"success": True})
+        fake_response.status_code = 200
+        mock.side_effect = [fake_response]
+
+        object = TemplateMessage.objects.get(uuid=self.template_message.uuid)
+        response = self.request.put(self.url, app_uuid=self.app.uuid, uuid=self.template_message.uuid, body=self.body)
+
+
+        self.assertNotEqual(object.name, response.name)
