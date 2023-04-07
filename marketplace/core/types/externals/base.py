@@ -9,6 +9,7 @@ class ExternalAppType(AppType):
     platform = App.PLATFORM_WENI_FLOWS
     category = AppType.CATEGORY_EXTERNAL
 
-    @abstractproperty
-    def flows_type_code(self) -> str:
-        pass
+    # TODO: uncomment this method
+    # @abstractproperty
+    # def flows_type_code(self) -> str:
+    #     pass
