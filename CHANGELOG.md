@@ -1,3 +1,8 @@
+v2.4.0
+----------
+* Omie Integration
+* Create the OmieType and a base for the type of external services
+
 v2.3.2
 ----------
 * Add tests for generic view
