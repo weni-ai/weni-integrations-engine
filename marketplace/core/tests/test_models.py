@@ -3,6 +3,7 @@ from django.db.models.base import ModelBase
 from django.db.utils import ProgrammingError
 from django.test import TestCase
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 
 from marketplace.core.models import BaseModel
 
@@ -15,14 +16,18 @@ class TestBaseModel(TestCase):
         super().setUp()
 
         self.fakemodel = self.__class__._base_model
-        self.user = User.objects.create_superuser(email="admin@marketplace.ai", password="fake@pass#$")
+        self.user = User.objects.create_superuser(
+            email="admin@marketplace.ai", password="fake@pass#$"
+        )
 
         self.fakemodel_instance = self.fakemodel.objects.create(created_by=self.user)
 
     @classmethod
     def setUpClass(cls):
         if not hasattr(cls, "_base_model"):
-            cls._base_model = ModelBase("FakeModel", (BaseModel,), {"__module__": BaseModel.__module__})
+            cls._base_model = ModelBase(
+                "FakeModel", (BaseModel,), {"__module__": BaseModel.__module__}
+            )
 
         try:
             with connection.schema_editor() as schema_editor:
@@ -54,8 +59,8 @@ class TestBaseModel(TestCase):
         self.assertIsNone(self.fakemodel_instance.modified_by)
 
     def test_change_instance_without_modified_by(self):
-        with self.assertRaises(ValueError):
-            self.fakemodel_instance.save()
+        with self.assertRaises(ValidationError):
+            self.fakemodel_instance.clean()
 
     def test_change_instance_with_modified_by(self):
         self.fakemodel_instance.modified_by = self.user

@@ -264,6 +264,8 @@ APPTYPE_WHATSAPP_DEMO_PATH = "channels.whatsapp_demo.type.WhatsAppDemoType"
 APPTYPE_WHATSAPP_PATH = "channels.whatsapp.type.WhatsAppType"
 APPTYPE_WHATSAPP_CLOUD_PATH = "channels.whatsapp_cloud.type.WhatsAppCloudType"
 APPTYPE_GENERIC_CHANNEL_PATH = "channels.generic.type.GenericType"
+APPTYPE_INSTAGRAM_CHANNEL_PATH = "channels.instagram.type.InstagramType"
+APPTYPE_FACEBOOK_CHANNEL_PATH = "channels.facebook.type.FacebookType"
 
 APPTYPE_OMIE_PATH = "externals.omie.type.OmieType"
 
@@ -274,6 +276,9 @@ APPTYPES_CLASSES = [
     APPTYPE_WHATSAPP_PATH,
     APPTYPE_WHATSAPP_CLOUD_PATH,
     APPTYPE_GENERIC_CHANNEL_PATH,
+    APPTYPE_INSTAGRAM_CHANNEL_PATH,
+    APPTYPE_FACEBOOK_CHANNEL_PATH,
+
     APPTYPE_OMIE_PATH,
 ]
 
@@ -328,8 +333,11 @@ CELERY_BEAT_SCHEDULE = {
     "sync-whatsapp-cloud-wabas": {"task": "sync_whatsapp_cloud_wabas", "schedule": timedelta(hours=5)},
     "sync-whatsapp-phone-numbers": {"task": "sync_whatsapp_phone_numbers", "schedule": timedelta(hours=5)},
     "sync-whatsapp-cloud-phone-numbers": {"task": "sync_whatsapp_cloud_phone_numbers", "schedule": timedelta(hours=5)},
-    "refresh-whatsapp-templates-from-facebook": {"task": "refresh_whatsapp_templates_from_facebook",
-                                                 "schedule": timedelta(seconds=1800)},
+    "refresh-whatsapp-templates-from-facebook": {
+        "task": "refresh_whatsapp_templates_from_facebook",
+        "schedule": timedelta(seconds=1800),
+    },
+    "check-apps-uncreated-on-flow": {"task": "check_apps_uncreated_on_flow", "schedule": timedelta(hours=2)}
 }
 
 
@@ -347,3 +355,10 @@ if USE_APM:
         "ENVIRONMENT": env("APM_SERVICE_ENVIRONMENT", default="production"),
         "DEBUG": env.bool("APM_SERVICE_DEBUG", default=False),
     }
+
+
+FLOWS_REST_ENDPOINT = env.str("FLOWS_REST_ENDPOINT")
+
+USE_CONNECT_V2 = env.bool("USE_CONNECT_V2", default=True)
+
+IMPORTANCE_CHANNELS_ORDER = env.list("IMPORTANCE_CHANNELS_ORDER", default=[])

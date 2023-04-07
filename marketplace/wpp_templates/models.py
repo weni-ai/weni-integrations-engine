@@ -1,7 +1,13 @@
+
 import uuid
+import re
+import textwrap
+
+from django.core.exceptions import ValidationError
 
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 from django.db import models
 
 from marketplace.applications.models import App
@@ -25,6 +31,8 @@ class TemplateMessage(models.Model):
         ("TRANSACTIONAL", "WhatsApp.data.templates.category.transactional"),
         ("MARKETING", "WhatsApp.data.templates.category.marketing"),
         ("OTP", "WhatsApp.data.templates.category.otp"),
+        ("UTILITY", "WhatsApp.data.templates.category.utility"),
+        ("AUTHENTICATION", "WhatsApp.data.templates.category.authentication"),
     )
 
     TEMPLATE_TYPES_CHOICES = (
@@ -42,6 +50,22 @@ class TemplateMessage(models.Model):
 
     def verify_namespace():
         pass
+
+    def clean_fields(self, exclude=None):
+        super().clean_fields(exclude=exclude)
+        if not self.name:
+            return
+
+        if bool(re.match(r"\w*[A-Z]\w*", self.name)) or " " in self.name:
+            message = _(
+                """
+                    Invalid name format.
+                    The name must not contain spaces and must start with a lowercase letter
+                    followed by one or more uppercase or lowercase letters,
+                    digits, or underscores.
+                """)
+            error_message = textwrap.dedent(str(message))
+            raise ValidationError({"name": error_message})
 
 
 class TemplateTranslation(models.Model):
@@ -83,7 +107,7 @@ class TemplateButton(models.Model):
     translation = models.ForeignKey(TemplateTranslation, on_delete=models.CASCADE, related_name="buttons")
 
     button_type = models.CharField(max_length=20, choices=BUTTON_TYPE_CHOICES)
-    text = models.CharField(max_length=25, null=True)
+    text = models.CharField(max_length=30, null=True)
     country_code = models.IntegerField(null=True)
     phone_number = models.CharField(max_length=20, null=True)
     url = models.CharField(max_length=2000, null=True)

@@ -1,3 +1,67 @@
+v2.3.2
+----------
+* Add tests for generic view
+* Remove unused classes in wpp_template app
+* Replace real api request with mock client
+* Remove request test wpp template
+* Add new files in coverage omit list
+* Add migrations check in code_check
+
+v2.3.1
+----------
+* Adds UTILITY and AUTHENTICATION categories in message template
+* Removes from the serializer the responsibility of validating
+* Correction in the task that checks wpp-cloud channels uncreated on flows
+
+v2.3.0
+----------
+* Change code points to use whatsapp version in environment variable
+* Increases the size of the text field to 30
+* Fix Task sync wpp cloud phone number
+* Create task to create wpp-cloud channel at flow
+
+v2.2.1
+----------
+* Change template ordering
+
+v2.2.0
+----------
+* Create webhook route to wpp-cloud
+* Create webhook route to update whatsapp.config
+
+v2.1.1
+----------
+* Sort the list of generic channels
+
+v2.1.0
+----------
+* Add endpoint that allows create feedbacks
+
+v2.0.7
+----------
+* Remove v2 route slash from wac channel
+
+v2.0.6
+----------
+* Create facebook apptype
+
+v2.0.5
+----------
+* Removes `,` which was turning the URL into a tuple when concatenated
+
+v2.0.4
+----------
+* Feature create client flows
+* Fix remove json.loads on get config in whatsapp tasks
+* Fix add connect v2 routes
+* Fix ci tests
+* Feature new generic-apptype listing
+* Fix remove generic apptype from apptype listing
+
+v2.0.3
+----------
+* Create instagram apptype
+
 v2.0.2
 ----------
 * Fix: permissions code refactoring and allows viewer user to access app detail

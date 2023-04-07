@@ -33,3 +33,13 @@ class Comment(AppTypeBaseModel):
 
     def __str__(self) -> str:
         return self.content
+
+
+class Feedback(models.Model):
+
+    answer = models.CharField(max_length=255)
+    created_on = models.DateTimeField(editable=False, auto_now_add=True)
+    created_by = models.ForeignKey("accounts.User", on_delete=models.PROTECT, related_name="feedbacks")
+
+    def __str__(self):
+        return self.answer

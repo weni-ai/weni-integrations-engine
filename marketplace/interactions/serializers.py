@@ -1,8 +1,12 @@
 from rest_framework import serializers
+from django.contrib.auth import get_user_model
 
 from marketplace.core.serializers import AppTypeBaseSerializer
-from marketplace.interactions.models import Comment, Rating
+from marketplace.interactions.models import Comment, Rating, Feedback
 from marketplace.accounts.serializers import UserSerializer
+
+
+User = get_user_model()
 
 
 class CommentSerializer(AppTypeBaseSerializer):
@@ -45,3 +49,14 @@ class RatingSerializer(AppTypeBaseSerializer):
             rating.save()
 
         return rating
+
+
+class FeedbackSerializer(serializers.ModelSerializer):
+
+    created_by = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), default=serializers.CurrentUserDefault(), write_only=True
+    )
+
+    class Meta:
+        model = Feedback
+        fields = ["answer", "created_by"]

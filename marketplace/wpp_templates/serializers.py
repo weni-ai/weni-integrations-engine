@@ -3,10 +3,11 @@ import re
 import base64
 from datetime import datetime
 
+from django.core.exceptions import ValidationError
+
 from django.contrib.auth import get_user_model
 from django.conf import settings
 from rest_framework import serializers
-from rest_framework.relations import SlugRelatedField
 
 from marketplace.applications.models import App
 
@@ -14,6 +15,8 @@ from .models import TemplateMessage, TemplateTranslation, TemplateButton, Templa
 from .requests import TemplateMessageRequest
 from marketplace.core.types.channels.whatsapp_cloud.requests import PhotoAPIRequest
 from marketplace.core.types.channels.whatsapp_base.exceptions import FacebookApiException
+
+WHATSAPP_VERSION = settings.WHATSAPP_VERSION
 
 User = get_user_model()
 
@@ -85,7 +88,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
                     settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN, len(base64.b64decode(photo)), file_type=file_type
                 )
 
-                url = f"https://graph.facebook.com/v14.0/{upload_session_id}"
+                url = f"https://graph.facebook.com/{WHATSAPP_VERSION}/{upload_session_id}"
                 headers = {"Content-Type": file_type,
                            "Authorization": f"OAuth {settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN}"}
                 headers["file_offset"] = "0"
@@ -155,21 +158,6 @@ class TemplateTranslationSerializer(serializers.Serializer):
         return translation
 
 
-class TemplateTranslationCreateSerializer(serializers.Serializer):
-    template_uuid = serializers.CharField()
-    template = SlugRelatedField(slug_field="uuid", queryset=TemplateMessage.objects.all())
-
-    def create(self, validated_data: dict) -> object:
-        return dict(success=True)
-
-
-class TemplateQuerySetSerializer(serializers.Serializer):
-    name = serializers.CharField(required=False)
-    created_on = serializers.CharField(required=False)
-    category = serializers.CharField(required=False)
-    template_type = serializers.CharField(required=False)
-
-
 class TemplateMessageSerializer(serializers.Serializer):
     uuid = serializers.UUIDField(read_only=True)
     name = serializers.CharField()
@@ -178,12 +166,6 @@ class TemplateMessageSerializer(serializers.Serializer):
     app_uuid = serializers.CharField(write_only=True)
     text_preview = serializers.CharField(required=False, read_only=True)
     translations = TemplateTranslationSerializer(many=True, read_only=True)
-
-    def validate_name(self, name):
-
-        if bool(re.match(r"\w*[A-Z]\w*", name)) or " " in name:
-            raise serializers.ValidationError("WhatsApp.templates.error.invalid_name_format")
-        return name
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -195,7 +177,7 @@ class TemplateMessageSerializer(serializers.Serializer):
     def create(self, validated_data: dict) -> TemplateMessage:
         app = App.objects.get(uuid=validated_data.get("app_uuid"))
 
-        return TemplateMessage.objects.create(
+        template_message = TemplateMessage(
             name=validated_data.get("name"),
             app=app,
             category=validated_data.get("category"),
@@ -203,3 +185,10 @@ class TemplateMessageSerializer(serializers.Serializer):
             template_type="TEXT",
             created_by_id=User.objects.get_admin_user().id,
         )
+        try:
+            template_message.full_clean()
+        except ValidationError as e:
+            raise serializers.ValidationError(e.message_dict)
+
+        template_message.save()
+        return template_message

@@ -29,7 +29,9 @@ class TestModelApp(TestCase):
     def setUp(self):
         super().setUp()
 
-        self.user = User.objects.create_superuser(email="admin@marketplace.ai", password="fake@pass#$")
+        self.user = User.objects.create_superuser(
+            email="admin@marketplace.ai", password="fake@pass#$"
+        )
         self.config = dict(fakekey="fakevalue")
 
         self.app_data = dict(
@@ -57,7 +59,9 @@ class TestModelAppTypeAsset(TestCase):
     def setUp(self):
         super().setUp()
 
-        self.user = User.objects.create_superuser(email="admin@marketplace.ai", password="fake@pass#$")
+        self.user = User.objects.create_superuser(
+            email="admin@marketplace.ai", password="fake@pass#$"
+        )
         self.app_data, self.apptype_asset = create_apptype_asset(self.user)
 
     def test_created_apptype_asset_data(self):
@@ -65,7 +69,9 @@ class TestModelAppTypeAsset(TestCase):
         self.assertEqual(self.apptype_asset.asset_type, AppTypeAsset.ASSET_TYPE_ICON)
 
     def test_url_from_attachment(self):
-        expected_url = urllib.parse.urljoin(settings.MEDIA_URL, self.app_data["attachment"])
+        expected_url = urllib.parse.urljoin(
+            settings.MEDIA_URL, self.app_data["attachment"]
+        )
         self.assertEqual(expected_url, self.apptype_asset.attachment.url)
 
     def test_unique_constraint_between_asset_type_and_code(self):
@@ -77,19 +83,28 @@ class TestModelAppTypeAssetMethods(TestCase):
     def setUp(self):
         super().setUp()
 
-        self.user = User.objects.create_superuser(email="admin@marketplace.ai", password="fake@pass#$")
+        self.user = User.objects.create_superuser(
+            email="admin@marketplace.ai", password="fake@pass#$"
+        )
         self.app_data, self.apptype_asset = create_apptype_asset(self.user)
 
     def test_str_method(self):
-        self.assertEqual(str(self.apptype_asset), f"{self.apptype_asset.apptype.name} - Icon")
+        self.assertEqual(
+            str(self.apptype_asset),
+            f"{self.apptype_asset.apptype.name} - {(self.apptype_asset.apptype.code).upper()} - Icon",
+        )
 
 
 class TestModelAppTypeFeatured(TestCase):
     def setUp(self):
         super().setUp()
 
-        self.user = User.objects.create_superuser(email="admin@marketplace.ai", password="fake@pass#$")
-        self.apptype_featured = AppTypeFeatured.objects.create(code="wwc", created_by=self.user)
+        self.user = User.objects.create_superuser(
+            email="admin@marketplace.ai", password="fake@pass#$"
+        )
+        self.apptype_featured = AppTypeFeatured.objects.create(
+            code="wwc", created_by=self.user
+        )
 
     def test_created_apptype_featured_data(self):
         self.assertEqual(self.apptype_featured.code, "wwc")
@@ -104,8 +119,12 @@ class TestModelAppTypeFeaturedMethods(TestCase):
     def setUp(self):
         super().setUp()
 
-        self.user = User.objects.create_superuser(email="admin@marketplace.ai", password="fake@pass#$")
-        self.apptype_featured = AppTypeFeatured.objects.create(code="wwc", created_by=self.user)
+        self.user = User.objects.create_superuser(
+            email="admin@marketplace.ai", password="fake@pass#$"
+        )
+        self.apptype_featured = AppTypeFeatured.objects.create(
+            code="wwc", created_by=self.user
+        )
 
     def test_str_method(self):
         self.assertEqual(str(self.apptype_featured), self.apptype_featured.apptype.name)

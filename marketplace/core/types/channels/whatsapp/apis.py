@@ -6,6 +6,8 @@ from django.conf import settings
 
 from ..whatsapp_base.exceptions import FacebookApiException, UnableProcessProfilePhoto
 
+WHATSAPP_VERSION = settings.WHATSAPP_VERSION
+
 
 def _request(url: str, method: str = "GET", *args, **kwargs):
     return requests.request(method.upper(), url, *args, **kwargs)
@@ -139,8 +141,8 @@ class FacebookConversationAPI(object):  # TODO: Use BaseFacebookBaseApi
         fields = self._get_fields(start, end)
         params = dict(fields=fields, access_token=access_token)
         response = self._request(
-            f"https://graph.facebook.com/v13.0/{waba_id}", params=params
-        )  # TODO: Change to environment variables
+            f"https://graph.facebook.com/{WHATSAPP_VERSION}/{waba_id}", params=params
+        )
         conversation_analytics = response.json().get("conversation_analytics")
 
         return Conversations(conversation_analytics)
@@ -156,7 +158,7 @@ class FacebookWABAApi(BaseFacebookBaseApi):
 
     def get_waba(self, waba_id: str) -> dict:
         response = self._request(
-            f"https://graph.facebook.com/v13.0/{waba_id}/", headers=self._headers
+            f"https://graph.facebook.com/{WHATSAPP_VERSION}/{waba_id}/", headers=self._headers
         )  # TODO: Change to environment variables
 
         return response.json()
