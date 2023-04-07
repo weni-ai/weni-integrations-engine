@@ -28,6 +28,11 @@ class ConnectProjectClient(ConnectAuth):
     base_url = settings.CONNECT_ENGINE_BASE_URL
     use_connect_v2 = settings.USE_CONNECT_V2
 
+    def _get_url(self, endpoint: str) -> str:
+        # TODO: refactor all clients to use this method
+        assert endpoint.startswith("/"), "the endpoint needs to start with: /"
+        return self.base_url + endpoint
+
     def list_channels(self, channeltype_code: str) -> list:
         params = {
             "channel_type": channeltype_code
@@ -142,6 +147,13 @@ class ConnectProjectClient(ConnectAuth):
             params=params,
             headers=self.auth_header(),
             timeout=60
+        )
+        return response
+
+    def create_external_service(self, user: str, project_uuid: str, type_fields: dict, type_code: str):
+        payload = {"user": user, "project_uuid": str(project_uuid), "type_fields": type_fields, "type_code": type_code}
+        response = requests.post(
+            self._get_url("/v1/organization/project/create_external/"), json=payload, headers=self.auth_header()
         )
         return response
 
