@@ -23,13 +23,12 @@ class ConnectAuth:
         return {"Authorization": self.__get_auth_token()}
 
 
-class ConnectProjectClient(ConnectAuth):
+class ConnectProjectClient(ConnectAuth): # TODO: change class name to FlowsRESTClient
 
-    base_url = settings.CONNECT_ENGINE_BASE_URL
+    base_url = settings.FLOWS_REST_ENDPOINT
     use_connect_v2 = settings.USE_CONNECT_V2
 
     def _get_url(self, endpoint: str) -> str:
-        # TODO: refactor all clients to use this method
         assert endpoint.startswith("/"), "the endpoint needs to start with: /"
         return self.base_url + endpoint
 
@@ -37,10 +36,8 @@ class ConnectProjectClient(ConnectAuth):
         params = {
             "channel_type": channeltype_code
         }
-        if self.use_connect_v2:
-            url = self.base_url + "/v2/projects/channels"
-        else:
-            url = self.base_url + "/v1/organization/project/list_channels/"
+
+        url = self._get_url("/api/v2/internals/channel/")
 
         response = requests.get(
             url=url,
@@ -53,15 +50,12 @@ class ConnectProjectClient(ConnectAuth):
     def create_channel(self, user: str, project_uuid: str, data: dict, channeltype_code: str) -> dict:
         payload = {
             "user": user,
-            "project_uuid": str(project_uuid),
+            "org": str(project_uuid),
             "data": data,
             "channeltype_code": channeltype_code
         }
-        if self.use_connect_v2:
-            del payload["project_uuid"]
-            url = self.base_url + f"/v2/projects/{str(project_uuid)}/channel"
-        else:
-            url = self.base_url + "/v1/organization/project/create_channel/"
+
+        url = self._get_url("/api/v2/internals/channel/")
 
         response = requests.post(
             url=url,
@@ -98,30 +92,20 @@ class ConnectProjectClient(ConnectAuth):
         return response.json()
 
     def release_channel(self, channel_uuid: str, project_uuid: str, user_email: str) -> None:
-        payload = {"channel_uuid": channel_uuid, "user": user_email}
-        if self.use_connect_v2:
-            requests.delete(
-                url=self.base_url + f"/v2/projects/{str(project_uuid)}/channel",
-                json=payload,
-                headers=self.auth_header(),
-                timeout=60
-            )
-        else:
-            requests.get(
-                url=self.base_url + "/v1/organization/project/release_channel/",
-                json=payload,
-                headers=self.auth_header(),
-                timeout=60
-            )
+        params = {"user": user_email}
+        url = self._get_url(f"/api/v2/internals/channel/{channel_uuid}")
+        requests.delete(
+            url=url,
+            params=params,
+            headers=self.auth_header(),
+            timeout=60
+        )
+
         return None
 
     def get_user_api_token(self, user: str, project_uuid: str):
-        params = dict(user=user, project_uuid=str(project_uuid))
-        if self.use_connect_v2:
-            url = self.base_url + "/v2/project/user_api_token/"
-        else:
-            url = self.base_url + "/v1/organization/project/user_api_token/"
-
+        params = dict(user=user, org=str(project_uuid))
+        url = self._get_url("/api/v2/internals/users/api-token/")
         response = requests.get(
             url=url,
             params=params,
