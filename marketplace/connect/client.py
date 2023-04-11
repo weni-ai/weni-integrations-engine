@@ -156,6 +156,20 @@ class ConnectProjectClient(ConnectAuth):
             self._get_url("/v1/externals"), json=payload, headers=self.auth_header()
         )
         return response
+    
+    def release_external_service(self, uuid: str, user_email: str):
+        url = self._get_url("/v1/externals")
+        params = {
+            "uuid": str(uuid), 
+            "user": user_email
+        }
+        
+        response = requests.delete(
+            url=url,
+            params=params, 
+            headers=self.auth_header()
+        )
+        return response
 
 
 class WPPRouterChannelClient(ConnectAuth):
