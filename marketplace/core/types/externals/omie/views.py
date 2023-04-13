@@ -1,6 +1,9 @@
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from marketplace.connect.client import ConnectProjectClient
+from marketplace.flows.client import FlowsClient
+
 from .serializers import OmieSerializer, OmieConfigureSerializer
 from marketplace.core.types import views
 
@@ -27,3 +30,11 @@ class OmieViewSet(views.BaseAppTypeViewSet):
         self.perform_update(serializer)
 
         return Response(serializer.data)
+
+    def perform_destroy(self, instance):
+        channel_uuid = instance.config.get("channelUuid")
+        if channel_uuid:
+            client = FlowsClient()
+            client.release_external_service(channel_uuid, self.request.user.email)
+
+        super().perform_destroy(instance)
