@@ -1,3 +1,12 @@
+v2.4.1
+----------
+* Update postgres version on ci
+* Adds script to compare coverage divergences 
+* Update readme with Badges 
+* Add codecov on ci workflow 
+* Add redis mock in wpp-cloud and wpp task tests
+* Applying flake8 rules to omie type  
+
 v2.4.0
 ----------
 * Omie Integration
