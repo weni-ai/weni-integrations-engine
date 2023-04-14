@@ -12,7 +12,7 @@ jobs:
       max-parallel: 2
       matrix:
         pg-version: ['11', '12']
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v1
@@ -39,3 +39,27 @@ jobs:
       - name: Validate code syntax and unit tests
         run: |
           poetry run python contrib/code_check.py
+          poetry run coverage xml
+
+      - name: Upload coverage report to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: annotations,path,test_changes
+          fail_ci_if_error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check coverage
+        run: |
+          # Get the coverage of the last commit from the codecov API
+          COVERAGE_LAST_COMMIT=$(curl -s "https://codecov.io/api/gh/weni-ai/weni-integrations-engine/commits/$(git log -1 --pretty=format:"%H")" | jq -r '.totals.c')
+          
+          # Get the current coverage from the coverage report
+          COVERAGE_CURRENT=$(cat coverage.xml | grep -oP "(?<=line-rate=\")[^\"]*")
+          
+          # Compare the coverages and exit with an error code if the current coverage is lower than the last coverage
+          if [ $(echo "$COVERAGE_CURRENT >= $COVERAGE_LAST_COMMIT" | bc -l) -eq 0 ]; then
+            echo "Coverage decreased from $COVERAGE_LAST_COMMIT to $COVERAGE_CURRENT"
+            exit 1
+          fi
