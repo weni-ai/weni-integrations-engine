@@ -8,8 +8,10 @@ on: [push, pull_request]
 jobs:
   test:
     name: Test
-    env:
-      pg-version: '14'
+    strategy:
+      max-parallel: 1
+      matrix:
+        pg-version: ['14']
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
