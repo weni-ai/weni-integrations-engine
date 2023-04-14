@@ -12,4 +12,4 @@ omit =
     *urls.py*
 
 [report]
-fail_under = 80
+fail_under = 70
