@@ -50,16 +50,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Check coverage
+      - name: Check coverage status
         run: |
           # Get the coverage of the last commit from the codecov API
-          COVERAGE_LAST_COMMIT=$(curl -s "https://codecov.io/api/gh/weni-ai/weni-integrations-engine/commits/$(git log -1 --pretty=format:"%H")" | jq -r '.totals.c')
-          
-          # Get the current coverage from the coverage report
-          COVERAGE_CURRENT=$(cat coverage.xml | grep -oP "(?<=line-rate=\")[^\"]*")
-          
-          # Compare the coverages and exit with an error code if the current coverage is lower than the last coverage
-          if [ $(echo "$COVERAGE_CURRENT >= $COVERAGE_LAST_COMMIT" | bc -l) -eq 0 ]; then
-            echo "Coverage decreased from $COVERAGE_LAST_COMMIT to $COVERAGE_CURRENT"
-            exit 1
-          fi
+          poetry run python contrib/compare_coverage.py
