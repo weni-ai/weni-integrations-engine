@@ -1,4 +1,8 @@
 # weni-marketplace-engine
+
+[![Build Status](https://github.com/weni-ai/weni-integrations-engine/workflows/CI/badge.svg)](https://github.com/weni-ai/weni-integrations-engine/actions?query=workflow%3ACI) 
+[![codecov](https://codecov.io/gh/weni-ai/weni-integrations-engine/branch/main/graph/badge.svg)](https://codecov.io/gh/weni-ai/weni-integrations-engine)
+
 This project provides so many API endpoints to manage Weni Platform marketplace.
 
 ## Running project for development
