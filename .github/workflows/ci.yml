@@ -9,10 +9,10 @@ jobs:
   test:
     name: Test
     strategy:
-      max-parallel: 2
+      max-parallel: 1
       matrix:
-        pg-version: ['11', '12']
-    runs-on: ubuntu-18.04
+        pg-version: ['14']
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v1
@@ -39,3 +39,18 @@ jobs:
       - name: Validate code syntax and unit tests
         run: |
           poetry run python contrib/code_check.py
+          poetry run coverage xml
+
+      - name: Upload coverage report to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: annotations,path,test_changes
+          fail_ci_if_error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check coverage status
+        run: |
+          # Get the coverage of the last commit from the codecov API
+          poetry run python contrib/compare_coverage.py

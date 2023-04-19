@@ -1,4 +1,3 @@
-from abc import abstractproperty
 
 from marketplace.core.types.base import AppType
 from marketplace.applications.models import App
