@@ -43,13 +43,13 @@ class FlowsClient:
             data=payload,
         )
         return response
-    
+
     def release_external_service(self, uuid: str, user_email: str):
         url = f"{self.base_url}/api/v2/internals/externals/{uuid}/"
         params = {
             "user": user_email
         }
-        
+
         response = self.make_request(
             url,
             method="DELETE",
