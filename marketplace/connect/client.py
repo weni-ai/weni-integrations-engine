@@ -94,8 +94,9 @@ class ConnectProjectClient(ConnectAuth):  # TODO: change class name to FlowsREST
         return response
 
     def create_external_service(self, user: str, project_uuid: str, type_fields: dict, type_code: str):
+        url = settings.CONNECT_ENGINE_BASE_URL + "/v1/externals"
         payload = {"user": user, "project": str(project_uuid), "type_fields": type_fields, "type_code": type_code}
-        response = requests.post(self._get_url("/v1/externals"), json=payload, headers=self.auth_header())
+        response = requests.post(url, json=payload, headers=self.auth_header())
         return response
 
 
