@@ -1,3 +1,8 @@
+v2.4.2
+----------
+* Add delete endpoint in external services
+* Fixing a flake8 error in Omie view files
+
 v2.4.1
 ----------
 * Update postgres version on ci
