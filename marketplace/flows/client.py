@@ -44,10 +44,24 @@ class FlowsClient:
         )
         return response
 
-    def make_request(self, url: str, method: str, headers=None, data=None):
+    def release_external_service(self, uuid: str, user_email: str):
+        url = f"{self.base_url}/api/v2/internals/externals/{uuid}/"
+        params = {
+            "user": user_email
+        }
+
+        response = self.make_request(
+            url,
+            method="DELETE",
+            headers=self.authentication_instance.headers,
+            params=params,
+        )
+        return response
+
+    def make_request(self, url: str, method: str, headers=None, data=None, params=None):
         try:
             response = requests.request(
-                method=method, url=url, headers=headers, json=data, timeout=60
+                method=method, url=url, headers=headers, json=data, timeout=60, params=params
             )
             response.raise_for_status()
 
