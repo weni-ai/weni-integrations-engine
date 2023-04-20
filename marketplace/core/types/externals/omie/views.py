@@ -38,7 +38,7 @@ class OmieViewSet(views.BaseAppTypeViewSet):
 
     def perform_destroy(self, instance):
         channel_uuid = instance.config.get("channelUuid")
-        if channel_uuid:    
+        if channel_uuid:
             client = FlowsClient()
             client.release_external_service(channel_uuid, self.request.user.email)
 
