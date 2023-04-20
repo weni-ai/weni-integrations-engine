@@ -1,3 +1,7 @@
+v2.4.2
+----------
+* Add delete endpoint in external services
+
 v2.4.1
 ----------
 * Update postgres version on ci
