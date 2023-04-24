@@ -97,3 +97,32 @@ class ConfigureOmieAppTestCase(APIBaseTestCase):
     def test_request_ok(self):
         response = self.request.patch(self.url, uuid=self.app.uuid, body=self.body)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+
+class DeleteOmieAppTestCase(APIBaseTestCase):
+    view_class = OmieViewSet
+
+    @property
+    def view(self):
+        return self.view_class.as_view(APIBaseTestCase.ACTION_DESTROY)
+
+    def setUp(self):
+        super().setUp()
+        self.app = apptype.create_app(created_by=self.user, project_uuid=str(uuid.uuid4()))
+        self.user_authorization = self.user.authorizations.create(project_uuid=self.app.project_uuid)
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+        self.url = reverse("omie-app-detail", kwargs={"uuid": self.app.uuid})
+
+    def test_delete_app_plataform(self):
+        response = self.request.delete(self.url, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(App.objects.filter(uuid=self.app.uuid).exists())
+
+    def test_delete_app_with_wrong_project_uuid(self):
+        response = self.request.delete(self.url, uuid=str(uuid.uuid4()))
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_delete_app_without_autorization(self):
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_NOT_SETTED)
+        response = self.request.delete(self.url, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
