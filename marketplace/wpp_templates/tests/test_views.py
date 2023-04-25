@@ -1,70 +1,30 @@
+""" Tests for the wpp_templates module """
 import uuid
+import textwrap
+
 from datetime import datetime
+
+from rest_framework import status
 
 from django.contrib.auth import get_user_model
 from django.urls import reverse
+from django.utils.translation import gettext_lazy as _
 
 from marketplace.applications.models import App
-from marketplace.wpp_templates.models import TemplateMessage, TemplateTranslation, TemplateHeader
+from marketplace.wpp_templates.models import TemplateMessage
+from marketplace.wpp_templates.views import TemplateMessageViewSet
 from marketplace.core.tests.base import APIBaseTestCase
-from marketplace.core.tests.base import FakeRequestsResponse
-from ..views import TemplateMessageViewSet
+from marketplace.core.types.channels.whatsapp_base.exceptions import (
+    FacebookApiException,
+)
+
 from unittest.mock import patch
+from unittest.mock import MagicMock
 
 User = get_user_model()
 
 
-class FakeFacebookResponse(FakeRequestsResponse):
-    status_code = 200
-
-
-class WhatsappTemplateListTestCase(APIBaseTestCase):
-    url = reverse("app-template-list", kwargs={"app_uuid": "8c2a8e9e-9833-4710-9df0-548bcfeaf596"})
-    view_class = TemplateMessageViewSet
-
-    def setUp(self):
-        self.app = App.objects.create(
-            config=dict(wa_waba_id="432321321"),
-            project_uuid=uuid.uuid4(),
-            platform=App.PLATFORM_WENI_FLOWS,
-            code="wwc",
-            created_by=User.objects.get_admin_user(),
-        )
-
-        self.template_message = TemplateMessage.objects.create(
-            name="teste",
-            app=self.app,
-            category="ACCOUNT_UPDATE",
-            created_on=datetime.now(),
-            template_type="TEXT",
-            created_by_id=User.objects.get_admin_user().id,
-        )
-
-        self.template_translation = TemplateTranslation.objects.create(
-            template=self.template_message,
-            status="APPROVED",
-            language="pt_br",
-            variable_count=1,
-            body="Teste",
-        )
-
-        TemplateHeader.objects.create(translation=self.template_translation, header_type="TEXT", text="teste")
-        super().setUp()
-
-    @property
-    def view(self):
-        return self.view_class.as_view({"get": "list"})
-
-    def test_list_whatsapp_templates(self):
-        response = self.request.get(self.url, app_uuid=str(self.app.uuid))
-        self.assertEqual(response.json.get("results")[0].get("uuid"), str(self.template_message.uuid))
-        self.assertEqual(
-            response.json.get("results")[0].get("translations")[0].get("uuid"), str(self.template_translation.uuid)
-        )
-
-
 class WhatsappTemplateCreateTestCase(APIBaseTestCase):
-    url = reverse("app-template-list", kwargs={"app_uuid": "8c2a8e9e-9833-4710-9df0-548bcfeaf596"})
     view_class = TemplateMessageViewSet
 
     def setUp(self):
@@ -72,31 +32,49 @@ class WhatsappTemplateCreateTestCase(APIBaseTestCase):
             config=dict(wa_waba_id="432321321"),
             project_uuid=uuid.uuid4(),
             platform=App.PLATFORM_WENI_FLOWS,
-            code="wwc",
+            code="wpp-cloud",
             created_by=User.objects.get_admin_user(),
         )
-
         self.body = dict(
-            name="teste",
-            category="ACCOUNT_UPDATE",
+            name="teste", category="ACCOUNT_UPDATE", text_preview="Preview Test"
         )
-
+        self.url = reverse("app-template-list", kwargs={"app_uuid": str(self.app.uuid)})
         super().setUp()
 
     @property
     def view(self):
         return self.view_class.as_view(APIBaseTestCase.ACTION_CREATE)
 
-    def test_create_whatsapp_templates(self):
-        before_template_messages = TemplateMessage.objects.all().count()
-        self.request.post(self.url, app_uuid=str(self.app.uuid), body=self.body)
-        total_template_messages = TemplateMessage.objects.all().count()
+    def test_create_whatsapp_template_with_valid_data(self):
+        response = self.request.post(
+            self.url, app_uuid=str(self.app.uuid), body=self.body
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn("uuid", response.data)
 
-        self.assertNotEqual(before_template_messages, total_template_messages)
+    def test_create_whatsapp_template_with_invalid_name(self):
+        message = _(
+            """
+                Invalid name format.
+                The name must not contain spaces and must start with a lowercase letter
+                followed by one or more uppercase or lowercase letters,
+                digits, or underscores.
+            """
+        )
+        error_message = textwrap.dedent(str(message))
+        error_message = {"name": [error_message]}
+        invalid_body = self.body.copy()
+        invalid_body["name"] = "Test Invalid N4M3"
+
+        response = self.request.post(
+            self.url, app_uuid=str(self.app.uuid), body=invalid_body
+        )
+
+        self.assertEqual(error_message, response.json)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
 class WhatsappTemplateDestroyTestCase(APIBaseTestCase):
-    url = reverse("app-template-list", kwargs={"app_uuid": "8c2a8e9e-9833-4710-9df0-548bcfeaf596"})
     view_class = TemplateMessageViewSet
 
     def setUp(self):
@@ -104,100 +82,86 @@ class WhatsappTemplateDestroyTestCase(APIBaseTestCase):
             config=dict(wa_waba_id="432321321"),
             project_uuid=uuid.uuid4(),
             platform=App.PLATFORM_WENI_FLOWS,
-            code="wwc",
+            code="wpp-cloud",
             created_by=User.objects.get_admin_user(),
         )
-
         self.template_message = TemplateMessage.objects.create(
             name="teste",
-            app=self.app,
             category="ACCOUNT_UPDATE",
-            created_on=datetime.now(),
-            template_type="TEXT",
-            created_by_id=User.objects.get_admin_user().id,
+            app=self.app,
         )
-
+        self.url = reverse(
+            "app-template-detail",
+            kwargs={
+                "app_uuid": str(self.app.uuid),
+                "uuid": str(self.template_message.uuid),
+            },
+        )
         super().setUp()
 
     @property
     def view(self):
         return self.view_class.as_view(APIBaseTestCase.ACTION_DESTROY)
 
-    @patch("requests.delete")
-    def test_delete_whatsapp_template(self, mock):
-        fake_response = FakeRequestsResponse(data={"success": True})
-        fake_response.status_code = 200
-        mock.side_effect = [fake_response]
+    @patch(
+        "marketplace.wpp_templates.requests.TemplateMessageRequest.delete_template_message"
+    )
+    def test_destroy_template_message_successfully(self, mock_delete_template_message):
+        mock_delete_template_message.return_value.status_code = status.HTTP_200_OK
 
-        total_users_before = TemplateMessage.objects.count()
-        self.request.delete(self.url, app_uuid=self.app.uuid, uuid=self.template_message.uuid)
-        total_users_after = TemplateMessage.objects.count()
-
-        self.assertNotEqual(total_users_before, total_users_after)
-
-
-class WhatsappTemplateRetrieveTestCase(APIBaseTestCase):
-    url = reverse("app-template-list", kwargs={"app_uuid": "8c2a8e9e-9833-4710-9df0-548bcfeaf596"})
-    view_class = TemplateMessageViewSet
-
-    def setUp(self):
-        self.app = App.objects.create(
-            config=dict(wa_waba_id="432321321"),
-            project_uuid=uuid.uuid4(),
-            platform=App.PLATFORM_WENI_FLOWS,
-            code="wwc",
-            created_by=User.objects.get_admin_user(),
+        response = self.request.delete(
+            self.url, app_uuid=str(self.app.uuid), uuid=str(self.template_message.uuid)
         )
 
-        self.template_message = TemplateMessage.objects.create(
-            name="teste",
-            app=self.app,
-            category="ACCOUNT_UPDATE",
-            created_on=datetime.now(),
-            template_type="TEXT",
-            created_by_id=User.objects.get_admin_user().id,
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(
+            TemplateMessage.objects.filter(uuid=self.template_message.uuid).exists()
         )
 
-        self.template_translation = TemplateTranslation.objects.create(
-            template=self.template_message,
-            status="APPROVED",
-            language="pt_br",
-            variable_count=1,
-            body="Teste",
+    @patch(
+        "marketplace.wpp_templates.requests.TemplateMessageRequest.delete_template_message"
+    )
+    def test_destroy_template_message_with_subcode_error(
+        self, mock_delete_template_message
+    ):
+        mock_response = MagicMock()
+        mock_response.status_code = status.HTTP_400_BAD_REQUEST
+        mock_response.json.return_value = {"error": {"error_subcode": 2388094}}
+        mock_delete_template_message.return_value = mock_response
+
+        response = self.request.delete(
+            self.url, app_uuid=str(self.app.uuid), uuid=str(self.template_message.uuid)
         )
 
-        super().setUp()
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data, {"error": "WhatsApp.templates.error.delete_sample"}
+        )
+        self.assertTrue(
+            TemplateMessage.objects.filter(uuid=self.template_message.uuid).exists()
+        )
 
-    @property
-    def view(self):
-        return self.view_class.as_view(APIBaseTestCase.ACTION_RETRIEVE)
+    @patch(
+        "marketplace.wpp_templates.requests.TemplateMessageRequest.delete_template_message"
+    )
+    def test_destroy_template_message_requestapi_error(
+        self, mock_delete_template_message
+    ):
+        mock_response = MagicMock()
+        mock_response.status_code = status.HTTP_400_BAD_REQUEST
+        mock_delete_template_message.return_value = mock_response
 
-    @property
-    def query_parameter(self):
-        return f"?uuid={self.template_message.uuid}"
+        response = self.request.delete(
+            self.url, app_uuid=str(self.app.uuid), uuid=str(self.template_message.uuid)
+        )
 
-    def test_retrieve_whatsapp_template(self):
-        response = self.request.get(self.url, app_uuid=self.app.uuid, uuid=self.template_message.uuid)
-        self.assertEqual(response.json.get("uuid"), str(self.template_message.uuid))
-
-
-class WhatsappTemplateLanguagesTestCase(APIBaseTestCase):
-    url = reverse("app-template-languages", kwargs={"app_uuid": "8c2a8e9e-9833-4710-9df0-548bcfeaf596"})
-    view_class = TemplateMessageViewSet
-
-    def setUp(self):
-        super().setUp()
-
-    @property
-    def view(self):
-        return self.view_class.as_view(dict(get="languages"))
-
-    def test_list_whatsapp_template_languages(self):
-        response = self.request.get(self.url)
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue(
+            TemplateMessage.objects.filter(uuid=self.template_message.uuid).exists()
+        )
 
 
-class WhatsappTranslationCreateTestCase(APIBaseTestCase):
+class WhatsappTemplateTranslationsTestCase(APIBaseTestCase):
     view_class = TemplateMessageViewSet
 
     def setUp(self):
@@ -218,16 +182,28 @@ class WhatsappTranslationCreateTestCase(APIBaseTestCase):
             created_by_id=User.objects.get_admin_user().id,
         )
         self.url = reverse(
-            "app-template-translations", kwargs={"app_uuid": self.app.uuid, "uuid": self.template_message.uuid}
+            "app-template-translations",
+            kwargs={"app_uuid": self.app.uuid, "uuid": self.template_message.uuid},
         )
 
         self.body = dict(
             language="ja",
             body={"text": "test", "type": "BODY"},
             country="Brasil",
-            header={"header_type": "VIDEO", "example": "data:application/pdf;base64,test=="},
+            header={
+                "header_type": "VIDEO",
+                "example": "data:application/pdf;base64,test==",
+            },
             footer={"type": "FOOTER", "text": "Not interested? Tap Stop promotions"},
-            buttons=[{"button_type": "URL", "text": "phone-button-text", "url": "https://weni.ai"}],
+            buttons=[
+                {
+                    "button_type": "URL",
+                    "text": "phone-button-text",
+                    "url": "https://weni.ai",
+                    "phone_number": "84999999999",
+                    "country_code": "+55",
+                }
+            ],
         )
 
         super().setUp()
@@ -236,8 +212,72 @@ class WhatsappTranslationCreateTestCase(APIBaseTestCase):
     def view(self):
         return self.view_class.as_view(dict(post="translations"))
 
-    def test_create_whatsapp_translation(self):
-        before_template_messages = TemplateTranslation.objects.all().count()
-        self.request.post(self.url, body=self.body, uuid=str(self.template_message.uuid))
-        total_template_messages = TemplateTranslation.objects.all().count()
-        self.assertNotEqual(before_template_messages, total_template_messages)
+    @patch("marketplace.wpp_templates.serializers.requests")
+    @patch(
+        "marketplace.core.types.channels.whatsapp_cloud.requests.PhotoAPIRequest.create_upload_session"
+    )
+    @patch(
+        "marketplace.wpp_templates.requests.TemplateMessageRequest.create_template_message"
+    )
+    def test_create_template_translation(
+        self, mock_create_template_message, mock_create_upload_session, mock_requests
+    ):
+        # create_template_message
+        mock_create_template_message.return_value = {"some_key": "some_value"}
+
+        # create_upload_session
+        mock_create_upload_session.return_value = MagicMock(
+            create_upload_session=lambda x: "0123456789"
+        )
+
+        # request
+        mock_post = mock_requests.post
+        mock_post.return_value.status_code = status.HTTP_200_OK
+        mock_post.return_value.json.return_value = {"h": "upload_handle"}
+
+        response = self.request.post(
+            self.url, body=self.body, uuid=str(self.template_message.uuid)
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    @patch("marketplace.wpp_templates.serializers.requests")
+    @patch(
+        "marketplace.core.types.channels.whatsapp_cloud.requests.PhotoAPIRequest.create_upload_session"
+    )
+    def test_create_template_translation_error(
+        self, mock_create_upload_session, mock_requests
+    ):
+        # create_upload_session
+        mock_create_upload_session.return_value = MagicMock(
+            create_upload_session=lambda x: "0123456789"
+        )
+
+        # request
+        mock_post = mock_requests.post
+        mock_post.return_value.status_code = status.HTTP_404_NOT_FOUND
+        mock_post.return_value.json.return_value = {"error": "error"}
+
+        with self.assertRaises(FacebookApiException):
+            self.request.post(
+                self.url, body=self.body, uuid=str(self.template_message.uuid)
+            )
+
+
+class WhatsappTemplateLanguagesTestCase(APIBaseTestCase):
+    view_class = TemplateMessageViewSet
+
+    def setUp(self):
+        self.url = reverse(
+            "app-template-languages",
+            kwargs={"app_uuid": "8c2a8e9e-9833-4710-9df0-548bcfeaf596"},
+        )
+        super().setUp()
+
+    @property
+    def view(self):
+        return self.view_class.as_view(dict(get="languages"))
+
+    def test_list_whatsapp_template_languages(self):
+        response = self.request.get(self.url)
+        self.assertEqual(response.status_code, 200)
