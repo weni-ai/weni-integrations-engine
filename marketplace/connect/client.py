@@ -55,18 +55,13 @@ class ConnectProjectClient(ConnectAuth):  # TODO: change class name to FlowsREST
     def create_wac_channel(self, user: str, project_uuid: str, phone_number_id: str, config: dict) -> dict:
         payload = {
             "user": user,
-            "project_uuid": str(project_uuid),
+            "org": str(project_uuid),
             "config": config,
             "phone_number_id": phone_number_id,
         }
-        if self.use_connect_v2:
-            del payload["project_uuid"]
-            url = self.base_url + f"/v2/projects/{project_uuid}/create-wac-channel"
-        else:
-            url = self.base_url + "/v1/organization/project/create_wac_channel/"
+        url = self._get_url("/api/v2/internals/channel/create_wac/")
 
         response = requests.post(url=url, json=payload, headers=self.auth_header(), timeout=60)
-
         return response.json()
 
     def release_channel(self, channel_uuid: str, project_uuid: str, user_email: str) -> None:
