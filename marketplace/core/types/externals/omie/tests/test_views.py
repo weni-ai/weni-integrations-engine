@@ -1,5 +1,6 @@
 import uuid
 
+from unittest.mock import Mock, patch
 from django.urls import reverse
 from rest_framework import status
 
@@ -94,8 +95,27 @@ class ConfigureOmieAppTestCase(APIBaseTestCase):
     def view(self):
         return self.view_class.as_view({"patch": "configure"})
 
-    def test_request_ok(self):
-        response = self.request.patch(self.url, uuid=self.app.uuid, body=self.body)
+    @patch("marketplace.core.types.externals.omie.serializers.ConfigSerializer._create_channel")
+    def test_configure_omie_success(self, mock_create_channel):
+        mock_response = Mock()
+        mock_response.json.return_value = {"channelUuid": str(uuid.uuid4()), "title": "Teste"}
+        mock_response.status_code = 200
+        mock_create_channel.return_value = mock_response
+
+        keys_values = {
+            "api_key": str(uuid.uuid4()),
+            "api_secret": str(uuid.uuid4()),
+            "access_token": str(uuid.uuid4()),
+            "access_token_secret": str(uuid.uuid4()),
+            "env_name": "Teste",
+        }
+        payload = {
+            "user": str(self.user),
+            "project_uuid": str(uuid.uuid4()),
+            "config": {"auth_token": keys_values, "name": "123", "app_key": "123", "app_secret": "4234"},
+        }
+
+        response = self.request.patch(self.url, payload, uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
 
@@ -126,3 +146,16 @@ class DeleteOmieAppTestCase(APIBaseTestCase):
         self.user_authorization.set_role(ProjectAuthorization.ROLE_NOT_SETTED)
         response = self.request.delete(self.url, uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    @patch("marketplace.flows.client.FlowsClient.release_external_service")
+    def test_release_external_service(self, mock_release):
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_release.return_value = mock_response
+
+        self.app.config = {"channelUuid": str(uuid.uuid4())}
+        self.app.save()
+
+        response = self.request.delete(self.url, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(App.objects.filter(uuid=self.app.uuid).exists())
