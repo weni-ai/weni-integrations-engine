@@ -1,3 +1,11 @@
+v2.4.2
+----------
+* Add delete endpoint in external services
+* Fixing a flake8 error in Omie view files
+* Add tests for delete externals endpoint
+* Add tests for whatsapp tasks and add mock for tests
+* Increases tests coverage to view and serializer to wpp_templates
+
 v2.4.1
 ----------
 * Update postgres version on ci
