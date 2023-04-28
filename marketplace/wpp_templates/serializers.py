@@ -252,29 +252,3 @@ class TemplateMessageSerializer(serializers.Serializer):
             template_type="TEXT",
             created_by_id=User.objects.get_admin_user().id,
         )
-    
-    '''def update(self, instance: TemplateMessage, validated_data: dict) -> TemplateMessage:
-        instance.name = validated_data.get('name', instance.name)
-        instance.category = validated_data.get('category', instance.category)
-        instance.save()
-
-        return instance'''
-    
-    '''def update(self, validated_data: dict) -> TemplateMessage:
-        print('oi')
-        app = App.objects.get(uuid=validated_data.get("app_uuid"))
-        template = TemplateMessage.objects.get(uuid=validated_data.get("uuid"))
-
-        template.name = validated_data.get("name")
-        template.app = app
-
-        template.save()
-
-        return template
-
-        return TemplateMessage.objects.update(
-            uuid= template_uuid,
-            name=validated_data.get("name"),
-            app=app,
-            template_type="TEXT"
-        )'''

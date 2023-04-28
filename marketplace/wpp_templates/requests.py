@@ -41,18 +41,13 @@ class TemplateMessageRequest(object):
 
         return response.json()
     
-    def update_template_message(self, waba_id: str, name: str, components: str) -> dict:
-        print('EAI MEU CHAPA')
+    def update_template_message(self, message_template_id: str, name: str, components: str) -> dict:
         params = dict(
             name=name,
-            #category=category,
             components=str(components),
-            #language=language,
             access_token=self._access_token
         )
-        print('ola', params)
-        print('id', waba_id)
-        response = requests.post(url=f"https://graph.facebook.com/v14.0/{waba_id}", params=params)
+        response = requests.post(url=f"https://graph.facebook.com/v14.0/{message_template_id}", params=params)
         if response.status_code != 200:
             raise FacebookApiException(response.json())
 
