@@ -14,7 +14,7 @@ from marketplace.wpp_templates.models import (
 )
 
 
-#@shared_task(track_started=True, name="refresh_whatsapp_templates_from_facebook")
+@shared_task(track_started=True, name="refresh_whatsapp_templates_from_facebook")
 def refresh_whatsapp_templates_from_facebook():
     for app in App.objects.filter(code__in=["wpp", "wpp-cloud"]):
         if not (app.config.get("wa_waba_id") or app.config.get("waba")):
