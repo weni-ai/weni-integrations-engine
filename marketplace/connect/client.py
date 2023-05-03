@@ -72,7 +72,7 @@ class ConnectProjectClient(ConnectAuth):  # TODO: change class name to FlowsREST
         return None
 
     def get_user_api_token(self, user: str, project_uuid: str):
-        params = dict(user=user, org=str(project_uuid))
+        params = dict(user=user, project=str(project_uuid))
         url = self._get_url("/api/v2/internals/users/api-token/")
         response = requests.get(url=url, params=params, headers=self.auth_header(), timeout=60)
         return response
