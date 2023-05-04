@@ -38,7 +38,12 @@ class ConnectProjectClient(ConnectAuth):  # TODO: change class name to FlowsREST
         url = self._get_url("/api/v2/internals/channel/")
 
         response = requests.get(url=url, params=params, headers=self.auth_header(), timeout=60)
-        return response.json().get("channels", None)
+
+        def map_org_to_project_uuid(channel: dict) -> dict:
+            channel["project_uuid"] = channel.pop("org")
+            return channel
+
+        return list(map(map_org_to_project_uuid, response.json()))
 
     def create_channel(self, user: str, project_uuid: str, data: dict, channeltype_code: str) -> dict:
         payload = {"user": user, "org": str(project_uuid), "data": data, "channeltype_code": channeltype_code}
