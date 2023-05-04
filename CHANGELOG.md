@@ -1,3 +1,7 @@
+v2.5.0
+----------
+* Adjust the internal client to point directly to Flows
+
 v2.4.2
 ----------
 * Add delete endpoint in external services
