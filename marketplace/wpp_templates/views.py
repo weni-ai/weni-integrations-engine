@@ -74,16 +74,6 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         self.perform_update(serializer)
         return Response(serializer.data, status=status.HTTP_200_OK)'''
     
-    '''def update(self, request, *args, **kwargs):
-        instance = self.get_object()
-
-        translation = instance.translation
-        header = translation.header
-        body = translation.body
-        footer = translation.footer'''
-
-        
-    
     
     def perform_destroy(self, instance):
         template_request = TemplateMessageRequest(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
@@ -121,10 +111,13 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
     
     
     #incluir URL
-    @action(detail=True, methods=["PATCH"])
-    def update_template(self, request, app_uuid=None, uuid=None):
+    #@action(detail=True, methods=["PATCH"])
+    def partial_update(self, request, app_uuid, uuid=None):
+        from marketplace.wpp_templates.tasks import refresh_whatsapp_templates_from_facebook
+        
+        #refresh = refresh_whatsapp_templates_from_facebook()
 
-        app = App.objects.get(uuid=app_uuid)
+        '''app = App.objects.get(uuid=app_uuid)
         template = TemplateMessage.objects.get(uuid=uuid)
 
         template.name = request.data.get("name")
@@ -146,23 +139,79 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
 
         header.text = translation.header
 
-        header.save()
+        header.save()'''
         #Deveria salvar o TemplateHeader tambem?
+        template = self.get_object()
+
+
+        app = template.app
+        try:
+            waba_id = app.config.get("waba")["id"]
+
+        except KeyError:
+            raise 'Waba_id não encontrado'        
+        #template = TemplateMessage.objects.get(uuid=template_uuid)
+
+        name = request.data.get("name")
+        header = request.data.get("header")
+        body = request.data.get("body")
+        footer = request.data.get("footer")
+
+        translation = TemplateTranslation.objects.get(template=template)
+        list_components = []
+        
+        if not name:
+            returned_name = TemplateMessage.objects.get(template=template)
+            name = returned_name
+        '''if header:
+            returned_header = TemplateHeader.objects.get(translation=translation)
+            if returned_header:
+                returned_header.text = header
+                list_components.append({"type": "HEADER",
+                                        "format": "TEXT",
+                                        "text":header})'''
+        if header:
+            list_components.append({"type": "HEADER",
+                                        "format": "TEXT",
+                                        "text":header})
+
+        else:
+            returned_header = TemplateHeader.objects.get(translation=translation)
+            if returned_header:
+                returned_header.text = header
+                list_components.append({"type": "HEADER",
+                                        "format": "TEXT",
+                                        "text":header})
+
+        if body:
+            list_components.append({"type":"BODY",
+                                    "text": body})
+
+        else:
+            translation.body = body
+            list_components.append({"type":"BODY",
+                                    "text": body})
+
+        if footer:
+            list_components.append({"type": "FOOTER",
+                                    "text": footer})
+        
+        else:
+            translation.footer = footer
+            list_components.append({"type": "FOOTER",
+                                    "text": footer})
+            
+        components = {"components": list_components}
 
         template_request = TemplateMessageRequest(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
-
-        #try
         response = template_request.update_template_message(
-                    waba_id=app.config.get("wa_waba_id"),
-                    name=request.data.get("name"),
-                    language=request.data.get("language"),
-                    components=translation.header + translation.body + translation.footer,
+                    #alterar quando achar onde encontrar esse campo
+                    message_template_id= "message-template-id",
+                    name=name,
+                    components=components,
                     )
-        print( 'HA')
-        print(response)
-        response.raise_for_status()
-        #except Exception as e:
-        #    capture_exception(FacebookApiException(e.response.json()))
-        #    raise e
 
-        return Response(template)
+        response.raise_for_status()
+        refresh_whatsapp_templates_from_facebook()
+
+        return Response(response)
