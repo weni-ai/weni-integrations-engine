@@ -36,6 +36,7 @@ def refresh_whatsapp_templates_from_facebook():
                     app=app,
                     name=template.get("name"),
                     category=template.get("category"),
+                    message_template_id=template.get("id"),
                 )
                 body = ""
                 footer = ""
