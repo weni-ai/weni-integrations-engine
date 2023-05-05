@@ -12,7 +12,7 @@ from rest_framework.pagination import PageNumberPagination
 from marketplace.applications.models import App
 from marketplace.core.types.channels.whatsapp_base.exceptions import FacebookApiException
 
-from .models import TemplateMessage
+from .models import TemplateHeader, TemplateMessage, TemplateTranslation
 from .serializers import TemplateMessageSerializer, TemplateTranslationSerializer
 from .requests import TemplateMessageRequest
 from .languages import LANGUAGES
@@ -49,7 +49,42 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+    
+    '''def perform_update(self, serializer):
+        print(serializer.validated_data)
+        instance = serializer.save()
+        print('INSTANCE', instance)
+        #instance = self.get_object()
+        template_request = TemplateMessageRequest(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
+        response = template_request.update_template_message(waba_id=instance.app.config.get("wa_waba_id"), name=instance.name, language=instance.language, body=instance.body)
+        if response.status_code != status.HTTP_200_OK:
+            capture_exception(FacebookApiException(response.json()))
+            if response.json().get("error", {}).get("error_subcode", 0) == 2388094:
+                return Response(data=dict(error="WhatsApp.templates.error.update_sample"),
+                                status=status.HTTP_400_BAD_REQUEST)
+            return Response(status=status.HTTP_400_BAD_REQUEST)
 
+    #incluir aqui o update
+    def partial_update(self, request):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        print('olllllllar')
+        serializer.is_valid()
+        print(serializer  )
+        self.perform_update(serializer)
+        return Response(serializer.data, status=status.HTTP_200_OK)'''
+    
+    '''def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+
+        translation = instance.translation
+        header = translation.header
+        body = translation.body
+        footer = translation.footer'''
+
+        
+    
+    
     def perform_destroy(self, instance):
         template_request = TemplateMessageRequest(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
         response = template_request.delete_template_message(waba_id=instance.app.config.get("wa_waba_id"),
@@ -83,3 +118,51 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["GET"])
     def languages(self, request, app_uuid=None):
         return Response(data=LANGUAGES, status=status.HTTP_200_OK)
+    
+    
+    #incluir URL
+    @action(detail=True, methods=["PATCH"])
+    def update_template(self, request, app_uuid=None, uuid=None):
+
+        app = App.objects.get(uuid=app_uuid)
+        template = TemplateMessage.objects.get(uuid=uuid)
+
+        template.name = request.data.get("name")
+        template.app = app
+
+        template.save()
+
+        translation =  TemplateTranslation.objects.get(template=template)
+
+        translation.template = template
+        translation.body = request.data.get("body", [])
+        translation.header = request.data.get("header", {})
+        translation.footer = request.data.get("footer", [])
+        translation.language = request.data.get("language", {})
+        
+        translation.save()
+
+        header = TemplateHeader.objects.get(template=template)
+
+        header.text = translation.header
+
+        header.save()
+        #Deveria salvar o TemplateHeader tambem?
+
+        template_request = TemplateMessageRequest(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
+
+        #try
+        response = template_request.update_template_message(
+                    waba_id=app.config.get("wa_waba_id"),
+                    name=request.data.get("name"),
+                    language=request.data.get("language"),
+                    components=translation.header + translation.body + translation.footer,
+                    )
+        print( 'HA')
+        print(response)
+        response.raise_for_status()
+        #except Exception as e:
+        #    capture_exception(FacebookApiException(e.response.json()))
+        #    raise e
+
+        return Response(template)
