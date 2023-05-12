@@ -18,9 +18,10 @@ except subprocess.CalledProcessError as e:
     exit(1)
 
 # Get the coverage rate for the latest commit from the Codecov API
-COVERAGE_LAST_COMMIT_API = f"https://codecov.io/api/gh/weni-ai/weni-integrations-engine/commits/{LAST_COMMIT}"
+URL_V2 = "https://api.codecov.io/api/v2/gh/weni-ai/repos/weni-integrations-engine/commits/"
+COVERAGE_LAST_COMMIT_API= f"{URL_V2}{LAST_COMMIT}"
 response = requests.get(COVERAGE_LAST_COMMIT_API).json()
-COVERAGE_LAST_COMMIT = response["commit"]["totals"]['c']
+COVERAGE_LAST_COMMIT = response["totals"]["coverage"]
 
 # Compare the current coverage rate to the coverage rate for the latest commit
 if COVERAGE_CURRENT_ABSOLUTE < float(COVERAGE_LAST_COMMIT):
