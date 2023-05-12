@@ -272,7 +272,9 @@ APPTYPE_INSTAGRAM_CHANNEL_PATH = "channels.instagram.type.InstagramType"
 APPTYPE_FACEBOOK_CHANNEL_PATH = "channels.facebook.type.FacebookType"
 # Externals
 APPTYPE_OMIE_PATH = "externals.omie.type.OmieType"
+
 APPTYPE_CHATGPT_PATH = "externals.chatgpt.type.ChatGPTType"
+APPTYPE_GENERIC_EXTERNALS_PATH = "externals.generic.type.GenericType"
 
 APPTYPES_CLASSES = [
     APPTYPE_WENI_WEB_CHAT_PATH,
@@ -284,6 +286,7 @@ APPTYPES_CLASSES = [
     APPTYPE_FACEBOOK_CHANNEL_PATH,
     APPTYPE_OMIE_PATH,
     APPTYPE_GENERIC_CHANNEL_PATH,
+    APPTYPE_GENERIC_EXTERNALS_PATH,
     APPTYPE_CHATGPT_PATH,
 ]
 

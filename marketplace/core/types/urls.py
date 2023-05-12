@@ -6,8 +6,13 @@ from marketplace.core.types.channels.generic.views import DetailChannelType
 from marketplace.core.types.channels.generic.views import GetIcons
 from marketplace.core.types.channels.generic.views import GenericAppTypes
 
-urlpatterns = []
+from marketplace.core.types.externals.generic.views import (
+    DetailGenericExternals,
+    ExternalsIcons,
+    ExternalsAppTypes,
+)
 
+urlpatterns = []
 
 for apptype in types.APPTYPES.values():
     router = routers.SimpleRouter()
@@ -18,8 +23,13 @@ for apptype in types.APPTYPES.values():
     urlpatterns.append(path(f"apptypes/{apptype.code}/", include(router.urls)))
 
 generic_router = routers.SimpleRouter()
+# Channels
 generic_router.register("channel-type", DetailChannelType, basename="channel-type")
 generic_router.register("get-icons", GetIcons, basename="get-icons")
 generic_router.register("apptypes", GenericAppTypes, basename="my-apps")
+# Externals
+generic_router.register("externals/detail", DetailGenericExternals, basename="externals-detail")
+generic_router.register("externals/icons", ExternalsIcons, basename="externals-icons")
+generic_router.register("externals/types", ExternalsAppTypes, basename="externals-types")
 
 urlpatterns.append(path("apptypes/generic/", include(generic_router.urls)))
