@@ -32,4 +32,11 @@ def _get_apptypes_members():
 
 
 for member in _get_apptypes_members():
+    if member.code == "generic":
+        if member.category == "CN":
+            APPTYPES["channel"] = member()
+        else:
+            APPTYPES["external"] = member()
+        continue
+
     APPTYPES[member.code] = member()

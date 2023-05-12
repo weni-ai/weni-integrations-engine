@@ -22,9 +22,9 @@ class GenericExternalSerializer(AppTypeBaseSerializer):
 
     def create(self, validated_data):
         # TODO: Send the responsibility of this method to the AppTypeBaseSerializer and create an object from the type
-        from .type import GenericType
+        from .type import GenericExternalsAppType
 
-        validated_data["platform"] = GenericType.platform
+        validated_data["platform"] = GenericExternalsAppType.platform
         return super().create(validated_data)
 
 

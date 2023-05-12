@@ -15,6 +15,7 @@ from django.conf import settings
 
 from marketplace.applications.models import AppTypeAsset
 
+
 IMPORTANCE_CHANNELS_ORDER = settings.IMPORTANCE_CHANNELS_ORDER
 
 
@@ -23,9 +24,10 @@ class GenericExternalsViewSet(views.BaseAppTypeViewSet):
 
     def get_queryset(self):
         # TODO: Send the responsibility of this method to the BaseAppTypeViewSet
-        return super().get_queryset().filter(code=type_.GenericType.code)
+        return super().get_queryset().filter(code=type_.GenericExternalsAppType().code)
 
     def perform_create(self, serializer):
+        app_type = type_.GenericExternalsAppType()
         flows_type_code = self.request.data.get("flows_type_code", None)
         external_name = None
 
@@ -34,14 +36,16 @@ class GenericExternalsViewSet(views.BaseAppTypeViewSet):
         else:
             raise serializers.ValidationError("flows_type_code not be empty.")
 
-        client = FlowsClient()
-        response = client.list_external_types(flows_type_code)
+        response = app_type.list(FlowsClient())
         response = response.json()
         if response.get("attributes"):
             if response.get("attributes").get("name"):
                 external_name = response.get("attributes").get("name")
-
-        instance = serializer.save(code="generic-ext")
+        """ TODO: Resolve erro on save this object 
+        line 11, in get  raise KeyError(f"Invalid code: {code} No AppType found")
+        KeyError: 'Invalid code: generic No AppType found'
+        """
+        instance = serializer.save(code="generic")
         instance.config["flows_type_code"] = flows_type_code
         instance.config["name"] = external_name
         instance.config["external_icon_url"] = search_icon(flows_type_code)

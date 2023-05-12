@@ -5,9 +5,8 @@ from marketplace.applications.models import App
 
 class WeniWebChatType(AppType):
     view_class = views.WeniWebChatViewSet
-
     code = "wwc"
-    channeltype_code = "WWC"
+    flows_type_code = "WWC"
     name = "Weni Web Chat"
     description = "weniWebChat.data.description"
     summary = "weniWebChat.data.summary"

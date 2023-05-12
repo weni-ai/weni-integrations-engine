@@ -1,14 +1,18 @@
-from marketplace.core.types.externals.base import ExternalAppType
 from .views import GenericExternalsViewSet
 
+from marketplace.applications.models import App
+from marketplace.interfaces.flows import FlowsInterface
 
-class GenericType(ExternalAppType):
+from marketplace.core.types.base import AppType, GenericAppType
+
+
+class GenericExternalsAppType(GenericAppType):
     view_class = GenericExternalsViewSet
-    code = "generic-ext"
-    channeltype_code = None
-    name = "Generic External"
-    description = "generic.data.description"
-    summary = "generic.data.summary"
-    bg_color = None
-    developer = "Weni"
-    config_design = ""
+    platform = App.PLATFORM_WENI_FLOWS
+    category = AppType.CATEGORY_EXTERNAL
+
+    def list(self, flows_client: FlowsInterface, flows_type_code=None):
+        return flows_client.list_external_types(flows_type_code)
+
+    def release(self, flows_client: FlowsInterface, uuid: str, user_email: str):
+        return flows_client.release_external_service(uuid, user_email)

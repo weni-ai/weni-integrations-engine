@@ -19,8 +19,21 @@ for apptype in types.APPTYPES.values():
     if apptype.view_class is None:
         continue
 
+    if apptype.code == "generic":
+        generic_type = None
+        if apptype.category=="CN":
+            router.register("apps", apptype.view_class, basename=f"{apptype.code}-app")
+            generic_type="channel"
+        else:
+            router.register("apps", apptype.view_class, basename=f"{apptype.code}-app")
+            generic_type="external"
+            
+        urlpatterns.append(path(f"apptypes/{apptype.code}/{generic_type}/", include(router.urls)))
+        continue
+
     router.register("apps", apptype.view_class, basename=f"{apptype.code}-app")
     urlpatterns.append(path(f"apptypes/{apptype.code}/", include(router.urls)))
+
 # Channels
 router.register("channel-type", DetailChannelType, basename="channel-type")
 router.register("get-icons", GetIcons, basename="get-icons")
