@@ -9,7 +9,6 @@ from unittest.mock import Mock
 
 
 class ValidateAppCodeExistsTestCase(TestCase):
-
     @patch("marketplace.connect.client.ConnectProjectClient.detail_channel_type")
     def test_invalid_app_code(self, mock_list_detail_channel_type):
         response_data = None
@@ -19,7 +18,9 @@ class ValidateAppCodeExistsTestCase(TestCase):
         mock_list_detail_channel_type.return_value = mock_response
 
         value = "wrong"
-        with self.assertRaisesMessage(ValidationError, f"AppType ({value}) not exists!"):
+        with self.assertRaisesMessage(
+            ValidationError, f"AppType ({value}) not exists!"
+        ):
             validate_app_code_exists(value)
 
     def test_valid_app_code(self):
@@ -32,7 +33,7 @@ class ValidateAppCodeExistsTestCase(TestCase):
             "attributes": {
                 "code": "TWT",
                 "category": {"name": "SOCIAL_MEDIA", "value": 2},
-                "teste": "true"
+                "teste": "true",
             }
         }
         mock_response = Mock()

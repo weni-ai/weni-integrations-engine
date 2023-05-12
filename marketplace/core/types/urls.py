@@ -5,6 +5,7 @@ from marketplace.core import types
 from marketplace.core.types.channels.generic.views import DetailChannelType
 from marketplace.core.types.channels.generic.views import GetIcons
 from marketplace.core.types.channels.generic.views import GenericAppTypes
+
 urlpatterns = []
 
 

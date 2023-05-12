@@ -9,7 +9,6 @@ WHATSAPP_VERSION = settings.WHATSAPP_VERSION
 
 
 class Conversations(object):
-
     _user_initiated = 0
     _business_initiated = 0
 
@@ -35,7 +34,9 @@ class Conversations(object):
                 self._user_initiated += conversation_count
 
     def _get_data_points(self, data: list):
-        data_points_dict = next(filter(lambda data_content: "data_points" in data_content, data))
+        data_points_dict = next(
+            filter(lambda data_content: "data_points" in data_content, data)
+        )
         return data_points_dict.get("data_points")
 
     def __dict__(self) -> dict:
@@ -69,7 +70,9 @@ class FacebookConversationAPI(object):  # TODO: Use BaseFacebookBaseApi
 
         return fields
 
-    def conversations(self, waba_id: str, access_token: str, start: str, end: str) -> Conversations:
+    def conversations(
+        self, waba_id: str, access_token: str, start: str, end: str
+    ) -> Conversations:
         fields = self._get_fields(start, end)
         params = dict(fields=fields, access_token=access_token)
         response = self._request(

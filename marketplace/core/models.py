@@ -12,9 +12,10 @@ if TYPE_CHECKING:
 
 
 class BaseModel(models.Model):
-
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    created_on = models.DateTimeField(_("Created on"), editable=False, auto_now_add=True)
+    created_on = models.DateTimeField(
+        _("Created on"), editable=False, auto_now_add=True
+    )
     modified_on = models.DateTimeField(_("Modified on"), auto_now=True)
 
     created_by = models.ForeignKey(
@@ -51,10 +52,11 @@ class AppTypeBaseModel(BaseModel):
         Returns the respective AppType
         """
         from marketplace.core.types import APPTYPES
+
         try:
             return APPTYPES.get(self.code)
         except KeyError:
-            return APPTYPES.get('generic')
+            return APPTYPES.get("generic")
 
     class Meta:
         abstract = True

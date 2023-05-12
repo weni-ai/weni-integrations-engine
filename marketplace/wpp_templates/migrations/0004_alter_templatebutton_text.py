@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('wpp_templates', '0003_alter_templatemessage_name'),
+        ("wpp_templates", "0003_alter_templatemessage_name"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='templatebutton',
-            name='text',
+            model_name="templatebutton",
+            name="text",
             field=models.CharField(max_length=30, null=True),
         ),
     ]

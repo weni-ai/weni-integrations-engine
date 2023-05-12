@@ -34,7 +34,7 @@ class GenericChannelViewSet(views.BaseAppTypeViewSet):
         if channel_code:
             channel_code = channel_code.strip()
         else:
-            raise serializers.ValidationError('Code not be empty.')
+            raise serializers.ValidationError("Code not be empty.")
 
         client = FlowsClient()
         response = client.list_channel_types(channel_code=channel_code)

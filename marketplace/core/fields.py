@@ -24,7 +24,9 @@ class Base64ImageField(serializers.ImageField):
         extencion = header.split("/")[-1]
 
         try:
-            return ContentFile(base64.b64decode(b64_encoded), name=self.get_file_name(extencion))
+            return ContentFile(
+                base64.b64decode(b64_encoded), name=self.get_file_name(extencion)
+            )
         except binascii.Error:
             raise ValidationError
 

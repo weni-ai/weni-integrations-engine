@@ -5,7 +5,6 @@ import marketplace.core.validators
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("applications", "0003_apptypeasset_unique_asset_type_icon_app_code"),
     ]
@@ -14,11 +13,15 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name="app",
             name="app_code",
-            field=models.SlugField(validators=[marketplace.core.validators.validate_app_code_exists]),
+            field=models.SlugField(
+                validators=[marketplace.core.validators.validate_app_code_exists]
+            ),
         ),
         migrations.AlterField(
             model_name="apptypeasset",
             name="app_code",
-            field=models.SlugField(validators=[marketplace.core.validators.validate_app_code_exists]),
+            field=models.SlugField(
+                validators=[marketplace.core.validators.validate_app_code_exists]
+            ),
         ),
     ]

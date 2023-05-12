@@ -8,7 +8,6 @@ import uuid
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
         ("applications", "0010_alter_app_config"),
@@ -18,11 +17,35 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="AppTypeFeatured",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
-                ("uuid", models.UUIDField(default=uuid.uuid4, editable=False, unique=True)),
-                ("created_on", models.DateTimeField(auto_now_add=True, verbose_name="Created on")),
-                ("modified_on", models.DateTimeField(auto_now=True, verbose_name="Modified on")),
-                ("code", models.SlugField(validators=[marketplace.core.validators.validate_app_code_exists])),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "uuid",
+                    models.UUIDField(default=uuid.uuid4, editable=False, unique=True),
+                ),
+                (
+                    "created_on",
+                    models.DateTimeField(auto_now_add=True, verbose_name="Created on"),
+                ),
+                (
+                    "modified_on",
+                    models.DateTimeField(auto_now=True, verbose_name="Modified on"),
+                ),
+                (
+                    "code",
+                    models.SlugField(
+                        validators=[
+                            marketplace.core.validators.validate_app_code_exists
+                        ]
+                    ),
+                ),
                 (
                     "created_by",
                     models.ForeignKey(
@@ -49,6 +72,8 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name="apptypefeatured",
-            constraint=models.UniqueConstraint(fields=("code",), name="unique_app_type_featured_code"),
+            constraint=models.UniqueConstraint(
+                fields=("code",), name="unique_app_type_featured_code"
+            ),
         ),
     ]

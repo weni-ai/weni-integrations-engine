@@ -9,8 +9,12 @@ from .views import UserPermissionViewSet, UserViewSet, UserAPITokenAPIView
 
 
 def grpc_handlers(server):
-    user_pb2_grpc.add_UserPermissionControllerServicer_to_server(UserPermissionService.as_servicer(), server)
-    user_pb2_grpc.add_UserControllerServicer_to_server(UserService.as_servicer(), server)
+    user_pb2_grpc.add_UserPermissionControllerServicer_to_server(
+        UserPermissionService.as_servicer(), server
+    )
+    user_pb2_grpc.add_UserControllerServicer_to_server(
+        UserService.as_servicer(), server
+    )
 
 
 router = DefaultRouter()

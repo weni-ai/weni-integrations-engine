@@ -23,7 +23,9 @@ class ProjectManagePermission(permissions.IsAuthenticated):
                 return False
 
             try:
-                authorization = request.user.authorizations.get(project_uuid=project_uuid)
+                authorization = request.user.authorizations.get(
+                    project_uuid=project_uuid
+                )
             except ProjectAuthorization.DoesNotExist:
                 return False
 
@@ -34,7 +36,9 @@ class ProjectManagePermission(permissions.IsAuthenticated):
     def has_object_permission(self, request, view, obj):
         if request.method not in WRITE_METHODS:
             try:
-                authorization = request.user.authorizations.get(project_uuid=obj.project_uuid)
+                authorization = request.user.authorizations.get(
+                    project_uuid=obj.project_uuid
+                )
                 is_admin = authorization.is_admin
                 is_contributor = authorization.is_contributor
                 is_viewer = authorization.is_viewer
@@ -45,7 +49,7 @@ class ProjectManagePermission(permissions.IsAuthenticated):
                 return is_contributor or is_admin
 
             if request.method in READ_METHODS:
-                return (is_viewer or is_contributor or is_admin)
+                return is_viewer or is_contributor or is_admin
 
         return True
 
@@ -55,7 +59,13 @@ class ProjectViewPermission(permissions.BasePermission):
         if isinstance(request.user, AnonymousUser):
             return False
         try:
-            authorization = request.user.authorizations.get(project_uuid=obj.project_uuid)
+            authorization = request.user.authorizations.get(
+                project_uuid=obj.project_uuid
+            )
         except ProjectAuthorization.DoesNotExist:
             return False
-        return authorization.is_viewer or authorization.is_contributor or authorization.is_admin
+        return (
+            authorization.is_viewer
+            or authorization.is_contributor
+            or authorization.is_admin
+        )

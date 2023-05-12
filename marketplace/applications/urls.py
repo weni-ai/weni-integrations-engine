@@ -12,10 +12,14 @@ router.register("apptypes", applications_views.AppTypeViewSet, basename="apptype
 router.register("my-apps", applications_views.MyAppViewSet, basename="my-app")
 
 comments_router = routers.NestedSimpleRouter(router, r"apptypes", lookup="apptype")
-comments_router.register("comments", interactions_views.CommentViewSet, basename="apptype-comment")
+comments_router.register(
+    "comments", interactions_views.CommentViewSet, basename="apptype-comment"
+)
 
 rating_router = routers.NestedSimpleRouter(router, r"apptypes", lookup="apptype")
-rating_router.register("ratings", interactions_views.RatingViewSet, basename="apptype-rating")
+rating_router.register(
+    "ratings", interactions_views.RatingViewSet, basename="apptype-rating"
+)
 
 urlpatterns = [
     path("", include(router.urls)),

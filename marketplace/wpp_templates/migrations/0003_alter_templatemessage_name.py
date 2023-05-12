@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('wpp_templates', '0002_auto_20220929_1649'),
+        ("wpp_templates", "0002_auto_20220929_1649"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='templatemessage',
-            name='name',
+            model_name="templatemessage",
+            name="name",
             field=models.CharField(max_length=512),
         ),
     ]

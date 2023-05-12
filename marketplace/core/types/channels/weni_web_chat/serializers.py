@@ -16,7 +16,16 @@ from marketplace.connect.client import ConnectProjectClient
 class WeniWebChatSerializer(AppTypeBaseSerializer):
     class Meta:
         model = App
-        fields = ("code", "uuid", "project_uuid", "platform", "config", "created_by", "created_on", "modified_by")
+        fields = (
+            "code",
+            "uuid",
+            "project_uuid",
+            "platform",
+            "config",
+            "created_by",
+            "created_on",
+            "modified_by",
+        )
         read_only_fields = ("code", "uuid", "platform")
 
     def create(self, validated_data):
@@ -90,7 +99,11 @@ class ConfigSerializer(serializers.Serializer):
         }
 
         channel_uuid = self.app.config.get("channelUuid", None)
-        attrs["channelUuid"] = channel_uuid if channel_uuid is not None else self._create_channel().get("uuid")
+        attrs["channelUuid"] = (
+            channel_uuid
+            if channel_uuid is not None
+            else self._create_channel().get("uuid")
+        )
 
         attrs["socketUrl"] = settings.SOCKET_BASE_URL
         attrs["host"] = settings.FLOWS_HOST_URL
@@ -107,7 +120,9 @@ class ConfigSerializer(serializers.Serializer):
         data = {"name": name, "base_url": settings.SOCKET_BASE_URL}
 
         client = ConnectProjectClient()
-        return client.create_channel(user.email, self.app.project_uuid, data, self.app.channeltype_code)
+        return client.create_channel(
+            user.email, self.app.project_uuid, data, self.app.channeltype_code
+        )
 
     def generate_script(self, attrs):
         """
@@ -116,8 +131,12 @@ class ConfigSerializer(serializers.Serializer):
         header_path = os.path.dirname(os.path.abspath(__file__))
 
         with open(os.path.join(header_path, "header.script"), "r") as script_header:
-            header = script_header.read().replace("<APPTYPE_CODE>", type_.WeniWebChatType.code)
-            header = header.replace("<CUSTOM-MESSAGE-DELAY>", str(attrs.get("timeBetweenMessages")))
+            header = script_header.read().replace(
+                "<APPTYPE_CODE>", type_.WeniWebChatType.code
+            )
+            header = header.replace(
+                "<CUSTOM-MESSAGE-DELAY>", str(attrs.get("timeBetweenMessages"))
+            )
 
             custom_css = str(attrs.get("customCss", ""))
             header = header.replace("<CUSTOM_CSS>", custom_css)
@@ -137,7 +156,6 @@ class ConfigSerializer(serializers.Serializer):
 
 
 class WeniWebChatConfigureSerializer(AppTypeBaseSerializer):
-
     config = ConfigSerializer(write_only=True)
     script = serializers.SerializerMethodField()
 
