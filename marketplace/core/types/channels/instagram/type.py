@@ -7,7 +7,7 @@ class InstagramType(AppType):
     view_class = views.InstagramViewSet
 
     code = "ig"
-    channeltype_code = "IG"
+    flows_type_code = "IG"
     name = "Instagram"
     description = "instagram.data.description"
     summary = "instagram.data.summary"

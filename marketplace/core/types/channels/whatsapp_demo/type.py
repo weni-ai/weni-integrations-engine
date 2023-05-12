@@ -16,7 +16,7 @@ class WhatsAppDemoType(AppType):
     FACEBOOK_NAMESPACE = config("ROUTER_FACEBOOK_NAMESPACE")
 
     code = "wpp-demo"
-    channeltype_code = "WA"
+    flows_type_code = "WA"
     name = "WhatsApp Demo"
     description = "WhatsAppDemo.data.description"
     summary = "WhatsAppDemo.data.summary"
@@ -27,4 +27,6 @@ class WhatsAppDemoType(AppType):
     config_design = "popup"
 
     def can_add(self, project_uuid: str) -> bool:
-        return not App.objects.filter(code=self.code, project_uuid=project_uuid).exists()
+        return not App.objects.filter(
+            code=self.code, project_uuid=project_uuid
+        ).exists()
