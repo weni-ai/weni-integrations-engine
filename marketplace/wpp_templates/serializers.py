@@ -14,7 +14,9 @@ from marketplace.applications.models import App
 from .models import TemplateMessage, TemplateTranslation, TemplateButton, TemplateHeader
 from .requests import TemplateMessageRequest
 from marketplace.core.types.channels.whatsapp_cloud.requests import PhotoAPIRequest
-from marketplace.core.types.channels.whatsapp_base.exceptions import FacebookApiException
+from marketplace.core.types.channels.whatsapp_base.exceptions import (
+    FacebookApiException,
+)
 
 WHATSAPP_VERSION = settings.WHATSAPP_VERSION
 
@@ -56,7 +58,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
         data = super().to_representation(instance)
 
         if instance.headers.first():
-            data['header'] = instance.headers.first().to_dict()
+            data["header"] = instance.headers.first().to_dict()
         return data
 
     def append_to_components(self, components: list() = [], component=None):
@@ -66,7 +68,9 @@ class TemplateTranslationSerializer(serializers.Serializer):
         return components
 
     def create(self, validated_data: dict) -> None:
-        template_message_request = TemplateMessageRequest(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
+        template_message_request = TemplateMessageRequest(
+            settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
+        )
         template = TemplateMessage.objects.get(uuid=validated_data.get("template_uuid"))
         components = [validated_data.get("body", {})]
         header = validated_data.get("header")
@@ -77,22 +81,34 @@ class TemplateTranslationSerializer(serializers.Serializer):
             header["format"] = header.get("header_type", "TEXT")
             header.pop("header_type")
 
-            if (header.get("format") == "IMAGE"
-                    or header.get("format") == "DOCUMENT"
-                    or header.get("format") == "VIDEO"):
-                photo_api_request = PhotoAPIRequest(template.app.config.get("wa_waba_id"))
+            if (
+                header.get("format") == "IMAGE"
+                or header.get("format") == "DOCUMENT"
+                or header.get("format") == "VIDEO"
+            ):
+                photo_api_request = PhotoAPIRequest(
+                    template.app.config.get("wa_waba_id")
+                )
                 photo = header.get("example")
-                file_type = re.search('(?<=data:)(.*)(?=;base64)', photo).group(0)
+                file_type = re.search("(?<=data:)(.*)(?=;base64)", photo).group(0)
                 photo = photo.split(";base64,")[1]
                 upload_session_id = photo_api_request.create_upload_session(
-                    settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN, len(base64.b64decode(photo)), file_type=file_type
+                    settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN,
+                    len(base64.b64decode(photo)),
+                    file_type=file_type,
                 )
 
-                url = f"https://graph.facebook.com/{WHATSAPP_VERSION}/{upload_session_id}"
-                headers = {"Content-Type": file_type,
-                           "Authorization": f"OAuth {settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN}"}
+                url = (
+                    f"https://graph.facebook.com/{WHATSAPP_VERSION}/{upload_session_id}"
+                )
+                headers = {
+                    "Content-Type": file_type,
+                    "Authorization": f"OAuth {settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN}",
+                }
                 headers["file_offset"] = "0"
-                response = requests.post(url, headers=headers, data=base64.b64decode(photo))
+                response = requests.post(
+                    url, headers=headers, data=base64.b64decode(photo)
+                )
 
                 if response.status_code != 200:
                     raise FacebookApiException(response.json())
@@ -114,7 +130,9 @@ class TemplateTranslationSerializer(serializers.Serializer):
             button = dict(button)
             button["type"] = button.get("button_type")
             if button.get("phone_number"):
-                button["phone_number"] = f'+{button.get("country_code")} {button.get("phone_number")}'
+                button[
+                    "phone_number"
+                ] = f'+{button.get("country_code")} {button.get("phone_number")}'
 
             button_component = button
             button_component.pop("button_type")
@@ -171,7 +189,7 @@ class TemplateMessageSerializer(serializers.Serializer):
         data = super().to_representation(instance)
 
         if instance.translations.first():
-            data['text_preview'] = instance.translations.first().body
+            data["text_preview"] = instance.translations.first().body
         return data
 
     def create(self, validated_data: dict) -> TemplateMessage:

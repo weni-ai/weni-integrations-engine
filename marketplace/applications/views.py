@@ -11,7 +11,6 @@ from marketplace.accounts.models import ProjectAuthorization
 
 
 class AppTypeViewSet(viewsets.ViewSet):
-
     serializer_class = AppTypeSerializer
 
     def get_serializer_context(self):
@@ -27,7 +26,8 @@ class AppTypeViewSet(viewsets.ViewSet):
 
         if category is not None:
             apptypes = apptypes.filter(
-                lambda apptype: apptype.get_category_display() == request.query_params.get("category")
+                lambda apptype: apptype.get_category_display()
+                == request.query_params.get("category")
             )
 
         # TODO: remove the "wpp" from this filter when whatsapp leaves beta
@@ -100,6 +100,8 @@ class MyAppViewSet(viewsets.ReadOnlyModelViewSet):
                 queryset = queryset.filter(uuid__in=unconfigured_uuid_list)
 
             else:
-                raise ValidationError(f"Expected a boolean param in configured, but recived `{configured}`")
+                raise ValidationError(
+                    f"Expected a boolean param in configured, but recived `{configured}`"
+                )
 
         return queryset

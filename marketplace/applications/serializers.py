@@ -9,7 +9,9 @@ class AppTypeSerializer(serializers.Serializer):
     name = serializers.CharField()
     description = serializers.CharField()
     summary = serializers.CharField()
-    category = serializers.ChoiceField(choices=AppType.CATEGORY_CHOICES, source="get_category_display")
+    category = serializers.ChoiceField(
+        choices=AppType.CATEGORY_CHOICES, source="get_category_display"
+    )
     icon = serializers.URLField(source="get_icon_url")
     bg_color = serializers.CharField()
     config_design = serializers.CharField()
@@ -24,7 +26,9 @@ class AppTypeSerializer(serializers.Serializer):
         return [
             {
                 "type": asset.asset_type,
-                "url": asset.url if asset.asset_type == AppTypeAsset.ASSET_TYPE_LINK else asset.attachment.url,
+                "url": asset.url
+                if asset.asset_type == AppTypeAsset.ASSET_TYPE_LINK
+                else asset.attachment.url,
                 "description": asset.description,
             }
             for asset in obj.assets

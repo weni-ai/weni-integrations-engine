@@ -13,4 +13,6 @@ class OmieType(ExternalAppType):
     bg_color = None
     developer = "Weni"
     config_design = ""
-    channels_available = None  # TODO: This field is temporary, it needs to be removed in the future
+    channels_available = (
+        None  # TODO: This field is temporary, it needs to be removed in the future
+    )

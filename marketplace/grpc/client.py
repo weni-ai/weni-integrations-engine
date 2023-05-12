@@ -10,7 +10,6 @@ from weni.protobuf.wpp_router import channel_pb2, channel_pb2_grpc
 
 
 class ConnectGRPCClient:
-
     base_url = settings.SOCKET_BASE_URL
 
     def __init__(self):
@@ -29,16 +28,23 @@ class ConnectGRPCClient:
 
     def list_channels(self, channeltype_code: str):
         try:
-            response = self.project_stub.Channel(project_pb2.ChannelListRequest(channel_type=channeltype_code))
+            response = self.project_stub.Channel(
+                project_pb2.ChannelListRequest(channel_type=channeltype_code)
+            )
             return response
         except grpc.RpcError as error:
             raise Exception(error)
 
-    def create_channel(self, user: str, project_uuid: str, data: dict, channeltype_code: str) -> str:
+    def create_channel(
+        self, user: str, project_uuid: str, data: dict, channeltype_code: str
+    ) -> str:
         try:
             response = self.project_stub.CreateChannel(
                 project_pb2.CreateChannelRequest(
-                    user=user, project_uuid=project_uuid, data=json.dumps(data), channeltype_code=channeltype_code
+                    user=user,
+                    project_uuid=project_uuid,
+                    data=json.dumps(data),
+                    channeltype_code=channeltype_code,
                 )
             )
         except grpc.RpcError as error:
@@ -48,11 +54,16 @@ class ConnectGRPCClient:
 
         return response
 
-    def create_wac_channel(self, user: str, project_uuid: str, phone_number_id: str, config: dict):
+    def create_wac_channel(
+        self, user: str, project_uuid: str, phone_number_id: str, config: dict
+    ):
         try:
             return self.project_stub.CreateWACChannel(
                 project_pb2.ChannelWACCreateRequest(
-                    user=user, project_uuid=project_uuid, phone_number_id=phone_number_id, config=json.dumps(config)
+                    user=user,
+                    project_uuid=project_uuid,
+                    phone_number_id=phone_number_id,
+                    config=json.dumps(config),
                 )
             )
 
@@ -61,7 +72,9 @@ class ConnectGRPCClient:
 
     def release_channel(self, channel_uuid: str, user_email: str) -> None:
         response = self.project_stub.ReleaseChannel(
-            project_pb2.ReleaseChannelRequest(channel_uuid=channel_uuid, user=user_email)
+            project_pb2.ReleaseChannelRequest(
+                channel_uuid=channel_uuid, user=user_email
+            )
         )
         return response
 
@@ -89,14 +102,26 @@ class RouterGRPCClient:
 def create_channel(user: str, project_uuid: str, data: dict, channeltype_code: str):
     client = ConnectGRPCClient()
     channel = client.create_channel(user, project_uuid, data, channeltype_code)
-    return dict(uuid=channel.uuid, name=channel.name, config=channel.config, address=channel.address)
+    return dict(
+        uuid=channel.uuid,
+        name=channel.name,
+        config=channel.config,
+        address=channel.address,
+    )
 
 
 @celery_app.task(name="create_wac_channel")
-def create_wac_channel(user: str, project_uuid: str, phone_number_id: str, config: dict):
+def create_wac_channel(
+    user: str, project_uuid: str, phone_number_id: str, config: dict
+):
     client = ConnectGRPCClient()
     channel = client.create_wac_channel(user, project_uuid, phone_number_id, config)
-    return dict(uuid=channel.uuid, name=channel.name, config=channel.config, address=channel.address)
+    return dict(
+        uuid=channel.uuid,
+        name=channel.name,
+        config=channel.config,
+        address=channel.address,
+    )
 
 
 @celery_app.task(name="release_channel")

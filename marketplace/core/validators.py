@@ -13,8 +13,8 @@ def validate_app_code_exists(value):
 
 def validate_generic_app_code_exists(code):
     """
-        Checks if the code exists within the generic channels coming from rapidpro,
-        if it exists, it returns True.
+    Checks if the code exists within the generic channels coming from rapidpro,
+    if it exists, it returns True.
     """
     from marketplace.connect.client import ConnectProjectClient
 

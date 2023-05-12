@@ -50,7 +50,10 @@ class RetrieveCommentViewTestCase(APIBaseTestCase):
             content="This is only a test content",
         )
 
-        self.url = reverse("apptype-comment-detail", kwargs={"apptype_pk": "wwc", "uuid": self.comment.uuid})
+        self.url = reverse(
+            "apptype-comment-detail",
+            kwargs={"apptype_pk": "wwc", "uuid": self.comment.uuid},
+        )
 
     @property
     def view(self):
@@ -89,7 +92,10 @@ class UpdateCommentViewTestCase(APIBaseTestCase):
             content="This is only a test content",
         )
 
-        self.url = reverse("apptype-comment-detail", kwargs={"apptype_pk": "wwc", "uuid": self.comment.uuid})
+        self.url = reverse(
+            "apptype-comment-detail",
+            kwargs={"apptype_pk": "wwc", "uuid": self.comment.uuid},
+        )
 
     @property
     def view(self):
@@ -99,20 +105,26 @@ class UpdateCommentViewTestCase(APIBaseTestCase):
         return Comment.objects.get(pk=self.comment.pk)
 
     def test_request_status_ok(self):
-        response = self.request.put(self.url, self.body, apptype_pk="wwc", uuid=self.comment.uuid)
+        response = self.request.put(
+            self.url, self.body, apptype_pk="wwc", uuid=self.comment.uuid
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_comment_edited_after_update(self):
         self.assertFalse(self.comment.edited)
 
-        response = self.request.put(self.url, self.body, apptype_pk="wwc", uuid=self.comment.uuid)
+        response = self.request.put(
+            self.url, self.body, apptype_pk="wwc", uuid=self.comment.uuid
+        )
         updated_comment = self.get_updated_comment()
 
         self.assertTrue(updated_comment.edited)
         self.assertTrue(response.json["edited"])
 
     def test_update_comment_data(self):
-        response = self.request.put(self.url, self.body, apptype_pk="wwc", uuid=self.comment.uuid)
+        response = self.request.put(
+            self.url, self.body, apptype_pk="wwc", uuid=self.comment.uuid
+        )
         updated_comment = self.get_updated_comment()
 
         self.assertEqual(self.body["content"], updated_comment.content)
@@ -123,7 +135,9 @@ class UpdateCommentViewTestCase(APIBaseTestCase):
 
     def test_update_comment_with_another_user(self):
         self.request.set_user(self.super_user)
-        response = self.request.put(self.url, self.body, apptype_pk="wwc", uuid=self.comment.uuid)
+        response = self.request.put(
+            self.url, self.body, apptype_pk="wwc", uuid=self.comment.uuid
+        )
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
@@ -140,14 +154,19 @@ class DestroyCommentViewTestCase(APIBaseTestCase):
             content="This is only a test content",
         )
 
-        self.url = reverse("apptype-comment-detail", kwargs={"apptype_pk": "wwc", "uuid": self.comment.uuid})
+        self.url = reverse(
+            "apptype-comment-detail",
+            kwargs={"apptype_pk": "wwc", "uuid": self.comment.uuid},
+        )
 
     @property
     def view(self):
         return self.view_class.as_view(self.ACTION_DESTROY)
 
     def test_request_status_ok(self):
-        response = self.request.delete(self.url, apptype_pk="wwc", uuid=self.comment.uuid)
+        response = self.request.delete(
+            self.url, apptype_pk="wwc", uuid=self.comment.uuid
+        )
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertIsNone(response.json)
 
@@ -157,7 +176,9 @@ class DestroyCommentViewTestCase(APIBaseTestCase):
 
     def test_destroy_comment_with_another_user(self):
         self.request.set_user(self.super_user)
-        response = self.request.delete(self.url, apptype_pk="wwc", uuid=self.comment.uuid)
+        response = self.request.delete(
+            self.url, apptype_pk="wwc", uuid=self.comment.uuid
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 

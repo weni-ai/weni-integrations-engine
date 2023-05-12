@@ -7,18 +7,25 @@ from .models import TemplateMessage
 from .requests import TemplateMessageRequest
 
 from marketplace.applications.models import App
-from marketplace.wpp_templates.models import TemplateTranslation, TemplateHeader, TemplateButton
+from marketplace.wpp_templates.models import (
+    TemplateTranslation,
+    TemplateHeader,
+    TemplateButton,
+)
 
 
 @shared_task(track_started=True, name="refresh_whatsapp_templates_from_facebook")
 def refresh_whatsapp_templates_from_facebook():
-
     for app in App.objects.all():
         if not app.config.get("wa_waba_id"):
             continue
 
-        template_message_request = TemplateMessageRequest(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
-        templates = template_message_request.list_template_messages(app.config.get("wa_waba_id"))
+        template_message_request = TemplateMessageRequest(
+            settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
+        )
+        templates = template_message_request.list_template_messages(
+            app.config.get("wa_waba_id")
+        )
         template_message_request.get_template_namespace(app.config.get("wa_waba_id"))
 
         for template in templates.get("data", []):
@@ -37,7 +44,10 @@ def refresh_whatsapp_templates_from_facebook():
                     if translation.get("type") == "FOOTER":
                         footer = translation.get("text", "")
 
-                returned_translation, _created = TemplateTranslation.objects.get_or_create(
+                (
+                    returned_translation,
+                    _created,
+                ) = TemplateTranslation.objects.get_or_create(
                     template=found_template,
                     language=template.get("language"),
                 )
@@ -49,17 +59,25 @@ def refresh_whatsapp_templates_from_facebook():
 
                 for translation in template.get("components"):
                     if translation.get("type") == "HEADER":
-                        returned_header, _created = TemplateHeader.objects.get_or_create(
+                        (
+                            returned_header,
+                            _created,
+                        ) = TemplateHeader.objects.get_or_create(
                             translation=returned_translation,
                             header_type=translation.get("format"),
                         )
                         returned_header.text = translation.get("text", {})
-                        returned_header.example = translation.get("example", {}).get("header_handle")
+                        returned_header.example = translation.get("example", {}).get(
+                            "header_handle"
+                        )
                         returned_header.save()
 
                     if translation.get("type") == "BUTTONS":
                         for button in translation.get("buttons"):
-                            _returned_button, _created = TemplateButton.objects.get_or_create(
+                            (
+                                _returned_button,
+                                _created,
+                            ) = TemplateButton.objects.get_or_create(
                                 translation=returned_translation,
                                 button_type=button.get("type"),
                                 text=button.get("text"),

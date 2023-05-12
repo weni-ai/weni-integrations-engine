@@ -7,7 +7,6 @@ import uuid
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -18,17 +17,38 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="App",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
-                ("uuid", models.UUIDField(default=uuid.uuid4, editable=False, unique=True)),
-                ("created_on", models.DateTimeField(auto_now_add=True, verbose_name="Created on")),
-                ("modified_on", models.DateTimeField(auto_now=True, verbose_name="Modified on")),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "uuid",
+                    models.UUIDField(default=uuid.uuid4, editable=False, unique=True),
+                ),
+                (
+                    "created_on",
+                    models.DateTimeField(auto_now_add=True, verbose_name="Created on"),
+                ),
+                (
+                    "modified_on",
+                    models.DateTimeField(auto_now=True, verbose_name="Modified on"),
+                ),
                 ("app_code", models.SlugField()),
                 ("config", models.JSONField()),
                 ("org_uuid", models.UUIDField(verbose_name="Org UUID")),
                 (
                     "platform",
                     models.CharField(
-                        choices=[("IA", "inteligence-artificial"), ("WF", "weni-flows"), ("RC", "rocketchat")],
+                        choices=[
+                            ("IA", "inteligence-artificial"),
+                            ("WF", "weni-flows"),
+                            ("RC", "rocketchat"),
+                        ],
                         max_length=2,
                     ),
                 ),

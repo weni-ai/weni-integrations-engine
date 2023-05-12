@@ -7,7 +7,6 @@ import uuid
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("accounts", "0001_initial"),
     ]
@@ -16,17 +15,40 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="ProjectAuthorization",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
-                ("uuid", models.UUIDField(default=uuid.uuid4, editable=False, unique=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "uuid",
+                    models.UUIDField(default=uuid.uuid4, editable=False, unique=True),
+                ),
                 ("project_uuid", models.UUIDField()),
                 (
                     "role",
                     models.PositiveIntegerField(
-                        choices=[(0, "not set"), (1, "viewer"), (2, "contributor"), (3, "admin")], default=0
+                        choices=[
+                            (0, "not set"),
+                            (1, "viewer"),
+                            (2, "contributor"),
+                            (3, "admin"),
+                        ],
+                        default=0,
                     ),
                 ),
-                ("created_on", models.DateTimeField(auto_now_add=True, verbose_name="Created on")),
-                ("modified_on", models.DateTimeField(auto_now=True, verbose_name="Modified on")),
+                (
+                    "created_on",
+                    models.DateTimeField(auto_now_add=True, verbose_name="Created on"),
+                ),
+                (
+                    "modified_on",
+                    models.DateTimeField(auto_now=True, verbose_name="Modified on"),
+                ),
                 (
                     "user",
                     models.ForeignKey(

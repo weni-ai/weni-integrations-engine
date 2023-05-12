@@ -34,7 +34,9 @@ class Base64ImageFieldTestCase(TestCase):
             serializer.is_valid(raise_exception=True)
 
     def test_invalid_base64_content(self):
-        self.data.update({"image": self.data["image"].replace("base64,", "base64,fakebase64")})
+        self.data.update(
+            {"image": self.data["image"].replace("base64,", "base64,fakebase64")}
+        )
         serializer = FakeSerializer(data=self.data)
 
         with self.assertRaises(ValidationError):

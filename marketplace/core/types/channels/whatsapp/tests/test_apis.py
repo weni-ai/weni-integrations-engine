@@ -8,7 +8,9 @@ from django.test import TestCase
 
 from marketplace.core.tests import FakeRequestsResponse
 from ..apis import FacebookConversationAPI
-from marketplace.core.types.channels.whatsapp_base.exceptions import FacebookApiException
+from marketplace.core.types.channels.whatsapp_base.exceptions import (
+    FacebookApiException,
+)
 
 
 class ConversationTestCase(TestCase):

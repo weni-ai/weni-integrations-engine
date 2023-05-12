@@ -18,10 +18,15 @@ class OnPremiseProfileFacade(object):
         return dict(
             photo_url=photo_url,
             status=about_text,
-            business=dict(description=business_profile.description, vertical=business_profile.vertical),
+            business=dict(
+                description=business_profile.description,
+                vertical=business_profile.vertical,
+            ),
         )
 
-    def set_profile(self, photo: str = None, status: str = None, business: dict = None) -> None:
+    def set_profile(
+        self, photo: str = None, status: str = None, business: dict = None
+    ) -> None:
         if photo is not None:
             self._photo_api.set_photo(photo)
 

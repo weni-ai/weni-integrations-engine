@@ -32,7 +32,9 @@ if settings.DEBUG:
 
 else:
     regex_path = "^{}(?P<path>.*)$".format(re.escape(settings.STATIC_URL.lstrip("/")))
-    urlpatterns.append(re_path(regex_path, serve, {"document_root": settings.STATIC_ROOT}))
+    urlpatterns.append(
+        re_path(regex_path, serve, {"document_root": settings.STATIC_ROOT})
+    )
 
 
 # Django Admin
