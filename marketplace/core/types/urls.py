@@ -14,8 +14,10 @@ from marketplace.core.types.externals.generic.views import (
 
 urlpatterns = []
 
+
 for apptype in types.APPTYPES.values():
     router = routers.SimpleRouter()
+
     if apptype.view_class is None:
         continue
 

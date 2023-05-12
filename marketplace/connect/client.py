@@ -3,6 +3,7 @@ import requests
 from django.conf import settings
 
 from rest_framework.exceptions import ValidationError
+from marketplace.interfaces.connect import ConnectInterface
 
 
 class ConnectAuth:
@@ -22,7 +23,9 @@ class ConnectAuth:
         return {"Authorization": self.__get_auth_token()}
 
 
-class ConnectProjectClient(ConnectAuth):  # TODO: change class name to FlowsRESTClient
+class ConnectProjectClient(
+    ConnectAuth, ConnectInterface
+):  # TODO: change class name to FlowsRESTClient
     base_url = settings.FLOWS_REST_ENDPOINT
     use_connect_v2 = settings.USE_CONNECT_V2
 
