@@ -41,7 +41,7 @@ class ConfigSerializer(serializers.Serializer):
         user = self.context.get("request").user
         client = ConnectProjectClient()
         return client.create_external_service(
-            user.email, app.project_uuid, attrs, app.channeltype_code
+            user.email, app.project_uuid, attrs, app.flows_type_code
         )
 
 

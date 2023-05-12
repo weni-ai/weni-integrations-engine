@@ -107,7 +107,7 @@ class ConfigSerializer(serializers.Serializer):
         data = {"name": name, "base_url": settings.SOCKET_BASE_URL}
 
         client = ConnectProjectClient()
-        return client.create_channel(user.email, self.app.project_uuid, data, self.app.channeltype_code)
+        return client.create_channel(user.email, self.app.project_uuid, data, self.app.flows_type_code)
 
     def generate_script(self, attrs):
         """

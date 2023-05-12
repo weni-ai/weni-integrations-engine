@@ -11,8 +11,6 @@ from marketplace.flows.client import FlowsClient
 
 from marketplace.applications.models import AppTypeAsset
 
-from . import type as type_
-
 from django.conf import settings
 
 IMPORTANCE_CHANNELS_ORDER = settings.IMPORTANCE_CHANNELS_ORDER
@@ -24,7 +22,7 @@ class GenericChannelViewSet(views.BaseAppTypeViewSet):
     serializer_class = GenericChannelSerializer
 
     def get_queryset(self):
-        return super().get_queryset().filter(code=type_.GenericType.code)
+        return super().get_queryset().filter(code=self.type_class.code)
 
     def perform_create(self, serializer):
         channel_code = self.request.data.get("channel_code", None)
@@ -34,7 +32,7 @@ class GenericChannelViewSet(views.BaseAppTypeViewSet):
         if channel_code:
             channel_code = channel_code.strip()
         else:
-            raise serializers.ValidationError('Code not be empty.')
+            raise serializers.ValidationError("Code not be empty.")
 
         client = FlowsClient()
         response = client.list_channel_types(channel_code=channel_code)

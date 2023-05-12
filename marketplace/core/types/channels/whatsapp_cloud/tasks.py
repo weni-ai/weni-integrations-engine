@@ -22,7 +22,7 @@ SYNC_WHATSAPP_CLOUD_LOCK_KEY = "sync-whatsapp-cloud-lock"
 def sync_whatsapp_cloud_apps():
     apptype = APPTYPES.get("wpp-cloud")
     client = ConnectProjectClient()
-    channels = client.list_channels(apptype.channeltype_code)
+    channels = client.list_channels(apptype.flows_type_code)
 
     redis = get_redis_connection()
 

@@ -21,7 +21,7 @@ class AppTypeTestCase(TestCase):
         class FakeType(AppType):  # TODO: Change name to FakeAppType
             view_class = None
             code = "ftp"
-            channeltype_code = "FTP"
+            flows_type_code = "FTP"
             name = "Fake Type"
             description = "Type to test only"
             summary = "Type to test only"

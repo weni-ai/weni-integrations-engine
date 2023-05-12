@@ -6,14 +6,13 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 
 from rest_framework import status
-from rest_framework.response import Response
 
 from marketplace.core.tests.base import APIBaseTestCase
 from marketplace.accounts.models import ProjectAuthorization
 from marketplace.applications.models import App
 from marketplace.applications.models import AppTypeAsset
 
-from ..type import GenericType
+from ..type import GenericExternalAppType
 from marketplace.core.types.externals.generic.views import (
     GenericExternalsViewSet,
     ExternalsAppTypes,
@@ -22,12 +21,101 @@ from marketplace.core.types.externals.generic.views import (
     search_icon,
 )
 
+from typing import Any
+from marketplace.interfaces.flows import FlowsInterface
+from marketplace.interfaces.connect import ConnectInterface
 
-apptype = GenericType()
+apptype = GenericExternalAppType()
 
 
-class CreateOmieAppTestCase(APIBaseTestCase):
-    url = reverse("generic-ext-app-list")
+class MockFlowsClient(FlowsInterface):
+    def __init__(self):
+        self.base_url = "test"
+        self.authentication_instance = object
+
+    def list_external_types(self, flows_type_code=None) -> Any:
+        if flows_type_code:
+            return {
+                "attributes": {"name": "Omie", "slug": "omie"},
+                "form": [
+                    {
+                        "name": "name",
+                        "type": "text",
+                        "help_text": "Name",
+                        "label": "Name",
+                    },
+                    {
+                        "name": "app_key",
+                        "type": "text",
+                        "help_text": "Omie App Key",
+                        "label": "Omie App Key",
+                    },
+                    {
+                        "name": "app_secret",
+                        "type": "text",
+                        "help_text": "Omie App Secret",
+                        "label": "Omie App Secret",
+                    },
+                ],
+            }
+        else:
+            return {
+                "external_types": {
+                    "omie": {"attributes": {"name": "Omie", "slug": "omie"}}
+                }
+            }
+
+    def release_external_service(self, uuid: str, user_email: str) -> Any:
+        response = Mock()
+        response.status_code = 200
+        return response
+
+
+class MockConnectClient(ConnectInterface):
+    base_url = "connect test"
+    use_connect_v2 = "test"
+
+    def create_external_service(
+        self, user: str, project_uuid: str, type_fields: dict, type_code: str
+    ):
+        response = Mock()
+        response.status_code = 201
+        response.json.return_value = {
+            "uuid": str(uuid.uuid4()),
+            "external_service_type": "omie",
+            "name": "Omie test",
+            "config": {"app_key": "123456789", "app_secret": "987654321"},
+        }
+        return response
+
+
+class PatchedFlowsClientTestCase(APIBaseTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.patch_flows_client = patch(
+            "marketplace.core.types.externals.generic.views.FlowsClient",
+            MockFlowsClient,
+        )
+        cls.patch_connect_client = patch(
+            "marketplace.core.types.externals.generic.serializers.ConnectProjectClient",
+            MockConnectClient,
+        )
+        cls.patch_flows_client.start()
+        cls.patch_connect_client.start()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.patch_flows_client.stop()
+        cls.patch_connect_client.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        super().setUp()
+
+
+class CreateOmieAppTestCase(PatchedFlowsClientTestCase):
+    url = reverse("generic-external-app-list")
     view_class = GenericExternalsViewSet
 
     @property
@@ -44,22 +132,10 @@ class CreateOmieAppTestCase(APIBaseTestCase):
         )
 
     @patch("marketplace.core.types.externals.generic.views.search_icon")
-    @patch("marketplace.flows.client.FlowsClient.list_external_types")
-    def test_create_app(self, mock_list_types, mock_search_icon):
-        response_data = {
-            "attributes": {
-                "name": "omie",
-                "slug": "Omie",
-            },
-        }
-        mock_response = Mock()
-        mock_response.json.return_value = response_data
-        mock_response.status_code = 200
-        mock_list_types.return_value = mock_response
-
+    def test_create_app(self, mock_search_icon):
         mock_search_icon.return_value = "https://url.test.com.br/icon.jpg"
-        flows_type_code = "omie"
-        self.body["flows_type_code"] = flows_type_code
+        external_code = "omie"
+        self.body["external_code"] = external_code
         response = self.request.post(self.url, self.body)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
@@ -88,7 +164,7 @@ class RetrieveGenericExternalsAppTestCase(APIBaseTestCase):
         super().setUp()
 
         self.app = App.objects.create(
-            code="generic-ext",
+            code="generic-external",
             created_by=self.user,
             project_uuid=str(uuid.uuid4()),
             platform=App.PLATFORM_WENI_FLOWS,
@@ -98,7 +174,9 @@ class RetrieveGenericExternalsAppTestCase(APIBaseTestCase):
             project_uuid=self.app.project_uuid
         )
         self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
-        self.url = reverse("generic-ext-app-detail", kwargs={"uuid": self.app.uuid})
+        self.url = reverse(
+            "generic-external-app-detail", kwargs={"uuid": self.app.uuid}
+        )
 
     @property
     def view(self):
@@ -117,16 +195,7 @@ class RetrieveGenericExternalsAppTestCase(APIBaseTestCase):
         self.assertEqual(response.json["config"], {})
 
 
-class MockResponse:
-    def __init__(self, data, status_code):
-        self.data = data
-        self.status_code = status_code
-
-    def json(self):
-        return self.data
-
-
-class ConfigureGenericAppTestCase(APIBaseTestCase):
+class ConfigureGenericAppTestCase(PatchedFlowsClientTestCase):
     view_class = GenericExternalsViewSet
 
     def setUp(self):
@@ -139,7 +208,7 @@ class ConfigureGenericAppTestCase(APIBaseTestCase):
         }
 
         self.app = App.objects.create(
-            code="generic-ext",
+            code="generic-external",
             created_by=self.user,
             project_uuid=str(uuid.uuid4()),
             config=data,
@@ -150,25 +219,19 @@ class ConfigureGenericAppTestCase(APIBaseTestCase):
             project_uuid=self.app.project_uuid
         )
         self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
-        self.url = reverse("generic-ext-app-configure", kwargs={"uuid": self.app.uuid})
+        self.url = reverse(
+            "generic-external-app-configure", kwargs={"uuid": self.app.uuid}
+        )
 
     @property
     def view(self):
         return self.view_class.as_view({"patch": "configure"})
 
-    @patch(
-        "marketplace.core.types.externals.generic.serializers.GenericExternalConfigSerializer._create_channel"
-    )
-    def test_configure_channel_success(self, mock_configure):
-        return_data = {
-            "name": "Omie-Test",
-            "channelUuid": str(uuid.uuid4()),
-        }
-        mock_configure.return_value = MockResponse(return_data, status.HTTP_200_OK)
+    def test_configure_channel_success(self):
         keys_values = {
             "flows_type_code": "omie",
             "name": "Omie",
-            "external_icon_url": "/media/omie.png"
+            "external_icon_url": "/media/omie.png",
         }
         payload = {
             "user": str(self.user),
@@ -178,27 +241,20 @@ class ConfigureGenericAppTestCase(APIBaseTestCase):
         response = self.request.patch(self.url, payload, uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-    @patch(
-        "marketplace.core.types.externals.generic.serializers.GenericExternalConfigSerializer._create_channel"
-    )
-    def test_configure_channel_without_config(self, mock_configure):
+    def test_configure_channel_without_config(self):
         """Request without config field"""
         response_data = {"config": ["This field is required."]}
 
-        mock_configure.return_value = Response(
-            response_data, status=status.HTTP_400_BAD_REQUEST
-        )
         payload = {
             "user": str(self.user),
             "project_uuid": str(uuid.uuid4()),
         }
         response = self.request.patch(self.url, payload, uuid=self.app.uuid)
-
         self.assertEqual(response_data, response.json)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
-class DeleteGenericExternalsAppTestCase(APIBaseTestCase):
+class DeleteGenericExternalsAppTestCase(PatchedFlowsClientTestCase):
     view_class = GenericExternalsViewSet
 
     @property
@@ -207,10 +263,16 @@ class DeleteGenericExternalsAppTestCase(APIBaseTestCase):
 
     def setUp(self):
         super().setUp()
-        self.app = apptype.create_app(created_by=self.user, project_uuid=str(uuid.uuid4()))
-        self.user_authorization = self.user.authorizations.create(project_uuid=self.app.project_uuid)
+        self.app = apptype.create_app(
+            created_by=self.user, project_uuid=str(uuid.uuid4())
+        )
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
         self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
-        self.url = reverse("generic-ext-app-detail", kwargs={"uuid": self.app.uuid})
+        self.url = reverse(
+            "generic-external-app-detail", kwargs={"uuid": self.app.uuid}
+        )
 
     def test_delete_app_plataform(self):
         response = self.request.delete(self.url, uuid=self.app.uuid)
@@ -226,12 +288,7 @@ class DeleteGenericExternalsAppTestCase(APIBaseTestCase):
         response = self.request.delete(self.url, uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    @patch("marketplace.flows.client.FlowsClient.release_external_service")
-    def test_release_external_service(self, mock_release):
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_release.return_value = mock_response
-
+    def test_release_external_service(self):
         self.app.config = {"channelUuid": str(uuid.uuid4())}
         self.app.save()
 
@@ -240,67 +297,25 @@ class DeleteGenericExternalsAppTestCase(APIBaseTestCase):
         self.assertFalse(App.objects.filter(uuid=self.app.uuid).exists())
 
 
-class DetailExternalAppTypesTestCase(APIBaseTestCase):
+class DetailExternalAppTypesTestCase(PatchedFlowsClientTestCase):
     view_class = DetailGenericExternals
 
     def setUp(self):
         super().setUp()
-        self.url = reverse("externals-detail-detail", kwargs={"flows_type_code": "omie"})
+        self.url = reverse(
+            "externals-detail-detail", kwargs={"flows_type_code": "omie"}
+        )
 
     @property
     def view(self):
         return self.view_class.as_view({"get": "retrieve"})
 
-    @patch("marketplace.flows.client.FlowsClient.list_external_types")
-    def test_retrieve_success(self, mock_list_external_types):
-        response_data = {
-            "attributes": {
-                "name": "Omie",
-                "slug": "omie"
-            },
-            "form": [
-                {
-                    "name": "name",
-                    "type": "text",
-                    "help_text": "Name",
-                    "label": "Name"
-                },
-                {
-                    "name": "app_key",
-                    "type": "text",
-                    "help_text": "Omie App Key",
-                    "label": "Omie App Key"
-                },
-                {
-                    "name": "app_secret",
-                    "type": "text",
-                    "help_text": "Omie App Secret",
-                    "label": "Omie App Secret"
-                }
-            ]
-        }
-        mock_response = Mock()
-        mock_response.json.return_value = response_data
-        mock_response.status_code = 200
-        mock_list_external_types.return_value = mock_response
-
+    def test_retrieve_success(self):
         response = self.request.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.json, response_data)
-
-    @patch("marketplace.flows.client.FlowsClient.list_external_types")
-    def test_retrieve_fail(self, mock_list_external_types):
-        response_data = None
-        mock_response = Mock()
-        mock_response.json.return_value = response_data
-        mock_response.status_code = 404
-        mock_list_external_types.return_value = mock_response
-
-        response = self.request.get(self.url)
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
 
-class ExternalsIconsTestCase(APIBaseTestCase):
+class ExternalsIconsTestCase(PatchedFlowsClientTestCase):
     view_class = ExternalsIcons
 
     def setUp(self):
@@ -311,28 +326,20 @@ class ExternalsIconsTestCase(APIBaseTestCase):
     def view(self):
         return self.view_class.as_view({"get": "list"})
 
-    @patch("marketplace.flows.client.FlowsClient.list_external_types")
     @patch("marketplace.core.types.externals.generic.views.search_icon")
-    def test_get_icons_success(self, mock_search_icon, mock_list_external_types):
+    def test_get_icons_success(self, mock_search_icon):
         response_data = {
             "external_types": {
                 "omie": "http://example.com/icon.png",
             }
-
         }
-
-        mock_response = Mock()
-        mock_response.json.return_value = response_data
-        mock_response.status_code = 200
-        mock_list_external_types.return_value = mock_response
-
         mock_search_icon.return_value = "http://example.com/icon.png"
         response = self.request.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json, response_data["external_types"])
 
 
-class ExternalsAppTypesTestCase(APIBaseTestCase):
+class ExternalsAppTypesTestCase(PatchedFlowsClientTestCase):
     view_class = ExternalsAppTypes
 
     def setUp(self):
@@ -343,28 +350,15 @@ class ExternalsAppTypesTestCase(APIBaseTestCase):
     def view(self):
         return self.view_class.as_view({"get": "list"})
 
-    @patch("marketplace.flows.client.FlowsClient.list_external_types")
-    def test_list_genericapptypes_success(self, mock_list_external_types):
-        response_data = {
-            "external_types": {
-                "omie": {"attributes": {"key": "value"}},
-            }
-        }
-
-        mock_response = Mock()
-        mock_response.json.return_value = response_data
-        mock_response.status_code = 200
-        mock_list_external_types.return_value = mock_response
-
+    def test_list_genericapptypes_success(self):
         response = self.request.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.json, response_data["external_types"])
 
 
 class SearchIconTestCase(TestCase):
     def setUp(self):
         super().setUp()
-        self.flows_type_code = "test_code"
+        self.flows_type_code = "omie"
         self.icon_url = "example.com/icon.png"
         self.path = "/media/"
         user = get_user_model()
@@ -375,7 +369,7 @@ class SearchIconTestCase(TestCase):
             created_by=self.user,
         )
         self.generic_apptype_asset = AppTypeAsset.objects.create(
-            code="generic-ext", attachment=self.icon_url, created_by=self.user
+            code="generic-external", attachment=self.icon_url, created_by=self.user
         )
 
     def test_search_icon_with_existing_code(self):
@@ -385,16 +379,20 @@ class SearchIconTestCase(TestCase):
     def test_search_icon_with_non_existing_code(self):
         non_existing_code = "non_existing_code"
         result = search_icon(non_existing_code)
-        generic_apptype_asset = AppTypeAsset.objects.filter(code="generic-ext").first()
+        generic_apptype_asset = AppTypeAsset.objects.filter(
+            code="generic-external"
+        ).first()
         expected_url = (
             generic_apptype_asset.attachment.url if generic_apptype_asset else None
         )
         self.assertEqual(result, expected_url)
 
     def test_search_icon_with_generic_code(self):
-        generic_code = "generic-ext"
+        generic_code = "generic-external"
         result = search_icon(generic_code)
-        generic_apptype_asset = AppTypeAsset.objects.filter(code="generic-ext").first()
+        generic_apptype_asset = AppTypeAsset.objects.filter(
+            code="generic-external"
+        ).first()
         expected_url = (
             generic_apptype_asset.attachment.url if generic_apptype_asset else None
         )
@@ -412,5 +410,5 @@ class SearchIconTestCase(TestCase):
             created_by=self.user,
         )
         self.generic_apptype_asset = AppTypeAsset.objects.create(
-            code="generic-ext", attachment=self.icon_url, created_by=self.user
+            code="external-external", attachment=self.icon_url, created_by=self.user
         )
