@@ -4,9 +4,10 @@ import requests
 from django.conf import settings
 
 from rest_framework.exceptions import APIException
+from marketplace.interfaces.flows import FlowsInterface
 
 
-class FlowsClient:
+class FlowsClient(FlowsInterface):
     def __init__(self):
         self.base_url = settings.FLOWS_REST_ENDPOINT
         self.authentication_instance = InternalAuthentication()

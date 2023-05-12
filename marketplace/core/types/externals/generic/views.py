@@ -9,11 +9,10 @@ from marketplace.flows.client import FlowsClient
 from .serializers import GenericExternalSerializer, GenericConfigureSerializer
 from marketplace.core.types import views
 
-from . import type as type_
-
 from django.conf import settings
 
 from marketplace.applications.models import AppTypeAsset
+
 
 IMPORTANCE_CHANNELS_ORDER = settings.IMPORTANCE_CHANNELS_ORDER
 
@@ -23,28 +22,25 @@ class GenericExternalsViewSet(views.BaseAppTypeViewSet):
 
     def get_queryset(self):
         # TODO: Send the responsibility of this method to the BaseAppTypeViewSet
-        return super().get_queryset().filter(code=type_.GenericType.code)
+        return super().get_queryset().filter(code=self.type_class.code)
 
     def perform_create(self, serializer):
-        flows_type_code = self.request.data.get("flows_type_code", None)
+        external_code = self.request.data.get("external_code", None)
         external_name = None
-
-        if flows_type_code:
-            flows_type_code = flows_type_code.strip()
+        if external_code:
+            external_code = external_code.strip()
         else:
-            raise serializers.ValidationError("flows_type_code not be empty.")
+            raise serializers.ValidationError("external_code not be empty.")
 
-        client = FlowsClient()
-        response = client.list_external_types(flows_type_code)
-        response = response.json()
+        response = self.type_class.list(FlowsClient(), flows_type_code=external_code)
         if response.get("attributes"):
             if response.get("attributes").get("name"):
                 external_name = response.get("attributes").get("name")
 
-        instance = serializer.save(code="generic-ext")
-        instance.config["flows_type_code"] = flows_type_code
+        instance = serializer.save(code="generic-external")
+        instance.config["external_code"] = external_code
         instance.config["name"] = external_name
-        instance.config["external_icon_url"] = search_icon(flows_type_code)
+        instance.config["external_icon_url"] = search_icon(external_code)
         instance.modified_by = self.request.user
         instance.save()
 
@@ -63,10 +59,11 @@ class GenericExternalsViewSet(views.BaseAppTypeViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def perform_destroy(self, instance):
-        flows_type_code = instance.config.get("channelUuid", None)
-        if flows_type_code:
-            client = FlowsClient()
-            client.release_external_service(flows_type_code, self.request.user.email)
+        flows_object_uuid = instance.config.get("channelUuid", None)
+        if flows_object_uuid:
+            self.type_class.release(
+                FlowsClient(), flows_object_uuid, self.request.user.email
+            )
 
         instance.delete()
 
@@ -87,7 +84,7 @@ class DetailGenericExternals(viewsets.ViewSet):
     def retrieve(self, request, flows_type_code=None):
         client = FlowsClient()
         response = client.list_external_types(flows_type_code=flows_type_code)
-        return Response(response.json(), status=response.status_code)
+        return Response(response)
 
 
 class ExternalsIcons(viewsets.ViewSet):
@@ -103,9 +100,8 @@ class ExternalsIcons(viewsets.ViewSet):
     def list(self, request):
         client = FlowsClient()
         response = client.list_external_types()
-
         externals_icons = {}
-        for external in response.json().get("external_types").keys():
+        for external in response.get("external_types").keys():
             externals_icons[external] = search_icon(external)
 
         return Response(externals_icons)
@@ -127,8 +123,8 @@ class ExternalsAppTypes(viewsets.ViewSet):
     def list(self, request):
         client = FlowsClient()
         response = client.list_external_types()
-        types = sort_types(response.json().get("external_types"))
-        return Response(types, status=response.status_code)
+        types = sort_types(response.get("external_types"))
+        return Response(types)
 
 
 def search_icon(code):
@@ -145,7 +141,7 @@ def search_icon(code):
         apptype_asset = apptype_asset.first()
         icon_url = apptype_asset.attachment.url
     else:
-        apptype_asset = AppTypeAsset.objects.filter(code="generic-ext")
+        apptype_asset = AppTypeAsset.objects.filter(code="generic-external")
         if apptype_asset.exists():
             apptype_asset = apptype_asset.first()
             icon_url = apptype_asset.attachment.url

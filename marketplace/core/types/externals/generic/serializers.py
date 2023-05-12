@@ -21,10 +21,7 @@ class GenericExternalSerializer(AppTypeBaseSerializer):
         read_only_fields = ("code", "uuid", "platform")
 
     def create(self, validated_data):
-        # TODO: Send the responsibility of this method to the AppTypeBaseSerializer and create an object from the type
-        from .type import GenericType
-
-        validated_data["platform"] = GenericType.platform
+        validated_data["platform"] = self.type_class.platform
         return super().create(validated_data)
 
 
@@ -52,11 +49,11 @@ class GenericExternalConfigSerializer(serializers.Serializer):
     def _create_channel(self, attrs: dict, app: App) -> str:
         request = self.context.get("request")
         user = request.user
-        flows_type_code = app.config.get("flows_type_code")
-        client = ConnectProjectClient()
-        return client.create_external_service(
-            user.email, app.project_uuid, attrs, flows_type_code
+        external_code = app.config.get("external_code")
+        response = app.apptype.create(
+            ConnectProjectClient(), user.email, app.project_uuid, attrs, external_code
         )
+        return response
 
 
 class GenericConfigureSerializer(AppTypeBaseSerializer):

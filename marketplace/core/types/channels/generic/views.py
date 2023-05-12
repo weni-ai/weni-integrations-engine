@@ -11,8 +11,6 @@ from marketplace.flows.client import FlowsClient
 
 from marketplace.applications.models import AppTypeAsset
 
-from . import type as type_
-
 from django.conf import settings
 
 IMPORTANCE_CHANNELS_ORDER = settings.IMPORTANCE_CHANNELS_ORDER

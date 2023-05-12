@@ -59,9 +59,7 @@ class ConfigSerializer(serializers.Serializer):
             "page_name": attrs.get("page_name"),
             "page_id": attrs.get("page_id"),
         }
-        response = client.create_channel(
-            user.email, app.project_uuid, payload, app.flows_type_code
-        )
+        response = client.create_channel(user.email, app.project_uuid, payload, app.flows_type_code)
 
         return response
 

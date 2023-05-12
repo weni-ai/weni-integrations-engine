@@ -27,9 +27,7 @@ class WhatsAppDemoViewSet(views.BaseAppTypeViewSet):
         )
 
         client = ConnectProjectClient()
-        result = client.create_channel(
-            user.email, str(instance.project_uuid), data, instance.flows_type_code
-        )
+        result = client.create_channel(user.email, str(instance.project_uuid), data, instance.flows_type_code)
 
         instance.config["title"] = result.get("name")
         instance.config["channelUuid"] = result.get("uuid")
