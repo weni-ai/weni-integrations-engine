@@ -1,3 +1,7 @@
+v2.5.2
+----------
+* Changes the channeltype_code attribute of all AppType's
+
 v2.5.1
 ----------
 * Removing test file
