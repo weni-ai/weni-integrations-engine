@@ -1,4 +1,3 @@
-
 import uuid
 
 from unittest.mock import patch
@@ -22,9 +21,14 @@ class RetrieveWhatsAppTestCase(APIBaseTestCase):
         super().setUp()
 
         self.app = App.objects.create(
-            code="wpp", created_by=self.user, project_uuid=str(uuid.uuid4()), platform=App.PLATFORM_WENI_FLOWS
+            code="wpp",
+            created_by=self.user,
+            project_uuid=str(uuid.uuid4()),
+            platform=App.PLATFORM_WENI_FLOWS,
         )
-        self.user_authorization = self.user.authorizations.create(project_uuid=self.app.project_uuid)
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
         self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
         self.url = reverse("wpp-app-detail", kwargs={"uuid": self.app.uuid})
 
@@ -52,7 +56,10 @@ class DestroyWhatsAppTestCase(APIBaseTestCase):
         super().setUp()
 
         self.app = App.objects.create(
-            code="wpp", created_by=self.user, project_uuid=str(uuid.uuid4()), platform=App.PLATFORM_WENI_FLOWS
+            code="wpp",
+            created_by=self.user,
+            project_uuid=str(uuid.uuid4()),
+            platform=App.PLATFORM_WENI_FLOWS,
         )
         self.user_authorization = self.user.authorizations.create(
             project_uuid=self.app.project_uuid, role=ProjectAuthorization.ROLE_ADMIN
@@ -76,7 +83,8 @@ class DestroyWhatsAppTestCase(APIBaseTestCase):
         self.user_authorization.set_role(ProjectAuthorization.ROLE_CONTRIBUTOR)
         self.request.set_user(self.super_user)
         self.super_user.authorizations.create(
-            project_uuid=self.app.project_uuid, role=ProjectAuthorization.ROLE_CONTRIBUTOR
+            project_uuid=self.app.project_uuid,
+            role=ProjectAuthorization.ROLE_CONTRIBUTOR,
         )
 
         response = self.request.delete(self.url, uuid=self.app.uuid)
@@ -108,7 +116,10 @@ class SharedWabasWhatsAppTestCase(APIBaseTestCase):
             {
                 "data": {
                     "granular_scopes": [
-                        {"scope": "business_management", "target_ids": ["1075799863665884"]},
+                        {
+                            "scope": "business_management",
+                            "target_ids": ["1075799863665884"],
+                        },
                         {
                             "scope": "whatsapp_business_management",
                             "target_ids": ["1075799863265884", "1072999863265884"],
@@ -122,7 +133,10 @@ class SharedWabasWhatsAppTestCase(APIBaseTestCase):
             {
                 "data": {
                     "granular_scopes": [
-                        {"scope": "business_management", "target_ids": ["1075799863665884"]},
+                        {
+                            "scope": "business_management",
+                            "target_ids": ["1075799863665884"],
+                        },
                     ]
                 }
             }
@@ -191,9 +205,7 @@ class UpdateWhatsAppWebHookTestCase(APIBaseTestCase):
             project_uuid=self.app.project_uuid
         )
         self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
-        self.url = reverse(
-            "wpp-app-update-webhook", kwargs={"uuid": self.app.uuid}
-        )
+        self.url = reverse("wpp-app-update-webhook", kwargs={"uuid": self.app.uuid})
 
     @property
     def view(self):

@@ -5,14 +5,18 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 
 from marketplace.applications.models import App
-from marketplace.wpp_templates.models import TemplateMessage, TemplateTranslation, TemplateButton, TemplateHeader
+from marketplace.wpp_templates.models import (
+    TemplateMessage,
+    TemplateTranslation,
+    TemplateButton,
+    TemplateHeader,
+)
 
 User = get_user_model()
 
 
 class TemplateButtonModelTestCase(TestCase):
     def setUp(self):
-
         self.app = App.objects.create(
             config=dict(waba_id="432321321"),
             project_uuid=uuid.uuid4(),
@@ -30,13 +34,18 @@ class TemplateButtonModelTestCase(TestCase):
             created_by_id=User.objects.get_admin_user().id,
         )
         self.template_translation = TemplateTranslation.objects.create(
-            template=self.template_message, status="APPROVED", language="pt_br", variable_count=1
+            template=self.template_message,
+            status="APPROVED",
+            language="pt_br",
+            variable_count=1,
         )
         super().setUp()
 
     def test_create_template_button_url(self):
         TemplateButton.objects.create(
-            translation=self.template_translation, button_type="PHONE_NUMBER", country_code=55
+            translation=self.template_translation,
+            button_type="PHONE_NUMBER",
+            country_code=55,
         )
 
 
@@ -59,9 +68,14 @@ class TemplateHeaderModelTestCase(TestCase):
             created_by_id=User.objects.get_admin_user().id,
         )
         self.template_translation = TemplateTranslation.objects.create(
-            template=self.template_message, status="APPROVED", language="pt_br", variable_count=1
+            template=self.template_message,
+            status="APPROVED",
+            language="pt_br",
+            variable_count=1,
         )
         super().setUp()
 
     def test_create_template_header_text(self):
-        TemplateHeader.objects.create(translation=self.template_translation, header_type="TEXT", text="teste")
+        TemplateHeader.objects.create(
+            translation=self.template_translation, header_type="TEXT", text="teste"
+        )

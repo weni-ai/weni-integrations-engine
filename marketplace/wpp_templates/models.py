@@ -1,4 +1,3 @@
-
 import uuid
 import re
 import textwrap
@@ -19,12 +18,18 @@ class TemplateMessage(models.Model):
     CATEGORY_CHOICES = (
         ("ACCOUNT_UPDATE", "WhatsApp.data.templates.category.account_update"),
         ("PAYMENT_UPDATE", "WhatsApp.data.templates.category.payment_update"),
-        ("PERSONAL_FINANCE_UPDATE", "WhatsApp.data.templates.category.personal_finance_update"),
+        (
+            "PERSONAL_FINANCE_UPDATE",
+            "WhatsApp.data.templates.category.personal_finance_update",
+        ),
         ("SHIPPING_UPDATE", "WhatsApp.data.templates.category.shipping_update"),
         ("RESERVATION_UPDATE", "WhatsApp.data.templates.category.reservation_update"),
         ("ISSUE_RESOLUTION", "WhatsApp.data.templates.category.issue_resolution"),
         ("APPOINTMENT_UPDATE", "WhatsApp.data.templates.category.appointment_update"),
-        ("TRANSPORTATION_UPDATE", "WhatsApp.data.templates.category.transportation_update"),
+        (
+            "TRANSPORTATION_UPDATE",
+            "WhatsApp.data.templates.category.transportation_update",
+        ),
         ("TICKET_UPDATE", "WhatsApp.data.templates.category.ticket_update"),
         ("ALERT_UPDATE", "WhatsApp.data.templates.category.alert_update"),
         ("AUTO_REPLY", "WhatsApp.data.templates.category.auto_reply"),
@@ -44,8 +49,12 @@ class TemplateMessage(models.Model):
     app = models.ForeignKey(App, on_delete=models.PROTECT, related_name="template")
     name = models.CharField(max_length=512)
     category = models.CharField(max_length=200, choices=CATEGORY_CHOICES)
-    created_on = models.DateTimeField("Created on", editable=False, default=timezone.now)
-    created_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="created_%(class)ss", null=True)
+    created_on = models.DateTimeField(
+        "Created on", editable=False, default=timezone.now
+    )
+    created_by = models.ForeignKey(
+        User, on_delete=models.PROTECT, related_name="created_%(class)ss", null=True
+    )
     template_type = models.CharField(max_length=100, choices=TEMPLATE_TYPES_CHOICES)
     message_template_id = models.CharField(max_length=20, unique=True, null=True, blank=True)
 
@@ -64,7 +73,8 @@ class TemplateMessage(models.Model):
                     The name must not contain spaces and must start with a lowercase letter
                     followed by one or more uppercase or lowercase letters,
                     digits, or underscores.
-                """)
+                """
+            )
             error_message = textwrap.dedent(str(message))
             raise ValidationError({"name": error_message})
 
@@ -75,7 +85,10 @@ class TemplateTranslation(models.Model):
         ("IN_APPEAL", "WhatsApp.data.templates.translaction.status.in_appeal"),
         ("PENDING", "WhatsApp.data.templates.translaction.status.pending"),
         ("REJECTED", "WhatsApp.data.templates.translaction.status.rejected"),
-        ("PENDING_DELETION", "WhatsApp.data.templates.translaction.status.pending_deletion"),
+        (
+            "PENDING_DELETION",
+            "WhatsApp.data.templates.translaction.status.pending_deletion",
+        ),
         ("DELETED", "WhatsApp.data.templates.translaction.status.deleted"),
         ("DISABLED", "WhatsApp.data.templates.translaction.status.disabled"),
         ("LOCKED", "WhatsApp.data.templates.translaction.status.locked"),
@@ -83,7 +96,9 @@ class TemplateTranslation(models.Model):
 
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
-    template = models.ForeignKey(TemplateMessage, on_delete=models.CASCADE, related_name="translations")
+    template = models.ForeignKey(
+        TemplateMessage, on_delete=models.CASCADE, related_name="translations"
+    )
 
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, null=True)
 
@@ -105,7 +120,9 @@ class TemplateButton(models.Model):
 
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
-    translation = models.ForeignKey(TemplateTranslation, on_delete=models.CASCADE, related_name="buttons")
+    translation = models.ForeignKey(
+        TemplateTranslation, on_delete=models.CASCADE, related_name="buttons"
+    )
 
     button_type = models.CharField(max_length=20, choices=BUTTON_TYPE_CHOICES)
     text = models.CharField(max_length=30, null=True)
@@ -123,13 +140,12 @@ class TemplateHeader(models.Model):
     )
 
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    translation = models.ForeignKey(TemplateTranslation, on_delete=models.CASCADE, related_name="headers")
+    translation = models.ForeignKey(
+        TemplateTranslation, on_delete=models.CASCADE, related_name="headers"
+    )
     header_type = models.CharField(max_length=20, choices=HEADER_TYPE_CHOICES)
     text = models.CharField(max_length=60, default=None, null=True)
     example = models.CharField(max_length=2048, default=None, null=True)
 
     def to_dict(self):
-        return dict(
-            header_type=self.header_type,
-            text=self.text
-        )
+        return dict(header_type=self.header_type, text=self.text)

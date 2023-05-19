@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("interactions", "0003_auto_20210901_1623"),
     ]
@@ -16,6 +15,8 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name="rating",
-            constraint=models.UniqueConstraint(fields=("created_by", "code"), name="unique_rationg_created_by_code"),
+            constraint=models.UniqueConstraint(
+                fields=("created_by", "code"), name="unique_rationg_created_by_code"
+            ),
         ),
     ]

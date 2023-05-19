@@ -4,14 +4,12 @@ from marketplace.connect.client import ConnectProjectClient, WPPRouterChannelCli
 
 
 class WhatsAppDemoViewSet(views.BaseAppTypeViewSet):
-
     serializer_class = WhatsAppDemoSerializer
 
     def get_queryset(self):
         return super().get_queryset().filter(code=self.type_class.code)
 
     def perform_create(self, serializer):
-
         user = self.request.user
         type_class = self.type_class
         instance = serializer.save(code=self.type_class.code)
@@ -29,15 +27,21 @@ class WhatsAppDemoViewSet(views.BaseAppTypeViewSet):
         )
 
         client = ConnectProjectClient()
-        result = client.create_channel(user.email, str(instance.project_uuid), data, instance.channeltype_code)
+        result = client.create_channel(
+            user.email, str(instance.project_uuid), data, instance.channeltype_code
+        )
 
         instance.config["title"] = result.get("name")
         instance.config["channelUuid"] = result.get("uuid")
 
         channel_client = WPPRouterChannelClient()
-        channel_token = channel_client.get_channel_token(result.get("uuid"), result.get("name"))
+        channel_token = channel_client.get_channel_token(
+            result.get("uuid"), result.get("name")
+        )
 
         instance.config["routerToken"] = channel_token
-        instance.config["redirect_url"] = f"https://wa.me/{type_class.NUMBER}?text={channel_token}"
+        instance.config[
+            "redirect_url"
+        ] = f"https://wa.me/{type_class.NUMBER}?text={channel_token}"
         instance.modified_by = user
         instance.save()

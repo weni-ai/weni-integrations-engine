@@ -16,7 +16,9 @@ class AppTypeTestCase(TestCase):
     def setUp(self):
         super().setUp()
 
-        self.user = User.objects.create_superuser(email="admin@marketplace.ai", password="fake@pass#$")
+        self.user = User.objects.create_superuser(
+            email="admin@marketplace.ai", password="fake@pass#$"
+        )
 
         class FakeType(AppType):  # TODO: Change name to FakeAppType
             view_class = None
@@ -32,7 +34,9 @@ class AppTypeTestCase(TestCase):
 
         self.FakeType = FakeType
 
-    def create_app_type_asset(self, fake_type_instance: AppType, user: User) -> AppTypeAsset:
+    def create_app_type_asset(
+        self, fake_type_instance: AppType, user: User
+    ) -> AppTypeAsset:
         return AppTypeAsset.objects.create(
             code=fake_type_instance.code,
             asset_type=AppTypeAsset.ASSET_TYPE_ICON,
@@ -114,7 +118,10 @@ class AppTypeTestCase(TestCase):
         fake_type_instance = self.FakeType()
         categories = dict(self.FakeType.CATEGORY_CHOICES)
 
-        self.assertEqual(fake_type_instance.get_category_display(), categories[fake_type_instance.category])
+        self.assertEqual(
+            fake_type_instance.get_category_display(),
+            categories[fake_type_instance.category],
+        )
 
     def test_get_ratings_average_from_app_type(self):
         fake_type_instance = self.FakeType()
@@ -130,7 +137,9 @@ class AppTypeTestCase(TestCase):
 
         Rating.objects.create(
             code=fake_type_instance.code,
-            created_by=User.objects.create_superuser(email="user@marketplace.ai", password="fake@pass#$"),
+            created_by=User.objects.create_superuser(
+                email="user@marketplace.ai", password="fake@pass#$"
+            ),
             rate=1,
         )
 

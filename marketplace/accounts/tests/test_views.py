@@ -3,7 +3,11 @@ import uuid
 from django.urls import reverse
 from rest_framework import status
 
-from marketplace.accounts.views import UserPermissionViewSet, UserViewSet, UserAPITokenAPIView
+from marketplace.accounts.views import (
+    UserPermissionViewSet,
+    UserViewSet,
+    UserAPITokenAPIView,
+)
 from marketplace.core.tests.base import APIBaseTestCase
 from marketplace.accounts.models import User, ProjectAuthorization
 
@@ -52,9 +56,16 @@ class UserViewTestCase(APIBaseTestCase):
         return self.view_class.as_view({"post": "create"})
 
     def test_update_user_patch(self):
-        test_user = User.objects.create(email="test@weni.ai", first_name="User", last_name="Test")
+        test_user = User.objects.create(
+            email="test@weni.ai", first_name="User", last_name="Test"
+        )
 
-        data = {"email": "test@weni.ai", "photo_url": "https://photo.com", "first_name": "User1", "last_name": "Test1"}
+        data = {
+            "email": "test@weni.ai",
+            "photo_url": "https://photo.com",
+            "first_name": "User1",
+            "last_name": "Test1",
+        }
         self.request.post(url=self.url, body=data)
 
         test_user_changed = User.objects.get(email="test@weni.ai")
@@ -65,7 +76,6 @@ class UserViewTestCase(APIBaseTestCase):
 
 
 class UserAPITokenTestCase(APIBaseTestCase):
-
     view_class = UserAPITokenAPIView
     url = reverse("user_api_token")
 

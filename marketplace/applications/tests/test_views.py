@@ -179,7 +179,9 @@ class RetrieveMyAppViewTestCase(AppTypeViewTestCase):
             platform=App.PLATFORM_WENI_FLOWS,
             created_by=self.user,
         )
-        self.user_authorization = self.user.authorizations.create(project_uuid=self.app.project_uuid)
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
         self.url = reverse("my-app-detail", kwargs={"uuid": self.app.uuid})
 
     @property
@@ -218,7 +220,9 @@ class ListMyAppViewTestCase(AppTypeViewTestCase):
 
         self.project_uuid = uuid.uuid4()
         self.apps_count = 10
-        self.user_authorization = self.user.authorizations.create(project_uuid=self.project_uuid)
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.project_uuid
+        )
 
         for num in range(self.apps_count):
             app_args = [self.project_uuid]
@@ -261,23 +265,32 @@ class ListMyAppViewTestCase(AppTypeViewTestCase):
         self.assertEqual(response.json[0], "project_uuid is a required parameter!")
 
     def test_configured_equal_true_filter(self):
-        response = self.request.get(self.url + f"?project_uuid={self.project_uuid}" + "&configured=true")
+        response = self.request.get(
+            self.url + f"?project_uuid={self.project_uuid}" + "&configured=true"
+        )
         for app in response.json:
             self.assertNotEqual(app["config"], {})
 
         self.assertEqual(len(response.json), 5)
 
     def test_configured_equal_false_filter(self):
-        response = self.request.get(self.url + f"?project_uuid={self.project_uuid}" + "&configured=false")
+        response = self.request.get(
+            self.url + f"?project_uuid={self.project_uuid}" + "&configured=false"
+        )
         for app in response.json:
             self.assertEqual(app["config"], {})
 
         self.assertEqual(len(response.json), 5)
 
     def test_configured_wrong_data(self):
-        response = self.request.get(self.url + f"?project_uuid={self.project_uuid}" + "&configured=test")
+        response = self.request.get(
+            self.url + f"?project_uuid={self.project_uuid}" + "&configured=test"
+        )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.json[0], "Expected a boolean param in configured, but recived `test`")
+        self.assertEqual(
+            response.json[0],
+            "Expected a boolean param in configured, but recived `test`",
+        )
 
     def test_request_without_authorization(self):
         self.user_authorization.delete()

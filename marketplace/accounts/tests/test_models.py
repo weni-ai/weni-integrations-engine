@@ -33,7 +33,9 @@ class TestUserCreate(TestCase):
             User.objects.create_superuser(**self.user_info, is_staff=False)
 
     def test_create_super_user_without_is_superuser(self):
-        with self.assertRaisesMessage(ValueError, "Superuser must have is_superuser=True."):
+        with self.assertRaisesMessage(
+            ValueError, "Superuser must have is_superuser=True."
+        ):
             User.objects.create_superuser(**self.user_info, is_superuser=False)
 
     def test_empty_email(self):
@@ -55,14 +57,20 @@ class ProjectAuthorizationTestCase(TestCase):
     def setUp(self) -> None:
         super().setUp()
 
-        self.user = User.objects.create(email="admin@marketplace.ai", password="fake@pass#$")
+        self.user = User.objects.create(
+            email="admin@marketplace.ai", password="fake@pass#$"
+        )
 
     def test_related_user_authorizations(self):
-        authorization = ProjectAuthorization.objects.create(user=self.user, project_uuid=uuid.uuid4())
+        authorization = ProjectAuthorization.objects.create(
+            user=self.user, project_uuid=uuid.uuid4()
+        )
         self.assertIn(authorization, self.user.authorizations.all())
 
     def test_project_authorization_role(self):
-        authorization = ProjectAuthorization.objects.create(user=self.user, project_uuid=uuid.uuid4())
+        authorization = ProjectAuthorization.objects.create(
+            user=self.user, project_uuid=uuid.uuid4()
+        )
         self.assertEqual(authorization.role, ProjectAuthorization.ROLE_NOT_SETTED)
 
     def test_user_project_uuid_unique_together(self):
@@ -70,7 +78,9 @@ class ProjectAuthorizationTestCase(TestCase):
         ProjectAuthorization.objects.create(user=self.user, project_uuid=project_uuid)
 
         with self.assertRaises(IntegrityError):
-            ProjectAuthorization.objects.create(user=self.user, project_uuid=project_uuid)
+            ProjectAuthorization.objects.create(
+                user=self.user, project_uuid=project_uuid
+            )
 
 
 class ProjectAuthorizationMethodsTestCase(TestCase):
@@ -78,8 +88,12 @@ class ProjectAuthorizationMethodsTestCase(TestCase):
         super().setUp()
 
         self.project_uuid = uuid.uuid4()
-        self.user = User.objects.create(email="admin@marketplace.ai", password="fake@pass#$")
-        self.authorization = ProjectAuthorization.objects.create(user=self.user, project_uuid=self.project_uuid)
+        self.user = User.objects.create(
+            email="admin@marketplace.ai", password="fake@pass#$"
+        )
+        self.authorization = ProjectAuthorization.objects.create(
+            user=self.user, project_uuid=self.project_uuid
+        )
 
         self.fakemodel = self.__class__._base_model
         self.fakemodel_instance = self.fakemodel.objects.create(created_by=self.user)
@@ -88,7 +102,9 @@ class ProjectAuthorizationMethodsTestCase(TestCase):
     def setUpClass(cls):
         if not hasattr(cls, "_base_model"):
             cls._base_model = ModelBase(
-                "AuthorizationTestFakeModel", (BaseModel,), {"__module__": BaseModel.__module__}
+                "AuthorizationTestFakeModel",
+                (BaseModel,),
+                {"__module__": BaseModel.__module__},
             )
 
         try:
@@ -113,7 +129,9 @@ class ProjectAuthorizationMethodsTestCase(TestCase):
 
     def test_set_role_method_with_invalid_role(self):
         invalid_role = 4
-        with self.assertRaisesMessage(AssertionError, f"Role: {invalid_role} isn't valid!"):
+        with self.assertRaisesMessage(
+            AssertionError, f"Role: {invalid_role} isn't valid!"
+        ):
             self.authorization.set_role(invalid_role)
 
     def test_is_viewer_method(self):

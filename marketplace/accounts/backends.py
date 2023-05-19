@@ -23,7 +23,9 @@ class WeniOIDCAuthenticationBackend(OIDCAuthenticationBackend):  # pragma: no co
         email = claims.get("email")
         if not email:
             return self.UserModel.objects.none()
-        return self.UserModel.objects.filter(email__iexact=email).exclude(first_name="", last_name="")
+        return self.UserModel.objects.filter(email__iexact=email).exclude(
+            first_name="", last_name=""
+        )
 
     def create_user(self, claims):
         email = claims.get("email")

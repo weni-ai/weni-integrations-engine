@@ -108,4 +108,6 @@ class AppType(AbstractAppType):
         return True
 
     def create_app(self, *args, **kwargs) -> App:
-        return App.objects.create(*args, **kwargs, code=self.code, platform=self.platform)
+        return App.objects.create(
+            *args, **kwargs, code=self.code, platform=self.platform
+        )
