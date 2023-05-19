@@ -8,7 +8,6 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
-from django.shortcuts import get_object_or_404
 
 from marketplace.applications.models import App
 from marketplace.core.types.channels.whatsapp_base.exceptions import FacebookApiException
