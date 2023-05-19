@@ -60,6 +60,10 @@ class AbstractAppType(ABC):
     def platform(self) -> str:
         ...  # pragma: no cover
 
+    @abstractproperty
+    def flows_type_code(self) -> str:
+        ...  # pragma: no cover
+
 
 class AppType(AbstractAppType):
     """

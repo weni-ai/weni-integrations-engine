@@ -15,7 +15,7 @@ class App(AppTypeBaseModel):
     name: str = None
     description: str = None
     summary: str = None
-    channeltype_code: str = None
+    flows_type_code: str = None
     # TODO: Add `icon` property
 
     PLATFORM_IA = "IA"
@@ -47,7 +47,7 @@ class App(AppTypeBaseModel):
         self.name = app_type.name
         self.description = app_type.description
         self.summary = app_type.summary
-        self.channeltype_code = app_type.channeltype_code
+        self.flows_type_code = app_type.flows_type_code
         # TODO: Add `icon` property
 
 
