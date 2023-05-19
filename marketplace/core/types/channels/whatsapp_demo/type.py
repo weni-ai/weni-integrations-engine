@@ -16,7 +16,7 @@ class WhatsAppDemoType(AppType):
     FACEBOOK_NAMESPACE = config("ROUTER_FACEBOOK_NAMESPACE")
 
     code = "wpp-demo"
-    channeltype_code = "WA"
+    flows_type_code = "WA"
     name = "WhatsApp Demo"
     description = "WhatsAppDemo.data.description"
     summary = "WhatsAppDemo.data.summary"

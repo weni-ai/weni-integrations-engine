@@ -6,7 +6,7 @@ from .views import GenericChannelViewSet
 class GenericType(AppType):
     view_class = GenericChannelViewSet
     code = "generic"
-    channeltype_code = None
+    flows_type_code = None
     name = "Generic Type"
     description = "Generic.data.description"
     summary = "Generic.data.summary"

@@ -121,7 +121,7 @@ class ConfigSerializer(serializers.Serializer):
 
         client = ConnectProjectClient()
         return client.create_channel(
-            user.email, self.app.project_uuid, data, self.app.channeltype_code
+            user.email, self.app.project_uuid, data, self.app.flows_type_code
         )
 
     def generate_script(self, attrs):
