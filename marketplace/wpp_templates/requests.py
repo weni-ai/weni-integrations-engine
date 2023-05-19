@@ -23,7 +23,7 @@ class TemplateMessageRequest(object):
             access_token=self._access_token,
         )
         response = requests.get(
-            url=f"https://graph.facebook.com/{WHATSAPP_VERSION}/{waba_id}/message_templates",
+            url=f"https://graph.facebook.com/v14.0/{waba_id}/message_templates",
             params=params,
         )
         return response.json()
