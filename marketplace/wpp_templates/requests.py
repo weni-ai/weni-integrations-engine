@@ -21,7 +21,7 @@ class TemplateMessageRequest(object):
             access_token=self._access_token,
         )
         response = requests.get(
-            url=f"https://graph.facebook.com/{WHATSAPP_VERSION}/{waba_id}/message_templates",
+            url=f"https://graph.facebook.com/v14.0/{waba_id}/message_templates",
             params=params
         )
         return response.json()
@@ -50,29 +50,14 @@ class TemplateMessageRequest(object):
             raise FacebookApiException(response.json())
 
         return response.json()
-    
-    def update_template_message(self, waba_id: str, name: str, components: str, language: str) -> dict:
-        print('EAI MEU CHAPA')
-        params = dict(
-            name=name,
-            #category=category,
-            components=str(components),
-            language=language,
-            access_token=self._access_token
-        )
-        response = requests.post(url=f"https://graph.facebook.com/v14.0/{waba_id}", params=params)
-        if response.status_code != 200:
-            raise FacebookApiException(response.json())
 
-        return response.json()
-    
     def update_template_message(self, message_template_id: str, name: str, components: str) -> dict:
         params = dict(
             name=name,
             components=str(components),
             access_token=self._access_token
         )
-        response = requests.post(url=f"https://graph.facebook.com/v14.0/{message_template_id}", params=params)
+        response = requests.post(url=f"https://graph.facebook.com/{WHATSAPP_VERSION}/{message_template_id}", params=params)
         if response.status_code != 200:
             raise FacebookApiException(response.json())
 
