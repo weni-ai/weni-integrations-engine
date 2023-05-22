@@ -21,9 +21,9 @@ class GenericChannelSerializer(AppTypeBaseSerializer):
         read_only_fields = ("code", "uuid", "platform")
 
     def create(self, validated_data):
-        from .type import GenericType
+        from .type import GenericChannelAppType
 
-        validated_data["platform"] = GenericType.platform
+        validated_data["platform"] = GenericChannelAppType.platform
         return super().create(validated_data)
 
 

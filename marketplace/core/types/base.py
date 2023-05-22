@@ -115,3 +115,14 @@ class AppType(AbstractAppType):
         return App.objects.create(
             *args, **kwargs, code=self.code, platform=self.platform
         )
+
+
+class GenericAppType(AppType):
+    flows_type_code = None
+    name = "Generic Type"
+    description = "Generic.data.description"
+    summary = "Generic.data.summary"
+    developer = "Weni"
+    bg_color = "#d1fcc9cc"
+    config_design = "popup"
+    platform = App.PLATFORM_WENI_FLOWS
