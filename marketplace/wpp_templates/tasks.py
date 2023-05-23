@@ -27,7 +27,7 @@ def refresh_whatsapp_templates_from_facebook():
             app.config.get("wa_waba_id")
         )
         template_message_request.get_template_namespace(app.config.get("wa_waba_id"))
-
+        print(templates)
         for template in templates.get("data", []):
             try:
                 found_template, _created = TemplateMessage.objects.get_or_create(
