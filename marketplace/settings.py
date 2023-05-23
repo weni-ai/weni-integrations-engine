@@ -290,7 +290,7 @@ APPTYPES_CLASSES = [
 # just comment it in APPTYPES_CLASSES
 
 WHATSAPP_SYSTEM_USER_ACCESS_TOKEN = env.str("WHATSAPP_SYSTEM_USER_ACCESS_TOKEN")
-WHATSAPP_VERSION = env.str("WHATSAPP_VERSION", default="v14.0")
+WHATSAPP_VERSION = env.str("WHATSAPP_VERSION", default="v13.0")
 WHATSAPP_API_URL = urllib.parse.urljoin(
     env.str("WHATSAPP_API_URL", default="https://graph.facebook.com/"), WHATSAPP_VERSION
 )
