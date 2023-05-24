@@ -6,7 +6,10 @@ from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 
-from marketplace.accounts.serializers import ProjectAuthorizationSerializer, UserPermissionSerializer
+from marketplace.accounts.serializers import (
+    ProjectAuthorizationSerializer,
+    UserPermissionSerializer,
+)
 from marketplace.connect.client import ConnectProjectClient
 from .models import ProjectAuthorization
 
@@ -23,7 +26,6 @@ class UserViewSet(viewsets.ViewSet):
         return UserPermissionSerializer()
 
     def create(self, request):
-
         if not request.user.has_perm("accounts.can_communicate_internally"):
             raise ValidationError("Not Allowed!")
 
@@ -57,7 +59,6 @@ class UserPermissionViewSet(viewsets.ViewSet):
         return ProjectAuthorizationSerializer()
 
     def partial_update(self, request, project_uuid):
-
         if not request.user.has_perm("accounts.can_communicate_internally"):
             raise ValidationError("Not Allowed!")
 
@@ -68,7 +69,9 @@ class UserPermissionViewSet(viewsets.ViewSet):
 
         user = User.objects.get_or_create(email=serializer.data.get("user"))[0]
 
-        project_authorization = ProjectAuthorization.objects.get_or_create(user=user, project_uuid=project_uuid)[0]
+        project_authorization = ProjectAuthorization.objects.get_or_create(
+            user=user, project_uuid=project_uuid
+        )[0]
 
         project_authorization.role = serializer.data.get("role")
         project_authorization.save()
@@ -83,7 +86,9 @@ class UserAPITokenAPIView(views.APIView):
         project_uuid = request.headers.get("project-uuid", None)
 
         if project_uuid is None:
-            raise ValidationError(dict(detail="The project-uuid needs to be sent in headers!"))
+            raise ValidationError(
+                dict(detail="The project-uuid needs to be sent in headers!")
+            )
 
         client = ConnectProjectClient()
         response = client.get_user_api_token(request.user.email, project_uuid)

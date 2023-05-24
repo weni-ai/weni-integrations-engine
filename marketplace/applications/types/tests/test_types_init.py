@@ -10,7 +10,9 @@ class TestWrongModuleImport(TestCase):
     Tests if "_get_modules" will return any error when trying to import a file
     """
 
-    file_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test_wrong_module.txt")
+    file_path = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), "test_wrong_module.txt"
+    )
 
     def setUp(self):
         super().setUp()

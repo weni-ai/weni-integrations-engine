@@ -8,7 +8,16 @@ from marketplace.connect.client import ConnectProjectClient
 class GenericChannelSerializer(AppTypeBaseSerializer):
     class Meta:
         model = App
-        fields = ("code", "uuid", "project_uuid", "platform", "config", "created_by", "created_on", "modified_by")
+        fields = (
+            "code",
+            "uuid",
+            "project_uuid",
+            "platform",
+            "config",
+            "created_by",
+            "created_on",
+            "modified_by",
+        )
         read_only_fields = ("code", "uuid", "platform")
 
     def create(self, validated_data):
@@ -19,7 +28,6 @@ class GenericChannelSerializer(AppTypeBaseSerializer):
 
 
 class GenericConfigSerializer(serializers.Serializer):
-
     def validate(self, attrs: dict):
         request = self.context.get("request")
         app = self.parent.instance

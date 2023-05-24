@@ -4,11 +4,9 @@ from .views import WhatsAppCloudViewSet
 
 
 class WhatsAppCloudType(AppType):
-
     view_class = WhatsAppCloudViewSet
-
     code = "wpp-cloud"
-    channeltype_code = "WAC"
+    flows_type_code = "WAC"
     name = "WhatsApp"
     description = "WhatsAppCloud.data.description"
     summary = "WhatsAppCloud.data.summary"

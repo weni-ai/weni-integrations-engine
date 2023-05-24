@@ -223,7 +223,6 @@ class ConfigureGenericAppTestCase(APIBaseTestCase):
             "user": str(self.user),
             "project_uuid": str(uuid.uuid4()),
             "config": {"auth_token": keys_values},
-            "channeltype_code": "TWT",
         }
 
         response = self.request.patch(self.url, payload, uuid=self.app.uuid)
@@ -242,7 +241,6 @@ class ConfigureGenericAppTestCase(APIBaseTestCase):
         payload = {
             "user": str(self.user),
             "project_uuid": str(uuid.uuid4()),
-            "channeltype_code": "TWT",
         }
 
         response = self.request.patch(self.url, payload, uuid=self.app.uuid)

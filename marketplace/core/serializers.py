@@ -6,12 +6,15 @@ User = get_user_model()
 
 
 class AppTypeBaseSerializer(serializers.ModelSerializer):
-
     created_by = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.all(), default=serializers.CurrentUserDefault(), write_only=True
+        queryset=User.objects.all(),
+        default=serializers.CurrentUserDefault(),
+        write_only=True,
     )
     modified_by = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.all(), default=serializers.CurrentUserDefault(), write_only=True
+        queryset=User.objects.all(),
+        default=serializers.CurrentUserDefault(),
+        write_only=True,
     )
 
     def create(self, validated_data):

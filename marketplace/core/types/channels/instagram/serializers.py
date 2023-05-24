@@ -8,7 +8,16 @@ from marketplace.connect.client import ConnectProjectClient
 class InstagramSerializer(AppTypeBaseSerializer):
     class Meta:
         model = App
-        fields = ("code", "uuid", "project_uuid", "platform", "config", "created_by", "created_on", "modified_by")
+        fields = (
+            "code",
+            "uuid",
+            "project_uuid",
+            "platform",
+            "config",
+            "created_by",
+            "created_on",
+            "modified_by",
+        )
         read_only_fields = ("code", "uuid", "platform")
 
     def create(self, validated_data):
@@ -19,7 +28,6 @@ class InstagramSerializer(AppTypeBaseSerializer):
 
 
 class ConfigSerializer(serializers.Serializer):
-
     user_access_token = serializers.CharField(required=True)
     page_name = serializers.CharField(required=True)
     page_id = serializers.CharField(required=True)
@@ -51,7 +59,9 @@ class ConfigSerializer(serializers.Serializer):
             "page_name": attrs.get("page_name"),
             "page_id": attrs.get("page_id"),
         }
-        response = client.create_channel(user.email, app.project_uuid, payload, app.channeltype_code)
+        response = client.create_channel(
+            user.email, app.project_uuid, payload, app.flows_type_code
+        )
 
         return response
 

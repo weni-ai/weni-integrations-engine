@@ -13,9 +13,7 @@ class FlowsClient:
 
     def list_channel_types(self, channel_code):
         if channel_code:
-            url = (
-                f"{self.base_url}/api/v2/internals/channels/{str(channel_code)}"
-            )
+            url = f"{self.base_url}/api/v2/internals/channels/{str(channel_code)}"
         else:
             url = f"{self.base_url}/api/v2/internals/channels"
 
@@ -46,9 +44,7 @@ class FlowsClient:
 
     def release_external_service(self, uuid: str, user_email: str):
         url = f"{self.base_url}/api/v2/internals/externals/{uuid}/"
-        params = {
-            "user": user_email
-        }
+        params = {"user": user_email}
 
         response = self.make_request(
             url,
@@ -61,7 +57,12 @@ class FlowsClient:
     def make_request(self, url: str, method: str, headers=None, data=None, params=None):
         try:
             response = requests.request(
-                method=method, url=url, headers=headers, json=data, timeout=60, params=params
+                method=method,
+                url=url,
+                headers=headers,
+                json=data,
+                timeout=60,
+                params=params,
             )
             response.raise_for_status()
 

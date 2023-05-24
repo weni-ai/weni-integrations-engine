@@ -11,7 +11,9 @@ from ..whatsapp_base.exceptions import FacebookApiException
 class CloudProfileRequest(ProfileHandlerInterface):
     # TODO: Validate response status
     _endpoint = "/whatsapp_business_profile"
-    _fields = dict(fields="about,address,description,email,profile_picture_url,websites,vertical")
+    _fields = dict(
+        fields="about,address,description,email,profile_picture_url,websites,vertical"
+    )
 
     def __init__(self, phone_number_id: "str") -> None:
         self._phone_number_id = phone_number_id
@@ -23,7 +25,10 @@ class CloudProfileRequest(ProfileHandlerInterface):
     @property
     def _headers(self) -> dict:
         access_token = settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
-        return {"Content-Type": "application/json", "Authorization": f"Bearer {access_token}"}
+        return {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {access_token}",
+        }
 
     def get_profile(self):
         response = requests.get(self._url, params=self._fields, headers=self._headers)
@@ -35,7 +40,9 @@ class CloudProfileRequest(ProfileHandlerInterface):
             websites=content.get("websites"),
             address=content.get("address"),
             photo_url=content.get("profile_picture_url"),
-            business=dict(description=content.get("description"), vertical=content.get("vertical")),
+            business=dict(
+                description=content.get("description"), vertical=content.get("vertical")
+            ),
         )
 
     def set_profile(self, **kwargs) -> None:
@@ -98,7 +105,9 @@ class PhotoAPIRequest(object):
     def _get_url(self, endpoint: str) -> str:
         return f"{settings.WHATSAPP_API_URL}/{endpoint}"
 
-    def create_upload_session(self, access_token: str, file_length: int, file_type: str) -> str:
+    def create_upload_session(
+        self, access_token: str, file_length: int, file_type: str
+    ) -> str:
         url = self._get_url(
             f"app/uploads?access_token={self._access_token}&file_length={file_length}&file_type={file_type}"
         )
@@ -109,10 +118,15 @@ class PhotoAPIRequest(object):
 
         return response.json().get("id", "")
 
-    def upload_photo(self, upload_session_id: str, photo: str, is_uploading: bool = False) -> str:
+    def upload_photo(
+        self, upload_session_id: str, photo: str, is_uploading: bool = False
+    ) -> str:
         url = self._get_url(upload_session_id)
 
-        headers = {"Content-Type": photo.content_type, "Authorization": f"OAuth {self._access_token}"}
+        headers = {
+            "Content-Type": photo.content_type,
+            "Authorization": f"OAuth {self._access_token}",
+        }
 
         if not is_uploading:
             headers["file_offset"] = "0"
@@ -133,7 +147,10 @@ class PhotoAPIRequest(object):
 
         upload_handle = self.upload_photo(upload_session_id, photo)
 
-        payload = {"messaging_product": "whatsapp", "profile_picture_handle": upload_handle}
+        payload = {
+            "messaging_product": "whatsapp",
+            "profile_picture_handle": upload_handle,
+        }
 
         response = requests.post(url, headers=self._headers, json=payload)
 

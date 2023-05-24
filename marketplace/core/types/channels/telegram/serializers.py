@@ -8,7 +8,16 @@ from marketplace.connect.client import ConnectProjectClient
 class TelegramSerializer(AppTypeBaseSerializer):
     class Meta:
         model = App
-        fields = ("code", "uuid", "project_uuid", "platform", "config", "created_by", "created_on", "modified_by")
+        fields = (
+            "code",
+            "uuid",
+            "project_uuid",
+            "platform",
+            "config",
+            "created_by",
+            "created_on",
+            "modified_by",
+        )
         read_only_fields = ("code", "uuid", "platform")
 
     def create(self, validated_data):
@@ -19,7 +28,6 @@ class TelegramSerializer(AppTypeBaseSerializer):
 
 
 class ConfigSerializer(serializers.Serializer):
-
     token = serializers.CharField(required=True)
 
     def validate(self, attrs: dict):
@@ -38,7 +46,10 @@ class ConfigSerializer(serializers.Serializer):
         user = self.context.get("request").user
         client = ConnectProjectClient()
         return client.create_channel(
-            user.email, app.project_uuid, {"auth_token": attrs.get("token")}, app.channeltype_code
+            user.email,
+            app.project_uuid,
+            {"auth_token": attrs.get("token")},
+            app.flows_type_code,
         )
 
 

@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("accounts", "0002_projectauthorization"),
     ]
@@ -13,12 +12,16 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="user",
             name="first_name",
-            field=models.CharField(blank=True, max_length=30, verbose_name="first name"),
+            field=models.CharField(
+                blank=True, max_length=30, verbose_name="first name"
+            ),
         ),
         migrations.AddField(
             model_name="user",
             name="last_name",
-            field=models.CharField(blank=True, max_length=150, verbose_name="last name"),
+            field=models.CharField(
+                blank=True, max_length=150, verbose_name="last name"
+            ),
         ),
         migrations.AddField(
             model_name="user",

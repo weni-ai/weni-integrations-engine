@@ -12,11 +12,10 @@ if TYPE_CHECKING:
 
 
 class App(AppTypeBaseModel):
-
     name: str = None
     description: str = None
     summary: str = None
-    channeltype_code: str = None
+    flows_type_code: str = None
     # TODO: Add `icon` property
 
     PLATFORM_IA = "IA"
@@ -42,18 +41,17 @@ class App(AppTypeBaseModel):
         return self.code
 
     def __init__(self, *args, **kwargs):
-        """ Copy some properties from their respective AppType """
+        """Copy some properties from their respective AppType"""
         super().__init__(*args, **kwargs)
         app_type = self.apptype
         self.name = app_type.name
         self.description = app_type.description
         self.summary = app_type.summary
-        self.channeltype_code = app_type.channeltype_code
+        self.flows_type_code = app_type.flows_type_code
         # TODO: Add `icon` property
 
 
 class AppTypeAsset(AppTypeBaseModel):
-
     ASSET_TYPE_IMAGE_BANNER = "IB"
     ASSET_TYPE_ICON = "IC"
     ASSET_TYPE_ATTACHMENT = "AT"
@@ -90,7 +88,9 @@ class AppTypeFeatured(AppTypeBaseModel):
     class Meta:
         verbose_name = "AppType Featured"
         verbose_name_plural = "AppType Featureds"
-        constraints = [UniqueConstraint(fields=["code"], name="unique_app_type_featured_code")]
+        constraints = [
+            UniqueConstraint(fields=["code"], name="unique_app_type_featured_code")
+        ]
 
     def __str__(self) -> str:
         return self.apptype.name

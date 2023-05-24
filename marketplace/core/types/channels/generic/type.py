@@ -1,4 +1,3 @@
-
 from marketplace.core.types.base import AppType
 from marketplace.applications.models import App
 from .views import GenericChannelViewSet
@@ -7,7 +6,7 @@ from .views import GenericChannelViewSet
 class GenericType(AppType):
     view_class = GenericChannelViewSet
     code = "generic"
-    channeltype_code = None
+    flows_type_code = None
     name = "Generic Type"
     description = "Generic.data.description"
     summary = "Generic.data.summary"

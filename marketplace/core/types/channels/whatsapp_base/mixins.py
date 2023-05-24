@@ -19,7 +19,6 @@ from .serializers import WhatsAppBusinessContactSerializer, WhatsAppProfileSeria
 
 
 class QueryParamsParser(object):
-
     QUERY_PARAMS_START_KEY = "start"
     QUERY_PARAMS_END_KEY = "end"
 
@@ -83,7 +82,11 @@ class WhatsAppContactMixin(object, metaclass=abc.ABCMeta):
     def business_profile_class(self) -> "BusinessProfileHandlerInterface":
         pass  # pragma: no cover
 
-    @action(detail=True, methods=["GET", "PATCH"], serializer_class=WhatsAppBusinessContactSerializer)
+    @action(
+        detail=True,
+        methods=["GET", "PATCH"],
+        serializer_class=WhatsAppBusinessContactSerializer,
+    )
     def contact(self, request: "Request", **kwargs) -> Response:
         profile_handler = self.business_profile_class(**self.profile_config_credentials)
 
@@ -116,7 +119,11 @@ class WhatsAppProfileMixin(object, metaclass=abc.ABCMeta):
     def profile_config_credentials(self) -> dict:
         pass  # pragma: no cover
 
-    @action(detail=True, methods=["GET", "PATCH", "DELETE"], serializer_class=WhatsAppProfileSerializer)
+    @action(
+        detail=True,
+        methods=["GET", "PATCH", "DELETE"],
+        serializer_class=WhatsAppProfileSerializer,
+    )
     def profile(self, request: "Request", **kwargs) -> Response:
         # TODO: Split this view in a APIView
         profile_handler = self.profile_class(**self.profile_config_credentials)

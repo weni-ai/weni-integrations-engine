@@ -694,7 +694,6 @@ class SyncWhatsappCloudPhoneNumberViewTestCase(TestCase):
             get_phone_number=lambda x: phone_number_data
         )
         apptypes_mock.get.return_value = MagicMock(apps=[app])
-        print("AQ")
         sync_whatsapp_cloud_phone_numbers()
         # Assert the app has modifiedy after runing sync task
         self.assertNotEqual(before_config, app.config)

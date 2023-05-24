@@ -1,3 +1,15 @@
+v2.5.2
+----------
+* Changes the channeltype_code attribute of all AppType's
+
+v2.5.1
+----------
+* Removing test file
+* Add pre-commit to project
+* Change codecov version
+* Apply black to the project
+* Update black in pre-commit to 23.3.0
+
 v2.5.0
 ----------
 * Adjust the internal client to point directly to Flows

@@ -9,7 +9,6 @@ import uuid
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -20,11 +19,35 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="Rating",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
-                ("uuid", models.UUIDField(default=uuid.uuid4, editable=False, unique=True)),
-                ("created_on", models.DateTimeField(auto_now_add=True, verbose_name="Created on")),
-                ("modified_on", models.DateTimeField(auto_now=True, verbose_name="Modified on")),
-                ("app_code", models.SlugField(validators=[marketplace.core.validators.validate_app_code_exists])),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "uuid",
+                    models.UUIDField(default=uuid.uuid4, editable=False, unique=True),
+                ),
+                (
+                    "created_on",
+                    models.DateTimeField(auto_now_add=True, verbose_name="Created on"),
+                ),
+                (
+                    "modified_on",
+                    models.DateTimeField(auto_now=True, verbose_name="Modified on"),
+                ),
+                (
+                    "app_code",
+                    models.SlugField(
+                        validators=[
+                            marketplace.core.validators.validate_app_code_exists
+                        ]
+                    ),
+                ),
                 (
                     "rate",
                     models.IntegerField(
@@ -61,7 +84,8 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="rating",
             constraint=models.UniqueConstraint(
-                fields=("created_by", "app_code"), name="unique_rationg_created_by_app_code"
+                fields=("created_by", "app_code"),
+                name="unique_rationg_created_by_app_code",
             ),
         ),
     ]
