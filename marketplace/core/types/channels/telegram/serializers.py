@@ -49,7 +49,7 @@ class ConfigSerializer(serializers.Serializer):
             user.email,
             app.project_uuid,
             {"auth_token": attrs.get("token")},
-            app.channeltype_code,
+            app.flows_type_code,
         )
 
 

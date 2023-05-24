@@ -4,11 +4,9 @@ from .views import WhatsAppViewSet
 
 
 class WhatsAppType(AppType):
-
     view_class = WhatsAppViewSet
-
     code = "wpp"
-    channeltype_code = "WA"
+    flows_type_code = "WA"
     name = "WhatsApp"
     description = "WhatsApp.data.description"
     summary = "WhatsApp.data.summary"

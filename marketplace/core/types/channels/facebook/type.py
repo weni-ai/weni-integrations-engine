@@ -7,7 +7,7 @@ class FacebookType(AppType):
     view_class = views.FacebookViewSet
 
     code = "fba"
-    channeltype_code = "FBA"
+    flows_type_code = "FBA"
     name = "Facebook"
     description = "facebook.data.description"
     summary = "facebook.data.summary"
