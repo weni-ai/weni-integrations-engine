@@ -110,9 +110,9 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         list_components = []
 
         translation = TemplateTranslation.objects.filter(template=template).first()
-        template_header = TemplateHeader.objects.get(translation=translation)
 
         if header:
+            template_header = TemplateHeader.objects.get(translation=translation)
             template_header.text = header.get("text")
             template_header.header_type = header.get("header_type")
             if header.get("example"):

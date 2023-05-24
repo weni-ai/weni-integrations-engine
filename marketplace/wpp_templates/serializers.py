@@ -184,7 +184,7 @@ class TemplateMessageSerializer(serializers.Serializer):
     category = serializers.CharField()
     app_uuid = serializers.CharField(write_only=True)
     text_preview = serializers.CharField(required=False, read_only=True)
-    message_template_id = serializers.CharField()
+    message_template_id = serializers.CharField(required=False)
     translations = TemplateTranslationSerializer(many=True, read_only=True)
 
     def to_representation(self, instance):
