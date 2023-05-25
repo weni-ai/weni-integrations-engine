@@ -92,8 +92,6 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         return Response(data=LANGUAGES, status=status.HTTP_200_OK)
 
     def partial_update(self, request, app_uuid=None, uuid=None):
-        from marketplace.wpp_templates.tasks import refresh_whatsapp_templates_from_facebook
-
         template = self.get_object()
 
         message_template_id = request.data.get("message_template_id")
@@ -140,7 +138,7 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
             for button in buttons:
                 TemplateButton.objects.update_or_create(
                                 translation=translation,
-                                button_type=button.get("type"),
+                                button_type=button.get("button_type"),
                                 text=button.get("text"),
                                 url=button.get("url"),
                                 phone_number=button.get("phone_number"),
@@ -149,12 +147,7 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
                 button["type"] = button["button_type"]
                 del button["button_type"]
 
-            type_button = {"type": "BUTTON", "buttons": buttons}
-            type_button.update(buttons)
-            list_components.append(type_button)
-
-            type_button = {"type": "BUTTON", "buttons": buttons}
-            type_button.update(buttons)
+            type_button = {"type": "BUTTONS", "buttons": buttons}
             list_components.append(type_button)
         
         components = list_components
