@@ -92,6 +92,7 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         return Response(data=LANGUAGES, status=status.HTTP_200_OK)
 
     def partial_update(self, request, app_uuid=None, uuid=None):
+        from marketplace.wpp_templates.tasks import refresh_whatsapp_templates_from_facebook
         template = self.get_object()
 
         message_template_id = request.data.get("message_template_id")
@@ -110,12 +111,12 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         translation = TemplateTranslation.objects.filter(template=template).first()
 
         if header:
-            template_header = TemplateHeader.objects.get(translation=translation)
+            '''template_header = TemplateHeader.objects.get(translation=translation)
             template_header.text = header.get("text")
             template_header.header_type = header.get("header_type")
             if header.get("example"):
                 template_header.example = header.get("example")
-            template_header.save()
+            template_header.save()'''
 
             type_header = {"type": "HEADER"}
             type_header.update(header)
@@ -126,23 +127,23 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         if body:
             list_components.append(data.get("body"))
 
-            translation.body = body.get("text")
+            #translation.body = body.get("text")
 
         if footer:
             list_components.append(data.get("footer"))
 
-            translation.footer = footer.get("text")
-        translation.save()
+            #translation.footer = footer.get("text")
+        #translation.save()
 
         if buttons:
             for button in buttons:
-                TemplateButton.objects.update_or_create(
+                '''TemplateButton.objects.update_or_create(
                                 translation=translation,
                                 button_type=button.get("button_type"),
                                 text=button.get("text"),
                                 url=button.get("url"),
                                 phone_number=button.get("phone_number"),
-                            )
+                            )'''
 
                 button["type"] = button["button_type"]
                 del button["button_type"]
@@ -159,4 +160,5 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
                     components=components,
                     )
 
+        refresh_whatsapp_templates_from_facebook()
         return Response(response)
