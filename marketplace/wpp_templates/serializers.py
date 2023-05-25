@@ -204,6 +204,7 @@ class TemplateMessageSerializer(serializers.Serializer):
             created_on=datetime.now(),
             template_type="TEXT",
             created_by_id=User.objects.get_admin_user().id,
+            message_template_id=validated_data.get("id")
         )
         try:
             template_message.full_clean()
