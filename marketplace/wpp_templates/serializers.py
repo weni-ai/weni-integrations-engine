@@ -145,13 +145,17 @@ class TemplateTranslationSerializer(serializers.Serializer):
         if buttons_component.get("buttons"):
             components = self.append_to_components(components, buttons_component)
 
-        template_message_request.create_template_message(
+        new_template = template_message_request.create_template_message(
             waba_id=template.app.config.get("wa_waba_id"),
             name=template.name,
             category=template.category,
             components=components,
             language=validated_data.get("language"),
         )
+
+        global new_message_template_id
+        new_message_template_id = new_template.id
+
 
         translation = TemplateTranslation.objects.create(
             template=template,
@@ -204,7 +208,7 @@ class TemplateMessageSerializer(serializers.Serializer):
             created_on=datetime.now(),
             template_type="TEXT",
             created_by_id=User.objects.get_admin_user().id,
-            message_template_id=validated_data.get("id")
+            message_template_id=new_message_template_id
         )
         try:
             template_message.full_clean()
