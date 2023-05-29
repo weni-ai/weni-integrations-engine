@@ -53,6 +53,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
     footer = serializers.JSONField(required=False)
     buttons = ButtonSerializer(many=True, required=False)
     variable_count = serializers.IntegerField(read_only=True)
+    message_template_id = serializers.CharField(required=False)
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -145,7 +146,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
         if buttons_component.get("buttons"):
             components = self.append_to_components(components, buttons_component)
 
-        template_message_request.create_template_message(
+        new_template = template_message_request.create_template_message(
             waba_id=template.app.config.get("wa_waba_id"),
             name=template.name,
             category=template.category,
@@ -161,6 +162,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
             language=validated_data.get("language"),
             country=validated_data.get("country", "Brasil"),
             variable_count=0,
+            message_template_id = new_template["id"],
         )
 
         for button in buttons:
