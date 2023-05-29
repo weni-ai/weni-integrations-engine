@@ -156,21 +156,6 @@ class TemplateTranslationSerializer(serializers.Serializer):
 
 
 
-class TemplateTranslationCreateSerializer(serializers.Serializer):
-    template_uuid = serializers.CharField()
-    template = SlugRelatedField(slug_field="uuid", queryset=TemplateMessage.objects.all())
-
-    def create(self, validated_data: dict) -> object:
-        return dict(success=True)
-
-
-class TemplateQuerySetSerializer(serializers.Serializer):
-    name = serializers.CharField(required=False)
-    created_on = serializers.CharField(required=False)
-    category = serializers.CharField(required=False)
-    template_type = serializers.CharField(required=False)
-
-
 class TemplateMessageSerializer(serializers.Serializer):
     uuid = serializers.UUIDField(read_only=True)
     name = serializers.CharField()

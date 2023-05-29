@@ -85,7 +85,6 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         return Response(data=LANGUAGES, status=status.HTTP_200_OK)
 
     def partial_update(self, request, app_uuid=None, uuid=None):
-        from marketplace.wpp_templates.tasks import refresh_whatsapp_templates_from_facebook
 
         template = self.get_object()
 
@@ -102,9 +101,15 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
 
         list_components = []
 
+        translation = TemplateTranslation.objects.get(template=template)
+
         if header:
-            template_header = TemplateHeader.objects.get(template=template)
-            template_header.objects.update(**header)
+            template_header = TemplateHeader.objects.get_or_create(translation=translation)
+            template_header.text = header.get("text")
+            template_header.header_type = header.get("header_type")
+            if header.get("example"):
+                template_header.example = header.get("example")
+            template_header.save()
 
             type_header = {"type": "HEADER"}
             type_header.update(header)
@@ -114,23 +119,30 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
 
         if body:
             list_components.append(data.get("body"))
-            translation = TemplateTranslation.objects.get(template=template)
-            translation.objects.update(**body)
+            translation.body = body.get("text")
 
         if footer:
             list_components.append(data.get("footer"))
-            translation = TemplateTranslation.objects.get(template=template)
-            translation.objects.update(**footer)
+            translation.body = body.get("text")
+
+        translation.save()
 
         if buttons:
             for button in buttons:
+                template_button = TemplateButton.objects.get_or_create(
+                                translation=translation,
+                                button_type=button.get("button_type"),
+                            )
+                template_button.text = button.get("text")
+                template_button.country_code = button.get("country_code")
+                template_button.url = button.get("url")
+                template_button.phone_number = button.get("phone_number")
+                template_button.save()
+
                 button["type"] = button["button_type"]
                 del button["button_type"]
-                template_button = TemplateButton.objects.get(template=template)
-                template_button.objects.update(**button)
 
-            type_button = {"type": "BUTTON", "buttons": buttons}
-            type_button.update(buttons)
+            type_button = {"type": "BUTTONS", "buttons": buttons}
             list_components.append(type_button)
 
         components = list_components
