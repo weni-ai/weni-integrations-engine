@@ -45,6 +45,7 @@ class ButtonSerializer(serializers.ModelSerializer):
 class TemplateTranslationSerializer(serializers.Serializer):
     template_uuid = serializers.CharField(write_only=True)
     uuid = serializers.UUIDField(read_only=True)
+    message_template_id = serializers.CharField(required=False)
     status = serializers.CharField(required=False)
     language = serializers.CharField()
     country = serializers.CharField(required=False)
@@ -145,7 +146,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
         if buttons_component.get("buttons"):
             components = self.append_to_components(components, buttons_component)
 
-        template_message_request.create_template_message(
+        new_template = template_message_request.create_template_message(
             waba_id=template.app.config.get("wa_waba_id"),
             name=template.name,
             category=template.category,
@@ -161,6 +162,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
             language=validated_data.get("language"),
             country=validated_data.get("country", "Brasil"),
             variable_count=0,
+            message_template_id = new_template["id"],
         )
 
         for button in buttons:
