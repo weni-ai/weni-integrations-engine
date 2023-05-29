@@ -8,6 +8,10 @@ from django.conf import settings
 
 WHATSAPP_VERSION = settings.WHATSAPP_VERSION
 
+from django.conf import settings
+
+WHATSAPP_VERSION = settings.WHATSAPP_VERSION
+
 
 class TemplateMessageRequest(object):
     def __init__(self, access_token: str) -> None:
@@ -64,7 +68,7 @@ class TemplateMessageRequest(object):
             components=str(components),
             access_token=self._access_token
         )
-        response = requests.post(url=f"https://graph.facebook.com/v14.0/{message_template_id}", params=params)
+        response = requests.post(url=f"https://graph.facebook.com/{WHATSAPP_VERSION}/{message_template_id}", params=params)
         if response.status_code != 200:
             raise FacebookApiException(response.json())
 
