@@ -12,6 +12,10 @@ from django.conf import settings
 
 WHATSAPP_VERSION = settings.WHATSAPP_VERSION
 
+from django.conf import settings
+
+WHATSAPP_VERSION = settings.WHATSAPP_VERSION
+
 
 class TemplateMessageRequest(object):
     def __init__(self, access_token: str) -> None:

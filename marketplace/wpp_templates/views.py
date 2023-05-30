@@ -92,7 +92,6 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         return Response(data=LANGUAGES, status=status.HTTP_200_OK)
 
     def partial_update(self, request, app_uuid=None, uuid=None):
-        from marketplace.wpp_templates.tasks import refresh_whatsapp_templates_from_facebook
         template = self.get_object()
 
         message_template_id = request.data.get("message_template_id")
@@ -111,12 +110,11 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         translation = TemplateTranslation.objects.get(template=template)
 
         if header:
-            template_header, exist = TemplateHeader.objects.get_or_create(translation=translation)
+            template_header = TemplateHeader.objects.get_or_create(translation=translation)
             template_header.text = header.get("text")
             template_header.header_type = header.get("header_type")
             if header.get("example"):
                 template_header.example = header.get("example")
-
             template_header.save()
 
             type_header = {"type": "HEADER"}
