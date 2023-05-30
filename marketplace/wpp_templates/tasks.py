@@ -16,17 +16,19 @@ from marketplace.wpp_templates.models import (
 
 @shared_task(track_started=True, name="refresh_whatsapp_templates_from_facebook")
 def refresh_whatsapp_templates_from_facebook():
-    for app in App.objects.all():
-        if not app.config.get("wa_waba_id"):
+    for app in App.objects.filter(code__in=["wpp", "wpp-cloud"]):
+        if not (app.config.get("wa_waba_id") or app.config.get("waba")):
             continue
-
+        waba_id = (
+            app.config.get("waba").get("id")
+            if app.config.get("waba")
+            else app.config.get("wa_waba_id")
+        )
         template_message_request = TemplateMessageRequest(
             settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
         )
-        templates = template_message_request.list_template_messages(
-            app.config.get("wa_waba_id")
-        )
-        template_message_request.get_template_namespace(app.config.get("wa_waba_id"))
+        templates = template_message_request.list_template_messages(waba_id)
+        template_message_request.get_template_namespace(waba_id)
 
         for template in templates.get("data", []):
             try:
