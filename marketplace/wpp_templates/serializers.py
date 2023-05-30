@@ -145,8 +145,13 @@ class TemplateTranslationSerializer(serializers.Serializer):
         if buttons_component.get("buttons"):
             components = self.append_to_components(components, buttons_component)
 
+        waba_id = (
+            template.app.config.get("wa_waba_id")
+            if template.app.config.get("wa_waba_id")
+            else template.app.config.get("waba").get("id")
+        )
         template_message_request.create_template_message(
-            waba_id=template.app.config.get("wa_waba_id"),
+            waba_id=waba_id,
             name=template.name,
             category=template.category,
             components=components,
