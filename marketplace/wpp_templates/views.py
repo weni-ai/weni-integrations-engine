@@ -108,15 +108,16 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
 
         list_components = []
 
-        translation = TemplateTranslation.objects.filter(template=template).first()
+        translation = TemplateTranslation.objects.get(template=template)
 
         if header:
-            '''template_header = TemplateHeader.objects.get(translation=translation)
+            template_header, exist = TemplateHeader.objects.get_or_create(translation=translation)
             template_header.text = header.get("text")
             template_header.header_type = header.get("header_type")
             if header.get("example"):
                 template_header.example = header.get("example")
-            template_header.save()'''
+
+            template_header.save()
 
             type_header = {"type": "HEADER"}
             type_header.update(header)
@@ -126,31 +127,32 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
 
         if body:
             list_components.append(data.get("body"))
-
-            #translation.body = body.get("text")
+            translation.body = body.get("text")
 
         if footer:
             list_components.append(data.get("footer"))
+            translation.body = body.get("text")
 
-            #translation.footer = footer.get("text")
-        #translation.save()
+        translation.save()
 
         if buttons:
             for button in buttons:
-                '''TemplateButton.objects.update_or_create(
+                template_button = TemplateButton.objects.get_or_create(
                                 translation=translation,
                                 button_type=button.get("button_type"),
-                                text=button.get("text"),
-                                url=button.get("url"),
-                                phone_number=button.get("phone_number"),
-                            )'''
+                            )
+                template_button.text = button.get("text")
+                template_button.country_code = button.get("country_code")
+                template_button.url = button.get("url")
+                template_button.phone_number = button.get("phone_number")
+                template_button.save()
 
                 button["type"] = button["button_type"]
                 del button["button_type"]
 
             type_button = {"type": "BUTTONS", "buttons": buttons}
             list_components.append(type_button)
-        
+
         components = list_components
 
         template_request = TemplateMessageRequest(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
@@ -160,5 +162,5 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
                     components=components,
                     )
 
-        refresh_whatsapp_templates_from_facebook()
+        #refresh_whatsapp_templates_from_facebook()
         return Response(response)

@@ -45,6 +45,7 @@ class ButtonSerializer(serializers.ModelSerializer):
 class TemplateTranslationSerializer(serializers.Serializer):
     template_uuid = serializers.CharField(write_only=True)
     uuid = serializers.UUIDField(read_only=True)
+    message_template_id = serializers.CharField(required=False)
     status = serializers.CharField(required=False)
     language = serializers.CharField()
     country = serializers.CharField(required=False)
@@ -53,7 +54,6 @@ class TemplateTranslationSerializer(serializers.Serializer):
     footer = serializers.JSONField(required=False)
     buttons = ButtonSerializer(many=True, required=False)
     variable_count = serializers.IntegerField(read_only=True)
-    message_template_id = serializers.CharField(required=False)
 
     def to_representation(self, instance):
         data = super().to_representation(instance)

@@ -8,6 +8,10 @@ from django.conf import settings
 
 WHATSAPP_VERSION = settings.WHATSAPP_VERSION
 
+from django.conf import settings
+
+WHATSAPP_VERSION = settings.WHATSAPP_VERSION
+
 
 class TemplateMessageRequest(object):
     def __init__(self, access_token: str) -> None:
@@ -37,7 +41,7 @@ class TemplateMessageRequest(object):
             url=f"https://graph.facebook.com/{WHATSAPP_VERSION}/{waba_id}",
             params=params,
         )
-        return response.json().get("message_template_namespace")
+        return response.json()
 
     def create_template_message(
         self, waba_id: str, name: str, category: str, components: list, language: str
