@@ -35,8 +35,10 @@ def refresh_whatsapp_templates_from_facebook():
                 found_template, _created = TemplateMessage.objects.get_or_create(
                     app=app,
                     name=template.get("name"),
-                    category=template.get("category"),
                 )
+                found_template.category = template.get("category")
+                found_template.save()
+
                 body = ""
                 footer = ""
                 for translation in template.get("components"):
@@ -57,6 +59,7 @@ def refresh_whatsapp_templates_from_facebook():
                 returned_translation.footer = footer
                 returned_translation.status = template.get("status")
                 returned_translation.variable_count = 0
+                returned_translation.message_template_id = template.get("id")
                 returned_translation.save()
 
                 for translation in template.get("components"):
