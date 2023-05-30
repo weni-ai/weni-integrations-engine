@@ -1,3 +1,11 @@
+v2.5.3
+----------
+* Add template migration 0005_alter_templatemessage_category
+* Generic AppType structure changes
+* Adds mock to sleep fuction in get_phone_number request test method
+* Search templates for wpp on premise, and wpp cloud.
+* Fetches data from waba and waba_id to create templates
+
 v2.5.2
 ----------
 * Changes the channeltype_code attribute of all AppType's
