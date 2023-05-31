@@ -36,7 +36,6 @@ class WhatsAppCloudViewSet(
     mixins.WhatsAppContactMixin,
     mixins.WhatsAppProfileMixin,
 ):
-
     serializer_class = WhatsAppSerializer
 
     business_profile_class = CloudProfileContactFacade

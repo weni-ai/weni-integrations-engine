@@ -7,7 +7,6 @@ from . import type as type_
 
 
 class TelegramViewSet(views.BaseAppTypeViewSet):
-
     serializer_class = TelegramSerializer
 
     def get_queryset(self):

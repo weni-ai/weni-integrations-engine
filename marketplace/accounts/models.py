@@ -49,7 +49,6 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-
     first_name = models.CharField(_("first name"), max_length=30, blank=True)
     last_name = models.CharField(_("last name"), max_length=150, blank=True)
     email = models.EmailField(_("email"), unique=True, help_text=_("User email"))
@@ -72,7 +71,6 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 
 class ProjectAuthorization(models.Model):
-
     ROLE_NOT_SETTED = 0
     ROLE_VIEWER = 1
     ROLE_CONTRIBUTOR = 2

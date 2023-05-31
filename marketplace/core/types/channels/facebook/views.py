@@ -7,7 +7,6 @@ from . import type as type_
 
 
 class FacebookViewSet(views.BaseAppTypeViewSet):
-
     serializer_class = FacebookSerializer
 
     def get_queryset(self):

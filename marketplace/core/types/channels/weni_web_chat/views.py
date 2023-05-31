@@ -7,7 +7,6 @@ from . import type as type_
 
 
 class WeniWebChatViewSet(views.BaseAppTypeViewSet):
-
     serializer_class = WeniWebChatSerializer
 
     def get_queryset(self):
