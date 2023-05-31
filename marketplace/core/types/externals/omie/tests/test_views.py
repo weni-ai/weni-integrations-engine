@@ -104,16 +104,17 @@ class ConfigureOmieAppTestCase(APIBaseTestCase):
         return self.view_class.as_view({"patch": "configure"})
 
     @patch(
-        "marketplace.core.types.externals.omie.serializers.ConfigSerializer._create_channel"
+        "marketplace.core.types.externals.omie.serializers.FlowsClient.create_external_service"
     )
-    def test_configure_omie_success(self, mock_create_channel):
-        mock_response = Mock()
-        mock_response.json.return_value = {
+    def test_configure_omie_success(self, mock_create_external_service):
+        data = {
             "channelUuid": str(uuid.uuid4()),
             "title": "Teste",
         }
+        mock_response = Mock()
+        mock_response.json.return_value = data
         mock_response.status_code = 200
-        mock_create_channel.return_value = mock_response
+        mock_create_external_service.return_value = mock_response
 
         keys_values = {
             "api_key": str(uuid.uuid4()),
