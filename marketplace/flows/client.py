@@ -54,6 +54,22 @@ class FlowsClient:
         )
         return response
 
+    def create_external_service(
+        self, user: str, project: str, type_fields: dict, type_code: str
+    ):
+        body = dict(
+            user=user, project=project, type_fields=type_fields, type_code=type_code
+        )
+        url = f"{self.base_url}/api/v2/internals/externals"
+
+        response = self.make_request(
+            url,
+            method="POST",
+            headers=self.authentication_instance.headers,
+            data=body,
+        )
+        return response
+
     def make_request(self, url: str, method: str, headers=None, data=None, params=None):
         try:
             response = requests.request(
@@ -74,7 +90,7 @@ class FlowsClient:
         except requests.exceptions.RequestException as exception:
             # Handle general network exceptions
             raise APIException(
-                detail=f"RequestException: {str(exception)}", code=response.status_code
+                detail=f"RequestException: {str(exception)}", code=500
             ) from exception
 
         return response
