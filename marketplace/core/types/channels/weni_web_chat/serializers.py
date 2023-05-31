@@ -117,7 +117,9 @@ class ConfigSerializer(serializers.Serializer):
         name = f"{type_.WeniWebChatType.name} - #{self.app.id}"
         data = {"name": name, "base_url": settings.SOCKET_BASE_URL}
         client = ConnectProjectClient()
-        return client.create_channel(user.email, self.app.project_uuid, data, self.app.flows_type_code)
+        return client.create_channel(
+            user.email, self.app.project_uuid, data, self.app.flows_type_code
+        )
 
     def generate_script(self, attrs):
         """

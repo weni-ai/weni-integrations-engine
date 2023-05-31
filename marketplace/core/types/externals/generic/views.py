@@ -5,16 +5,10 @@ from rest_framework import serializers
 from rest_framework import viewsets
 
 from marketplace.flows.client import FlowsClient
-
-from .serializers import GenericExternalSerializer, GenericConfigureSerializer
 from marketplace.core.types import views
-
-from django.conf import settings
-
 from marketplace.applications.models import AppTypeAsset
 
-
-IMPORTANCE_CHANNELS_ORDER = settings.IMPORTANCE_CHANNELS_ORDER
+from .serializers import GenericExternalSerializer, GenericConfigureSerializer
 
 
 class GenericExternalsViewSet(views.BaseAppTypeViewSet):

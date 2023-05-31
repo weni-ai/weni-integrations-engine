@@ -1,7 +1,6 @@
 from .views import GenericExternalsViewSet
 
 from marketplace.interfaces.flows import FlowsInterface
-from marketplace.interfaces.connect import ConnectInterface
 
 from marketplace.core.types.base import AppType, GenericAppType
 
@@ -22,7 +21,7 @@ class GenericExternalAppType(GenericAppType):
     @classmethod
     def create(
         cls,
-        client: ConnectInterface,
+        client: FlowsInterface,
         user: str,
         project_uuid: str,
         attrs: dict,

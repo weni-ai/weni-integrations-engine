@@ -156,6 +156,17 @@ class FlowsClient(FlowsInterface):
         )
         return response
 
+    def list_external_types(self, flows_type_code=None):
+        url = f"{self.base_url}/api/v2/internals/generic/externals/"
+
+        if flows_type_code:
+            url = f"{self.base_url}/api/v2/internals/generic/externals/{str(flows_type_code)}"
+
+        response = self.make_request(
+            url, method="GET", headers=self.authentication_instance.headers
+        )
+        return response.json()
+
     def make_request(self, url: str, method: str, headers=None, data=None, params=None):
         response = requests.request(
             method=method,

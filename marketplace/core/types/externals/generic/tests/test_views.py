@@ -23,7 +23,7 @@ from marketplace.core.types.externals.generic.views import (
 
 from typing import Any
 from marketplace.interfaces.flows import FlowsInterface
-from marketplace.interfaces.connect import ConnectInterface
+
 
 apptype = GenericExternalAppType()
 
@@ -70,11 +70,6 @@ class MockFlowsClient(FlowsInterface):
         response.status_code = 200
         return response
 
-
-class MockConnectClient(ConnectInterface):
-    base_url = "connect test"
-    use_connect_v2 = "test"
-
     def create_external_service(
         self, user: str, project_uuid: str, type_fields: dict, type_code: str
     ):
@@ -97,17 +92,17 @@ class PatchedFlowsClientTestCase(APIBaseTestCase):
             "marketplace.core.types.externals.generic.views.FlowsClient",
             MockFlowsClient,
         )
-        cls.patch_connect_client = patch(
-            "marketplace.core.types.externals.generic.serializers.ConnectProjectClient",
-            MockConnectClient,
+        cls.patch_serializer_flows_client = patch(
+            "marketplace.core.types.externals.generic.serializers.FlowsClient",
+            MockFlowsClient,
         )
         cls.patch_flows_client.start()
-        cls.patch_connect_client.start()
+        cls.patch_serializer_flows_client.start()
 
     @classmethod
     def tearDownClass(cls):
         cls.patch_flows_client.stop()
-        cls.patch_connect_client.stop()
+        cls.patch_serializer_flows_client.stop()
         super().tearDownClass()
 
     def setUp(self):
