@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from marketplace.core.serializers import AppTypeBaseSerializer
 from marketplace.applications.models import App
-from marketplace.connect.client import ConnectProjectClient
+from marketplace.flows.client import FlowsClient
 
 
 class GenericExternalSerializer(AppTypeBaseSerializer):
@@ -51,7 +51,7 @@ class GenericExternalConfigSerializer(serializers.Serializer):
         user = request.user
         external_code = app.config.get("external_code")
         response = app.apptype.create(
-            ConnectProjectClient(), user.email, app.project_uuid, attrs, external_code
+            FlowsClient(), user.email, str(app.project_uuid), attrs, external_code
         )
         return response
 
