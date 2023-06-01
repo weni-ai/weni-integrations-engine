@@ -22,9 +22,7 @@ class OmieSerializer(AppTypeBaseSerializer):
 
     def create(self, validated_data):
         # TODO: Send the responsibility of this method to the AppTypeBaseSerializer and create an object from the type
-        from .type import OmieType
-
-        validated_data["platform"] = OmieType.platform
+        validated_data["platform"] = self.type_class.platform
         return super().create(validated_data)
 
 

@@ -21,9 +21,7 @@ class TelegramSerializer(AppTypeBaseSerializer):
         read_only_fields = ("code", "uuid", "platform")
 
     def create(self, validated_data):
-        from .type import TelegramType
-
-        validated_data["platform"] = TelegramType.platform
+        validated_data["platform"] = self.type_class.platform
         return super().create(validated_data)
 
 

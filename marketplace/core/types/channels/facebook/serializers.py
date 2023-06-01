@@ -21,9 +21,7 @@ class FacebookSerializer(AppTypeBaseSerializer):
         read_only_fields = ("code", "uuid", "platform")
 
     def create(self, validated_data):
-        from .type import FacebookType
-
-        validated_data["platform"] = FacebookType.platform
+        validated_data["platform"] = self.type_class.platform
         return super().create(validated_data)
 
 
