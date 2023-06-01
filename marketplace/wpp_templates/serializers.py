@@ -183,7 +183,6 @@ class TemplateTranslationSerializer(serializers.Serializer):
         return translation
 
 
-
 class TemplateMessageSerializer(serializers.Serializer):
     uuid = serializers.UUIDField(read_only=True)
     name = serializers.CharField()
