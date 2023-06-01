@@ -111,7 +111,7 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         translation = TemplateTranslation.objects.get(template=template)
 
         if header:
-            template_header = TemplateHeader.objects.get_or_create(translation=translation)
+            template_header, _created = TemplateHeader.objects.get_or_create(translation=translation)
             template_header.text = header.get("text")
             template_header.header_type = header.get("header_type")
             if header.get("example"):
@@ -136,7 +136,7 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
 
         if buttons:
             for button in buttons:
-                template_button = TemplateButton.objects.get_or_create(
+                template_button, _created = TemplateButton.objects.get_or_create(
                                 translation=translation,
                                 button_type=button.get("button_type"),
                             )
