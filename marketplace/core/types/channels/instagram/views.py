@@ -7,7 +7,6 @@ from . import type as type_
 
 
 class InstagramViewSet(views.BaseAppTypeViewSet):
-
     serializer_class = InstagramSerializer
 
     def get_queryset(self):

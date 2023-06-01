@@ -9,7 +9,6 @@ from marketplace.core.types import views
 
 
 class OmieViewSet(views.BaseAppTypeViewSet):
-
     serializer_class = OmieSerializer
 
     def get_queryset(self):

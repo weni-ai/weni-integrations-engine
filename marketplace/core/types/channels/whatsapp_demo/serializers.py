@@ -5,7 +5,6 @@ from marketplace.core.serializers import AppTypeBaseSerializer
 
 
 class WhatsAppDemoSerializer(AppTypeBaseSerializer):
-
     redirect_url = serializers.SerializerMethodField()
 
     class Meta:
