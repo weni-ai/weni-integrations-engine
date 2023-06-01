@@ -140,7 +140,7 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
             for button in buttons:
                 template_button, _created = TemplateButton.objects.get_or_create(
                                 translation=translation,
-                                button_type=button.get("type"),
+                                button_type=button.get("button_type"),
                                 text=button.get("text"),
                                 url=button.get("url"),
                                 phone_number=button.get("phone_number"),
