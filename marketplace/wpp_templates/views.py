@@ -125,6 +125,7 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
             list_components.append(data.get("footer"))
             translation.body = body.get("text")
 
+        translation.status = "PENDING"
         translation.save()
 
         if buttons:
@@ -132,6 +133,9 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
                 template_button, _created = TemplateButton.objects.get_or_create(
                                 translation=translation,
                                 button_type=button.get("button_type"),
+                                text=button.get("text"),
+                                url=button.get("url"),
+                                phone_number=button.get("phone_number"),
                             )
                 template_button.text = button.get("text")
                 template_button.country_code = button.get("country_code")
