@@ -167,7 +167,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
             language=validated_data.get("language"),
             country=validated_data.get("country", "Brasil"),
             variable_count=0,
-            message_template_id = new_template["id"],
+            message_template_id=new_template["id"],
         )
 
         for button in buttons:
