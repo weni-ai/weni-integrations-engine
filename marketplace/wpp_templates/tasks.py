@@ -19,6 +19,7 @@ def refresh_whatsapp_templates_from_facebook():
     for app in App.objects.filter(code__in=["wpp", "wpp-cloud"]):
         if not (app.config.get("wa_waba_id") or app.config.get("waba")):
             continue
+
         waba_id = (
             app.config.get("waba").get("id")
             if app.config.get("waba")
@@ -29,14 +30,21 @@ def refresh_whatsapp_templates_from_facebook():
         )
         templates = template_message_request.list_template_messages(waba_id)
         template_message_request.get_template_namespace(waba_id)
-
         for template in templates.get("data", []):
             try:
-                found_template, _created = TemplateMessage.objects.get_or_create(
-                    app=app,
-                    name=template.get("name"),
-                    category=template.get("category"),
-                )
+                translation = TemplateTranslation.objects.filter(message_template_id=template.get("id"))
+                if translation:
+                    translation = translation.last()
+                    found_template = translation.template
+                else:
+                    found_template, _created = TemplateMessage.objects.get_or_create(
+                        app=app,
+                        name=template.get("name"),
+                    )
+
+                found_template.category = template.get("category")
+                found_template.save()
+
                 body = ""
                 footer = ""
                 for translation in template.get("components"):
@@ -57,6 +65,7 @@ def refresh_whatsapp_templates_from_facebook():
                 returned_translation.footer = footer
                 returned_translation.status = template.get("status")
                 returned_translation.variable_count = 0
+                returned_translation.message_template_id = template.get("id")
                 returned_translation.save()
 
                 for translation in template.get("components"):

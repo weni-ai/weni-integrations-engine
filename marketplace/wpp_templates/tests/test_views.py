@@ -188,6 +188,7 @@ class WhatsappTemplateTranslationsTestCase(APIBaseTestCase):
 
         self.body = dict(
             language="ja",
+            # message_template_id=None,
             body={"text": "test", "type": "BODY"},
             country="Brasil",
             header={
@@ -223,7 +224,7 @@ class WhatsappTemplateTranslationsTestCase(APIBaseTestCase):
         self, mock_create_template_message, mock_create_upload_session, mock_requests
     ):
         # create_template_message
-        mock_create_template_message.return_value = {"some_key": "some_value"}
+        mock_create_template_message.return_value = {"some_key": "some_value", "id": "0123456789"}
 
         # create_upload_session
         mock_create_upload_session.return_value = MagicMock(
@@ -236,7 +237,7 @@ class WhatsappTemplateTranslationsTestCase(APIBaseTestCase):
         mock_post.return_value.json.return_value = {"h": "upload_handle"}
 
         response = self.request.post(
-            self.url, body=self.body, uuid=str(self.template_message.uuid)
+            self.url, body=self.body, uuid=str(self.template_message.uuid),
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
