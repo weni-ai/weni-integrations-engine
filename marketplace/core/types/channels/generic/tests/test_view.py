@@ -6,7 +6,6 @@ from django.test import TestCase
 from django.contrib.auth import get_user_model
 
 from rest_framework import status
-from rest_framework.response import Response
 
 from marketplace.core.tests.base import APIBaseTestCase
 
@@ -26,7 +25,6 @@ from unittest.mock import Mock
 
 
 User = get_user_model()
-MOCK_DATA = {"channelUuid": str(uuid.uuid4())}
 
 
 class FakeRequestsResponse:
@@ -208,10 +206,10 @@ class ConfigureGenericAppTestCase(APIBaseTestCase):
         return self.view_class.as_view({"patch": "configure"})
 
     @patch(
-        "marketplace.core.types.channels.generic.serializers.GenericConfigSerializer._create_channel"
+        "marketplace.core.types.channels.generic.serializers.ConnectProjectClient.create_channel"
     )
     def test_configure_channel_success(self, mock_configure):
-        mock_configure.return_value = Response(MOCK_DATA, status=status.HTTP_200_OK)
+        mock_configure.return_value = {"channelUuid": str(uuid.uuid4())}
         keys_values = {
             "api_key": str(uuid.uuid4()),
             "api_secret": str(uuid.uuid4()),
@@ -228,23 +226,14 @@ class ConfigureGenericAppTestCase(APIBaseTestCase):
         response = self.request.patch(self.url, payload, uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-    @patch(
-        "marketplace.core.types.channels.generic.serializers.GenericConfigSerializer._create_channel"
-    )
-    def test_configure_channel_without_config(self, mock_configure):
+    def test_configure_channel_without_config(self):
         """Request without config field"""
         response_data = {"config": ["This field is required."]}
-
-        mock_configure.return_value = Response(
-            response_data, status=status.HTTP_400_BAD_REQUEST
-        )
         payload = {
             "user": str(self.user),
             "project_uuid": str(uuid.uuid4()),
         }
-
         response = self.request.patch(self.url, payload, uuid=self.app.uuid)
-
         self.assertEqual(response_data, response.json)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 

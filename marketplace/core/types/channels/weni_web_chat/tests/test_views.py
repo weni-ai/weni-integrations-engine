@@ -1,5 +1,8 @@
 import uuid
 
+from unittest.mock import patch
+from unittest.mock import MagicMock
+
 from django.urls import reverse
 from django.test import override_settings
 from rest_framework import status
@@ -8,6 +11,10 @@ from marketplace.core.tests.base import APIBaseTestCase
 from ..views import WeniWebChatViewSet
 from marketplace.applications.models import App
 from marketplace.accounts.models import ProjectAuthorization
+
+from ..type import WeniWebChatType
+
+apptype = WeniWebChatType()
 
 
 class CreateWeniWebChatAppTestCase(APIBaseTestCase):
@@ -122,3 +129,65 @@ class DestroyWeniWebChatAppTestCase(APIBaseTestCase):
         self.user_authorization.set_role(ProjectAuthorization.ROLE_NOT_SETTED)
         response = self.request.delete(self.url, uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class MockAppStorage(MagicMock):
+    def open(self, name, mode):
+        mock_file = MagicMock()
+        mock_file.name = name
+        mock_file.__enter__.return_value = mock_file
+        return mock_file
+
+    def url(self, name):
+        return f"https://weni-test.invalidurl.com/apptypes/{str(uuid.uuid4)}/{str(uuid.uuid4)}/{name}"
+
+
+class ConfigureWeniWebChatTestCase(APIBaseTestCase):
+    view_class = WeniWebChatViewSet
+
+    def setUp(self):
+        super().setUp()
+        self.app = WeniWebChatType().create_app(
+            created_by=self.user, project_uuid=str(uuid.uuid4())
+        )
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+        self.url = reverse("wwc-app-configure", kwargs={"uuid": self.app.uuid})
+        self.body = {
+            "config": {
+                "title": "teste1",
+                "inputTextFieldHint": "teste",
+                "timeBetweenMessages": 1,
+                "mainColor": "#009E96",
+            }
+        }
+
+    @property
+    def view(self):
+        return self.view_class.as_view({"patch": "configure"})
+
+    @patch(
+        "marketplace.core.types.channels.weni_web_chat.serializers.ConnectProjectClient"
+    )
+    @patch(
+        "marketplace.core.types.channels.weni_web_chat.serializers.AppStorage",
+        MockAppStorage,
+    )
+    def test_configure_weniwebchat_success(self, mock_connect_project_client):
+        data = {
+            "uuid": str(uuid.uuid4()),
+            "mainColor": "#009E96",
+            "keepHistory": True,
+            "timeBetweenMessages": 1,
+            "customCss": "body { background-color: red; }",
+        }
+        mock_connect_project_client.return_value.create_channel.return_value = data
+        response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_configure_weniwebchat_missing_fields(self):
+        response = self.request.patch(self.url, {}, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
