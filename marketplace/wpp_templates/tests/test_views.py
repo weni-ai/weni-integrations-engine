@@ -264,12 +264,12 @@ class WhatsappTemplateTranslationsTestCase(APIBaseTestCase):
                 self.url, body=self.body, uuid=str(self.template_message.uuid)
             )
 
+
 class WhatsappTemplateUpdateTestCase(APIBaseTestCase):
     view_class = TemplateMessageViewSet
 
     def setUp(self):
-        
-        self.validated_data= dict(
+        self.validated_data = dict(
             language="ja",
             body={"text": "test", "type": "BODY"},
             country="Brasil",
@@ -288,27 +288,29 @@ class WhatsappTemplateUpdateTestCase(APIBaseTestCase):
                 }
             ],
         )
-
-
-
-        self.language="ja",
-        self.body={"text": "test", "type": "BODY"},
-        self.country="Brasil",
-        self.header={
-            "header_type": "VIDEO",
-            "example": "data:application/pdf;base64,test==",
-        },
-        self.footer={"type": "FOOTER", "text": "Not interested? Tap Stop promotions"},
-        self.buttons=[
-            {
-                "button_type": "URL",
-                "text": "phone-button-text",
-                "url": "https://weni.ai",
-                "phone_number": "84999999999",
-                "country_code": "+55",
-            }
-        ]
-        
+        self.body = {
+                "message_template_id": "0123456789",
+                "header": {
+                    "header_type": "TEXT",
+                    "text": "txt",
+                    "example": "txt example"
+                },
+                "body": {
+                    "type": "BODY",
+                    "text": "txt body"
+                },
+                "footer": {
+                    "type": "FOOTER",
+                    "text": "txt footer"
+                },
+                "buttons": [{
+                    "button_type": "URL",
+                    "text": "phone-button-text",
+                    "url": "https://weni.ai",
+                    "phone_number": "84999999999",
+                    "country_code": "+55",
+                }]
+        }
 
         self.app = App.objects.create(
             config=dict(wa_waba_id="109552365187427"),
@@ -335,72 +337,45 @@ class WhatsappTemplateUpdateTestCase(APIBaseTestCase):
             language=self.validated_data.get("language"),
             country=self.validated_data.get("country", "Brasil"),
             variable_count=0,
+            message_template_id="0123456789",
         )
 
-        self.url = reverse("app-template-detail", kwargs={"app_uuid": str(self.app.uuid), "uuid": str(self.template_message.uuid)})
+        self.url = reverse(
+            "app-template-detail",
+            kwargs={
+                "app_uuid": str(self.app.uuid),
+                "uuid": str(self.template_message.uuid),
+            },
+        )
+        print(self.app.uuid)
+        print(self.url)
         super().setUp()
 
     @property
     def view(self):
-        return self.view_class.as_view(APIBaseTestCase.ACTION_RETRIEVE)
+        return self.view_class.as_view({"patch": "partial_update"})
 
-    @patch("marketplace.wpp_templates.serializers.requests")
     @patch(
         "marketplace.wpp_templates.requests.TemplateMessageRequest.update_template_message"
     )
     def test_update_template_translation(
-        self, mock_update_template_message, mock_requests
+        self, mock_update_template_message
     ):
-        self.body = dict(
-            language="ja",
-            body={"text": "test", "type": "BODY"},
-            country="Brasil",
-            header={
-                "header_type": "VIDEO",
-                "example": "data:application/pdf;base64,test==",
-            },
-            footer={"type": "FOOTER", "text": "Not interested? Tap Stop promotions"},
-            buttons=[
-                {
-                    "button_type": "QUICK_REPLY",
-                    "text": "phone-button-text",
-                }
-            ],
-        )
-        # create_template_message
         mock_update_template_message.return_value = {"success": True}
 
-        # request
-        mock_post = mock_requests.patch
-        mock_post.return_value.status_code = status.HTTP_200_OK
-        mock_post.return_value.json.return_value = {"h": "upload_handle"}
-
         response = self.request.patch(
-            self.url, body=self.body, uuid=str(self.template_message.uuid)
+            self.url, body=self.body, app_uuid=str(self.app.uuid), uuid=str(self.template_message.uuid)
         )
-
+        print('test', response)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-    @patch("marketplace.wpp_templates.serializers.requests")
-    @patch(
-        "marketplace.core.types.channels.whatsapp_cloud.requests.PhotoAPIRequest.create_upload_session"
-    )
     def test_update_template_translation_error(
-        self, mock_create_upload_session, mock_requests
+        self
     ):
-        # create_upload_session
-        mock_create_upload_session.return_value = MagicMock(
-            create_upload_session=lambda x: "0123456789"
-        )
-
-        # request
-        mock_post = mock_requests.post
-        mock_post.return_value.status_code = status.HTTP_404_NOT_FOUND
-        mock_post.return_value.json.return_value = {"error": "error"}
 
         with self.assertRaises(FacebookApiException):
-            self.request.put(
-                self.url, body=self.body, uuid=str(self.template_message.uuid)
+            self.request.patch(
+                self.url, body=self.body, app_uuid=str(self.app.uuid), uuid=str(self.template_message.uuid)
             )
 
 
