@@ -1,3 +1,9 @@
+v2.5.4
+----------
+* Create type_class attribute in AppTypeBaseSerializer
+* Applying-black-to-project 
+* Adds create_external_service in client of flows
+
 v2.5.3
 ----------
 * Add template migration 0005_alter_templatemessage_category
