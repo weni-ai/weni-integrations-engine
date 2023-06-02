@@ -224,7 +224,7 @@ class WhatsappTemplateTranslationsTestCase(APIBaseTestCase):
         self, mock_create_template_message, mock_create_upload_session, mock_requests
     ):
         # create_template_message
-        mock_create_template_message.return_value = {"some_key": "some_value"}
+        mock_create_template_message.return_value = {"some_key": "some_value", "id": "0123456789"}
 
         # create_upload_session
         mock_create_upload_session.return_value = MagicMock(
