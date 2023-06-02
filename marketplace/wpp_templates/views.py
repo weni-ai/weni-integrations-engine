@@ -1,5 +1,8 @@
+import datetime
 from django.contrib.auth import get_user_model
 from django.conf import settings
+import pytz
+
 
 from sentry_sdk import capture_exception
 
@@ -13,6 +16,7 @@ from marketplace.applications.models import App
 from marketplace.core.types.channels.whatsapp_base.exceptions import (
     FacebookApiException,
 )
+from marketplace.core.types.channels.whatsapp_base.mixins import QueryParamsParser
 
 from .models import TemplateHeader, TemplateMessage, TemplateTranslation, TemplateButton
 from .serializers import TemplateMessageSerializer, TemplateTranslationSerializer
@@ -37,7 +41,43 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
     serializer_class = TemplateMessageSerializer
     pagination_class = CustomResultsPagination
 
+    def filter_queryset(self, queryset):
+        params = self.request.query_params
+        name = params.get("name")
+        category = params.get("category")
+        order_by = params.get("sort")
+        date_params = params.get("start")
+        filters = {}
+
+        if category:
+            filters["category"] = category
+
+        if date_params:
+            date_params = QueryParamsParser(params)
+            start_str = str(date_params._get_start())
+            end_str = str(date_params._get_end())
+            start = datetime.datetime.strptime(start_str, "%Y-%m-%d %H:%M:%S").replace(
+                tzinfo=pytz.UTC
+            )
+            end = datetime.datetime.strptime(end_str, "%Y-%m-%d %H:%M:%S").replace(
+                tzinfo=pytz.UTC
+            )
+
+            filters["created_on__range"] = (start, end)
+
+        if name:
+            queryset = queryset.filter(name__icontains=name)
+
+        if filters:
+            for field, value in filters.items():
+                queryset = queryset.filter(**{field: value})
+        if order_by:
+            queryset = queryset.order_by(order_by)
+
+        return queryset
+
     def get_queryset(self):
+
         app = App.objects.get(uuid=self.kwargs["app_uuid"])
         queryset = TemplateMessage.objects.filter(app=app).order_by("-created_on")
 
@@ -50,7 +90,9 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        return Response(
+            serializer.data, status=status.HTTP_201_CREATED, headers=headers
+        )
 
     def perform_destroy(self, instance):
         template_request = TemplateMessageRequest(
@@ -111,7 +153,9 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         translation = TemplateTranslation.objects.get(template=template)
 
         if header:
-            template_header, _created = TemplateHeader.objects.get_or_create(translation=translation)
+            template_header, _created = TemplateHeader.objects.get_or_create(
+                translation=translation
+            )
             template_header.text = header.get("text")
             template_header.header_type = header.get("header_type")
             if header.get("example"):
@@ -138,12 +182,12 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         if buttons:
             for button in buttons:
                 template_button, _created = TemplateButton.objects.get_or_create(
-                                translation=translation,
-                                button_type=button.get("button_type"),
-                                text=button.get("text"),
-                                url=button.get("url"),
-                                phone_number=button.get("phone_number"),
-                            )
+                    translation=translation,
+                    button_type=button.get("button_type"),
+                    text=button.get("text"),
+                    url=button.get("url"),
+                    phone_number=button.get("phone_number"),
+                )
                 template_button.text = button.get("text")
                 template_button.country_code = button.get("country_code")
                 template_button.url = button.get("url")
@@ -158,11 +202,13 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
 
         components = list_components
 
-        template_request = TemplateMessageRequest(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
+        template_request = TemplateMessageRequest(
+            settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
+        )
         response = template_request.update_template_message(
-                    message_template_id=message_template_id,
-                    name=template.name,
-                    components=components,
-                    )
+            message_template_id=message_template_id,
+            name=template.name,
+            components=components,
+        )
 
         return Response(response)
