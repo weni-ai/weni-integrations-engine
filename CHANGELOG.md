@@ -1,3 +1,8 @@
+v2.5.5
+----------
+* Add template message id in TemplateTranslation
+* Create Edit template message function
+
 v2.5.4
 ----------
 * Create type_class attribute in AppTypeBaseSerializer
