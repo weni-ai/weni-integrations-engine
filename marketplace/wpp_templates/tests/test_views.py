@@ -11,7 +11,7 @@ from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 
 from marketplace.applications.models import App
-from marketplace.wpp_templates.models import TemplateMessage
+from marketplace.wpp_templates.models import TemplateMessage, TemplateTranslation
 from marketplace.wpp_templates.views import TemplateMessageViewSet
 from marketplace.core.tests.base import APIBaseTestCase
 from marketplace.core.types.channels.whatsapp_base.exceptions import (
@@ -176,7 +176,7 @@ class WhatsappTemplateTranslationsTestCase(APIBaseTestCase):
         self.template_message = TemplateMessage.objects.create(
             name="teste",
             app=self.app,
-            category="TRANSACTIONAL",
+            category="UTILITY",
             created_on=datetime.now(),
             template_type="TEXT",
             created_by_id=User.objects.get_admin_user().id,
@@ -262,6 +262,120 @@ class WhatsappTemplateTranslationsTestCase(APIBaseTestCase):
         with self.assertRaises(FacebookApiException):
             self.request.post(
                 self.url, body=self.body, uuid=str(self.template_message.uuid)
+            )
+
+
+class WhatsappTemplateUpdateTestCase(APIBaseTestCase):
+    view_class = TemplateMessageViewSet
+
+    def setUp(self):
+        self.validated_data = dict(
+            language="ja",
+            body={"text": "test", "type": "BODY"},
+            country="Brasil",
+            header={
+                "header_type": "VIDEO",
+                "example": "data:application/pdf;base64,test==",
+            },
+            footer={"type": "FOOTER", "text": "Not interested? Tap Stop promotions"},
+            buttons=[
+                {
+                    "button_type": "URL",
+                    "text": "phone-button-text",
+                    "url": "https://weni.ai",
+                    "phone_number": "84999999999",
+                    "country_code": "+55",
+                }
+            ],
+        )
+        self.body = {
+                "message_template_id": "0123456789",
+                "header": {
+                    "header_type": "TEXT",
+                    "text": "txt",
+                    "example": "txt example"
+                },
+                "body": {
+                    "type": "BODY",
+                    "text": "txt body"
+                },
+                "footer": {
+                    "type": "FOOTER",
+                    "text": "txt footer"
+                },
+                "buttons": [{
+                    "button_type": "URL",
+                    "text": "phone-button-text",
+                    "url": "https://weni.ai",
+                    "phone_number": "84999999999",
+                    "country_code": "+55",
+                }]
+        }
+
+        self.app = App.objects.create(
+            config=dict(wa_waba_id="109552365187427"),
+            project_uuid=uuid.uuid4(),
+            platform=App.PLATFORM_WENI_FLOWS,
+            code="wwc",
+            created_by=User.objects.get_admin_user(),
+        )
+
+        self.template_message = TemplateMessage.objects.create(
+            name="teste",
+            app=self.app,
+            category="TRANSACTIONAL",
+            created_on=datetime.now(),
+            template_type="TEXT",
+            created_by_id=User.objects.get_admin_user().id,
+        )
+
+        self.translation = TemplateTranslation.objects.create(
+            template=self.template_message,
+            status="PENDING",
+            body=self.validated_data.get("body", {}).get("text", ""),
+            footer=self.validated_data.get("footer", {}).get("text", ""),
+            language=self.validated_data.get("language"),
+            country=self.validated_data.get("country", "Brasil"),
+            variable_count=0,
+            message_template_id="0123456789",
+        )
+
+        self.url = reverse(
+            "app-template-detail",
+            kwargs={
+                "app_uuid": str(self.app.uuid),
+                "uuid": str(self.template_message.uuid),
+            },
+        )
+        print(self.app.uuid)
+        print(self.url)
+        super().setUp()
+
+    @property
+    def view(self):
+        return self.view_class.as_view({"patch": "partial_update"})
+
+    @patch(
+        "marketplace.wpp_templates.requests.TemplateMessageRequest.update_template_message"
+    )
+    def test_update_template_translation(
+        self, mock_update_template_message
+    ):
+        mock_update_template_message.return_value = {"success": True}
+
+        response = self.request.patch(
+            self.url, body=self.body, app_uuid=str(self.app.uuid), uuid=str(self.template_message.uuid)
+        )
+        print('test', response)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_update_template_translation_error(
+        self
+    ):
+
+        with self.assertRaises(FacebookApiException):
+            self.request.patch(
+                self.url, body=self.body, app_uuid=str(self.app.uuid), uuid=str(self.template_message.uuid)
             )
 
 

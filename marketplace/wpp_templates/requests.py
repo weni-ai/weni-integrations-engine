@@ -58,6 +58,21 @@ class TemplateMessageRequest(object):
 
         return response.json()
 
+    def update_template_message(self, message_template_id: str, name: str, components: str) -> dict:
+        params = dict(
+            name=name,
+            components=str(components),
+            access_token=self._access_token
+        )
+        response = requests.post(
+            url=f"https://graph.facebook.com/{WHATSAPP_VERSION}/{message_template_id}",
+            params=params,
+            )
+        if response.status_code != 200:
+            raise FacebookApiException(response.json())
+
+        return response.json()
+
     def delete_template_message(self, waba_id: str, name: str) -> bool:
         params = dict(name=name, access_token=self._access_token)
         return requests.delete(

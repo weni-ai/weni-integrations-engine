@@ -14,7 +14,7 @@ from marketplace.core.types.channels.whatsapp_base.exceptions import (
     FacebookApiException,
 )
 
-from .models import TemplateMessage
+from .models import TemplateHeader, TemplateMessage, TemplateTranslation, TemplateButton
 from .serializers import TemplateMessageSerializer, TemplateTranslationSerializer
 from .requests import TemplateMessageRequest
 from .languages import LANGUAGES
@@ -50,9 +50,7 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
-        return Response(
-            serializer.data, status=status.HTTP_201_CREATED, headers=headers
-        )
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def perform_destroy(self, instance):
         template_request = TemplateMessageRequest(
@@ -92,3 +90,79 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["GET"])
     def languages(self, request, app_uuid=None):
         return Response(data=LANGUAGES, status=status.HTTP_200_OK)
+
+    def partial_update(self, request, app_uuid=None, uuid=None):
+
+        template = self.get_object()
+
+        message_template_id = request.data.get("message_template_id")
+
+        request.data.pop("message_template_id")
+        data = request.data
+        components = [data]
+
+        header = data.get("header")
+        body = data.get("body")
+        footer = data.get("footer")
+        buttons = data.get("buttons")
+
+        list_components = []
+
+        translation = TemplateTranslation.objects.get(template=template)
+
+        if header:
+            template_header, _created = TemplateHeader.objects.get_or_create(translation=translation)
+            template_header.text = header.get("text")
+            template_header.header_type = header.get("header_type")
+            if header.get("example"):
+                template_header.example = header.get("example")
+            template_header.save()
+
+            type_header = {"type": "HEADER"}
+            type_header.update(header)
+            type_header["format"] = type_header["header_type"]
+            del type_header["header_type"]
+            list_components.append(type_header)
+
+        if body:
+            list_components.append(data.get("body"))
+            translation.body = body.get("text")
+
+        if footer:
+            list_components.append(data.get("footer"))
+            translation.body = body.get("text")
+
+        translation.status = "PENDING"
+        translation.save()
+
+        if buttons:
+            for button in buttons:
+                template_button, _created = TemplateButton.objects.get_or_create(
+                                translation=translation,
+                                button_type=button.get("button_type"),
+                                text=button.get("text"),
+                                url=button.get("url"),
+                                phone_number=button.get("phone_number"),
+                            )
+                template_button.text = button.get("text")
+                template_button.country_code = button.get("country_code")
+                template_button.url = button.get("url")
+                template_button.phone_number = button.get("phone_number")
+                template_button.save()
+
+                button["type"] = button["button_type"]
+                del button["button_type"]
+
+            type_button = {"type": "BUTTONS", "buttons": buttons}
+            list_components.append(type_button)
+
+        components = list_components
+
+        template_request = TemplateMessageRequest(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
+        response = template_request.update_template_message(
+                    message_template_id=message_template_id,
+                    name=template.name,
+                    components=components,
+                    )
+
+        return Response(response)
