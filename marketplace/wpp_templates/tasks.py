@@ -2,6 +2,7 @@ from celery import shared_task
 
 from django.conf import settings
 from sentry_sdk import capture_exception
+from django.db.models import Q
 
 from .models import TemplateMessage
 from .requests import TemplateMessageRequest
@@ -29,10 +30,36 @@ def refresh_whatsapp_templates_from_facebook():
             settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
         )
         templates = template_message_request.list_template_messages(waba_id)
+
+        if waba_id:
+            templates_message = TemplateMessage.objects.filter(
+                Q(app__config__waba__id=waba_id) | Q(app__config__wa_waba_id=waba_id)
+            )
+            if templates_message:
+                if templates.get("error"):
+                    continue
+
+                templates_ids = [item["id"] for item in templates["data"]]
+                for template in templates_message:
+                    template_translation = TemplateTranslation.objects.filter(
+                        template=template
+                    )
+                    for translation in template_translation:
+                        if translation.message_template_id not in templates_ids:
+                            print(
+                                "Removed the translation",
+                                translation,
+                                "with message_template_id:",
+                                translation.message_template_id,
+                            )
+                            translation.delete()
+
         template_message_request.get_template_namespace(waba_id)
         for template in templates.get("data", []):
             try:
-                translation = TemplateTranslation.objects.filter(message_template_id=template.get("id"))
+                translation = TemplateTranslation.objects.filter(
+                    message_template_id=template.get("id")
+                )
                 if translation:
                     translation = translation.last()
                     found_template = translation.template
