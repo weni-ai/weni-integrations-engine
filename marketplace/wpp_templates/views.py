@@ -1,4 +1,8 @@
 import datetime
+import requests
+import re
+import base64
+
 from django.contrib.auth import get_user_model
 from django.conf import settings
 import pytz
@@ -17,11 +21,15 @@ from marketplace.core.types.channels.whatsapp_base.exceptions import (
     FacebookApiException,
 )
 from marketplace.core.types.channels.whatsapp_base.mixins import QueryParamsParser
+from marketplace.core.types.channels.whatsapp_cloud.requests import PhotoAPIRequest
 
 from .models import TemplateHeader, TemplateMessage, TemplateTranslation, TemplateButton
 from .serializers import TemplateMessageSerializer, TemplateTranslationSerializer
 from .requests import TemplateMessageRequest
 from .languages import LANGUAGES
+
+
+WHATSAPP_VERSION = settings.WHATSAPP_VERSION
 
 User = get_user_model()
 
@@ -153,20 +161,57 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         translation = TemplateTranslation.objects.get(template=template)
 
         if header:
-            template_header, _created = TemplateHeader.objects.get_or_create(
-                translation=translation
-            )
-            template_header.text = header.get("text")
+            template_header, _created = TemplateHeader.objects.get_or_create(translation=translation, 
+                                                                             header_type=header.get("header_type"),)
+            template_header.text = header.get("text", {})
             template_header.header_type = header.get("header_type")
             if header.get("example"):
                 template_header.example = header.get("example")
             template_header.save()
 
-            type_header = {"type": "HEADER"}
-            type_header.update(header)
-            type_header["format"] = type_header["header_type"]
-            del type_header["header_type"]
-            list_components.append(type_header)
+            header = dict(header)
+            header["type"] = "HEADER"
+            header["format"] = header.get("header_type", "TEXT")
+            header.pop("header_type")
+
+            if (
+                header.get("format") == "IMAGE"
+                or header.get("format") == "DOCUMENT"
+                or header.get("format") == "VIDEO"
+            ):
+                photo_api_request = PhotoAPIRequest(
+                    template.app.config.get("wa_waba_id")
+                )
+                photo = header.get("example")
+                file_type = re.search("(?<=data:)(.*)(?=;base64)", photo).group(0)
+                photo = photo.split(";base64,")[1]
+                upload_session_id = photo_api_request.create_upload_session(
+                    settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN,
+                    len(base64.b64decode(photo)),
+                    file_type=file_type,
+                )
+
+                url = (
+                    f"https://graph.facebook.com/{WHATSAPP_VERSION}/{upload_session_id}"
+                )
+                headers = {
+                    "Content-Type": file_type,
+                    "Authorization": f"OAuth {settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN}",
+                }
+                headers["file_offset"] = "0"
+                response = requests.post(
+                    url, headers=headers, data=base64.b64decode(photo)
+                )
+
+                if response.status_code != 200:
+                    raise FacebookApiException(response.json())
+
+                upload_handle = response.json().get("h", "")
+                header.pop("example")
+                header["example"] = dict(header_handle=upload_handle)
+            
+            list_components.append(header)
+
 
         if body:
             list_components.append(data.get("body"))
@@ -182,12 +227,14 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         if buttons:
             for button in buttons:
                 template_button, _created = TemplateButton.objects.get_or_create(
-                    translation=translation,
-                    button_type=button.get("button_type"),
-                    text=button.get("text"),
-                    url=button.get("url"),
-                    phone_number=button.get("phone_number"),
-                )
+                                translation=translation,
+                                button_type=button.get("type"),
+                                text=button.get("text"),
+                                url=button.get("url"),
+                                phone_number=button.get("phone_number"),
+                            )
+
+                template_button.button_type = button.get("type")
                 template_button.text = button.get("text")
                 template_button.country_code = button.get("country_code")
                 template_button.url = button.get("url")

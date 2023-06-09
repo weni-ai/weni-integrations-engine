@@ -32,7 +32,9 @@ def refresh_whatsapp_templates_from_facebook():
         template_message_request.get_template_namespace(waba_id)
         for template in templates.get("data", []):
             try:
-                translation = TemplateTranslation.objects.filter(message_template_id=template.get("id"))
+                translation = TemplateTranslation.objects.filter(
+                    message_template_id=template.get("id")
+                )
                 if translation:
                     translation = translation.last()
                     found_template = translation.template

@@ -224,7 +224,10 @@ class WhatsappTemplateTranslationsTestCase(APIBaseTestCase):
         self, mock_create_template_message, mock_create_upload_session, mock_requests
     ):
         # create_template_message
-        mock_create_template_message.return_value = {"some_key": "some_value", "id": "0123456789"}
+        mock_create_template_message.return_value = {
+            "some_key": "some_value",
+            "id": "0123456789",
+        }
 
         # create_upload_session
         mock_create_upload_session.return_value = MagicMock(
@@ -237,7 +240,9 @@ class WhatsappTemplateTranslationsTestCase(APIBaseTestCase):
         mock_post.return_value.json.return_value = {"h": "upload_handle"}
 
         response = self.request.post(
-            self.url, body=self.body, uuid=str(self.template_message.uuid),
+            self.url,
+            body=self.body,
+            uuid=str(self.template_message.uuid),
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -289,27 +294,19 @@ class WhatsappTemplateUpdateTestCase(APIBaseTestCase):
             ],
         )
         self.body = {
-                "message_template_id": "0123456789",
-                "header": {
-                    "header_type": "TEXT",
-                    "text": "txt",
-                    "example": "txt example"
-                },
-                "body": {
-                    "type": "BODY",
-                    "text": "txt body"
-                },
-                "footer": {
-                    "type": "FOOTER",
-                    "text": "txt footer"
-                },
-                "buttons": [{
+            "message_template_id": "0123456789",
+            "header": {"header_type": "TEXT", "text": "txt", "example": "txt example"},
+            "body": {"type": "BODY", "text": "txt body"},
+            "footer": {"type": "FOOTER", "text": "txt footer"},
+            "buttons": [
+                {
                     "button_type": "URL",
                     "text": "phone-button-text",
                     "url": "https://weni.ai",
                     "phone_number": "84999999999",
                     "country_code": "+55",
-                }]
+                }
+            ],
         }
 
         self.app = App.objects.create(
@@ -358,24 +355,26 @@ class WhatsappTemplateUpdateTestCase(APIBaseTestCase):
     @patch(
         "marketplace.wpp_templates.requests.TemplateMessageRequest.update_template_message"
     )
-    def test_update_template_translation(
-        self, mock_update_template_message
-    ):
+    def test_update_template_translation(self, mock_update_template_message):
         mock_update_template_message.return_value = {"success": True}
 
         response = self.request.patch(
-            self.url, body=self.body, app_uuid=str(self.app.uuid), uuid=str(self.template_message.uuid)
+            self.url,
+            body=self.body,
+            app_uuid=str(self.app.uuid),
+            uuid=str(self.template_message.uuid),
         )
-        print('test', response)
+        print("test", response)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-    def test_update_template_translation_error(
-        self
-    ):
+    def test_update_template_translation_error(self):
 
         with self.assertRaises(FacebookApiException):
             self.request.patch(
-                self.url, body=self.body, app_uuid=str(self.app.uuid), uuid=str(self.template_message.uuid)
+                self.url,
+                body=self.body,
+                app_uuid=str(self.app.uuid),
+                uuid=str(self.template_message.uuid),
             )
 
 
