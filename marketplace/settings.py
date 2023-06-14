@@ -261,7 +261,7 @@ CACHES = {
 
 
 # Extra configurations
-
+# Channels
 APPTYPE_WENI_WEB_CHAT_PATH = "channels.weni_web_chat.type.WeniWebChatType"
 APPTYPE_TELEGRAM_PATH = "channels.telegram.type.TelegramType"
 APPTYPE_WHATSAPP_DEMO_PATH = "channels.whatsapp_demo.type.WhatsAppDemoType"
@@ -270,8 +270,9 @@ APPTYPE_WHATSAPP_CLOUD_PATH = "channels.whatsapp_cloud.type.WhatsAppCloudType"
 APPTYPE_GENERIC_CHANNEL_PATH = "channels.generic.type.GenericChannelAppType"
 APPTYPE_INSTAGRAM_CHANNEL_PATH = "channels.instagram.type.InstagramType"
 APPTYPE_FACEBOOK_CHANNEL_PATH = "channels.facebook.type.FacebookType"
-
+# Externals
 APPTYPE_OMIE_PATH = "externals.omie.type.OmieType"
+APPTYPE_CHATGPT_PATH = "externals.chatgpt.type.ChatGPTType"
 
 APPTYPES_CLASSES = [
     APPTYPE_WENI_WEB_CHAT_PATH,
@@ -283,6 +284,7 @@ APPTYPES_CLASSES = [
     APPTYPE_FACEBOOK_CHANNEL_PATH,
     APPTYPE_OMIE_PATH,
     APPTYPE_GENERIC_CHANNEL_PATH,
+    APPTYPE_CHATGPT_PATH,
 ]
 
 # These conditions avoid dependence between apptypes,
