@@ -1,11 +1,13 @@
 import uuid
 from typing import TYPE_CHECKING
 
+from django.utils import timezone
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
 from django.core.exceptions import ValidationError
 
 from marketplace.core.validators import validate_app_code_exists
+
 
 if TYPE_CHECKING:
     from marketplace.core.types.base import AppType
@@ -60,3 +62,23 @@ class AppTypeBaseModel(BaseModel):
 
     class Meta:
         abstract = True
+
+
+class Prompt(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    text = models.TextField()
+    app = models.ForeignKey(
+        "applications.App", on_delete=models.PROTECT, related_name="prompts"
+    )
+    created_on = models.DateTimeField(
+        "Created on", editable=False, default=timezone.now
+    )
+    created_by = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.PROTECT,
+        related_name="created_%(class)ss",
+        null=True,
+    )
+
+    class Meta:
+        db_table = "chatgpt_prompt"

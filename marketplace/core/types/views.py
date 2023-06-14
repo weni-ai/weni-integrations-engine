@@ -25,6 +25,9 @@ class BaseAppTypeViewSet(
     lookup_field = "uuid"
     permission_classes = [ProjectManagePermission]
 
+    def get_queryset(self):
+        return super().get_queryset().filter(code=self.type_class.code)
+
     def create(self, request, *args, **kwargs):
         project_uuid = request.data.get("project_uuid")
 

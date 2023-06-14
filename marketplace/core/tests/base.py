@@ -70,8 +70,10 @@ class Request(object):
 
         return self._get_response(request, **kwargs)
 
-    def delete(self, url: str, **kwargs) -> Response:
-        request = self.factory.delete(url, content_type="application/json")
+    def delete(self, url: str, body=None, **kwargs) -> Response:
+        request = self.factory.delete(
+            url, data=json.dumps(body), content_type="application/json"
+        )
         force_authenticate(request, user=self._user)
 
         return self._get_response(request, **kwargs)
