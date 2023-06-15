@@ -161,14 +161,6 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         translation = TemplateTranslation.objects.get(template=template)
 
         if header:
-            '''template_header, _created = TemplateHeader.objects.get_or_create(translation=translation, 
-                                                                             header_type=header.get("header_type"),)
-            template_header.text = header.get("text", {})
-            template_header.header_type = header.get("header_type")
-            if header.get("example"):
-                template_header.example = header.get("example")
-            template_header.save()'''
-
             header = dict(header)
             header["type"] = "HEADER"
             header["format"] = header.get("header_type", "TEXT")
@@ -210,16 +202,15 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
                 header.pop("example")
                 header["example"] = dict(header_handle=upload_handle)
 
-            template_header, _created = TemplateHeader.objects.get_or_create(translation=translation, 
+            template_header, _created = TemplateHeader.objects.get_or_create(translation=translation,
                                                                              header_type=header.get("format"),)
             template_header.text = header.get("text", {})
             template_header.header_type = header.get("format")
             if header.get("example"):
-                template_header.example = dict(header_handle=upload_handle)
+                template_header.example = header.get("example")
 
             template_header.save()
             list_components.append(header)
-
 
         if body:
             list_components.append(data.get("body"))
