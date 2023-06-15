@@ -161,13 +161,13 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         translation = TemplateTranslation.objects.get(template=template)
 
         if header:
-            template_header, _created = TemplateHeader.objects.get_or_create(translation=translation, 
+            '''template_header, _created = TemplateHeader.objects.get_or_create(translation=translation, 
                                                                              header_type=header.get("header_type"),)
             template_header.text = header.get("text", {})
             template_header.header_type = header.get("header_type")
             if header.get("example"):
                 template_header.example = header.get("example")
-            template_header.save()
+            template_header.save()'''
 
             header = dict(header)
             header["type"] = "HEADER"
@@ -209,7 +209,15 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
                 upload_handle = response.json().get("h", "")
                 header.pop("example")
                 header["example"] = dict(header_handle=upload_handle)
-            
+
+            template_header, _created = TemplateHeader.objects.get_or_create(translation=translation, 
+                                                                             header_type=header.get("format"),)
+            template_header.text = header.get("text", {})
+            template_header.header_type = header.get("format")
+            if header.get("example"):
+                template_header.example = dict(header_handle=upload_handle)
+
+            template_header.save()
             list_components.append(header)
 
 
@@ -234,7 +242,7 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
                                 phone_number=button.get("phone_number"),
                             )
 
-                template_button.button_type = button.get("type")
+                template_button.button_type = button.get("button_type")
                 template_button.text = button.get("text")
                 template_button.country_code = button.get("country_code")
                 template_button.url = button.get("url")
