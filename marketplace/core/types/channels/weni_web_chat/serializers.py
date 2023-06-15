@@ -96,8 +96,9 @@ class ConfigSerializer(serializers.Serializer):
             "storage": "local" if attrs["keepHistory"] else "session",
         }
 
-        channel_uuid = self.app.config.get("channelUuid", None)
-        attrs["channelUuid"] = (
+        # channel_uuid = self.app.config.get("channelUuid", None)
+        channel_uuid = self.app.flow_object_uuid
+        self.app.flow_object_uuid = (
             channel_uuid
             if channel_uuid is not None
             else self._create_channel().get("uuid")
@@ -116,7 +117,6 @@ class ConfigSerializer(serializers.Serializer):
         user = self.context.get("request").user
         name = f"{type_.WeniWebChatType.name} - #{self.app.id}"
         data = {"name": name, "base_url": settings.SOCKET_BASE_URL}
-
         client = ConnectProjectClient()
         return client.create_channel(
             user.email, self.app.project_uuid, data, self.app.flows_type_code
@@ -140,6 +140,8 @@ class ConfigSerializer(serializers.Serializer):
             header = header.replace("<CUSTOM_CSS>", custom_css)
 
             attrs.pop("timeBetweenMessages")
+
+            attrs["channelUuid"] = self.app.flow_object_uuid
 
             if custom_css:
                 attrs.pop("customCss")

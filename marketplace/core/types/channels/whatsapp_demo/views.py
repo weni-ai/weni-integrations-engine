@@ -32,7 +32,7 @@ class WhatsAppDemoViewSet(views.BaseAppTypeViewSet):
         )
 
         instance.config["title"] = result.get("name")
-        instance.config["channelUuid"] = result.get("uuid")
+        instance.flow_project_uuid = result.get("uuid") # # instance.flow_project_uuid
 
         channel_client = WPPRouterChannelClient()
         channel_token = channel_client.get_channel_token(

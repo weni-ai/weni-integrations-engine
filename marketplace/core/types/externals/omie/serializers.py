@@ -31,7 +31,7 @@ class ConfigSerializer(serializers.Serializer):
     app_key = serializers.CharField()
     app_secret = serializers.CharField()
 
-    def validate(self, attrs: dict):
+    '''def validate(self, attrs: dict):
         app = self.parent.instance
 
         attrs["channelUuid"] = app.config.get("channelUuid", None)
@@ -50,7 +50,7 @@ class ConfigSerializer(serializers.Serializer):
         client = FlowsClient()
         return client.create_external_service(
             user.email, str(app.project_uuid), attrs, app.flows_type_code
-        )
+        )'''
 
 
 class OmieConfigureSerializer(AppTypeBaseSerializer):

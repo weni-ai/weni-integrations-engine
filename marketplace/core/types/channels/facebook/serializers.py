@@ -31,10 +31,10 @@ class ConfigSerializer(serializers.Serializer):
     page_name = serializers.CharField(required=True)
     page_id = serializers.CharField(required=True)
 
-    def validate(self, attrs: dict):
+    '''def validate(self, attrs: dict):
         app = self.parent.instance
 
-        attrs["channelUuid"] = app.config.get("channelUuid", None)
+        attrs["channelUuid"] = app.config.get("channelUuid", None) # nao utilizar mais esse serializer, salvar na view
 
         if attrs["channelUuid"] is None:
             channel = self._create_channel(attrs, app)
@@ -60,7 +60,7 @@ class ConfigSerializer(serializers.Serializer):
             user.email, app.project_uuid, payload, app.flows_type_code
         )
 
-        return response
+        return response'''
 
 
 class FacebookConfigureSerializer(AppTypeBaseSerializer):

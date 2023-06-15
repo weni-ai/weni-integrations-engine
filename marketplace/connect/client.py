@@ -54,13 +54,12 @@ class ConnectProjectClient(ConnectAuth):  # TODO: change class name to FlowsREST
             "data": data,
             "channeltype_code": channeltype_code,
         }
-
+        print(payload)
         url = self._get_url("/api/v2/internals/channel/")
-
         response = requests.post(
             url=url, json=payload, headers=self.auth_header(), timeout=60
         )
-
+        #print(vars(response))
         if response.status_code not in [200, 201]:
             raise ValidationError(f"{response.status_code}: {response.text}")
 
