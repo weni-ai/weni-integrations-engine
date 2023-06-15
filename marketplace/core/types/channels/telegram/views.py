@@ -1,6 +1,8 @@
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from marketplace.connect.client import ConnectProjectClient
+
 from .serializers import TelegramSerializer, TelegramConfigureSerializer
 from marketplace.core.types import views
 from . import type as type_
@@ -20,10 +22,27 @@ class TelegramViewSet(views.BaseAppTypeViewSet):
         """
         Adds a config on specified App and create a channel on weni-flows
         """
+        app = self.get_object()
         self.serializer_class = TelegramConfigureSerializer
-        serializer = self.get_serializer(self.get_object(), data=request.data)
+        serializer = self.get_serializer(app, data=request.data)
         serializer.is_valid(raise_exception=True)
 
         self.perform_update(serializer)
+
+        user = request.user
+        client = ConnectProjectClient()
+
+        if app.flow_object_uuid is None:
+
+            payload = {
+                "auth_token": serializer.validated_data.get("config")["token"],
+            }
+
+            response = client.create_channel(
+                user.email, app.project_uuid, payload, app.flows_type_code
+            )
+
+            app.flow_object_uuid = response.get("uuid")
+            app.save()
 
         return Response(serializer.data)

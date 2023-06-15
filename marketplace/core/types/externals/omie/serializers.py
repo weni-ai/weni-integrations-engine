@@ -2,7 +2,6 @@ from rest_framework import serializers
 
 from marketplace.core.serializers import AppTypeBaseSerializer
 from marketplace.applications.models import App
-from marketplace.flows.client import FlowsClient
 
 
 class OmieSerializer(AppTypeBaseSerializer):
@@ -30,27 +29,6 @@ class ConfigSerializer(serializers.Serializer):
     name = serializers.CharField()
     app_key = serializers.CharField()
     app_secret = serializers.CharField()
-
-    def validate(self, attrs: dict):
-        app = self.parent.instance
-
-        attrs["channelUuid"] = app.config.get("channelUuid", None)
-
-        if attrs["channelUuid"] is None:
-            response = self._create_channel(attrs, app)
-            channel = response.json()
-
-            attrs["channelUuid"] = channel.get("uuid")
-            attrs["title"] = channel.get("name")
-
-        return super().validate(attrs)
-
-    def _create_channel(self, attrs: dict, app: App) -> str:
-        user = self.context.get("request").user
-        client = FlowsClient()
-        return client.create_external_service(
-            user.email, str(app.project_uuid), attrs, app.flows_type_code
-        )
 
 
 class OmieConfigureSerializer(AppTypeBaseSerializer):
