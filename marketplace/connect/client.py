@@ -56,7 +56,6 @@ class ConnectProjectClient(ConnectAuth):  # TODO: change class name to FlowsREST
         }
 
         url = self._get_url("/api/v2/internals/channel/")
-
         response = requests.post(
             url=url, json=payload, headers=self.auth_header(), timeout=60
         )

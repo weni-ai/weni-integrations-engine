@@ -20,6 +20,7 @@ class FlowsClient:
         response = self.make_request(
             url, method="GET", headers=self.authentication_instance.headers
         )
+
         return response
 
     def detail_channel(self, flow_object_uuid):
@@ -88,6 +89,7 @@ class FlowsClient:
             headers=self.authentication_instance.headers,
             data=body,
         )
+
         return response
 
     def create_prompts(self, user: str, text: str, external_uuid: str):

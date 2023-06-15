@@ -2,7 +2,6 @@ from rest_framework import serializers
 
 from marketplace.core.serializers import AppTypeBaseSerializer
 from marketplace.applications.models import App
-from marketplace.connect.client import ConnectProjectClient
 
 
 class TelegramSerializer(AppTypeBaseSerializer):
@@ -28,7 +27,7 @@ class TelegramSerializer(AppTypeBaseSerializer):
 class ConfigSerializer(serializers.Serializer):
     token = serializers.CharField(required=True)
 
-    def validate(self, attrs: dict):
+    '''def validate(self, attrs: dict):
         app = self.parent.instance
 
         attrs["channelUuid"] = app.config.get("channelUuid", None)
@@ -49,9 +48,11 @@ class ConfigSerializer(serializers.Serializer):
             {"auth_token": attrs.get("token")},
             app.flows_type_code,
         )
+'''
 
 
 class TelegramConfigureSerializer(AppTypeBaseSerializer):
+
     config = ConfigSerializer(write_only=True)
 
     class Meta:
