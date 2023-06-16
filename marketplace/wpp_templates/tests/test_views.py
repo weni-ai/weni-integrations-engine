@@ -5,6 +5,7 @@ import textwrap
 from datetime import datetime
 
 from rest_framework import status
+from rest_framework.test import APIClient
 
 from django.contrib.auth import get_user_model
 from django.urls import reverse
@@ -405,3 +406,64 @@ class WhatsappTemplateLanguagesTestCase(APIBaseTestCase):
     def test_list_whatsapp_template_languages(self):
         response = self.request.get(self.url)
         self.assertEqual(response.status_code, 200)
+
+
+class TemplateMessageViewSetTestCase(APIBaseTestCase):
+    view_class = TemplateMessageViewSet
+
+    def setUp(self):
+        self.client = APIClient()
+        self.app = App.objects.create(
+            config=dict(),
+            project_uuid=uuid.uuid4(),
+            platform=App.PLATFORM_WENI_FLOWS,
+            code="wwc",
+            created_by=User.objects.get_admin_user(),
+        )
+
+        self.template_message_1 = TemplateMessage.objects.create(
+            name="Template 1",
+            app=self.app,
+            category="MARKETING",
+            created_on=datetime.now(),
+            template_type="TEXT",
+            created_by_id=User.objects.get_admin_user().id,
+        )
+        self.template_message_2 = TemplateMessage.objects.create(
+            name="Template 2",
+            app=self.app,
+            category="Category 2",
+            created_on=datetime.now(),
+            template_type="TEXT",
+            created_by_id=User.objects.get_admin_user().id,
+        )
+        self.template_message_3 = TemplateMessage.objects.create(
+            name="Template 3",
+            app=self.app,
+            category="MARKETING",
+            created_on=datetime.now(),
+            template_type="TEXT",
+            created_by_id=User.objects.get_admin_user().id,
+        )
+
+        super().setUp()
+
+    @property
+    def view(self):
+        return self.view_class.as_view(APIBaseTestCase.ACTION_LIST)
+
+    def test_filter_queryset_with_parameters(self):
+        date = datetime.now()
+        formatted_date = date.strftime("%-m-%-d-%Y")
+        url = reverse("app-template-list", kwargs={"app_uuid": str(self.app.uuid)})
+        params = {
+            "name": "Template 1",
+            "category": "MARKETING",
+            "start": formatted_date,
+            "end": formatted_date,
+            "sort": "name"
+        }
+        response = self.client.get(url, params)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(len(data["results"]), 1)

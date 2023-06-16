@@ -1,9 +1,12 @@
+import datetime
 import requests
 import re
 import base64
 
 from django.contrib.auth import get_user_model
 from django.conf import settings
+import pytz
+
 
 from sentry_sdk import capture_exception
 
@@ -17,6 +20,7 @@ from marketplace.applications.models import App
 from marketplace.core.types.channels.whatsapp_base.exceptions import (
     FacebookApiException,
 )
+from marketplace.core.types.channels.whatsapp_base.mixins import QueryParamsParser
 from marketplace.core.types.channels.whatsapp_cloud.requests import PhotoAPIRequest
 
 from .models import TemplateHeader, TemplateMessage, TemplateTranslation, TemplateButton
@@ -45,7 +49,43 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
     serializer_class = TemplateMessageSerializer
     pagination_class = CustomResultsPagination
 
+    def filter_queryset(self, queryset):
+        params = self.request.query_params
+        name = params.get("name")
+        category = params.get("category")
+        order_by = params.get("sort")
+        date_params = params.get("start")
+        filters = {}
+
+        if category:
+            filters["category"] = category
+
+        if date_params:
+            date_params = QueryParamsParser(params)
+            start_str = str(date_params._get_start())
+            end_str = str(date_params._get_end())
+            start = datetime.datetime.strptime(start_str, "%Y-%m-%d %H:%M:%S").replace(
+                tzinfo=pytz.UTC
+            )
+            end = datetime.datetime.strptime(end_str, "%Y-%m-%d %H:%M:%S").replace(
+                tzinfo=pytz.UTC
+            )
+
+            filters["created_on__range"] = (start, end)
+
+        if name:
+            queryset = queryset.filter(name__icontains=name)
+
+        if filters:
+            for field, value in filters.items():
+                queryset = queryset.filter(**{field: value})
+        if order_by:
+            queryset = queryset.order_by(order_by)
+
+        return queryset
+
     def get_queryset(self):
+
         app = App.objects.get(uuid=self.kwargs["app_uuid"])
         queryset = TemplateMessage.objects.filter(app=app).order_by("-created_on")
 
@@ -58,7 +98,9 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        return Response(
+            serializer.data, status=status.HTTP_201_CREATED, headers=headers
+        )
 
     def perform_destroy(self, instance):
         template_request = TemplateMessageRequest(
@@ -164,6 +206,7 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
                                                                              header_type=header.get("format"),)
             template_header.text = header.get("text", {})
             template_header.header_type = header.get("format")
+
             if header.get("example"):
                 template_header.example = header.get("example")
 
@@ -206,11 +249,13 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
 
         components = list_components
 
-        template_request = TemplateMessageRequest(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
+        template_request = TemplateMessageRequest(
+            settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
+        )
         response = template_request.update_template_message(
-                    message_template_id=message_template_id,
-                    name=template.name,
-                    components=components,
-                    )
+            message_template_id=message_template_id,
+            name=template.name,
+            components=components,
+        )
 
         return Response(response)
