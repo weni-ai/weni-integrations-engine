@@ -2,6 +2,7 @@ v2.5.6
 ----------
 * Fix update template with media
 * Add filters in template message
+* Fix error in CI branchs coverage comparison
 
 v2.5.5
 ----------
