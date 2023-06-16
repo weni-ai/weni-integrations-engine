@@ -28,13 +28,16 @@ response = requests.get(COVERAGE_LAST_COMMIT_API).json()
 COVERAGE_LAST_COMMIT = response["totals"]["coverage"]
 
 # Compare the current coverage rate to the coverage rate for the latest commit
-if COVERAGE_CURRENT_ABSOLUTE < float(COVERAGE_LAST_COMMIT):
+current_commit_cov = round(float(COVERAGE_CURRENT_ABSOLUTE), 2)
+last_commit_cov = round(float(COVERAGE_LAST_COMMIT), 2)
+
+if current_commit_cov < last_commit_cov:
     print(
-        f"Coverage decreased from {COVERAGE_LAST_COMMIT} to {COVERAGE_CURRENT_ABSOLUTE:.2f}"
+        f"Coverage decreased from {last_commit_cov} to {current_commit_cov}"
     )
     exit(1)
 else:
     print(
-        f"Coverage increased from {COVERAGE_LAST_COMMIT} to {COVERAGE_CURRENT_ABSOLUTE:.2f}"
+        f"Coverage increased from {last_commit_cov} to {current_commit_cov}"
     )
     exit(0)
