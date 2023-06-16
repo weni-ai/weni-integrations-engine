@@ -189,7 +189,6 @@ class WhatsappTemplateTranslationsTestCase(APIBaseTestCase):
 
         self.body = dict(
             language="ja",
-            # message_template_id=None,
             body={"text": "test", "type": "BODY"},
             country="Brasil",
             header={
@@ -292,9 +291,8 @@ class WhatsappTemplateUpdateTestCase(APIBaseTestCase):
         self.body = {
                 "message_template_id": "0123456789",
                 "header": {
-                    "header_type": "TEXT",
-                    "text": "txt",
-                    "example": "txt example"
+                    "header_type": "VIDEO",
+                    "example": "data:application/pdf;base64,test==",
                 },
                 "body": {
                     "type": "BODY",
@@ -348,32 +346,43 @@ class WhatsappTemplateUpdateTestCase(APIBaseTestCase):
                 "uuid": str(self.template_message.uuid),
             },
         )
-        print(self.app.uuid)
-        print(self.url)
+
         super().setUp()
 
     @property
     def view(self):
         return self.view_class.as_view({"patch": "partial_update"})
 
+    @patch("marketplace.wpp_templates.views.requests")
     @patch(
         "marketplace.wpp_templates.requests.TemplateMessageRequest.update_template_message"
     )
+    @patch(
+        "marketplace.core.types.channels.whatsapp_cloud.requests.PhotoAPIRequest.create_upload_session"
+    )
     def test_update_template_translation(
-        self, mock_update_template_message
+        self, mock_create_upload_session, mock_update_template_message, mock_requests
     ):
         mock_update_template_message.return_value = {"success": True}
+
+        mock_create_upload_session.return_value = MagicMock(
+            create_upload_session=lambda x: "0123456789"
+        )
+
+        mock_post = mock_requests.post
+        mock_post.return_value.status_code = status.HTTP_200_OK
+        mock_post.return_value.json.return_value = {"h": "upload_handle"}
 
         response = self.request.patch(
             self.url, body=self.body, app_uuid=str(self.app.uuid), uuid=str(self.template_message.uuid)
         )
-        print('test', response)
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-    def test_update_template_translation_error(
-        self
-    ):
-
+    @patch(
+        "marketplace.core.types.channels.whatsapp_cloud.requests.PhotoAPIRequest.create_upload_session"
+    )
+    def test_update_template_translation_error(self, mock_update_template_message):
         with self.assertRaises(FacebookApiException):
             self.request.patch(
                 self.url, body=self.body, app_uuid=str(self.app.uuid), uuid=str(self.template_message.uuid)
