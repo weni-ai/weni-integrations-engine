@@ -1,3 +1,8 @@
+v2.5.6
+----------
+* Fix update template with media
+* Add filters in template message
+
 v2.5.5
 ----------
 * Add template message id in TemplateTranslation
