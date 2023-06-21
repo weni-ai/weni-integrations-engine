@@ -1,3 +1,7 @@
+v2.6.0
+----------
+* Create apptype chatgpt, add new methods to flows client
+
 v2.5.6
 ----------
 * Fix update template with media
