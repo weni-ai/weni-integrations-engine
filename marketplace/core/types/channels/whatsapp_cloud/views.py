@@ -304,3 +304,30 @@ class WhatsAppCloudViewSet(
 
         serializer = self.get_serializer(app)
         return Response(serializer.data)
+
+    @action(detail=True, methods=["GET"])
+    def report_sent_messages(self, request: "Request", **kwargs):
+        project_uuid = request.query_params.get("project_uuid", None)
+        start_date = request.query_params.get("start_date", None)
+        end_date = request.query_params.get("end_date", None)
+        status = request.query_params.get("status", None)
+
+        if project_uuid is None:
+            raise ValidationError("project_uuid is a required parameter")
+
+        if start_date is None:
+            raise ValidationError("start_date is a required parameter")
+
+        if end_date is None:
+            raise ValidationError("end_date is a required parameter")
+
+        if status == "success":
+            return Response(status=200)
+        elif status == "fail":
+            return Response(data={"detail: Project not found on Flows"}, status=404)
+        elif status == "processing":
+            return Response(
+                data={"detail: There is already a report being processed."}, status=400
+            )
+
+        return Response(status=200)
