@@ -135,31 +135,40 @@ class FlowsClient:
         )
         return response
 
-    def make_request(self, url: str, method: str, headers=None, data=None, params=None):
-        try:
-            response = requests.request(
-                method=method,
-                url=url,
-                headers=headers,
-                json=data,
-                timeout=60,
-                params=params,
-            )
-            if response.status_code in range(399, 499):
-                raise APIException(detail=response.json(), code=response.status_code)
-            else:
-                response.raise_for_status()
+    def get_sent_messagers(
+        self, project_uuid: str, start_date: str, end_date: str, user: str
+    ):
+        url = f"{self.base_url}/api/v2/internals/template-messages/"
+        params = {
+            "project_uuid": project_uuid,
+            "start_date": start_date,
+            "end_date": end_date,
+            "user": user,
+        }
+        response = self.make_request(
+            url,
+            method="GET",
+            headers=self.authentication_instance.headers,
+            params=params,
+        )
+        return response
 
-        except requests.exceptions.HTTPError as exception:
-            # Handles HTTP exceptions
-            raise APIException(
-                detail=f"HTTPError: {str(exception)}", code=response.status_code
-            ) from exception
-        except requests.exceptions.RequestException as exception:
-            # Handle general network exceptions
-            raise APIException(
-                detail=f"RequestException: {str(exception)}", code=500
-            ) from exception
+    def make_request(self, url: str, method: str, headers=None, data=None, params=None):
+        response = requests.request(
+            method=method,
+            url=url,
+            headers=headers,
+            json=data,
+            timeout=60,
+            params=params,
+        )
+        if response.status_code >= 500:
+            raise CustomAPIException(status_code=response.status_code)
+        elif response.status_code >= 400:
+            raise CustomAPIException(
+                detail=response.json() if response.text else response.text,
+                status_code=response.status_code,
+            )
 
         return response
 
@@ -199,3 +208,9 @@ class InternalAuthentication:
             "Content-Type": "application/json; charset: utf-8",
             "Authorization": self.__get_module_token(),
         }
+
+
+class CustomAPIException(APIException):
+    def __init__(self, detail=None, code=None, status_code=None):
+        super().__init__(detail, code)
+        self.status_code = status_code or self.status_code
