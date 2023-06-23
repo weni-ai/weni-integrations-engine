@@ -25,6 +25,13 @@ def refresh_whatsapp_templates_from_facebook():
             if app.config.get("waba")
             else app.config.get("wa_waba_id")
         )
+
+        phone_number_id = (
+            app.config.get("phone_number").get("id")
+            if app.config.get("phone_number")
+            else app.config.get("wa_phone_number_id")
+        )
+
         template_message_request = TemplateMessageRequest(
             settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
         )
@@ -32,9 +39,10 @@ def refresh_whatsapp_templates_from_facebook():
         template_message_request.get_template_namespace(waba_id)
         for template in templates.get("data", []):
             try:
-                translation = TemplateTranslation.objects.filter(message_template_id=template.get("id"))
+                translation = TemplateTranslation.objects.filter(message_template_id=template.get("id"), phone_number_id=phone_number_id)
                 if translation:
                     translation = translation.last()
+
                     found_template = translation.template
                 else:
                     found_template, _created = TemplateMessage.objects.get_or_create(
@@ -54,10 +62,7 @@ def refresh_whatsapp_templates_from_facebook():
                     if translation.get("type") == "FOOTER":
                         footer = translation.get("text", "")
 
-                (
-                    returned_translation,
-                    _created,
-                ) = TemplateTranslation.objects.get_or_create(
+                (returned_translation, _created,) = TemplateTranslation.objects.get_or_create(
                     template=found_template,
                     language=template.get("language"),
                 )
@@ -66,6 +71,7 @@ def refresh_whatsapp_templates_from_facebook():
                 returned_translation.status = template.get("status")
                 returned_translation.variable_count = 0
                 returned_translation.message_template_id = template.get("id")
+                returned_translation.phone_number_id = phone_number_id
                 returned_translation.save()
 
                 for translation in template.get("components"):
