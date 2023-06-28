@@ -30,9 +30,9 @@ def refresh_whatsapp_templates_from_facebook():
             settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
         )
         templates = template_message_request.list_template_messages(waba_id)
-        templates_ids = [item['id'] for item in templates['data']]
 
         if waba_id:
+            templates_ids = [item['id'] for item in templates['data']]
             templates_message = TemplateMessage.objects.filter(
                 Q(app__config__waba__id=waba_id) |
                 Q(app__config__wa_waba_id=waba_id)
