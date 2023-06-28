@@ -48,8 +48,8 @@ class Request(object):
 
         return response
 
-    def get(self, url: str, **kwargs) -> Response:
-        request = self.factory.get(url)
+    def get(self, url: str, params=None, **kwargs) -> Response:
+        request = self.factory.get(url, data=params)
         force_authenticate(request, user=self._user)
 
         return self._get_response(request, **kwargs)
