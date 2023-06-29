@@ -37,6 +37,7 @@ def refresh_whatsapp_templates_from_facebook():
                 Q(app__config__wa_waba_id=waba_id)
                 )
             if templates_message:
+                print(templates)
                 templates_ids = [item['id'] for item in templates["data"]]
                 for template in templates_message:
                     template_translation = TemplateTranslation.objects.filter(template=template)
