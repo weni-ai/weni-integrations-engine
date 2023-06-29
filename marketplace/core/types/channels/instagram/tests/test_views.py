@@ -149,7 +149,7 @@ class ConfigureInstagramAppTestCase(APIBaseTestCase):
         return self.view_class.as_view({"patch": "configure"})
 
     @patch(
-        "marketplace.core.types.channels.instagram.serializers.ConnectProjectClient.create_channel"
+        "marketplace.core.types.channels.instagram.views.ConnectProjectClient.create_channel"
     )
     def test_configure_instagram_success(self, mock_create_external_service):
         data = {

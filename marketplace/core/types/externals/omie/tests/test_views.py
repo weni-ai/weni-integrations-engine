@@ -104,7 +104,7 @@ class ConfigureOmieAppTestCase(APIBaseTestCase):
         return self.view_class.as_view({"patch": "configure"})
 
     @patch(
-        "marketplace.core.types.externals.omie.serializers.FlowsClient.create_external_service"
+        "marketplace.core.types.externals.omie.views.FlowsClient.create_external_service"
     )
     def test_configure_omie_success(self, mock_create_external_service):
         data = {
@@ -176,7 +176,8 @@ class DeleteOmieAppTestCase(APIBaseTestCase):
         mock_response.status_code = 200
         mock_release.return_value = mock_response
 
-        self.app.config = {"channelUuid": str(uuid.uuid4())}
+        # self.app.config = {"channelUuid": str(uuid.uuid4())}
+        self.app.flow_object_uuid = str(uuid.uuid4())
         self.app.save()
 
         response = self.request.delete(self.url, uuid=self.app.uuid)

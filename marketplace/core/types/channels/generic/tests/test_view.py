@@ -209,7 +209,7 @@ class ConfigureGenericAppTestCase(APIBaseTestCase):
         "marketplace.core.types.channels.generic.serializers.ConnectProjectClient.create_channel"
     )
     def test_configure_channel_success(self, mock_configure):
-        mock_configure.return_value = {"channelUuid": str(uuid.uuid4())}
+        mock_configure.return_value = {self.app.flow_object_uuid: str(uuid.uuid4())}
         keys_values = {
             "api_key": str(uuid.uuid4()),
             "api_secret": str(uuid.uuid4()),

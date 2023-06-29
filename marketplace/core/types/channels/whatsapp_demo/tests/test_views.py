@@ -55,7 +55,6 @@ class CreateWhatsAppDemoAppTestCase(APIBaseTestCase):
         app = App.objects.get(uuid=response.json.get("uuid"))
         self.assertEqual(str(app.uuid), response.json["uuid"])
         self.assertEqual(app.config["title"], "WhatsApp: +559999998888")
-        self.assertEqual(app.config["channelUuid"], channel_uuid)
         self.assertEqual(
             app.config["routerToken"], "WhatsApp:+559999998888-whatsapp-demo-v5ciobe7te"
         )
