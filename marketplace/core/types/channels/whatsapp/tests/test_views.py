@@ -248,3 +248,64 @@ class UpdateWhatsAppWebHookTestCase(APIBaseTestCase):
         response = self.request.patch(self.url, data, uuid=self.app.uuid)
         self.assertEqual(response.json, {"detail": "Missing key: 'config'"})
         self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class WhatsAppReportSentMessagesTestCase(APIBaseTestCase):
+    view_class = WhatsAppViewSet
+
+    def setUp(self):
+        super().setUp()
+
+        self.app = App.objects.create(
+            code="wpp",
+            created_by=self.user,
+            project_uuid=str(uuid.uuid4()),
+            platform=App.PLATFORM_WENI_FLOWS,
+            flow_object_uuid=str(uuid.uuid4()),
+        )
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+        self.url = reverse(
+            "wpp-app-report-sent-messages", kwargs={"uuid": self.app.uuid}
+        )
+
+    @property
+    def view(self):
+        return self.view_class.as_view({"get": "report_sent_messages"})
+
+    @patch("marketplace.flows.client.FlowsClient.get_sent_messagers")
+    def test_report_sent_messages_success(self, mock_flows_client):
+        mock_flows_client.return_value.status_code = status.HTTP_200_OK
+
+        params = {
+            "project_uuid": str(self.app.project_uuid),
+            "start_date": "01-05-2023",
+            "end_date": "12-05-2023",
+        }
+        response = self.request.get(self.url, params=params, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_report_sent_messages_without_params(self):
+        # Without project_uuid
+        params = {
+            "start_date": "01-05-2023",
+            "end_date": "12-05-2023",
+        }
+        response = self.request.get(self.url, params=params, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        # Without start_date
+        params = {
+            "project_uuid": str(self.app.project_uuid),
+            "end_date": "12-05-2023",
+        }
+        response = self.request.get(self.url, params=params, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        # Without end_date
+        params = {
+            "project_uuid": str(self.app.project_uuid),
+            "start_date": "01-05-2023",
+        }
+        response = self.request.get(self.url, params=params, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
