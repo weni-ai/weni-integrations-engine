@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 
 from marketplace.core.types import APPTYPES
 from marketplace.celery import app as celery_app
-from marketplace.connect.client import ConnectProjectClient
+from marketplace.flows.client import FlowsClient
 from marketplace.applications.models import App
 from marketplace.accounts.models import ProjectAuthorization
 
@@ -21,7 +21,7 @@ SYNC_WHATSAPP_CLOUD_LOCK_KEY = "sync-whatsapp-cloud-lock"
 @celery_app.task(name="sync_whatsapp_cloud_apps")
 def sync_whatsapp_cloud_apps():
     apptype = APPTYPES.get("wpp-cloud")
-    client = ConnectProjectClient()
+    client = FlowsClient()
     channels = client.list_channels(apptype.flows_type_code)
 
     redis = get_redis_connection()
@@ -89,7 +89,7 @@ def check_apps_uncreated_on_flow():
             wa_phone_number_id = app.config.get("wa_phone_number_id")
 
             try:
-                client = ConnectProjectClient()
+                client = FlowsClient()
                 channel = client.create_wac_channel(
                     user_creation.email, project_uuid, wa_phone_number_id, app_config
                 )

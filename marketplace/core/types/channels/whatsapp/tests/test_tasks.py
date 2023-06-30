@@ -72,7 +72,7 @@ class SyncWhatsAppAppsTaskTestCase(TestCase):
         ]
 
     @patch("marketplace.core.types.channels.whatsapp.tasks.get_redis_connection")
-    @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
+    @patch("marketplace.flows.client.FlowsClient.list_channels")
     def test_create_new_whatsapp_app(
         self, list_channel_mock: "MagicMock", mock_redis
     ) -> None:
@@ -91,7 +91,7 @@ class SyncWhatsAppAppsTaskTestCase(TestCase):
         self.assertTrue(App.objects.filter(project_uuid=project_uuid).exists())
 
     @patch("marketplace.core.types.channels.whatsapp.tasks.get_redis_connection")
-    @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
+    @patch("marketplace.flows.client.FlowsClient.list_channels")
     def test_update_app_auth_token(
         self, list_channel_mock: "MagicMock", mock_redis
     ) -> None:
@@ -108,7 +108,7 @@ class SyncWhatsAppAppsTaskTestCase(TestCase):
         self.assertEqual(app.config.get("auth_token"), "54321")
 
     @patch("marketplace.core.types.channels.whatsapp.tasks.get_redis_connection")
-    @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
+    @patch("marketplace.flows.client.FlowsClient.list_channels")
     def test_channel_migration_from_wpp_cloud_to_wpp(
         self, list_channel_mock: "MagicMock", mock_redis
     ) -> None:
@@ -119,7 +119,7 @@ class SyncWhatsAppAppsTaskTestCase(TestCase):
         sync_whatsapp_apps()
 
     @patch("marketplace.core.types.channels.whatsapp.tasks.get_redis_connection")
-    @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
+    @patch("marketplace.flows.client.FlowsClient.list_channels")
     def test_task_that_was_executed(
         self, list_channel_mock: "MagicMock", mock_redis
     ) -> None:
@@ -130,7 +130,7 @@ class SyncWhatsAppAppsTaskTestCase(TestCase):
         sync_whatsapp_apps()
 
     @patch("marketplace.core.types.channels.whatsapp.tasks.get_redis_connection")
-    @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
+    @patch("marketplace.flows.client.FlowsClient.list_channels")
     def test_skipping_wpp_demo(
         self, list_channel_mock: "MagicMock", mock_redis
     ) -> None:

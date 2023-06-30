@@ -153,6 +153,89 @@ class FlowsClient:
         )
         return response
 
+    def list_channels(self, channeltype_code: str) -> list:
+        params = {"channel_type": channeltype_code}
+
+        url = f"{self.base_url}/api/v2/internals/channel/"
+
+        response = self.make_request(
+            url,
+            method="GET",
+            headers=self.authentication_instance.headers,
+            params=params,
+        )
+
+        def map_org_to_project_uuid(channel: dict) -> dict:
+            channel["project_uuid"] = channel.pop("org")
+            return channel
+
+        return list(map(map_org_to_project_uuid, response.json()))
+
+    def create_channel(
+        self, user: str, project_uuid: str, data: dict, channeltype_code: str
+    ) -> dict:
+        payload = {
+            "user": user,
+            "org": str(project_uuid),
+            "data": data,
+            "channeltype_code": channeltype_code,
+        }
+
+        url = f"{self.base_url}/api/v2/internals/channel/"
+
+        response = self.make_request(
+            url,
+            method="POST",
+            headers=self.authentication_instance.headers,
+            data=payload,
+        )
+
+        return response.json()
+
+    def create_wac_channel(
+        self, user: str, project_uuid: str, phone_number_id: str, config: dict
+    ) -> dict:
+        payload = {
+            "user": user,
+            "org": str(project_uuid),
+            "config": config,
+            "phone_number_id": phone_number_id,
+        }
+        url = f"{self.base_url}/api/v2/internals/channel/create_wac/"
+
+        response = self.make_request(
+            url=url,
+            method="POST",
+            headers=self.authentication_instance.headers,
+            data=payload,
+        )
+        return response.json()
+
+    def release_channel(self, channel_uuid: str, user_email: str) -> None:
+        params = {"user": user_email}
+        url = f"{self.base_url}/api/v2/internals/channel/{channel_uuid}"
+
+        self.make_request(
+            url,
+            method="DELETE",
+            headers=self.authentication_instance.headers,
+            params=params,
+        )
+        return None
+
+    def get_user_api_token(self, user: str, project_uuid: str):
+        params = dict(user=user, project=str(project_uuid))
+        url = f"{self.base_url}/api/v2/internals/users/api-token/"
+
+        response = self.make_request(
+            url,
+            method="GET",
+            headers=self.authentication_instance.headers,
+            params=params,
+        )
+
+        return response
+
     def make_request(self, url: str, method: str, headers=None, data=None, params=None):
         response = requests.request(
             method=method,
@@ -214,3 +297,18 @@ class CustomAPIException(APIException):
     def __init__(self, detail=None, code=None, status_code=None):
         super().__init__(detail, code)
         self.status_code = status_code or self.status_code
+
+
+class WPPRouterChannelClient(FlowsClient):
+    base_url = settings.ROUTER_BASE_URL
+
+    def get_channel_token(self, uuid: str, name: str) -> str:
+        payload = {"uuid": uuid, "name": name}
+        url = f"{self.base_url}/integrations/channel"
+        response = self.make_request(
+            url,
+            method="POST",
+            headers=self.authentication_instance.headers,
+            data=payload,
+        )
+        return response.json().get("token", "")

@@ -1,6 +1,8 @@
 from marketplace.core.types import views
 from .serializers import WhatsAppDemoSerializer
-from marketplace.connect.client import ConnectProjectClient, WPPRouterChannelClient
+
+from marketplace.flows.client import FlowsClient
+from marketplace.flows.client import WPPRouterChannelClient
 
 
 class WhatsAppDemoViewSet(views.BaseAppTypeViewSet):
@@ -26,7 +28,7 @@ class WhatsAppDemoViewSet(views.BaseAppTypeViewSet):
             facebook_access_token="null",
         )
 
-        client = ConnectProjectClient()
+        client = FlowsClient()
         result = client.create_channel(
             user.email, str(instance.project_uuid), data, instance.flows_type_code
         )

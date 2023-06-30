@@ -9,7 +9,8 @@ from phonenumbers.phonenumberutil import NumberParseException
 from marketplace.celery import app as celery_app
 from marketplace.core.types import APPTYPES
 from marketplace.applications.models import App
-from marketplace.connect.client import ConnectProjectClient
+from marketplace.flows.client import FlowsClient
+
 from .apis import FacebookWABAApi, FacebookPhoneNumbersAPI
 from ..whatsapp_base.exceptions import FacebookApiException
 
@@ -26,7 +27,7 @@ SYNC_WHATSAPP_PHONE_NUMBER_LOCK_KEY = "sync-whatsapp-phone-number-lock-app:{app_
 @celery_app.task(name="sync_whatsapp_apps")
 def sync_whatsapp_apps():
     apptype = APPTYPES.get("wpp")
-    client = ConnectProjectClient()
+    client = FlowsClient()
     channels = client.list_channels(apptype.flows_type_code)
 
     redis = get_redis_connection()

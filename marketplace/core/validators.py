@@ -16,10 +16,10 @@ def validate_generic_app_code_exists(code):
     Checks if the code exists within the generic channels coming from rapidpro,
     if it exists, it returns True.
     """
-    from marketplace.connect.client import ConnectProjectClient
+    from marketplace.flows.client import FlowsClient
 
-    client = ConnectProjectClient()
-    response = client.detail_channel_type(channel_code=code)
+    client = FlowsClient()
+    response = client.list_channel_types(channel_code=code)
     if response.status_code == 200:
         return True
 

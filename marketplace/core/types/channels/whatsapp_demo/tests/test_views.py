@@ -36,8 +36,8 @@ class CreateWhatsAppDemoAppTestCase(APIBaseTestCase):
         return self.view_class.as_view(APIBaseTestCase.ACTION_CREATE)
 
     # @patch("marketplace.celery.app.send_task")
-    @patch("marketplace.connect.client.WPPRouterChannelClient.get_channel_token")
-    @patch("marketplace.connect.client.ConnectProjectClient.create_channel")
+    @patch("marketplace.flows.client.WPPRouterChannelClient.get_channel_token")
+    @patch("marketplace.flows.client.FlowsClient.create_channel")
     def test_request_ok(self, create_channel_request, get_channel_token_request):
         self.view_class.type_class.NUMBER = "+559999998888"
         channel_uuid = str(uuid.uuid4())
@@ -73,8 +73,8 @@ class CreateWhatsAppDemoAppTestCase(APIBaseTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    @patch("marketplace.connect.client.WPPRouterChannelClient.get_channel_token")
-    @patch("marketplace.connect.client.ConnectProjectClient.create_channel")
+    @patch("marketplace.flows.client.WPPRouterChannelClient.get_channel_token")
+    @patch("marketplace.flows.client.FlowsClient.create_channel")
     def test_create_app_platform(
         self, create_channel_request, get_channel_token_request
     ):
@@ -92,8 +92,8 @@ class CreateWhatsAppDemoAppTestCase(APIBaseTestCase):
         response = self.request.post(self.url, self.body)
         self.assertEqual(response.json["platform"], App.PLATFORM_WENI_FLOWS)
 
-    @patch("marketplace.connect.client.WPPRouterChannelClient.get_channel_token")
-    @patch("marketplace.connect.client.ConnectProjectClient.create_channel")
+    @patch("marketplace.flows.client.WPPRouterChannelClient.get_channel_token")
+    @patch("marketplace.flows.client.FlowsClient.create_channel")
     def test_get_app_with_respective_project_uuid(
         self, create_channel_request, get_channel_token_request
     ):

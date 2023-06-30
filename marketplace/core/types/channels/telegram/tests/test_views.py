@@ -149,7 +149,7 @@ class ConfigureTelegramAppTestCase(APIBaseTestCase):
         return self.view_class.as_view({"patch": "configure"})
 
     @patch(
-        "marketplace.core.types.channels.telegram.serializers.ConnectProjectClient.create_channel"
+        "marketplace.core.types.channels.telegram.serializers.FlowsClient.create_channel"
     )
     def test_configure_telegram_success(self, mock_create_external_service):
         data = {

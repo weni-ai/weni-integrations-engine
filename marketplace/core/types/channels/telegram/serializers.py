@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from marketplace.core.serializers import AppTypeBaseSerializer
 from marketplace.applications.models import App
-from marketplace.connect.client import ConnectProjectClient
+from marketplace.flows.client import FlowsClient
 
 
 class TelegramSerializer(AppTypeBaseSerializer):
@@ -42,7 +42,7 @@ class ConfigSerializer(serializers.Serializer):
 
     def _create_channel(self, attrs: dict, app: App) -> str:
         user = self.context.get("request").user
-        client = ConnectProjectClient()
+        client = FlowsClient()
         return client.create_channel(
             user.email,
             app.project_uuid,

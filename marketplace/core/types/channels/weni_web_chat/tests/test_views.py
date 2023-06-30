@@ -168,9 +168,7 @@ class ConfigureWeniWebChatTestCase(APIBaseTestCase):
     def view(self):
         return self.view_class.as_view({"patch": "configure"})
 
-    @patch(
-        "marketplace.core.types.channels.weni_web_chat.serializers.ConnectProjectClient"
-    )
+    @patch("marketplace.core.types.channels.weni_web_chat.serializers.FlowsClient")
     @patch(
         "marketplace.core.types.channels.weni_web_chat.serializers.AppStorage",
         MockAppStorage,

@@ -206,7 +206,7 @@ class ConfigureGenericAppTestCase(APIBaseTestCase):
         return self.view_class.as_view({"patch": "configure"})
 
     @patch(
-        "marketplace.core.types.channels.generic.serializers.ConnectProjectClient.create_channel"
+        "marketplace.core.types.channels.generic.serializers.FlowsClient.create_channel"
     )
     def test_configure_channel_success(self, mock_configure):
         mock_configure.return_value = {"channelUuid": str(uuid.uuid4())}
