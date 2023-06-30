@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from marketplace.core.serializers import AppTypeBaseSerializer
 from marketplace.applications.models import App
-from marketplace.connect.client import ConnectProjectClient
+from marketplace.flows.client import FlowsClient
 
 
 class InstagramSerializer(AppTypeBaseSerializer):
@@ -49,7 +49,7 @@ class ConfigSerializer(serializers.Serializer):
 
     def _create_channel(self, attrs: dict, app: App) -> str:
         user = self.context.get("request").user
-        client = ConnectProjectClient()
+        client = FlowsClient()
 
         payload = {
             "user_access_token": attrs.get("user_access_token"),

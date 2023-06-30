@@ -10,7 +10,7 @@ from marketplace.accounts.serializers import (
     ProjectAuthorizationSerializer,
     UserPermissionSerializer,
 )
-from marketplace.connect.client import ConnectProjectClient
+from marketplace.flows.client import FlowsClient
 from .models import ProjectAuthorization
 
 
@@ -90,7 +90,7 @@ class UserAPITokenAPIView(views.APIView):
                 dict(detail="The project-uuid needs to be sent in headers!")
             )
 
-        client = ConnectProjectClient()
+        client = FlowsClient()
         response = client.get_user_api_token(request.user.email, project_uuid)
 
         return Response(response.json(), status=response.status_code)

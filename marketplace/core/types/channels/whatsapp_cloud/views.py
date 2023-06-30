@@ -17,7 +17,6 @@ if TYPE_CHECKING:
 from marketplace.core.types import views
 from marketplace.applications.models import App
 from marketplace.celery import app as celery_app
-from marketplace.connect.client import ConnectProjectClient
 from marketplace.flows.client import FlowsClient
 
 from ..whatsapp_base import mixins
@@ -141,7 +140,7 @@ class WhatsAppCloudViewSet(
             wa_pin=pin,
         )
 
-        client = ConnectProjectClient()
+        client = FlowsClient()
         channel = client.create_wac_channel(
             request.user.email, project_uuid, phone_number_id, config
         )

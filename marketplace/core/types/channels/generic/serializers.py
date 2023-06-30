@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from marketplace.applications.models import App
 from marketplace.core.serializers import AppTypeBaseSerializer
-from marketplace.connect.client import ConnectProjectClient
+from marketplace.flows.client import FlowsClient
 
 
 class GenericChannelSerializer(AppTypeBaseSerializer):
@@ -49,7 +49,7 @@ class GenericConfigSerializer(serializers.Serializer):
         request = self.context.get("request")
         user = request.user
         channeltype_code = app.config.get("channel_code")
-        client = ConnectProjectClient()
+        client = FlowsClient()
         return client.create_channel(
             user.email, app.project_uuid, attrs, channeltype_code.upper()
         )

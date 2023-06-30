@@ -55,7 +55,7 @@ class SyncWhatsAppCloudAppsTaskTestCase(TestCase):
         ]
 
     @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.get_redis_connection")
-    @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
+    @patch("marketplace.flows.client.FlowsClient.list_channels")
     def test_whatsapp_app_that_already_exists_is_migrated_correctly(
         self, list_channel_mock: "MagicMock", mock_redis
     ) -> None:
@@ -73,7 +73,7 @@ class SyncWhatsAppCloudAppsTaskTestCase(TestCase):
         self.assertIn("have_to_stay", app.config.get("config_before_migration"))
 
     @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.get_redis_connection")
-    @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
+    @patch("marketplace.flows.client.FlowsClient.list_channels")
     def test_sync_for_non_migrated_channels(
         self, list_channel_mock: "MagicMock", mock_redis
     ) -> None:
@@ -91,7 +91,7 @@ class SyncWhatsAppCloudAppsTaskTestCase(TestCase):
         self.assertIn("have_to_stay", app.config)
 
     @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.get_redis_connection")
-    @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
+    @patch("marketplace.flows.client.FlowsClient.list_channels")
     def test_create_new_whatsapp_cloud(
         self, list_channel_mock: "MagicMock", mock_redis
     ) -> None:

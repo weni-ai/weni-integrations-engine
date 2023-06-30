@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from marketplace.applications.models import App
 from marketplace.accounts.permissions import ProjectManagePermission
 
-from marketplace.connect.client import ConnectProjectClient
+from marketplace.flows.client import FlowsClient
 
 
 class BaseAppTypeViewSet(
@@ -39,8 +39,7 @@ class BaseAppTypeViewSet(
 
     def perform_destroy(self, instance):
         super().perform_destroy(instance)
-        project_uuid = str(instance.project_uuid)
         channel_uuid = instance.config.get("channelUuid")
         if channel_uuid:
-            client = ConnectProjectClient()
-            client.release_channel(channel_uuid, project_uuid, self.request.user.email)
+            client = FlowsClient()
+            client.release_channel(channel_uuid, self.request.user.email)
