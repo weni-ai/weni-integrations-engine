@@ -37,12 +37,16 @@ def refresh_whatsapp_templates_from_facebook():
                 Q(app__config__wa_waba_id=waba_id)
                 )
             if templates_message:
-                print(templates)
+                # verifica se o waba_id existe no facebook
+                if templates.get("error"):
+                    continue
+
                 templates_ids = [item['id'] for item in templates["data"]]
                 for template in templates_message:
                     template_translation = TemplateTranslation.objects.filter(template=template)
                     for translation in template_translation:
                         if translation.message_template_id not in templates_ids:
+                            print('Removeu a translation ', translation)
                             translation.delete()
 
         template_message_request.get_template_namespace(waba_id)
