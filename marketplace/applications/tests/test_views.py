@@ -228,6 +228,10 @@ class ListMyAppViewTestCase(AppTypeViewTestCase):
             app_args = [self.project_uuid]
             if num % 2 == 1:
                 app_args.append({})
+                app_args.append(False)
+            else:
+                app_args.append(dict(teste="test"))
+                app_args.append(True)
 
             self.apps.append(self.create_app(*app_args))
 
@@ -235,10 +239,16 @@ class ListMyAppViewTestCase(AppTypeViewTestCase):
     def view(self):
         return self.view_class.as_view(APIBaseTestCase.ACTION_LIST)
 
-    def create_app(self, project_uuid: str, config: dict = dict(teste="teste")) -> App:
+    def create_app(
+        self,
+        project_uuid: str,
+        config: dict = dict(teste="teste"),
+        configured: bool = True,
+    ) -> App:
         return App.objects.create(
             code="wwc",
             config=config,
+            configured=configured,
             project_uuid=project_uuid,
             platform=App.PLATFORM_WENI_FLOWS,
             created_by=self.user,
