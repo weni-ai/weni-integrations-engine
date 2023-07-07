@@ -29,9 +29,6 @@ class FacebookViewSet(views.BaseAppTypeViewSet):
 
         self.perform_update(serializer)
 
-        user = request.user
-        client = ConnectProjectClient()
-
         if app.flow_object_uuid is None:
             validated_config = serializer.validated_data.get("config")
             payload = {
@@ -40,6 +37,9 @@ class FacebookViewSet(views.BaseAppTypeViewSet):
                 "page_name": validated_config.get("page_name"),
                 "page_id": validated_config.get("page_id"),
             }
+
+            user = request.user
+            client = ConnectProjectClient()
 
             response = client.create_channel(
                 user.email, app.project_uuid, payload, app.flows_type_code

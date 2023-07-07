@@ -30,9 +30,6 @@ class OmieViewSet(views.BaseAppTypeViewSet):
 
         self.perform_update(serializer)
 
-        user = request.user
-        client = FlowsClient()
-
         if app.flow_object_uuid is None:
             validated_config = serializer.validated_data.get("config")
 
@@ -41,6 +38,10 @@ class OmieViewSet(views.BaseAppTypeViewSet):
                 "app_key": validated_config.get("app_key"),
                 "app_secret": validated_config.get("app_secret"),
             }
+
+            user = request.user
+            client = FlowsClient()
+
             response = client.create_external_service(
                 user.email, str(app.project_uuid), payload, app.flows_type_code
             )
