@@ -15,6 +15,26 @@ from marketplace.wpp_templates.models import (
 )
 
 
+def delete_unexistent_translations(app, templates):
+    templates_message = app.template.all()
+    templates_ids = [item["id"] for item in templates["data"]]
+
+    for template in templates_message:
+        template_translation = TemplateTranslation.objects.filter(
+            template=template
+        )
+        for translation in template_translation:
+            if translation.message_template_id not in templates_ids:
+                print(
+                    "Removed the translation",
+                    translation,
+                    "with message_template_id:",
+                    translation.message_template_id,
+                    "\n"
+                )
+                translation.delete()
+
+
 @shared_task(track_started=True, name="refresh_whatsapp_templates_from_facebook")
 def refresh_whatsapp_templates_from_facebook():
     for app in App.objects.filter(code__in=["wpp", "wpp-cloud"]):
@@ -30,32 +50,13 @@ def refresh_whatsapp_templates_from_facebook():
             settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
         )
         templates = template_message_request.list_template_messages(waba_id)
+        if templates.get("error"):
+            print("A error occurred with waba_id: ", waba_id, "\nThe error was: ", templates, "\n")
+            continue
 
         if waba_id:
-            templates_message = TemplateMessage.objects.filter(
-                Q(app__config__waba__id=waba_id) | Q(app__config__wa_waba_id=waba_id)
-            )
-            if templates_message:
-                if templates.get("error"):
-                    print(templates)
-                    continue
+            delete_unexistent_translations(app, templates)
 
-                templates_ids = [item["id"] for item in templates["data"]]
-                for template in templates_message:
-                    template_translation = TemplateTranslation.objects.filter(
-                        template=template
-                    )
-                    for translation in template_translation:
-                        if translation.message_template_id not in templates_ids:
-                            print(
-                                "Removed the translation",
-                                translation,
-                                "with message_template_id:",
-                                translation.message_template_id,
-                            )
-                            translation.delete()
-
-        template_message_request.get_template_namespace(waba_id)
         for template in templates.get("data", []):
             try:
                 translation = TemplateTranslation.objects.filter(
