@@ -45,7 +45,13 @@ class InstagramViewSet(views.BaseAppTypeViewSet):
                 user.email, app.project_uuid, payload, app.flows_type_code
             )
 
+            flows_config = response.get("config")
             app.flow_object_uuid = response.get("uuid")
+            app.config["title"] = response.get("name")
+            app.config["address"] = response.get("address")
+            app.config["page_name"] = flows_config.get("page_name")
+            app.config["page_id"] = flows_config.get("page_id")
+            app.config["auth_token"] = flows_config.get("auth_token")
             app.save()
 
         return Response(serializer.data)

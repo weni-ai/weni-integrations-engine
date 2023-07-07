@@ -43,6 +43,7 @@ class TelegramViewSet(views.BaseAppTypeViewSet):
             )
 
             app.flow_object_uuid = response.get("uuid")
+            app.config["title"] = response.get("name")
             app.save()
 
         return Response(serializer.data)
