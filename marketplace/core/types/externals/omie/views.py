@@ -46,6 +46,7 @@ class OmieViewSet(views.BaseAppTypeViewSet):
                 user.email, str(app.project_uuid), payload, app.flows_type_code
             )
             app.flow_object_uuid = response.json().get("uuid")
+            app.config["title"] = response.json().get("name")
             app.save()
 
         return Response(serializer.data)
