@@ -29,20 +29,21 @@ class TelegramViewSet(views.BaseAppTypeViewSet):
 
         self.perform_update(serializer)
 
-        user = request.user
-        client = ConnectProjectClient()
-
         if app.flow_object_uuid is None:
 
             payload = {
                 "auth_token": serializer.validated_data.get("config")["token"],
             }
 
+            user = request.user
+            client = ConnectProjectClient()
+
             response = client.create_channel(
                 user.email, app.project_uuid, payload, app.flows_type_code
             )
 
             app.flow_object_uuid = response.get("uuid")
+            app.config["title"] = response.get("name")
             app.save()
 
         return Response(serializer.data)

@@ -209,7 +209,7 @@ class ConfigureGenericAppTestCase(APIBaseTestCase):
         "marketplace.core.types.channels.generic.serializers.ConnectProjectClient.create_channel"
     )
     def test_configure_channel_success(self, mock_configure):
-        mock_configure.return_value = {self.app.flow_object_uuid: str(uuid.uuid4())}
+        mock_configure.return_value = {"uuid": str(uuid.uuid4()), "name": "Test"}
         keys_values = {
             "api_key": str(uuid.uuid4()),
             "api_secret": str(uuid.uuid4()),
@@ -454,3 +454,55 @@ class SearchIconTestCase(TestCase):
         self.generic_apptype_asset = AppTypeAsset.objects.create(
             code="generic", attachment=self.icon_url, created_by=self.user
         )
+
+
+class GenericConfigSerializerTest(APIBaseTestCase):
+    view_class = GenericChannelViewSet
+
+    def setUp(self):
+        super().setUp()
+
+        data = {
+            "channel_code": "TWT",
+            "channel_name": "Twitter",
+            "channel_icon_url": "twitter/url/icon",
+            "channel_claim_blurb": "twitter/url/claim",
+        }
+
+        self.app = App.objects.create(
+            code="generic",
+            created_by=self.user,
+            project_uuid=str(uuid.uuid4()),
+            config=data,
+            platform=App.PLATFORM_WENI_FLOWS,
+            flow_object_uuid=None,
+        )
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+        self.url = reverse("generic-app-configure", kwargs={"uuid": self.app.uuid})
+
+    @property
+    def view(self):
+        return self.view_class.as_view({"patch": "configure"})
+
+    @patch(
+        "marketplace.core.types.channels.generic.serializers.ConnectProjectClient.create_channel"
+    )
+    def test_configure_channel_without_flow_object_uuid(self, mock_configure):
+        mock_configure.return_value = {"uuid": str(uuid.uuid4())}
+        keys_values = {
+            "api_key": str(uuid.uuid4()),
+            "api_secret": str(uuid.uuid4()),
+            "access_token": str(uuid.uuid4()),
+            "access_token_secret": str(uuid.uuid4()),
+        }
+        payload = {
+            "user": str(self.user),
+            "project_uuid": str(uuid.uuid4()),
+            "config": {"auth_token": keys_values},
+        }
+
+        response = self.request.patch(self.url, payload, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)

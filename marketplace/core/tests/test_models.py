@@ -5,7 +5,7 @@ from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 
-from marketplace.core.models import BaseModel
+from marketplace.core.models import AppTypeBaseModel, BaseModel
 
 
 User = get_user_model()
@@ -68,3 +68,13 @@ class TestBaseModel(TestCase):
 
         self.assertEqual(self.fakemodel_instance.modified_by, self.user)
         self.assertEqual(self.user.modified_fakemodels.first(), self.fakemodel_instance)
+
+    def test_apptype_returns_generic_apptype(self):
+        class MockAppTypeBaseModel(AppTypeBaseModel):
+            code = "specific_code"
+
+        app_type_base_model = MockAppTypeBaseModel()
+
+        apptype = app_type_base_model.apptype
+
+        self.assertEqual(apptype.name, "Generic Type")

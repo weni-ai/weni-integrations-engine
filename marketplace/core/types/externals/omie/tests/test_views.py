@@ -176,7 +176,6 @@ class DeleteOmieAppTestCase(APIBaseTestCase):
         mock_response.status_code = 200
         mock_release.return_value = mock_response
 
-        # self.app.config = {"channelUuid": str(uuid.uuid4())}
         self.app.flow_object_uuid = str(uuid.uuid4())
         self.app.save()
 

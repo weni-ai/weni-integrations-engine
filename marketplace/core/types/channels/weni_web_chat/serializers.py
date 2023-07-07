@@ -96,7 +96,6 @@ class ConfigSerializer(serializers.Serializer):
             "storage": "local" if attrs["keepHistory"] else "session",
         }
 
-        # channel_uuid = self.app.config.get("channelUuid", None)
         channel_uuid = self.app.flow_object_uuid
         self.app.flow_object_uuid = (
             channel_uuid
