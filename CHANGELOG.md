@@ -1,3 +1,7 @@
+v2.6.1
+----------
+* Report of messages sent by template
+
 v2.6.0
 ----------
 * Create apptype chatgpt, add new methods to flows client

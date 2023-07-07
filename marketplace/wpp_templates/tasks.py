@@ -33,26 +33,34 @@ def refresh_whatsapp_templates_from_facebook():
 
         if waba_id:
             templates_message = TemplateMessage.objects.filter(
-                Q(app__config__waba__id=waba_id) |
-                Q(app__config__wa_waba_id=waba_id)
-                )
+                Q(app__config__waba__id=waba_id) | Q(app__config__wa_waba_id=waba_id)
+            )
             if templates_message:
-                # verifica se o waba_id existe no facebook
                 if templates.get("error"):
+                    print(templates)
                     continue
 
-                templates_ids = [item['id'] for item in templates["data"]]
+                templates_ids = [item["id"] for item in templates["data"]]
                 for template in templates_message:
-                    template_translation = TemplateTranslation.objects.filter(template=template)
+                    template_translation = TemplateTranslation.objects.filter(
+                        template=template
+                    )
                     for translation in template_translation:
                         if translation.message_template_id not in templates_ids:
-                            print('Removeu a translation ', translation)
+                            print(
+                                "Removed the translation",
+                                translation,
+                                "with message_template_id:",
+                                translation.message_template_id,
+                            )
                             translation.delete()
 
         template_message_request.get_template_namespace(waba_id)
         for template in templates.get("data", []):
             try:
-                translation = TemplateTranslation.objects.filter(message_template_id=template.get("id"))
+                translation = TemplateTranslation.objects.filter(
+                    message_template_id=template.get("id")
+                )
                 if translation:
                     translation = translation.last()
                     found_template = translation.template
