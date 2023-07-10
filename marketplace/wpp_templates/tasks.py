@@ -1,4 +1,5 @@
 from celery import shared_task
+import logging
 
 from django.conf import settings
 from sentry_sdk import capture_exception
@@ -13,6 +14,28 @@ from marketplace.wpp_templates.models import (
     TemplateHeader,
     TemplateButton,
 )
+
+logger = logging.getLogger(__name__)
+
+
+def delete_unexistent_translations(app, templates):
+    templates_message = app.template.all()
+    templates_ids = [item["id"] for item in templates["data"]]
+
+    for template in templates_message:
+        template_translation = TemplateTranslation.objects.filter(
+            template=template
+        )
+        for translation in template_translation:
+            if translation.message_template_id not in templates_ids:
+                print(
+                    "Removed the translation",
+                    translation,
+                    "with message_template_id:",
+                    translation.message_template_id,
+                    "\n"
+                )
+                translation.delete()
 
 
 def delete_unexistent_translations(app, templates):
@@ -51,7 +74,7 @@ def refresh_whatsapp_templates_from_facebook():
         )
         templates = template_message_request.list_template_messages(waba_id)
         if templates.get("error"):
-            print("A error occurred with waba_id: ", waba_id, "\nThe error was: ", templates, "\n")
+            logger.info("A error occurred with waba_id: ", waba_id, "\nThe error was: ", templates, "\n")
             continue
 
         if waba_id:
