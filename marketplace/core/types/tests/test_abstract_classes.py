@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock
+from unittest.mock import patch
 import uuid
 
 from django.test import TestCase
@@ -5,6 +7,7 @@ from django.contrib.auth import get_user_model
 
 from marketplace.core.types.base import AppType
 from marketplace.applications.models import AppTypeAsset, App
+from marketplace.core.types.views import BaseAppTypeViewSet
 from marketplace.interactions.models import Rating, Comment
 from marketplace.core.tests.base import MockDynamicAppType
 
@@ -144,3 +147,21 @@ class AppTypeTestCase(TestCase):
         )
 
         self.assertEqual(fake_type_instance.get_ratings_average(), 2.5)
+
+
+class BaseAppTypeViewSetTest(TestCase):
+    def setUp(self):
+        self.viewset = BaseAppTypeViewSet()
+        self.viewset.request = MagicMock()
+        self.viewset.request.user.email = "test@example.com"
+
+    def test_perform_destroy_with_channel_uuid(self):
+        instance = MagicMock()
+        instance.project_uuid = "project_uuid"
+        instance.flow_object_uuid = "channel_uuid"
+
+        client_mock = MagicMock()
+        with patch("marketplace.core.types.views.ConnectProjectClient", return_value=client_mock):
+            self.viewset.perform_destroy(instance)
+
+        client_mock.release_channel.assert_called_once_with("channel_uuid", "project_uuid", "test@example.com")

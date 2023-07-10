@@ -149,11 +149,10 @@ class ConfigureFacebookAppTestCase(APIBaseTestCase):
         return self.view_class.as_view({"patch": "configure"})
 
     @patch(
-        "marketplace.core.types.channels.facebook.serializers.ConnectProjectClient.create_channel"
+        "marketplace.core.types.channels.facebook.views.ConnectProjectClient.create_channel"
     )
     def test_configure_facebook_success(self, mock_create_external_service):
         data = {
-            "channelUuid": str(uuid.uuid4()),
             "title": "Test",
             "address": "url",
             "config": {"page_name": "PageTest"},

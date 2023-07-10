@@ -20,13 +20,34 @@ class OmieViewSet(views.BaseAppTypeViewSet):
 
     @action(detail=True, methods=["PATCH"])
     def configure(self, request, **kwargs):
+        """
+        Adds a config on specified App and create a channel on weni-flows
+        """
         app = self.get_object()
-
         self.serializer_class = OmieConfigureSerializer
         serializer = self.get_serializer(app, data=request.data)
         serializer.is_valid(raise_exception=True)
 
         self.perform_update(serializer)
+
+        if app.flow_object_uuid is None:
+            validated_config = serializer.validated_data.get("config")
+
+            payload = {
+                "name": validated_config.get("name"),
+                "app_key": validated_config.get("app_key"),
+                "app_secret": validated_config.get("app_secret"),
+            }
+
+            user = request.user
+            client = FlowsClient()
+
+            response = client.create_external_service(
+                user.email, str(app.project_uuid), payload, app.flows_type_code
+            )
+            app.flow_object_uuid = response.json().get("uuid")
+            app.config["title"] = response.json().get("name")
+            app.save()
 
         return Response(serializer.data)
 
@@ -36,7 +57,7 @@ class OmieViewSet(views.BaseAppTypeViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def perform_destroy(self, instance):
-        channel_uuid = instance.config.get("channelUuid")
+        channel_uuid = instance.flow_object_uuid
         if channel_uuid:
             client = FlowsClient()
             client.release_external_service(channel_uuid, self.request.user.email)
