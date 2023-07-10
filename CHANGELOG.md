@@ -1,3 +1,8 @@
+v2.6.2
+----------
+* Add delete template in sync task
+* Refact apptype to flow project
+
 v2.6.1
 ----------
 * Report of messages sent by template
