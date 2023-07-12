@@ -78,7 +78,7 @@ class MyAppViewSet(viewsets.ReadOnlyModelViewSet):
             raise PermissionDenied()
 
         queryset = queryset.filter(project_uuid=project_uuid)
-
+        # test codcov
         if configured is not None:
             if configured == "true":
                 queryset = queryset.filter(configured=True)
