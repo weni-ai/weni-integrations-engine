@@ -70,6 +70,7 @@ def sync_whatsapp_apps():
                         flow_object_uuid=channel.get("uuid"),
                         config=config,
                         created_by=User.objects.get_admin_user(),
+                        configured=True,
                     )
 
                     logger.info(

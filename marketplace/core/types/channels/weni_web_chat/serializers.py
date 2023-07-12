@@ -96,18 +96,13 @@ class ConfigSerializer(serializers.Serializer):
             "storage": "local" if attrs["keepHistory"] else "session",
         }
 
-        channel_uuid = self.app.flow_object_uuid
-        self.app.flow_object_uuid = (
-            channel_uuid
-            if channel_uuid is not None
-            else self._create_channel().get("uuid")
-        )
+        if self.app.flow_object_uuid is None:
+            self.app.flow_object_uuid = self._create_channel().get("uuid")
+            self.app.configured = True
 
         attrs["socketUrl"] = settings.SOCKET_BASE_URL
         attrs["host"] = settings.FLOWS_HOST_URL
-
         attrs.pop("keepHistory")
-
         attrs["script"] = self.generate_script(attrs.copy())
 
         return super().validate(attrs)

@@ -157,6 +157,7 @@ class WhatsAppCloudViewSet(
             platform=App.PLATFORM_WENI_FLOWS,
             created_by=request.user,
             flow_object_uuid=channel.get("uuid"),
+            configured=True,
         )
 
         celery_app.send_task(name="sync_whatsapp_cloud_wabas")
