@@ -12,7 +12,7 @@ from django.conf import settings
 from django.utils.crypto import get_random_string
 
 if TYPE_CHECKING:
-    from rest_framework.request import Request
+    from rest_framework.request import Request  # pragma: no cover
 
 from marketplace.core.types import views
 from marketplace.applications.models import App
@@ -62,6 +62,15 @@ class WhatsAppCloudViewSet(
             raise ValidationError("The phone number is not configured")
 
         return dict(phone_number_id=phone_numbrer_id)
+
+    @property
+    def get_access_token(self) -> str:
+        access_token = settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
+
+        if access_token is None:
+            raise ValidationError("This app does not have fb_access_token in settings")
+
+        return access_token
 
     def get_queryset(self):
         return super().get_queryset().filter(code=self.type_class.code)

@@ -22,9 +22,7 @@ def delete_unexistent_translations(app, templates):
     templates_ids = [item["id"] for item in templates["data"]]
 
     for template in templates_message:
-        template_translation = TemplateTranslation.objects.filter(
-            template=template
-        )
+        template_translation = TemplateTranslation.objects.filter(template=template)
         for translation in template_translation:
             if translation.message_template_id not in templates_ids:
                 print(
@@ -32,7 +30,7 @@ def delete_unexistent_translations(app, templates):
                     translation,
                     "with message_template_id:",
                     translation.message_template_id,
-                    "\n"
+                    "\n",
                 )
                 translation.delete()
 
@@ -48,12 +46,18 @@ def refresh_whatsapp_templates_from_facebook():
             if app.config.get("waba")
             else app.config.get("wa_waba_id")
         )
-        template_message_request = TemplateMessageRequest(
-            settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
-        )
+        if app.code == "wpp" and app.config.get("fb_access_token"):
+            acess_token = app.config.get("fb_access_token")
+        else:
+            acess_token = settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
+
+        template_message_request = TemplateMessageRequest(access_token=acess_token)
         templates = template_message_request.list_template_messages(waba_id)
+
         if templates.get("error"):
-            logger.error(f"A error occurred with waba_id: {waba_id}. \nThe error was:  {templates}\n")
+            logger.error(
+                f"A error occurred with waba_id: {waba_id}. \nThe error was:  {templates}\n"
+            )
             continue
 
         if waba_id:
