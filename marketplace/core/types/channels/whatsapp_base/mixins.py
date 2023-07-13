@@ -3,7 +3,6 @@ import calendar
 from typing import TYPE_CHECKING
 from datetime import datetime
 
-from django.conf import settings
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
@@ -57,6 +56,10 @@ class WhatsAppConversationsMixin(object, metaclass=abc.ABCMeta):
     def app_waba_id(self) -> dict:
         pass  # pragma: no cover
 
+    @abc.abstractproperty
+    def get_access_token(self) -> dict:
+        pass  # pragma: no cover
+
     @action(detail=True, methods=["GET"], permission_classes=[ProjectViewPermission])
     def conversations(self, request: "Request", **kwargs) -> Response:
         date_params = QueryParamsParser(request.query_params)
@@ -64,7 +67,7 @@ class WhatsAppConversationsMixin(object, metaclass=abc.ABCMeta):
         try:
             conversations = FacebookConversationAPI().conversations(
                 waba_id=self.app_waba_id,
-                access_token=settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN,
+                access_token=self.get_access_token,
                 start=date_params.start,
                 end=date_params.end,
             )

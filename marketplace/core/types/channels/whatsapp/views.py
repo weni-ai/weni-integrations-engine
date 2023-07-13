@@ -10,7 +10,7 @@ from rest_framework import status
 from rest_framework.exceptions import APIException
 
 if TYPE_CHECKING:
-    from rest_framework.request import Request
+    from rest_framework.request import Request  # pragma: no cover
 
 from marketplace.core.types import views
 from marketplace.flows.client import FlowsClient
@@ -50,6 +50,16 @@ class WhatsAppViewSet(
             )
 
         return waba_id
+
+    @property
+    def get_access_token(self) -> str:
+        config = self.get_object().config
+        access_token = config.get("fb_access_token", None)
+
+        if access_token is None:
+            raise ValidationError("This app does not have fb_access_token in config")
+
+        return access_token
 
     @property
     def profile_config_credentials(self) -> dict:
