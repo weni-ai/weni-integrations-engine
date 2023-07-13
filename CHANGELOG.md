@@ -1,3 +1,9 @@
+v2.6.3
+----------
+* Add base_url, username, password and fb_access_token for whatsapp on premisse synchronization
+* Separates access token according to whatsapp type
+* Adjust return to display total per template
+
 v2.6.2
 ----------
 * Add delete template in sync task
