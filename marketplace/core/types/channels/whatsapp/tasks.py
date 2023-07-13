@@ -59,8 +59,21 @@ def sync_whatsapp_apps():
                         )
                         continue
 
-                    if app.config.get("auth_token") != config.get("auth_token"):
-                        app.config["auth_token"] = config.get("auth_token")
+                    sync_fields = [
+                        "base_url",
+                        "username",
+                        "password",
+                        "auth_token",
+                        "fb_access_token",
+                    ]
+                    has_changes = False
+
+                    for field in sync_fields:
+                        if app.config.get(field) != config.get(field):
+                            app.config[field] = config.get(field)
+                            has_changes = True
+
+                    if has_changes:
                         app.modified_by = User.objects.get_admin_user()
                         app.save()
 
