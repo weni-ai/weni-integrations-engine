@@ -15,6 +15,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
+from django.core.exceptions import ValidationError
 
 from marketplace.applications.models import App
 from marketplace.core.types.channels.whatsapp_base.exceptions import (
@@ -85,7 +86,6 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         return queryset
 
     def get_queryset(self):
-
         app = App.objects.get(uuid=self.kwargs["app_uuid"])
         queryset = TemplateMessage.objects.filter(app=app).order_by("-created_on")
 
@@ -103,11 +103,31 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         )
 
     def perform_destroy(self, instance):
-        template_request = TemplateMessageRequest(
-            settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
-        )
+        if instance.app.code == "wpp":
+            access_token = instance.app.config.get("fb_access_token", None)
+            if instance.app.config.get("waba") is None:
+                raise ValidationError(
+                    f"This app: {instance.app.uuid} does not have waba in config"
+                )
+            waba_id = instance.app.config.get("waba").get("id")
+
+            if access_token is None:
+                raise ValidationError(
+                    f"This app: {instance.app.uuid} does not have fb_access_token in config"
+                )
+        else:
+            access_token = settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
+            waba_id = instance.app.config.get("wa_waba_id")
+
+        if waba_id is None:
+            raise ValidationError(
+                f"This app: {instance.app.uuid} does not have waba id in config"
+            )
+
+        template_request = TemplateMessageRequest(access_token=access_token)
+
         response = template_request.delete_template_message(
-            waba_id=instance.app.config.get("wa_waba_id"), name=instance.name
+            waba_id=waba_id, name=instance.name
         )
 
         if response.status_code != status.HTTP_200_OK:
@@ -142,8 +162,16 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         return Response(data=LANGUAGES, status=status.HTTP_200_OK)
 
     def partial_update(self, request, app_uuid=None, uuid=None):
-
         template = self.get_object()
+        if template.app.code == "wpp":
+            access_token = template.app.config.get("fb_access_token", None)
+
+            if access_token is None:
+                raise ValidationError(
+                    f"This app: {template.app.uuid} does not have fb_access_token in config"
+                )
+        else:
+            access_token = settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
 
         message_template_id = request.data.get("message_template_id")
 
@@ -178,7 +206,7 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
                 file_type = re.search("(?<=data:)(.*)(?=;base64)", photo).group(0)
                 photo = photo.split(";base64,")[1]
                 upload_session_id = photo_api_request.create_upload_session(
-                    settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN,
+                    access_token,
                     len(base64.b64decode(photo)),
                     file_type=file_type,
                 )
@@ -188,7 +216,7 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
                 )
                 headers = {
                     "Content-Type": file_type,
-                    "Authorization": f"OAuth {settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN}",
+                    "Authorization": f"OAuth {access_token}",
                 }
                 headers["file_offset"] = "0"
                 response = requests.post(
@@ -202,8 +230,10 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
                 header.pop("example")
                 header["example"] = dict(header_handle=upload_handle)
 
-            template_header, _created = TemplateHeader.objects.get_or_create(translation=translation,
-                                                                             header_type=header.get("format"),)
+            template_header, _created = TemplateHeader.objects.get_or_create(
+                translation=translation,
+                header_type=header.get("format"),
+            )
             template_header.text = header.get("text", {})
             template_header.header_type = header.get("format")
 
@@ -227,12 +257,12 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         if buttons:
             for button in buttons:
                 template_button, _created = TemplateButton.objects.get_or_create(
-                                translation=translation,
-                                button_type=button.get("button_type"),
-                                text=button.get("text"),
-                                url=button.get("url"),
-                                phone_number=button.get("phone_number"),
-                            )
+                    translation=translation,
+                    button_type=button.get("button_type"),
+                    text=button.get("text"),
+                    url=button.get("url"),
+                    phone_number=button.get("phone_number"),
+                )
 
                 template_button.button_type = button.get("button_type")
                 template_button.text = button.get("text")
@@ -249,9 +279,8 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
 
         components = list_components
 
-        template_request = TemplateMessageRequest(
-            settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
-        )
+        template_request = TemplateMessageRequest(access_token=access_token)
+
         response = template_request.update_template_message(
             message_template_id=message_template_id,
             name=template.name,

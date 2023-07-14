@@ -69,10 +69,19 @@ class TemplateTranslationSerializer(serializers.Serializer):
         return components
 
     def create(self, validated_data: dict) -> None:
-        template_message_request = TemplateMessageRequest(
-            settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
-        )
         template = TemplateMessage.objects.get(uuid=validated_data.get("template_uuid"))
+
+        if template.app.code == "wpp":
+            access_token = template.app.config.get("fb_access_token", None)
+
+            if access_token is None:
+                raise ValidationError(
+                    f"This app: {template.app.uuid} does not have fb_access_token in config"
+                )
+        else:
+            access_token = settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
+
+        template_message_request = TemplateMessageRequest(access_token=access_token)
         components = [validated_data.get("body", {})]
         header = validated_data.get("header")
 
@@ -94,7 +103,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
                 file_type = re.search("(?<=data:)(.*)(?=;base64)", photo).group(0)
                 photo = photo.split(";base64,")[1]
                 upload_session_id = photo_api_request.create_upload_session(
-                    settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN,
+                    access_token,
                     len(base64.b64decode(photo)),
                     file_type=file_type,
                 )
@@ -104,7 +113,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
                 )
                 headers = {
                     "Content-Type": file_type,
-                    "Authorization": f"OAuth {settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN}",
+                    "Authorization": f"OAuth {access_token}",
                 }
                 headers["file_offset"] = "0"
                 response = requests.post(
