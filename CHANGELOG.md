@@ -1,3 +1,8 @@
+v2.6.4
+----------
+* Adjust wpp channel synchronization and add inactive deletion
+* Change the token used according to the type of whatsapp
+
 v2.6.3
 ----------
 * Add base_url, username, password and fb_access_token for whatsapp on premisse synchronization
