@@ -85,6 +85,8 @@ class AppTypeAsset(AppTypeBaseModel):
 
 
 class AppTypeFeatured(AppTypeBaseModel):
+    priority = models.PositiveSmallIntegerField(default=0, unique=True)
+
     class Meta:
         verbose_name = "AppType Featured"
         verbose_name_plural = "AppType Featureds"
@@ -97,5 +99,5 @@ class AppTypeFeatured(AppTypeBaseModel):
 
     @classmethod
     def get_apptype_featureds(cls) -> Generator[None, None, "AppType"]:
-        for featured in cls.objects.all():
+        for featured in cls.objects.order_by("priority"):
             yield featured.apptype
