@@ -399,5 +399,5 @@ if USE_EDA:
 
     EDA_BROKER_HOST = env("EDA_BROKER_HOST", default="localhost")
     EDA_BROKER_PORT = env.int("EDA_BROKER_PORT", default=5672)
-    EDA_BROKER_USER = env.int("EDA_BROKER_USER", default="guest")
-    EDA_BROKER_PASSWORD = env.int("EDA_BROKER_USER", default="guest")
+    EDA_BROKER_USER = env("EDA_BROKER_USER", default="guest")
+    EDA_BROKER_PASSWORD = env("EDA_BROKER_PASSWORD", default="guest")
