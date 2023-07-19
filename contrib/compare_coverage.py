@@ -38,8 +38,16 @@ else:
     print("Error: Invalid JSON response from Codecov API")
     exit(1)
 
+local_report = int(
+    subprocess.check_output("coverage report -m | awk 'END {print $3}'", shell=True)
+    .decode("utf-8")
+    .replace("\n", "\n ")
+    .strip()
+)
+
 print(f"local_misses:{local_misses}")
 print(f"main_misses:{main_misses}")
+print(f"local_report:{local_report}")
 
 if local_misses is not None and main_misses is not None:
     if local_misses > main_misses:
