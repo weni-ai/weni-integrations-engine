@@ -9,6 +9,15 @@ from ..type import WhatsAppDemoType
 User = get_user_model()
 
 
+class SetupWhatsAppDemoTypeTestCase(TestCase):
+    def setUp(self) -> None:
+        self.apptype = WhatsAppDemoType()
+
+    def test_template_type_setup_returns_app_code(self):
+        app_setup = self.apptype.template_type_setup()
+        self.assertEqual(app_setup.get("code"), self.apptype.code)
+
+
 class ConfigureWhatsAppDemoTypeTestCase(TestCase):
     def setUp(self) -> None:
         self.apptype_class = WhatsAppDemoType

@@ -37,6 +37,9 @@ class WhatsAppDemoType(AppType):
     def can_add(self, project_uuid: str) -> bool:
         return not App.objects.filter(code=self.code, project_uuid=project_uuid).exists()
 
+    def template_type_setup(self) -> dict:
+        return dict(code=self.code)
+
     @classmethod
     def configure_app(cls, app: App, user: "User", channel_client: Any, channel_token_client: Any) -> App:
         data = dict(
