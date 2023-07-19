@@ -388,3 +388,16 @@ FLOWS_REST_ENDPOINT = env.str("FLOWS_REST_ENDPOINT")
 USE_CONNECT_V2 = env.bool("USE_CONNECT_V2", default=True)
 
 IMPORTANCE_CHANNELS_ORDER = env.list("IMPORTANCE_CHANNELS_ORDER", default=[])
+
+
+# Event Driven Architecture configurations
+
+USE_EDA = env.bool("USE_EDA", default=False)
+
+if USE_EDA:
+    EDA_CONSUMERS_REGISTRY = "marketplace.event_driven.registry.consumers_registry"
+
+    EDA_BROKER_HOST = env("EDA_BROKER_HOST", default="localhost")
+    EDA_BROKER_PORT = env.int("EDA_BROKER_PORT", default=5672)
+    EDA_BROKER_USER = env.int("EDA_BROKER_USER", default="guest")
+    EDA_BROKER_PASSWORD = env.int("EDA_BROKER_USER", default="guest")
