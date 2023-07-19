@@ -12,6 +12,7 @@ except subprocess.CalledProcessError as e:
     print("Error executing git command:", e)
     exit(1)
 
+print("11111111111")
 
 URL_V2 = (
     "https://api.codecov.io/api/v2/gh/weni-ai/repos/weni-integrations-engine/commits/"
@@ -19,7 +20,9 @@ URL_V2 = (
 
 response_main_commit = requests.get(f"{URL_V2}{LAST_MAIN_COMMIT}")
 response_local_commit = requests.get(f"{URL_V2}{LAST_LOCAL_COMMIT}")
-
+print("2222222222")
+print(f"response_main_commit.status_code {response_main_commit.status_code}")
+print(f"response_local_commit.status_code {response_local_commit.status_code}")
 if response_main_commit.status_code != 200 or response_local_commit.status_code != 200:
     print("Error: Failed to fetch coverage data from Codecov API")
     exit(1)
