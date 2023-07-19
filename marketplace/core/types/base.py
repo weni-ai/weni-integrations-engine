@@ -109,3 +109,6 @@ class AppType(AbstractAppType):
 
     def create_app(self, *args, **kwargs) -> App:
         return App.objects.create(*args, **kwargs, code=self.code, platform=self.platform)
+
+    def template_type_setup(self) -> dict:
+        raise NotImplementedError(f"App: {self.name} cannot be configured from a project template!")
