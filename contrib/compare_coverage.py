@@ -13,6 +13,8 @@ except subprocess.CalledProcessError as e:
     exit(1)
 
 print("11111111111")
+print(f"LAST_MAIN_COMMIT:{LAST_MAIN_COMMIT}")
+print(f"LAST_LOCAL_COMMIT:{LAST_LOCAL_COMMIT}")
 
 URL_V2 = (
     "https://api.codecov.io/api/v2/gh/weni-ai/repos/weni-integrations-engine/commits/"
