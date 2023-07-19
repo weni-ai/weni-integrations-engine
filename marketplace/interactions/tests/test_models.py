@@ -12,7 +12,9 @@ class TestModelRatingMixin:
     def setUp(self):
         super().setUp()
 
-        self.user = User.objects.create(email="admin@marketplace.ai", password="fake@pass#$")
+        self.user = User.objects.create(
+            email="admin@marketplace.ai", password="fake@pass#$"
+        )
 
         self.rating_data = dict(
             code="wwc",
@@ -61,7 +63,9 @@ class TestModelCommentMixin:
     def setUp(self):
         super().setUp()
 
-        self.user = User.objects.create(email="admin@marketplace.ai", password="fake@pass#$")
+        self.user = User.objects.create(
+            email="admin@marketplace.ai", password="fake@pass#$"
+        )
 
         self.comment_data = dict(
             code="wwc",

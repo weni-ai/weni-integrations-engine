@@ -8,7 +8,6 @@ from .permissions import CommentManagePermission
 
 
 class CommentViewSet(viewsets.ModelViewSet):
-
     queryset = Comment.objects
     serializer_class = CommentSerializer
     lookup_field = "uuid"
@@ -22,7 +21,6 @@ class CommentViewSet(viewsets.ModelViewSet):
 
 
 class RatingViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
-
     serializer_class = RatingSerializer
 
     def perform_create(self, serializer):
@@ -30,6 +28,5 @@ class RatingViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
 
 
 class FeedbackViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
-
     serializer_class = FeedbackSerializer
     permission_classes = [IsAuthenticated]

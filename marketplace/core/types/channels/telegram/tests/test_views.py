@@ -1,5 +1,7 @@
 import uuid
 
+from unittest.mock import patch
+
 from django.urls import reverse
 from django.test import override_settings
 from rest_framework import status
@@ -8,6 +10,10 @@ from marketplace.core.tests.base import APIBaseTestCase
 from ..views import TelegramViewSet
 from marketplace.applications.models import App
 from marketplace.accounts.models import ProjectAuthorization
+
+from ..type import TelegramType
+
+apptype = TelegramType()
 
 
 class CreateTelegramAppTestCase(APIBaseTestCase):
@@ -54,9 +60,14 @@ class RetrieveTelegramAppTestCase(APIBaseTestCase):
         super().setUp()
 
         self.app = App.objects.create(
-            code="tg", created_by=self.user, project_uuid=str(uuid.uuid4()), platform=App.PLATFORM_WENI_FLOWS
+            code="tg",
+            created_by=self.user,
+            project_uuid=str(uuid.uuid4()),
+            platform=App.PLATFORM_WENI_FLOWS,
         )
-        self.user_authorization = self.user.authorizations.create(project_uuid=self.app.project_uuid)
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
         self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
         self.url = reverse("tg-app-detail", kwargs={"uuid": self.app.uuid})
 
@@ -85,7 +96,10 @@ class DestroyTelegramAppTestCase(APIBaseTestCase):
         super().setUp()
 
         self.app = App.objects.create(
-            code="tg", created_by=self.user, project_uuid=str(uuid.uuid4()), platform=App.PLATFORM_WENI_FLOWS
+            code="tg",
+            created_by=self.user,
+            project_uuid=str(uuid.uuid4()),
+            platform=App.PLATFORM_WENI_FLOWS,
         )
         self.user_authorization = self.user.authorizations.create(
             project_uuid=self.app.project_uuid, role=ProjectAuthorization.ROLE_ADMIN
@@ -114,3 +128,41 @@ class DestroyTelegramAppTestCase(APIBaseTestCase):
         self.user_authorization.set_role(ProjectAuthorization.ROLE_NOT_SETTED)
         response = self.request.delete(self.url, uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class ConfigureTelegramAppTestCase(APIBaseTestCase):
+    view_class = TelegramViewSet
+
+    def setUp(self):
+        super().setUp()
+        self.app = apptype.create_app(
+            created_by=self.user, project_uuid=str(uuid.uuid4())
+        )
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+        self.url = reverse("tg-app-configure", kwargs={"uuid": self.app.uuid})
+
+    @property
+    def view(self):
+        return self.view_class.as_view({"patch": "configure"})
+
+    @patch(
+        "marketplace.core.types.channels.telegram.views.ConnectProjectClient.create_channel"
+    )
+    def test_configure_telegram_success(self, mock_create_external_service):
+        data = {
+            "channelUuid": str(uuid.uuid4()),
+            "title": "Test",
+        }
+        mock_create_external_service.return_value = data
+        payload = {
+            "user": str(self.user),
+            "project_uuid": str(uuid.uuid4()),
+            "config": {
+                "token": str(uuid.uuid4),
+            },
+        }
+        response = self.request.patch(self.url, payload, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)

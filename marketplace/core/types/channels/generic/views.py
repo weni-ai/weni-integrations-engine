@@ -24,7 +24,7 @@ class GenericChannelViewSet(views.BaseAppTypeViewSet):
     serializer_class = GenericChannelSerializer
 
     def get_queryset(self):
-        return super().get_queryset().filter(code=type_.GenericType.code)
+        return super().get_queryset().filter(code=type_.GenericChannelAppType.code)
 
     def perform_create(self, serializer):
         channel_code = self.request.data.get("channel_code", None)
@@ -34,7 +34,7 @@ class GenericChannelViewSet(views.BaseAppTypeViewSet):
         if channel_code:
             channel_code = channel_code.strip()
         else:
-            raise serializers.ValidationError('Code not be empty.')
+            raise serializers.ValidationError("Code not be empty.")
 
         client = FlowsClient()
         response = client.list_channel_types(channel_code=channel_code)

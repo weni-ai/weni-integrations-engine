@@ -48,39 +48,46 @@ class Request(object):
 
         return response
 
-    def get(self, url: str, **kwargs) -> Response:
-        request = self.factory.get(url)
+    def get(self, url: str, params=None, **kwargs) -> Response:
+        request = self.factory.get(url, data=params)
         force_authenticate(request, user=self._user)
 
         return self._get_response(request, **kwargs)
 
     def post(self, url: str, body=None, **kwargs) -> Response:
-        request = self.factory.post(url, data=json.dumps(body), content_type="application/json")
+        request = self.factory.post(
+            url, data=json.dumps(body), content_type="application/json"
+        )
         force_authenticate(request, user=self._user)
 
         return self._get_response(request, **kwargs)
 
     def put(self, url: str, body=None, **kwargs) -> Response:
-        request = self.factory.put(url, data=json.dumps(body), content_type="application/json")
+        request = self.factory.put(
+            url, data=json.dumps(body), content_type="application/json"
+        )
         force_authenticate(request, user=self._user)
 
         return self._get_response(request, **kwargs)
 
-    def delete(self, url: str, **kwargs) -> Response:
-        request = self.factory.delete(url, content_type="application/json")
+    def delete(self, url: str, body=None, **kwargs) -> Response:
+        request = self.factory.delete(
+            url, data=json.dumps(body), content_type="application/json"
+        )
         force_authenticate(request, user=self._user)
 
         return self._get_response(request, **kwargs)
 
     def patch(self, url: str, body=None, **kwargs) -> Response:
-        request = self.factory.patch(url, data=json.dumps(body), content_type="application/json")
+        request = self.factory.patch(
+            url, data=json.dumps(body), content_type="application/json"
+        )
         force_authenticate(request, user=self._user)
 
         return self._get_response(request, **kwargs)
 
 
 class APIBaseTestCase(TestCase):
-
     ACTION_CREATE = dict(post="create")
     ACTION_RETRIEVE = dict(get="retrieve")
     ACTION_UPDATE = dict(put="update")
@@ -122,7 +129,9 @@ class MockDynamicAppType:
 
     def __enter__(self):
         for apptype in self.apptypes:
-            assert isinstance(apptype, AppType), f"Expected a `AppType`, `{apptype.__class__.__name__}` is not valid!"
+            assert isinstance(
+                apptype, AppType
+            ), f"Expected a `AppType`, `{apptype.__class__.__name__}` is not valid!"
             APPTYPES[apptype.code] = apptype
 
     def __exit__(self, *args):

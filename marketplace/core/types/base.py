@@ -60,6 +60,10 @@ class AbstractAppType(ABC):
     def platform(self) -> str:
         ...  # pragma: no cover
 
+    @abstractproperty
+    def flows_type_code(self) -> str:
+        ...  # pragma: no cover
+
 
 class AppType(AbstractAppType):
     """
@@ -108,7 +112,20 @@ class AppType(AbstractAppType):
         return True
 
     def create_app(self, *args, **kwargs) -> App:
-        return App.objects.create(*args, **kwargs, code=self.code, platform=self.platform)
+        return App.objects.create(
+            *args, **kwargs, code=self.code, platform=self.platform
+        )
 
     def template_type_setup(self) -> dict:
         raise NotImplementedError(f"App: {self.name} cannot be configured from a project template!")
+
+
+class GenericAppType(AppType):
+    flows_type_code = None
+    name = "Generic Type"
+    description = "Generic.data.description"
+    summary = "Generic.data.summary"
+    developer = "Weni"
+    bg_color = "#d1fcc9cc"
+    config_design = "popup"
+    platform = App.PLATFORM_WENI_FLOWS

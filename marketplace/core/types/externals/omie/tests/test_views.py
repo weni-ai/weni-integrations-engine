@@ -57,8 +57,12 @@ class RetrieveOmieAppTestCase(APIBaseTestCase):
     def setUp(self):
         super().setUp()
 
-        self.app = apptype.create_app(created_by=self.user, project_uuid=str(uuid.uuid4()))
-        self.user_authorization = self.user.authorizations.create(project_uuid=self.app.project_uuid)
+        self.app = apptype.create_app(
+            created_by=self.user, project_uuid=str(uuid.uuid4())
+        )
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
         self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
         self.url = reverse("omie-app-detail", kwargs={"uuid": self.app.uuid})
 
@@ -85,8 +89,12 @@ class ConfigureOmieAppTestCase(APIBaseTestCase):
     def setUp(self):
         super().setUp()
 
-        self.app = apptype.create_app(created_by=self.user, project_uuid=str(uuid.uuid4()))
-        self.user_authorization = self.user.authorizations.create(project_uuid=self.app.project_uuid)
+        self.app = apptype.create_app(
+            created_by=self.user, project_uuid=str(uuid.uuid4())
+        )
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
         self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
         self.url = reverse("omie-app-configure", kwargs={"uuid": self.app.uuid})
         self.body = {"config": {"name": "123", "app_key": "123", "app_secret": "4234"}}
@@ -95,12 +103,18 @@ class ConfigureOmieAppTestCase(APIBaseTestCase):
     def view(self):
         return self.view_class.as_view({"patch": "configure"})
 
-    @patch("marketplace.core.types.externals.omie.serializers.ConfigSerializer._create_channel")
-    def test_configure_omie_success(self, mock_create_channel):
+    @patch(
+        "marketplace.core.types.externals.omie.views.FlowsClient.create_external_service"
+    )
+    def test_configure_omie_success(self, mock_create_external_service):
+        data = {
+            "channelUuid": str(uuid.uuid4()),
+            "title": "Teste",
+        }
         mock_response = Mock()
-        mock_response.json.return_value = {"channelUuid": str(uuid.uuid4()), "title": "Teste"}
+        mock_response.json.return_value = data
         mock_response.status_code = 200
-        mock_create_channel.return_value = mock_response
+        mock_create_external_service.return_value = mock_response
 
         keys_values = {
             "api_key": str(uuid.uuid4()),
@@ -112,7 +126,12 @@ class ConfigureOmieAppTestCase(APIBaseTestCase):
         payload = {
             "user": str(self.user),
             "project_uuid": str(uuid.uuid4()),
-            "config": {"auth_token": keys_values, "name": "123", "app_key": "123", "app_secret": "4234"},
+            "config": {
+                "auth_token": keys_values,
+                "name": "123",
+                "app_key": "123",
+                "app_secret": "4234",
+            },
         }
 
         response = self.request.patch(self.url, payload, uuid=self.app.uuid)
@@ -128,8 +147,12 @@ class DeleteOmieAppTestCase(APIBaseTestCase):
 
     def setUp(self):
         super().setUp()
-        self.app = apptype.create_app(created_by=self.user, project_uuid=str(uuid.uuid4()))
-        self.user_authorization = self.user.authorizations.create(project_uuid=self.app.project_uuid)
+        self.app = apptype.create_app(
+            created_by=self.user, project_uuid=str(uuid.uuid4())
+        )
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
         self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
         self.url = reverse("omie-app-detail", kwargs={"uuid": self.app.uuid})
 
@@ -153,7 +176,7 @@ class DeleteOmieAppTestCase(APIBaseTestCase):
         mock_response.status_code = 200
         mock_release.return_value = mock_response
 
-        self.app.config = {"channelUuid": str(uuid.uuid4())}
+        self.app.flow_object_uuid = str(uuid.uuid4())
         self.app.save()
 
         response = self.request.delete(self.url, uuid=self.app.uuid)

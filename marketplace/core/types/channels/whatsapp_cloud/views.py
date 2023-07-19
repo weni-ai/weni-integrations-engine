@@ -12,7 +12,7 @@ from django.conf import settings
 from django.utils.crypto import get_random_string
 
 if TYPE_CHECKING:
-    from rest_framework.request import Request
+    from rest_framework.request import Request  # pragma: no cover
 
 from marketplace.core.types import views
 from marketplace.applications.models import App
@@ -36,7 +36,6 @@ class WhatsAppCloudViewSet(
     mixins.WhatsAppContactMixin,
     mixins.WhatsAppProfileMixin,
 ):
-
     serializer_class = WhatsAppSerializer
 
     business_profile_class = CloudProfileContactFacade
@@ -63,6 +62,15 @@ class WhatsAppCloudViewSet(
             raise ValidationError("The phone number is not configured")
 
         return dict(phone_number_id=phone_numbrer_id)
+
+    @property
+    def get_access_token(self) -> str:
+        access_token = settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
+
+        if access_token is None:
+            raise ValidationError("This app does not have fb_access_token in settings")
+
+        return access_token
 
     def get_queryset(self):
         return super().get_queryset().filter(code=self.type_class.code)
@@ -305,3 +313,29 @@ class WhatsAppCloudViewSet(
 
         serializer = self.get_serializer(app)
         return Response(serializer.data)
+
+    @action(detail=True, methods=["GET"])
+    def report_sent_messages(self, request: "Request", **kwargs):
+        project_uuid = request.query_params.get("project_uuid", None)
+        start_date = request.query_params.get("start_date", None)
+        end_date = request.query_params.get("end_date", None)
+        user = request.user.email
+
+        if project_uuid is None:
+            raise ValidationError("project_uuid is a required parameter")
+
+        if start_date is None:
+            raise ValidationError("start_date is a required parameter")
+
+        if end_date is None:
+            raise ValidationError("end_date is a required parameter")
+
+        client = FlowsClient()
+        response = client.get_sent_messagers(
+            end_date=end_date,
+            project_uuid=project_uuid,
+            start_date=start_date,
+            user=user,
+        )
+
+        return Response(status=response.status_code)

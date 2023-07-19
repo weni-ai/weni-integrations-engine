@@ -4,14 +4,12 @@ from marketplace.connect.client import ConnectProjectClient, WPPRouterChannelCli
 
 
 class WhatsAppDemoViewSet(views.BaseAppTypeViewSet):
-
     serializer_class = WhatsAppDemoSerializer
 
     def get_queryset(self):
         return super().get_queryset().filter(code=self.type_class.code)
 
     def perform_create(self, serializer):
-
         user = self.request.user
         type_class = self.type_class
         app = serializer.save(code=self.type_class.code)

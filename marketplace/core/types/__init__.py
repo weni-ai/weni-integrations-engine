@@ -24,7 +24,7 @@ APPTYPES = AppTypesDict()
 
 
 def _get_apptypes_members():
-    if settings.APPTYPES_CLASSES is []:
+    if settings.APPTYPES_CLASSES is []:  # pragma: no cover
         yield
 
     for module_path in settings.APPTYPES_CLASSES:

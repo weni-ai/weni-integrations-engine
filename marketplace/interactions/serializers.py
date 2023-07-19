@@ -12,7 +12,17 @@ User = get_user_model()
 class CommentSerializer(AppTypeBaseSerializer):
     class Meta:
         model = Comment
-        fields = ["code", "uuid", "content", "created_by", "created_on", "modified_by", "edited", "owned", "owner"]
+        fields = [
+            "code",
+            "uuid",
+            "content",
+            "created_by",
+            "created_on",
+            "modified_by",
+            "edited",
+            "owned",
+            "owner",
+        ]
         read_only_fields = ("code", "uuid", "created_on", "edited")
 
     owned = serializers.SerializerMethodField()
@@ -52,9 +62,10 @@ class RatingSerializer(AppTypeBaseSerializer):
 
 
 class FeedbackSerializer(serializers.ModelSerializer):
-
     created_by = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.all(), default=serializers.CurrentUserDefault(), write_only=True
+        queryset=User.objects.all(),
+        default=serializers.CurrentUserDefault(),
+        write_only=True,
     )
 
     class Meta:

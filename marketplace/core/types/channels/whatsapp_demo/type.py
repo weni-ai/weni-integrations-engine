@@ -24,7 +24,7 @@ class WhatsAppDemoType(AppType):
     FACEBOOK_NAMESPACE = config("ROUTER_FACEBOOK_NAMESPACE")
 
     code = "wpp-demo"
-    channeltype_code = "WA"
+    flows_type_code = "WA"
     name = "WhatsApp Demo"
     description = "WhatsAppDemo.data.description"
     summary = "WhatsAppDemo.data.summary"
@@ -35,7 +35,9 @@ class WhatsAppDemoType(AppType):
     config_design = "popup"
 
     def can_add(self, project_uuid: str) -> bool:
-        return not App.objects.filter(code=self.code, project_uuid=project_uuid).exists()
+        return not App.objects.filter(
+            code=self.code, project_uuid=project_uuid
+        ).exists()
 
     def template_type_setup(self) -> dict:
         return dict(code=self.code)
@@ -54,7 +56,7 @@ class WhatsAppDemoType(AppType):
             facebook_access_token="null",
         )
 
-        channel = channel_client.create_channel(user.email, str(app.project_uuid), data, app.channeltype_code)
+        channel = channel_client.create_channel(user.email, str(app.project_uuid), data, app.flows_type_code)
 
         app.config["title"] = channel.get("name")
         app.flow_project_uuid = channel.get("uuid")

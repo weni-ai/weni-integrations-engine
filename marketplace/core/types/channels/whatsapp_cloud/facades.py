@@ -2,7 +2,6 @@ from .requests import CloudProfileRequest, PhotoAPIRequest
 
 
 class CloudProfileFacade(object):  # TODO: Interface
-
     # TODO: Put vertical rule in respective serializer
 
     VERTICAl_MAP = {
@@ -41,7 +40,6 @@ class CloudProfileFacade(object):  # TODO: Interface
         return profile
 
     def set_profile(self, photo: str = None, status: str = None, business: dict = {}):
-
         if photo is not None:
             self._photo_api.set_photo(photo)
 

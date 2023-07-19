@@ -26,7 +26,10 @@ class BaseOnPremiseAPI(object):
 
     @property
     def _headers(self) -> dict:
-        return {"Content-Type": "application/json", "Authorization": f"Bearer {self._auth_token}"}
+        return {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self._auth_token}",
+        }
 
     def _validate_response(self, response: Response) -> None:
         errors = response.json().get("errors", None)
@@ -40,7 +43,6 @@ class BaseOnPremiseAPI(object):
 
 
 class Conversations(object):
-
     _user_initiated = 0
     _business_initiated = 0
 
@@ -66,7 +68,9 @@ class Conversations(object):
                 self._user_initiated += conversation_count
 
     def _get_data_points(self, data: list):
-        data_points_dict = next(filter(lambda data_content: "data_points" in data_content, data))
+        data_points_dict = next(
+            filter(lambda data_content: "data_points" in data_content, data)
+        )
         return data_points_dict.get("data_points")
 
     def __dict__(self) -> dict:
@@ -78,7 +82,6 @@ class Conversations(object):
 
 
 class OnPremiseBusinessProfile(object):
-
     address: str = None
     description: str = None
     email: str = None
@@ -137,7 +140,9 @@ class FacebookConversationAPI(object):  # TODO: Use BaseFacebookBaseApi
 
         return fields
 
-    def conversations(self, waba_id: str, access_token: str, start: str, end: str) -> Conversations:
+    def conversations(
+        self, waba_id: str, access_token: str, start: str, end: str
+    ) -> Conversations:
         fields = self._get_fields(start, end)
         params = dict(fields=fields, access_token=access_token)
         response = self._request(
@@ -158,7 +163,8 @@ class FacebookWABAApi(BaseFacebookBaseApi):
 
     def get_waba(self, waba_id: str) -> dict:
         response = self._request(
-            f"https://graph.facebook.com/{WHATSAPP_VERSION}/{waba_id}/", headers=self._headers
+            f"https://graph.facebook.com/{WHATSAPP_VERSION}/{waba_id}/",
+            headers=self._headers,
         )  # TODO: Change to environment variables
 
         return response.json()
@@ -182,7 +188,6 @@ class FacebookPhoneNumbersAPI(BaseFacebookBaseApi):
 
 
 class OnPremiseBusinessProfileAPI(BaseOnPremiseAPI):
-
     _endpoint = "/v1/settings/business/profile"
 
     def get_profile(self) -> OnPremiseBusinessProfile:
@@ -196,7 +201,6 @@ class OnPremiseBusinessProfileAPI(BaseOnPremiseAPI):
 
 
 class OnPremiseAboutAPI(BaseOnPremiseAPI):
-
     _endpoint = "/v1/settings/profile/about"
 
     def get_about_text(self) -> str:
@@ -210,7 +214,6 @@ class OnPremiseAboutAPI(BaseOnPremiseAPI):
 
 
 class OnPremisePhotoAPI(BaseOnPremiseAPI):
-
     _endpoint = "/v1/settings/profile/photo"
 
     def get_photo_url(self) -> str:
@@ -227,7 +230,9 @@ class OnPremisePhotoAPI(BaseOnPremiseAPI):
         headers["Content-Type"] = photo.content_type
 
         try:
-            self._request(self._url, method="post", headers=headers, data=photo.file.getvalue())
+            self._request(
+                self._url, method="post", headers=headers, data=photo.file.getvalue()
+            )
         except FacebookApiException:
             raise UnableProcessProfilePhoto("Unable to process profile photo")
 

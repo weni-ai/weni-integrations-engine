@@ -8,18 +8,24 @@ from marketplace.connect.client import ConnectProjectClient
 class GenericChannelSerializer(AppTypeBaseSerializer):
     class Meta:
         model = App
-        fields = ("code", "uuid", "project_uuid", "platform", "config", "created_by", "created_on", "modified_by")
+        fields = (
+            "code",
+            "uuid",
+            "project_uuid",
+            "platform",
+            "config",
+            "created_by",
+            "created_on",
+            "modified_by",
+        )
         read_only_fields = ("code", "uuid", "platform")
 
     def create(self, validated_data):
-        from .type import GenericType
-
-        validated_data["platform"] = GenericType.platform
+        validated_data["platform"] = self.type_class.platform
         return super().create(validated_data)
 
 
 class GenericConfigSerializer(serializers.Serializer):
-
     def validate(self, attrs: dict):
         request = self.context.get("request")
         app = self.parent.instance
@@ -31,10 +37,9 @@ class GenericConfigSerializer(serializers.Serializer):
         for value in app_data.items():
             attrs[value[0]] = value[1]
 
-        attrs["channelUuid"] = app.config.get("channelUuid", None)
-        if attrs["channelUuid"] is None:
+        if app.flow_object_uuid is None:
             channel = self._create_channel(data, app)
-            attrs["channelUuid"] = channel.get("uuid")
+            app.flow_object_uuid = channel.get("uuid")
             attrs["title"] = channel.get("name")
 
         return super().validate(attrs)

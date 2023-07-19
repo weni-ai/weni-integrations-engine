@@ -197,7 +197,9 @@ STATIC_ROOT = os.path.join(BASE_DIR, "static")
 USE_OIDC = env.bool("USE_OIDC")
 
 if USE_OIDC:
-    REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"].append("mozilla_django_oidc.contrib.drf.OIDCAuthentication")
+    REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"].append(
+        "mozilla_django_oidc.contrib.drf.OIDCAuthentication"
+    )
 
     OIDC_RP_CLIENT_ID = env.str("OIDC_RP_CLIENT_ID")
     OIDC_RP_CLIENT_SECRET = env.str("OIDC_RP_CLIENT_SECRET")
@@ -206,7 +208,9 @@ if USE_OIDC:
     OIDC_OP_USER_ENDPOINT = env.str("OIDC_OP_USER_ENDPOINT")
     OIDC_OP_JWKS_ENDPOINT = env.str("OIDC_OP_JWKS_ENDPOINT")
     OIDC_RP_SIGN_ALGO = env.str("OIDC_RP_SIGN_ALGO", default="RS256")
-    OIDC_DRF_AUTH_BACKEND = "marketplace.accounts.backends.WeniOIDCAuthenticationBackend"
+    OIDC_DRF_AUTH_BACKEND = (
+        "marketplace.accounts.backends.WeniOIDCAuthenticationBackend"
+    )
     OIDC_RP_SCOPES = env.str("OIDC_RP_SCOPES", default="openid email")
 
 
@@ -257,17 +261,18 @@ CACHES = {
 
 
 # Extra configurations
-
+# Channels
 APPTYPE_WENI_WEB_CHAT_PATH = "channels.weni_web_chat.type.WeniWebChatType"
 APPTYPE_TELEGRAM_PATH = "channels.telegram.type.TelegramType"
 APPTYPE_WHATSAPP_DEMO_PATH = "channels.whatsapp_demo.type.WhatsAppDemoType"
 APPTYPE_WHATSAPP_PATH = "channels.whatsapp.type.WhatsAppType"
 APPTYPE_WHATSAPP_CLOUD_PATH = "channels.whatsapp_cloud.type.WhatsAppCloudType"
-APPTYPE_GENERIC_CHANNEL_PATH = "channels.generic.type.GenericType"
+APPTYPE_GENERIC_CHANNEL_PATH = "channels.generic.type.GenericChannelAppType"
 APPTYPE_INSTAGRAM_CHANNEL_PATH = "channels.instagram.type.InstagramType"
 APPTYPE_FACEBOOK_CHANNEL_PATH = "channels.facebook.type.FacebookType"
-
+# Externals
 APPTYPE_OMIE_PATH = "externals.omie.type.OmieType"
+APPTYPE_CHATGPT_PATH = "externals.chatgpt.type.ChatGPTType"
 
 APPTYPES_CLASSES = [
     APPTYPE_WENI_WEB_CHAT_PATH,
@@ -275,11 +280,11 @@ APPTYPES_CLASSES = [
     APPTYPE_WHATSAPP_DEMO_PATH,
     APPTYPE_WHATSAPP_PATH,
     APPTYPE_WHATSAPP_CLOUD_PATH,
-    APPTYPE_GENERIC_CHANNEL_PATH,
     APPTYPE_INSTAGRAM_CHANNEL_PATH,
     APPTYPE_FACEBOOK_CHANNEL_PATH,
-
     APPTYPE_OMIE_PATH,
+    APPTYPE_GENERIC_CHANNEL_PATH,
+    APPTYPE_CHATGPT_PATH,
 ]
 
 # These conditions avoid dependence between apptypes,
@@ -287,7 +292,7 @@ APPTYPES_CLASSES = [
 # just comment it in APPTYPES_CLASSES
 
 WHATSAPP_SYSTEM_USER_ACCESS_TOKEN = env.str("WHATSAPP_SYSTEM_USER_ACCESS_TOKEN")
-WHATSAPP_VERSION = env.str("WHATSAPP_VERSION", default="v13.0")
+WHATSAPP_VERSION = env.str("WHATSAPP_VERSION", default="v16.0")
 WHATSAPP_API_URL = urllib.parse.urljoin(
     env.str("WHATSAPP_API_URL", default="https://graph.facebook.com/"), WHATSAPP_VERSION
 )
@@ -297,7 +302,9 @@ if APPTYPE_WHATSAPP_PATH in APPTYPES_CLASSES:
         env.int("WHATSAPP_TIME_BETWEEN_SYNC_WABA_IN_HOURS", default=10) * 60 * 60
     )
     WHATSAPP_TIME_BETWEEN_SYNC_PHONE_NUMBERS_IN_HOURS = (
-        env.int("WHATSAPP_TIME_BETWEEN_SYNC_PHONE_NUMBERS_IN_HOURS", default=10) * 60 * 60
+        env.int("WHATSAPP_TIME_BETWEEN_SYNC_PHONE_NUMBERS_IN_HOURS", default=10)
+        * 60
+        * 60
     )
 
 
@@ -328,16 +335,34 @@ USE_GRPC = env.bool("USE_GRPC", default=False)
 # Celery
 
 CELERY_BEAT_SCHEDULE = {
-    "sync-whatsapp-apps": {"task": "sync_whatsapp_apps", "schedule": timedelta(hours=2)},
-    "sync-whatsapp-wabas": {"task": "sync_whatsapp_wabas", "schedule": timedelta(hours=5)},
-    "sync-whatsapp-cloud-wabas": {"task": "sync_whatsapp_cloud_wabas", "schedule": timedelta(hours=5)},
-    "sync-whatsapp-phone-numbers": {"task": "sync_whatsapp_phone_numbers", "schedule": timedelta(hours=5)},
-    "sync-whatsapp-cloud-phone-numbers": {"task": "sync_whatsapp_cloud_phone_numbers", "schedule": timedelta(hours=5)},
+    "sync-whatsapp-apps": {
+        "task": "sync_whatsapp_apps",
+        "schedule": timedelta(hours=2),
+    },
+    "sync-whatsapp-wabas": {
+        "task": "sync_whatsapp_wabas",
+        "schedule": timedelta(hours=5),
+    },
+    "sync-whatsapp-cloud-wabas": {
+        "task": "sync_whatsapp_cloud_wabas",
+        "schedule": timedelta(hours=5),
+    },
+    "sync-whatsapp-phone-numbers": {
+        "task": "sync_whatsapp_phone_numbers",
+        "schedule": timedelta(hours=5),
+    },
+    "sync-whatsapp-cloud-phone-numbers": {
+        "task": "sync_whatsapp_cloud_phone_numbers",
+        "schedule": timedelta(hours=5),
+    },
     "refresh-whatsapp-templates-from-facebook": {
         "task": "refresh_whatsapp_templates_from_facebook",
         "schedule": timedelta(seconds=1800),
     },
-    "check-apps-uncreated-on-flow": {"task": "check_apps_uncreated_on_flow", "schedule": timedelta(hours=2)}
+    "check-apps-uncreated-on-flow": {
+        "task": "check_apps_uncreated_on_flow",
+        "schedule": timedelta(hours=2),
+    },
 }
 
 

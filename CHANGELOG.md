@@ -1,3 +1,64 @@
+v2.6.4
+----------
+* Adjust wpp channel synchronization and add inactive deletion
+* Change the token used according to the type of whatsapp
+
+v2.6.3
+----------
+* Add base_url, username, password and fb_access_token for whatsapp on premisse synchronization
+* Separates access token according to whatsapp type
+* Adjust return to display total per template
+
+v2.6.2
+----------
+* Add delete template in sync task
+* Refact apptype to flow project
+
+v2.6.1
+----------
+* Report of messages sent by template
+
+v2.6.0
+----------
+* Create apptype chatgpt, add new methods to flows client
+
+v2.5.6
+----------
+* Fix update template with media
+* Add filters in template message
+* Fix error in CI branchs coverage comparison
+
+v2.5.5
+----------
+* Add template message id in TemplateTranslation
+* Create Edit template message function
+
+v2.5.4
+----------
+* Create type_class attribute in AppTypeBaseSerializer
+* Applying-black-to-project 
+* Adds create_external_service in client of flows
+
+v2.5.3
+----------
+* Add template migration 0005_alter_templatemessage_category
+* Generic AppType structure changes
+* Adds mock to sleep fuction in get_phone_number request test method
+* Search templates for wpp on premise, and wpp cloud.
+* Fetches data from waba and waba_id to create templates
+
+v2.5.2
+----------
+* Changes the channeltype_code attribute of all AppType's
+
+v2.5.1
+----------
+* Removing test file
+* Add pre-commit to project
+* Change codecov version
+* Apply black to the project
+* Update black in pre-commit to 23.3.0
+
 v2.5.0
 ----------
 * Adjust the internal client to point directly to Flows

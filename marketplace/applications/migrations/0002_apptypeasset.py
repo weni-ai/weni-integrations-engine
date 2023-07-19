@@ -7,7 +7,6 @@ import uuid
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
         ("applications", "0001_initial"),
@@ -17,15 +16,37 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="AppTypeAsset",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
-                ("uuid", models.UUIDField(default=uuid.uuid4, editable=False, unique=True)),
-                ("created_on", models.DateTimeField(auto_now_add=True, verbose_name="Created on")),
-                ("modified_on", models.DateTimeField(auto_now=True, verbose_name="Modified on")),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "uuid",
+                    models.UUIDField(default=uuid.uuid4, editable=False, unique=True),
+                ),
+                (
+                    "created_on",
+                    models.DateTimeField(auto_now_add=True, verbose_name="Created on"),
+                ),
+                (
+                    "modified_on",
+                    models.DateTimeField(auto_now=True, verbose_name="Modified on"),
+                ),
                 ("app_code", models.SlugField()),
                 (
                     "asset_type",
                     models.CharField(
-                        choices=[("IB", "image_banner"), ("IC", "icon"), ("AT", "attachment"), ("LK", "link")],
+                        choices=[
+                            ("IB", "image_banner"),
+                            ("IC", "icon"),
+                            ("AT", "attachment"),
+                            ("LK", "link"),
+                        ],
                         max_length=2,
                         verbose_name="Type",
                     ),

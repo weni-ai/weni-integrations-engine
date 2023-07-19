@@ -27,7 +27,7 @@ SYNC_WHATSAPP_PHONE_NUMBER_LOCK_KEY = "sync-whatsapp-phone-number-lock-app:{app_
 def sync_whatsapp_apps():
     apptype = APPTYPES.get("wpp")
     client = ConnectProjectClient()
-    channels = client.list_channels(apptype.channeltype_code)
+    channels = client.list_channels(apptype.flows_type_code)
 
     redis = get_redis_connection()
 
@@ -39,6 +39,21 @@ def sync_whatsapp_apps():
         with redis.lock(SYNC_WHATSAPP_LOCK_KEY):
             for channel in channels:
                 channel_config = channel.get("config")
+
+                if channel.get("uuid") is None:
+                    logger.info("Skipping channel with None UUID.")
+                    continue
+
+                if channel.get("is_active") is False:
+                    flow_channel_uuid = channel.get("uuid")
+                    apps_to_delete = App.objects.filter(
+                        flow_object_uuid=flow_channel_uuid
+                    )
+                    if apps_to_delete:
+                        delete_inactive_apps(apps_to_delete, flow_channel_uuid)
+
+                    logger.info(f"Skipping channel {flow_channel_uuid} is inactive.")
+                    continue
 
                 # Skipping WhatsApp demo channels, change to environment variable later
                 if "558231420933" in channel.get("address"):
@@ -59,22 +74,39 @@ def sync_whatsapp_apps():
                         )
                         continue
 
-                    if app.config.get("auth_token") != config.get("auth_token"):
-                        app.config["auth_token"] = config.get("auth_token")
+                    sync_fields = [
+                        "base_url",
+                        "username",
+                        "password",
+                        "auth_token",
+                        "fb_access_token",
+                    ]
+                    has_changes = False
+
+                    for field in sync_fields:
+                        if app.config.get(field) != config.get(field):
+                            app.config[field] = config.get(field)
+                            has_changes = True
+
+                    if has_changes:
                         app.modified_by = User.objects.get_admin_user()
                         app.save()
 
                 else:
-                    app = apptype.create_app(
-                        project_uuid=channel.get("project_uuid"),
-                        flow_object_uuid=channel.get("uuid"),
-                        config=config,
-                        created_by=User.objects.get_admin_user(),
-                    )
+                    try:
+                        app = apptype.create_app(
+                            project_uuid=channel.get("project_uuid"),
+                            flow_object_uuid=channel.get("uuid"),
+                            config=config,
+                            created_by=User.objects.get_admin_user(),
+                        )
 
-                    logger.info(
-                        f"A new whatsapp app was created automatically. UUID: {app.uuid}"
-                    )
+                        logger.info(
+                            f"A new whatsapp app was created automatically. UUID: {app.uuid}"
+                        )
+                    except Exception as e:
+                        logger.error(f"An error occurred while creating the app: {e}")
+                        continue
 
 
 @celery_app.task(name="sync_whatsapp_wabas")
@@ -326,3 +358,19 @@ def sync_whatsapp_cloud_phone_numbers():
         logger.error(
             f"Sync phone numbers task failed with {len(exceptions)} exception(s): {exceptions}"
         )
+
+
+def delete_inactive_apps(apps, flow_object_uuid):
+    for app in apps:
+        try:
+            # Ensures that it will only delete the app linked to the uuid of the flow
+            if str(app.flow_object_uuid) == flow_object_uuid:
+                templates = app.template.all()
+                if templates:
+                    app.template.all().delete()
+
+                app.delete()
+                logger.info(f"Inactive app: [{app.uuid}] deleted successfully")
+        except Exception as e:
+            logger.error(f"An error occurred while delete the app {app.uuid}: {e}")
+            continue

@@ -1,4 +1,3 @@
-
 import uuid
 
 from unittest.mock import patch
@@ -9,6 +8,9 @@ from django.utils.crypto import get_random_string
 from django.test import override_settings
 from rest_framework import status
 
+from marketplace.core.types.channels.whatsapp_base.exceptions import (
+    FacebookApiException,
+)
 from marketplace.core.tests.base import APIBaseTestCase, FakeRequestsResponse
 from marketplace.applications.models import App
 from marketplace.accounts.models import ProjectAuthorization
@@ -22,9 +24,14 @@ class RetrieveWhatsAppTestCase(APIBaseTestCase):
         super().setUp()
 
         self.app = App.objects.create(
-            code="wpp", created_by=self.user, project_uuid=str(uuid.uuid4()), platform=App.PLATFORM_WENI_FLOWS
+            code="wpp",
+            created_by=self.user,
+            project_uuid=str(uuid.uuid4()),
+            platform=App.PLATFORM_WENI_FLOWS,
         )
-        self.user_authorization = self.user.authorizations.create(project_uuid=self.app.project_uuid)
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
         self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
         self.url = reverse("wpp-app-detail", kwargs={"uuid": self.app.uuid})
 
@@ -52,7 +59,10 @@ class DestroyWhatsAppTestCase(APIBaseTestCase):
         super().setUp()
 
         self.app = App.objects.create(
-            code="wpp", created_by=self.user, project_uuid=str(uuid.uuid4()), platform=App.PLATFORM_WENI_FLOWS
+            code="wpp",
+            created_by=self.user,
+            project_uuid=str(uuid.uuid4()),
+            platform=App.PLATFORM_WENI_FLOWS,
         )
         self.user_authorization = self.user.authorizations.create(
             project_uuid=self.app.project_uuid, role=ProjectAuthorization.ROLE_ADMIN
@@ -76,7 +86,8 @@ class DestroyWhatsAppTestCase(APIBaseTestCase):
         self.user_authorization.set_role(ProjectAuthorization.ROLE_CONTRIBUTOR)
         self.request.set_user(self.super_user)
         self.super_user.authorizations.create(
-            project_uuid=self.app.project_uuid, role=ProjectAuthorization.ROLE_CONTRIBUTOR
+            project_uuid=self.app.project_uuid,
+            role=ProjectAuthorization.ROLE_CONTRIBUTOR,
         )
 
         response = self.request.delete(self.url, uuid=self.app.uuid)
@@ -108,7 +119,10 @@ class SharedWabasWhatsAppTestCase(APIBaseTestCase):
             {
                 "data": {
                     "granular_scopes": [
-                        {"scope": "business_management", "target_ids": ["1075799863665884"]},
+                        {
+                            "scope": "business_management",
+                            "target_ids": ["1075799863665884"],
+                        },
                         {
                             "scope": "whatsapp_business_management",
                             "target_ids": ["1075799863265884", "1072999863265884"],
@@ -122,7 +136,10 @@ class SharedWabasWhatsAppTestCase(APIBaseTestCase):
             {
                 "data": {
                     "granular_scopes": [
-                        {"scope": "business_management", "target_ids": ["1075799863665884"]},
+                        {
+                            "scope": "business_management",
+                            "target_ids": ["1075799863665884"],
+                        },
                     ]
                 }
             }
@@ -191,9 +208,7 @@ class UpdateWhatsAppWebHookTestCase(APIBaseTestCase):
             project_uuid=self.app.project_uuid
         )
         self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
-        self.url = reverse(
-            "wpp-app-update-webhook", kwargs={"uuid": self.app.uuid}
-        )
+        self.url = reverse("wpp-app-update-webhook", kwargs={"uuid": self.app.uuid})
 
     @property
     def view(self):
@@ -236,3 +251,130 @@ class UpdateWhatsAppWebHookTestCase(APIBaseTestCase):
         response = self.request.patch(self.url, data, uuid=self.app.uuid)
         self.assertEqual(response.json, {"detail": "Missing key: 'config'"})
         self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class WhatsAppReportSentMessagesTestCase(APIBaseTestCase):
+    view_class = WhatsAppViewSet
+
+    def setUp(self):
+        super().setUp()
+
+        self.app = App.objects.create(
+            code="wpp",
+            created_by=self.user,
+            project_uuid=str(uuid.uuid4()),
+            platform=App.PLATFORM_WENI_FLOWS,
+            flow_object_uuid=str(uuid.uuid4()),
+        )
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+        self.url = reverse(
+            "wpp-app-report-sent-messages", kwargs={"uuid": self.app.uuid}
+        )
+
+    @property
+    def view(self):
+        return self.view_class.as_view({"get": "report_sent_messages"})
+
+    @patch("marketplace.flows.client.FlowsClient.get_sent_messagers")
+    def test_report_sent_messages_success(self, mock_flows_client):
+        mock_flows_client.return_value.status_code = status.HTTP_200_OK
+
+        params = {
+            "project_uuid": str(self.app.project_uuid),
+            "start_date": "01-05-2023",
+            "end_date": "12-05-2023",
+        }
+        response = self.request.get(self.url, params=params, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_report_sent_messages_without_params(self):
+        # Without project_uuid
+        params = {
+            "start_date": "01-05-2023",
+            "end_date": "12-05-2023",
+        }
+        response = self.request.get(self.url, params=params, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        # Without start_date
+        params = {
+            "project_uuid": str(self.app.project_uuid),
+            "end_date": "12-05-2023",
+        }
+        response = self.request.get(self.url, params=params, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        # Without end_date
+        params = {
+            "project_uuid": str(self.app.project_uuid),
+            "start_date": "01-05-2023",
+        }
+        response = self.request.get(self.url, params=params, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class MockConversation(object):
+    def __dict__(self) -> dict:
+        return dict(
+            user_initiated=2,
+            business_initiated=2099,
+            total=2101,
+        )
+
+
+class WhatsAppOnPremisseConversationsTestCase(APIBaseTestCase):
+    view_class = WhatsAppViewSet
+
+    def setUp(self):
+        super().setUp()
+
+        self.app = App.objects.create(
+            code="wpp",
+            created_by=self.user,
+            config={
+                "fb_access_token": str(uuid.uuid4()),
+                "fb_business_id": "0123456789",
+            },
+            project_uuid=str(uuid.uuid4()),
+            platform=App.PLATFORM_WENI_FLOWS,
+        )
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+        self.start_date = "6-1-2023"
+        self.end_date = "6-30-2023"
+        self.url = reverse("wpp-app-conversations", kwargs={"uuid": self.app.uuid})
+
+    @property
+    def view(self):
+        return self.view_class.as_view({"get": "conversations"})
+
+    @patch(
+        "marketplace.core.types.channels.whatsapp_base.requests.facebook.FacebookConversationAPI.conversations"
+    )
+    def test_get_conversations(self, mock_conversations):
+        mock_conversations.return_value = MockConversation()
+
+        params = {
+            "start": self.start_date,
+            "end": self.end_date,
+        }
+        response = self.request.get(self.url, params=params, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    @patch(
+        "marketplace.core.types.channels.whatsapp_base.requests.facebook.FacebookConversationAPI.conversations"
+    )
+    def test_get_conversations_with_facebook_api_exception(self, mock_conversations):
+        error_message = "Facebook API exception"
+        mock_conversations.side_effect = FacebookApiException(error_message)
+
+        params = {
+            "start": self.start_date,
+            "end": self.end_date,
+        }
+        response = self.request.get(self.url, params=params, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json, ["Facebook API exception"])

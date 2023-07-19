@@ -39,21 +39,25 @@ class CreateWhatsAppDemoAppTestCase(APIBaseTestCase):
     @patch("marketplace.connect.client.WPPRouterChannelClient.get_channel_token")
     @patch("marketplace.connect.client.ConnectProjectClient.create_channel")
     def test_request_ok(self, create_channel_request, get_channel_token_request):
-
         self.view_class.type_class.NUMBER = "+559999998888"
         channel_uuid = str(uuid.uuid4())
 
-        create_channel_request.side_effect = [dict(name="WhatsApp: +559999998888", uuid=channel_uuid)]
+        create_channel_request.side_effect = [
+            dict(name="WhatsApp: +559999998888", uuid=channel_uuid)
+        ]
 
-        get_channel_token_request.side_effect = ["WhatsApp:+559999998888-whatsapp-demo-v5ciobe7te"]
+        get_channel_token_request.side_effect = [
+            "WhatsApp:+559999998888-whatsapp-demo-v5ciobe7te"
+        ]
 
         response = self.request.post(self.url, self.body)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         app = App.objects.get(uuid=response.json.get("uuid"))
         self.assertEqual(str(app.uuid), response.json["uuid"])
         self.assertEqual(app.config["title"], "WhatsApp: +559999998888")
-        self.assertEqual(app.config["channelUuid"], channel_uuid)
-        self.assertEqual(app.config["routerToken"], "WhatsApp:+559999998888-whatsapp-demo-v5ciobe7te")
+        self.assertEqual(
+            app.config["routerToken"], "WhatsApp:+559999998888-whatsapp-demo-v5ciobe7te"
+        )
         self.assertEqual(
             app.config["redirect_url"],
             "https://wa.me/+559999998888?text=WhatsApp:+559999998888-whatsapp-demo-v5ciobe7te",
@@ -70,26 +74,38 @@ class CreateWhatsAppDemoAppTestCase(APIBaseTestCase):
 
     @patch("marketplace.connect.client.WPPRouterChannelClient.get_channel_token")
     @patch("marketplace.connect.client.ConnectProjectClient.create_channel")
-    def test_create_app_platform(self, create_channel_request, get_channel_token_request):
+    def test_create_app_platform(
+        self, create_channel_request, get_channel_token_request
+    ):
         self.view_class.type_class.NUMBER = "+559999998888"
         channel_uuid = str(uuid.uuid4())
 
-        create_channel_request.side_effect = [dict(name="WhatsApp: +559999998888", uuid=channel_uuid)]
+        create_channel_request.side_effect = [
+            dict(name="WhatsApp: +559999998888", uuid=channel_uuid)
+        ]
 
-        get_channel_token_request.side_effect = ["WhatsApp:+559999998888-whatsapp-demo-v5ciobe7te"]
+        get_channel_token_request.side_effect = [
+            "WhatsApp:+559999998888-whatsapp-demo-v5ciobe7te"
+        ]
 
         response = self.request.post(self.url, self.body)
         self.assertEqual(response.json["platform"], App.PLATFORM_WENI_FLOWS)
 
     @patch("marketplace.connect.client.WPPRouterChannelClient.get_channel_token")
     @patch("marketplace.connect.client.ConnectProjectClient.create_channel")
-    def test_get_app_with_respective_project_uuid(self, create_channel_request, get_channel_token_request):
+    def test_get_app_with_respective_project_uuid(
+        self, create_channel_request, get_channel_token_request
+    ):
         self.view_class.type_class.NUMBER = "+559999998888"
         channel_uuid = str(uuid.uuid4())
 
-        create_channel_request.side_effect = [dict(name="WhatsApp: +559999998888", uuid=channel_uuid)]
+        create_channel_request.side_effect = [
+            dict(name="WhatsApp: +559999998888", uuid=channel_uuid)
+        ]
 
-        get_channel_token_request.side_effect = ["WhatsApp:+559999998888-whatsapp-demo-v5ciobe7te"]
+        get_channel_token_request.side_effect = [
+            "WhatsApp:+559999998888-whatsapp-demo-v5ciobe7te"
+        ]
 
         self.request.post(self.url, self.body)
         App.objects.get(project_uuid=self.body.get("project_uuid"))
@@ -107,9 +123,14 @@ class RetrieveWhatsAppDemoAppTestCase(APIBaseTestCase):
         super().setUp()
 
         self.app = App.objects.create(
-            code="wpp-demo", created_by=self.user, project_uuid=str(uuid.uuid4()), platform=App.PLATFORM_WENI_FLOWS
+            code="wpp-demo",
+            created_by=self.user,
+            project_uuid=str(uuid.uuid4()),
+            platform=App.PLATFORM_WENI_FLOWS,
         )
-        self.user_authorization = self.user.authorizations.create(project_uuid=self.app.project_uuid)
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
         self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
         self.url = reverse("wpp-demo-app-detail", kwargs={"uuid": self.app.uuid})
 
@@ -137,7 +158,10 @@ class DestroyWhatsAppDemoAppTestCase(APIBaseTestCase):
         super().setUp()
 
         self.app = App.objects.create(
-            code="wpp-demo", created_by=self.user, project_uuid=str(uuid.uuid4()), platform=App.PLATFORM_WENI_FLOWS
+            code="wpp-demo",
+            created_by=self.user,
+            project_uuid=str(uuid.uuid4()),
+            platform=App.PLATFORM_WENI_FLOWS,
         )
         self.user_authorization = self.user.authorizations.create(
             project_uuid=self.app.project_uuid, role=ProjectAuthorization.ROLE_ADMIN

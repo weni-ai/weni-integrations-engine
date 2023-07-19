@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("applications", "0011_auto_20210903_1613"),
     ]
@@ -14,7 +13,12 @@ class Migration(migrations.Migration):
             model_name="apptypeasset",
             name="asset_type",
             field=models.CharField(
-                choices=[("IB", "Image Banner"), ("IC", "Icon"), ("AT", "Attachment"), ("LK", "Link")],
+                choices=[
+                    ("IB", "Image Banner"),
+                    ("IC", "Icon"),
+                    ("AT", "Attachment"),
+                    ("LK", "Link"),
+                ],
                 max_length=2,
                 verbose_name="Type",
             ),

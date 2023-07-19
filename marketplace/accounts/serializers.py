@@ -9,7 +9,6 @@ User = get_user_model()
 
 
 class ProjectAuthorizationProtoSerializer(proto_serializers.ModelProtoSerializer):
-
     user = serializers.SlugRelatedField(slug_field="email", queryset=User.objects.all())
 
     class Meta:
@@ -19,7 +18,6 @@ class ProjectAuthorizationProtoSerializer(proto_serializers.ModelProtoSerializer
 
 
 class UserProtoSerializer(proto_serializers.ModelProtoSerializer):
-
     user = serializers.SlugRelatedField(slug_field="email", queryset=User.objects.all())
 
     class Meta:

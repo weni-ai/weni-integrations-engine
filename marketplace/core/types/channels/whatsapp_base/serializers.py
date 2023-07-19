@@ -10,7 +10,9 @@ class WhatsAppConfigWABASerializer(serializers.Serializer):
     id_ = serializers.CharField(required=False)
     name = serializers.CharField(required=False)
     timezone = serializers.SerializerMethodField(required=False)
-    namespace = serializers.CharField(required=False, source="message_template_namespace")
+    namespace = serializers.CharField(
+        required=False, source="message_template_namespace"
+    )
 
     def get_timezone(self, instance):
         timezone_id = instance.get("timezone_id")
@@ -81,7 +83,9 @@ class WhatsAppBusinessProfileSerializer(serializers.Serializer):
     )
 
     description = serializers.CharField(required=False)
-    vertical = serializers.ChoiceField(choices=VERTICAl_CHOICES, required=False, default="")
+    vertical = serializers.ChoiceField(
+        choices=VERTICAl_CHOICES, required=False, default=""
+    )
     vertical_choices = serializers.SerializerMethodField()
 
     def get_vertical_choices(self, _instance):
