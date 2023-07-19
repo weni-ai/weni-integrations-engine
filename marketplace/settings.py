@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "marketplace.interactions",
     "marketplace.grpc",
     "marketplace.wpp_templates",
+    "marketplace.event_driven",
     # installed apps
     "rest_framework",
     "storages",
