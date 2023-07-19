@@ -116,6 +116,9 @@ class AppType(AbstractAppType):
             *args, **kwargs, code=self.code, platform=self.platform
         )
 
+    def template_type_setup(self) -> dict:
+        raise NotImplementedError(f"App: {self.name} cannot be configured from a project template!")
+
 
 class GenericAppType(AppType):
     flows_type_code = None
