@@ -38,6 +38,9 @@ else:
     print("Error: Invalid JSON response from Codecov API")
     exit(1)
 
+print(f"local_misses:{local_misses}")
+print(f"main_misses:{main_misses}")
+
 if local_misses is not None and main_misses is not None:
     if local_misses > main_misses:
         print(f"Number of test lines decreased by {local_misses - main_misses}")
