@@ -12,36 +12,9 @@ class WhatsAppDemoViewSet(views.BaseAppTypeViewSet):
     def perform_create(self, serializer):
         user = self.request.user
         type_class = self.type_class
-        instance = serializer.save(code=self.type_class.code)
+        app = serializer.save(code=self.type_class.code)
 
-        data = dict(
-            number=type_class.NUMBER,
-            country=type_class.COUNTRY,
-            base_url=type_class.BASE_URL,
-            username=type_class.USERNAME,
-            password=type_class.PASSWORD,
-            facebook_namespace=type_class.FACEBOOK_NAMESPACE,
-            facebook_template_list_domain="graph.facebook.com",
-            facebook_business_id="null",
-            facebook_access_token="null",
-        )
+        channel_client = ConnectProjectClient()
+        channel_token_client = WPPRouterChannelClient()
 
-        client = ConnectProjectClient()
-        result = client.create_channel(
-            user.email, str(instance.project_uuid), data, instance.flows_type_code
-        )
-
-        instance.config["title"] = result.get("name")
-        instance.flow_project_uuid = result.get("uuid")
-
-        channel_client = WPPRouterChannelClient()
-        channel_token = channel_client.get_channel_token(
-            result.get("uuid"), result.get("name")
-        )
-
-        instance.config["routerToken"] = channel_token
-        instance.config[
-            "redirect_url"
-        ] = f"https://wa.me/{type_class.NUMBER}?text={channel_token}"
-        instance.modified_by = user
-        instance.save()
+        type_class.configure_app(app, user, channel_client, channel_token_client)
