@@ -3,12 +3,28 @@ from .views import GenericExternalsViewSet
 from marketplace.interfaces.flows import FlowsInterface
 
 from marketplace.core.types.base import AppType, GenericAppType
+from marketplace.core.types.externals.generic.views import (
+    DetailGenericExternals,
+    ExternalsIcons,
+    ExternalsAppTypes,
+)
 
 
 class GenericExternalAppType(GenericAppType):
     view_class = GenericExternalsViewSet
     category = AppType.CATEGORY_EXTERNAL
     code = "generic-external"
+
+    EXTRA_VIEWS = [
+        ("detail", DetailGenericExternals, "externals-detail"),
+        ("icons", ExternalsIcons, "externals-icons"),
+        ("types", ExternalsAppTypes, "externals-types"),
+    ]
+
+    @classmethod
+    def get_extra_urls(cls, router):
+        for route, view, basename in cls.EXTRA_VIEWS:
+            router.register(route, view, basename=basename)
 
     @classmethod
     def list(cls, client: FlowsInterface, flows_type_code=None):

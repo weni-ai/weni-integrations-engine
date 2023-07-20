@@ -1,6 +1,11 @@
-from abc import ABC, abstractproperty
+from abc import (
+    ABC,
+    abstractproperty,
+)
 
 from django.db.models.query import QuerySet
+from django.urls import path, include
+
 from rest_framework.views import APIView
 
 from marketplace.applications.models import AppTypeAsset, App
@@ -64,6 +69,15 @@ class AbstractAppType(ABC):
     def flows_type_code(self) -> str:
         ...  # pragma: no cover
 
+    @classmethod
+    def get_urls(cls):
+        """
+        Return a list of URL patterns for this AppType.
+
+        Each class that inherits from this abstract class must implement this method.
+        """
+        return []
+
 
 class AppType(AbstractAppType):
     """
@@ -116,6 +130,13 @@ class AppType(AbstractAppType):
             *args, **kwargs, code=self.code, platform=self.platform
         )
 
+    @classmethod
+    def get_urls(cls, router, urlpatterns):
+        if cls.view_class is not None:
+            router.register("apps", cls.view_class, basename=f"{cls.code}-app")
+            urlpatterns.append(path(f"apptypes/{cls.code}/", include(router.urls)))
+        return urlpatterns
+
 
 class GenericAppType(AppType):
     flows_type_code = None
@@ -126,3 +147,21 @@ class GenericAppType(AppType):
     bg_color = "#d1fcc9cc"
     config_design = "popup"
     platform = App.PLATFORM_WENI_FLOWS
+
+    @classmethod
+    def get_urls(cls, router, urlpatterns):
+        cls.get_extra_urls(router)
+        if cls.view_class is not None:
+            router.register("apps", cls.view_class, basename=f"{cls.code}-app")
+            instance = cls()
+            category = instance.get_category_display()
+            urlpatterns.append(
+                path(f"generics/{category}/{cls.code}/", include(router.urls))
+            )
+
+        return urlpatterns
+
+    @classmethod
+    def get_extra_urls(cls, router):
+        # This is a 'do nothing' implementation for types that don't have extra urls
+        pass
