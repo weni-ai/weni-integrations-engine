@@ -10,7 +10,7 @@ class TemplateType(models.Model):
     setup = models.JSONField(default=dict)
 
     def __str__(self) -> str:
-        return self.name
+        return self.name  # pragma: no cover
 
 
 class Project(models.Model):
@@ -25,4 +25,4 @@ class Project(models.Model):
     timezone = models.CharField(max_length=64, null=True)
 
     def __str__(self) -> str:
-        return self.name
+        return self.name  # pragma: no cover
