@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 if TYPE_CHECKING:
     from marketplace.core.types.base import AppType  # pragma: no cover
 
+
 User = get_user_model()
 
 
