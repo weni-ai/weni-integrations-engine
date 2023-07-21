@@ -395,7 +395,8 @@ IMPORTANCE_CHANNELS_ORDER = env.list("IMPORTANCE_CHANNELS_ORDER", default=[])
 USE_EDA = env.bool("USE_EDA", default=False)
 
 if USE_EDA:
-    EDA_CONSUMERS_REGISTRY = "marketplace.event_driven.registry.consumers_registry"
+    EDA_CONNECTION_BACKEND = "marketplace.event_driven.backends.PyAMQPConnectionBackend"
+    EDA_CONSUMERS_HANDLE = "marketplace.event_driven.handle.handle_consumers"
 
     EDA_BROKER_HOST = env("EDA_BROKER_HOST", default="localhost")
     EDA_BROKER_PORT = env.int("EDA_BROKER_PORT", default=5672)
