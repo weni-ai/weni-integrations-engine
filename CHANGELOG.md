@@ -1,3 +1,11 @@
+v2.6.5
+----------
+* Changes percentage coverage to number of lines tested
+* Setup projects app
+* Create Template type model
+* Create Project model
+* Add priority in assets and refact django-admin form
+
 v2.6.4
 ----------
 * Adjust wpp channel synchronization and add inactive deletion

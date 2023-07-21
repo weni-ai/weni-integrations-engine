@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     # marketplace apps
     "marketplace.accounts",
     "marketplace.core",
+    "marketplace.projects",
     "marketplace.applications",
     "marketplace.interactions",
     "marketplace.grpc",

@@ -148,6 +148,12 @@ class AppTypeTestCase(TestCase):
 
         self.assertEqual(fake_type_instance.get_ratings_average(), 2.5)
 
+    def test_template_setup_raises_not_implemented_error(self):
+        fake_type_instance = self.FakeType()
+
+        with self.assertRaises(NotImplementedError):
+            fake_type_instance.template_type_setup()
+
 
 class BaseAppTypeViewSetTest(TestCase):
     def setUp(self):
