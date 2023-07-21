@@ -56,7 +56,7 @@ class WhatsAppDemoType(AppType):
             facebook_access_token="null",
         )
 
-        channel = channel_client.create_channel(user.email, str(app.project_uuid), data, app.channeltype_code)
+        channel = channel_client.create_channel(user.email, str(app.project_uuid), data, app.flows_type_code)
 
         app.config["title"] = channel.get("name")
         app.flow_project_uuid = channel.get("uuid")
