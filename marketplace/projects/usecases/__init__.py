@@ -1,0 +1,1 @@
+from .template_type_creation import create_template_type
