@@ -1,0 +1,1 @@
+from .template_type_consumer import TemplateTypeConsumer
