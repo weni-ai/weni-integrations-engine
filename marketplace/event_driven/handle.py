@@ -1,8 +1,7 @@
 from amqp.channel import Channel
 
-from .consumers import TemplateTypeConsumer, ProjectConsumer
+from marketplace.projects.handle import handle_consumers as project_handle_consumers
 
 
 def handle_consumers(channel: Channel) -> None:
-    channel.basic_consume("integrations.template-types", callback=TemplateTypeConsumer.consume)
-    channel.basic_consume("integrations.projects", callback=ProjectConsumer.consume)
+    project_handle_consumers(channel)
