@@ -15,6 +15,7 @@ class Command(BaseCommand):
             port=settings.EDA_BROKER_PORT,
             userid=settings.EDA_BROKER_USER,
             password=settings.EDA_BROKER_PASSWORD,
+            virtual_host=settings.EDA_VIRTUAL_HOST,
         )
 
         connection_backend.start_consuming(connection_params)
