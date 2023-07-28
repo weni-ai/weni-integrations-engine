@@ -13,6 +13,8 @@ class PyAMQPConnectionBackend:
         while True:
             try:
                 connection.drain_events()
+            except amqp.exceptions.AMQPError as error:
+                raise error
             except Exception as error:
                 # TODO: Handle exceptions with RabbitMQ
                 print("error on drain_events:", type(error), error)
