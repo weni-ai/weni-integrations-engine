@@ -1,3 +1,5 @@
+import time
+
 import amqp
 
 
@@ -7,16 +9,26 @@ class PyAMQPConnectionBackend:
     def __init__(self, handle_consumers: callable):
         self._handle_consumers = handle_consumers
 
+    def _drain_events(self, connection: amqp.connection.Connection):
+        while True:
+            try:
+                connection.drain_events()
+            except Exception as error:
+                # TODO: Handle exceptions with RabbitMQ
+                print("error on drain_events:", type(error), error)
+
     def start_consuming(self, connection_params: dict):
-        with amqp.Connection(**connection_params) as connection:
-            channel = connection.channel()
+        while True:
+            try:
+                with amqp.Connection(**connection_params) as connection:
+                    channel = connection.channel()
 
-            self._handle_consumers(channel)
+                    self._handle_consumers(channel)
 
-            print(self._start_message)
+                    print(self._start_message)
 
-            while True:
-                try:
-                    connection.drain_events()
-                except Exception as error:
-                    print(error)
+                    self._drain_events(connection)
+
+            except (amqp.exceptions.AMQPError, ConnectionRefusedError) as error:
+                print(f"Connection error: {error}")
+                time.sleep(5)
