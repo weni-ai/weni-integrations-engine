@@ -4,8 +4,13 @@ from django.urls import reverse
 
 from rest_framework import status
 
-from unittest.mock import patch
-from unittest.mock import MagicMock
+from unittest.mock import (
+    patch,
+    call,
+    MagicMock,
+)
+
+from django.contrib.auth import get_user_model
 
 from marketplace.core.tests.base import APIBaseTestCase
 from marketplace.applications.models import App
@@ -13,8 +18,15 @@ from marketplace.accounts.models import ProjectAuthorization
 from marketplace.core.types.channels.whatsapp_base.exceptions import (
     FacebookApiException,
 )
+from marketplace.core.types.channels.whatsapp_base.serializers import (
+    WhatsAppBusinessContactSerializer,
+)
+
+from marketplace.core.types.channels.whatsapp_cloud.requests import PhoneNumbersRequest
 
 from ..views import WhatsAppCloudViewSet
+
+User = get_user_model()
 
 
 class RetrieveWhatsAppCloudTestCase(APIBaseTestCase):
@@ -284,3 +296,447 @@ class WhatsAppCloudConversationsTestCase(APIBaseTestCase):
         self.assertEqual(
             response.json, ["This app does not have fb_access_token in settings"]
         )
+
+    @patch(
+        "marketplace.core.types.channels.whatsapp_cloud.views.settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN",
+        None,
+    )
+    def test_get_conversations_without_wa_waba_id(self):
+        app = App.objects.create(
+            code="wpp-cloud",
+            config={"fb_access_token": str(uuid.uuid4())},
+            created_by=self.user,
+            project_uuid=str(uuid.uuid4()),
+            platform=App.PLATFORM_WENI_FLOWS,
+        )
+        authorization = self.user.authorizations.create(project_uuid=app.project_uuid)
+        authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+
+        params = {
+            "start": self.start_date,
+            "end": self.end_date,
+        }
+        response = self.request.get(self.url, params=params, uuid=app.uuid)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.json,
+            ["This app does not have WABA (Whatsapp Business Account ID) configured"],
+        )
+
+
+class CreateWhatsAppCloudTestCase(APIBaseTestCase):
+    view_class = WhatsAppCloudViewSet
+
+    def setUp(self):
+        super().setUp()
+
+        self.payload = {
+            "project_uuid": str(uuid.uuid4()),
+            "input_token": "token0123456789",
+            "waba_id": "0123456789",
+            "phone_number_id": "0123456789",
+            "business_id": "0123456789",
+        }
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.payload["project_uuid"]
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+        self.url = reverse("wpp-cloud-app-list")
+
+    @property
+    def view(self):
+        return self.view_class.as_view(APIBaseTestCase.ACTION_CREATE)
+
+    @patch("requests.get")
+    @patch("requests.post")
+    @patch("marketplace.core.types.channels.whatsapp_cloud.views.PhoneNumbersRequest")
+    @patch("marketplace.core.types.channels.whatsapp_cloud.views.ConnectProjectClient")
+    @patch("marketplace.core.types.channels.whatsapp_cloud.views.celery_app.send_task")
+    def test_create_whatsapp_cloud(
+        self,
+        mock_send_task,
+        mock_ConnectProjectClient,
+        mock_PhoneNumbersRequest,
+        mock_post,
+        mock_get,
+    ):
+        mock_get.return_value.status_code = status.HTTP_200_OK
+        mock_post.return_value.status_code = status.HTTP_200_OK
+        mock_get.return_value.json.return_value = {
+            "message_template_namespace": "some value"
+        }
+        mock_post.return_value.json.return_value = {
+            "allocation_config_id": "Some Value"
+        }
+        phone_number_request_instance = mock_PhoneNumbersRequest.return_value
+        phone_number_request_instance.get_phone_number.return_value = {
+            "display_phone_number": "123456789",
+            "verified_name": "Some Name",
+        }
+        connect_project_client_instance = mock_ConnectProjectClient.return_value
+        connect_project_client_instance.create_wac_channel.return_value = {
+            "uuid": str(uuid.uuid4())
+        }
+
+        response = self.request.post(self.url, body=self.payload)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        mock_send_task.assert_has_calls(
+            [
+                call(name="sync_whatsapp_cloud_wabas"),
+                call(name="sync_whatsapp_cloud_phone_numbers"),
+            ]
+        )
+
+    @patch("requests.get")
+    @patch("requests.post")
+    def test_create_wpp_cloud_failure_on_assigned_users(
+        self,
+        mock_post,
+        mock_get,
+    ):
+        mock_get.return_value = MagicMock(status_code=status.HTTP_200_OK)
+
+        returns_for_post = [
+            MagicMock(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                json=lambda: {"error_message": "Some Error Assigned Users"},
+            )
+        ]
+        mock_post.side_effect = returns_for_post
+
+        response = self.request.post(self.url, body=self.payload)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json, {"error_message": "Some Error Assigned Users"})
+
+    @patch("requests.get")
+    @patch("requests.post")
+    def test_create_wpp_cloud_failure_on_credit_sharing_and_attach(
+        self,
+        mock_post,
+        mock_get,
+    ):
+        mock_get.return_value = MagicMock(
+            status_code=status.HTTP_200_OK,
+            json=lambda: {"message_template_namespace": "some value"},
+        )
+
+        first_post_return = MagicMock(
+            status_code=status.HTTP_200_OK, json=lambda: {"some_key": "some value"}
+        )
+        second_post_return = MagicMock(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            json=lambda: {"error_message": "Some Error Sharing"},
+        )
+        mock_post.side_effect = [first_post_return, second_post_return]
+
+        response = self.request.post(self.url, body=self.payload)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json, {"error_message": "Some Error Sharing"})
+
+    @patch("requests.get")
+    @patch("requests.post")
+    def test_create_wpp_cloud_failure_on_subscribed_apps(
+        self,
+        mock_post,
+        mock_get,
+    ):
+        mock_get.return_value = MagicMock(status_code=status.HTTP_200_OK)
+
+        returns_for_post = [
+            MagicMock(status_code=status.HTTP_200_OK),
+            MagicMock(status_code=status.HTTP_200_OK),
+            MagicMock(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                json=lambda: {"error_message": "Some Error Subscribed Apps"},
+            ),
+        ]
+        mock_post.side_effect = returns_for_post
+
+        response = self.request.post(self.url, body=self.payload)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json, {"error_message": "Some Error Subscribed Apps"})
+
+    @patch("requests.get")
+    @patch("requests.post")
+    def test_create_wpp_cloud_failure_on_register(
+        self,
+        mock_post,
+        mock_get,
+    ):
+        mock_get.return_value = MagicMock(status_code=status.HTTP_200_OK)
+
+        returns_for_post = [
+            MagicMock(status_code=status.HTTP_200_OK),
+            MagicMock(status_code=status.HTTP_200_OK),
+            MagicMock(status_code=status.HTTP_200_OK),
+            MagicMock(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                json=lambda: {"error_message": "Some Error Subscribed Apps"},
+            ),
+        ]
+        mock_post.side_effect = returns_for_post
+
+        response = self.request.post(self.url, body=self.payload)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json, {"error_message": "Some Error Subscribed Apps"})
+
+
+class MockCloudProfileContactFacade:
+    def get_profile(self):
+        return {
+            "websites": ["https://example.com"],
+            "email": "contact@example.com",
+            "address": "123 Example St.",
+        }
+
+    def set_profile(self, data: dict):
+        pass
+
+
+class WhatsAppCloudContactTestCase(APIBaseTestCase):
+    view_class = WhatsAppCloudViewSet
+
+    def setUp(self):
+        super().setUp()
+
+        self.app = App.objects.create(
+            code="wpp-cloud",
+            config={
+                "fb_access_token": str(uuid.uuid4()),
+                "wa_waba_id": "0123456789",
+                "wa_phone_number_id": "1234567890",
+            },
+            created_by=self.user,
+            project_uuid=uuid.uuid4(),
+            flow_object_uuid=str(uuid.uuid4()),
+            platform=App.PLATFORM_WENI_FLOWS,
+        )
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+        self.url = reverse("wpp-cloud-app-contact", kwargs={"uuid": self.app.uuid})
+
+    @property
+    def view(self):
+        return self.view_class.as_view({"get": "contact"})
+
+    def test_contact_without_wa_phone_number_id(self):
+        app_without_phone_number_id = App.objects.create(
+            code="wpp-cloud",
+            config={"fb_access_token": str(uuid.uuid4()), "wa_waba_id": "0123456789"},
+            created_by=self.user,
+            project_uuid=str(uuid.uuid4()),
+            platform=App.PLATFORM_WENI_FLOWS,
+        )
+        authorization = self.user.authorizations.create(
+            project_uuid=app_without_phone_number_id.project_uuid
+        )
+        authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+
+        response_url = reverse(
+            "wpp-cloud-app-contact", kwargs={"uuid": app_without_phone_number_id.uuid}
+        )
+        response = self.request.get(response_url, uuid=app_without_phone_number_id.uuid)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json, ["The phone number is not configured"])
+
+    @patch(
+        "marketplace.core.types.channels.whatsapp_cloud.views.WhatsAppCloudViewSet.business_profile_class"
+    )
+    def test_get_contact_success(self, MockBusinessProfileClass):
+        profile_data = {
+            "websites": ["https://example.com"],
+            "email": "contact@example.com",
+            "address": "123 Example St.",
+        }
+
+        mock_instance = MockBusinessProfileClass.return_value
+        mock_instance.get_profile.return_value = profile_data
+
+        with patch.object(
+            WhatsAppCloudViewSet, "serializer_class", WhatsAppBusinessContactSerializer
+        ):
+            view = self.view_class()
+            view.business_profile_class = mock_instance
+            response = self.request.get(self.url, uuid=self.app.uuid)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertEqual(response.data, profile_data)
+
+    @patch(
+        "marketplace.core.types.channels.whatsapp_cloud.views.WhatsAppCloudViewSet.business_profile_class"
+    )
+    def test_get_contact_with_facebook_api_exception(self, MockBusinessProfileClass):
+        def raise_facebook_api_exception(*args, **kwargs):
+            raise FacebookApiException("Simulated exception")
+
+        mock_instance = MockBusinessProfileClass.return_value
+        mock_instance.get_profile.side_effect = raise_facebook_api_exception
+
+        with patch.object(
+            WhatsAppCloudViewSet, "serializer_class", WhatsAppBusinessContactSerializer
+        ):
+            view = self.view_class()
+            view.business_profile_class = mock_instance
+            response = self.request.get(self.url, uuid=self.app.uuid)
+
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+            self.assertEqual(
+                response.json[0],
+                "There was a problem requesting the On-Premise API, check if your authentication token is correct",
+            )
+
+
+class WhatsAppCloudDebugTokenTestCase(APIBaseTestCase):
+    view_class = WhatsAppCloudViewSet
+
+    def setUp(self):
+        super().setUp()
+        self.url = reverse("wpp-cloud-app-debug-token")
+
+    @property
+    def view(self):
+        return self.view_class.as_view({"get": "debug_token"})
+
+    @patch("requests.get")
+    def test_missing_input_token(self, mock_get):
+        response = self.request.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json, ["input_token is a required parameter!"])
+
+    @patch("requests.get")
+    def test_non_200_response_from_request(self, mock_get):
+        mock_get.return_value.status_code = 400
+        response = self.request.get(self.url, {"input_token": "some_token"})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    @patch("requests.get")
+    def test_invalid_token_permissions(self, mock_get):
+        mock_get.return_value.json.return_value = ["Invalid token permissions"]
+        response = self.request.get(self.url, {"input_token": "some_token"})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json, ["Invalid token permissions"])
+
+    @patch("requests.get")
+    def test_whatsapp_business_management_scope_present(self, mock_get):
+        data = {
+            "data": {
+                "granular_scopes": [
+                    {
+                        "scope": "whatsapp_business_management",
+                        "target_ids": ["some_id"],
+                    },
+                ],
+            }
+        }
+        mock_response = mock_get.return_value
+        mock_response.status_code = 200
+        mock_response.json.return_value = data
+
+        response = self.request.get(self.url, {"input_token": "some_token"})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    @patch("requests.get")
+    def test_missing_whatsapp_business_account_id(self, mock_get):
+        data = {
+            "data": {
+                "granular_scopes": [
+                    {"scope": "whatsapp_business_management", "target_ids": []},
+                    {"scope": "business_management", "target_ids": ["some_id"]},
+                ],
+            }
+        }
+        mock_response = mock_get.return_value
+        mock_response.status_code = 200
+        mock_response.json.return_value = data
+
+        response = self.request.get(self.url, {"input_token": "some_token"})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json, ["Missing WhatsApp Business Accound Id"])
+
+    @patch("requests.get")
+    def test_successful_response(self, mock_get):
+        data = {
+            "data": {
+                "granular_scopes": [
+                    {
+                        "scope": "whatsapp_business_management",
+                        "target_ids": ["waba_id"],
+                    },
+                    {"scope": "business_management", "target_ids": ["business_id"]},
+                ],
+            }
+        }
+        mock_response = mock_get.return_value
+        mock_response.status_code = 200
+        mock_response.json.return_value = data
+
+        response = self.request.get(self.url, {"input_token": "some_token"})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    @patch("requests.get")
+    def test_missing_whatsapp_business_management_scope(self, mock_get):
+        data = {
+            "data": {
+                "granular_scopes": [
+                    {"scope": "business_management", "target_ids": ["some_id"]},
+                ],
+            }
+        }
+        mock_response = mock_get.return_value
+        mock_response.status_code = 200
+        mock_response.json.return_value = data
+
+        response = self.request.get(self.url, {"input_token": "some_token"})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json, ["Invalid token permissions"])
+
+
+class WhatsAppCloudPhoneNumbersTestCase(APIBaseTestCase):
+    view_class = WhatsAppCloudViewSet
+
+    def setUp(self):
+        super().setUp()
+        self.url = reverse("wpp-cloud-app-phone-numbers")
+
+    @property
+    def view(self):
+        return self.view_class.as_view({"get": "phone_numbers"})
+
+    def test_missing_waba_id(self):
+        response = self.request.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json, ["waba_id is a required parameter!"])
+
+    @patch.object(PhoneNumbersRequest, "get_phone_numbers")
+    def test_get_phone_numbers_success(self, mock_get_phone_numbers):
+        phone_numbers_data = [
+            {"phone_number": "123456789", "phone_number_id": "1"},
+        ]
+        mock_get_phone_numbers.return_value = phone_numbers_data
+
+        response = self.request.get(self.url, {"waba_id": "some_waba_id"})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json, phone_numbers_data)
+
+    @patch.object(PhoneNumbersRequest, "get_phone_numbers")
+    def test_facebook_api_exception(self, mock_get_phone_numbers):
+        mock_get_phone_numbers.side_effect = FacebookApiException("Some error message")
+
+        response = self.request.get(self.url, {"waba_id": "some_waba_id"})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json, ["Some error message"])
