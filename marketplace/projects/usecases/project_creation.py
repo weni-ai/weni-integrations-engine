@@ -29,7 +29,7 @@ class ProjectCreationUseCase:
         except User.DoesNotExist:
             raise InvalidProjectData(f"User with email `{email}` does not exist!")
 
-    def get_or_create_project(self, project_dto: ProjectCreationDTO, user: User) -> tuple[Project, bool]:
+    def get_or_create_project(self, project_dto: ProjectCreationDTO, user: User) -> tuple:
         return Project.objects.get_or_create(
             uuid=project_dto.uuid,
             defaults=dict(
