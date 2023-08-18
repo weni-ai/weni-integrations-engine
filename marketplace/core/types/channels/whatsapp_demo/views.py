@@ -56,6 +56,7 @@ class WhatsAppDemoViewSet(views.BaseAppTypeViewSet):
             "redirect_url"
         ] = f"https://wa.me/{type_class.NUMBER}?text={channel_token}"
         instance.modified_by = user
+        instance.configured = True
         instance.save()
 
     @action(detail=False, methods=["GET"])

@@ -32,6 +32,7 @@ class App(AppTypeBaseModel):
     project_uuid = models.UUIDField("Project UUID")
     platform = models.CharField(choices=PLATFORM_CHOICES, max_length=2)
     flow_object_uuid = models.UUIDField(null=True, unique=True)
+    configured = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = _("App")

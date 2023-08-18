@@ -30,7 +30,6 @@ class TelegramViewSet(views.BaseAppTypeViewSet):
         self.perform_update(serializer)
 
         if app.flow_object_uuid is None:
-
             payload = {
                 "auth_token": serializer.validated_data.get("config")["token"],
             }
@@ -43,6 +42,7 @@ class TelegramViewSet(views.BaseAppTypeViewSet):
             )
 
             app.flow_object_uuid = response.get("uuid")
+            app.configured = True
             app.config["title"] = response.get("name")
             app.save()
 

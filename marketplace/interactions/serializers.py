@@ -33,7 +33,7 @@ class CommentSerializer(AppTypeBaseSerializer):
         if request:
             return obj.created_by == request.user
 
-        return False
+        return False  # pragma: no cover
 
 
 class RatingSerializer(AppTypeBaseSerializer):
