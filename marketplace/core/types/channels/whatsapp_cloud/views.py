@@ -1,24 +1,30 @@
 import string
 import requests
+
+
 from typing import TYPE_CHECKING
 
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
-from rest_framework import status
+from rest_framework import (
+    status,
+    viewsets,
+)
 from rest_framework.decorators import action
 from rest_framework.exceptions import APIException
 
 from django.conf import settings
 from django.utils.crypto import get_random_string
-
-if TYPE_CHECKING:
-    from rest_framework.request import Request  # pragma: no cover
+from django.shortcuts import get_object_or_404
 
 from marketplace.core.types import views
 from marketplace.applications.models import App
 from marketplace.celery import app as celery_app
 from marketplace.connect.client import ConnectProjectClient
 from marketplace.flows.client import FlowsClient
+from marketplace.clients.facebook.client import FacebookClient
+from marketplace.wpp_products.models import Catalog, ProductFeed, Product
+from marketplace.wpp_products.parsers import ProductFeedParser
 
 from ..whatsapp_base import mixins
 from ..whatsapp_base.serializers import WhatsAppSerializer
@@ -28,6 +34,20 @@ from .facades import CloudProfileFacade, CloudProfileContactFacade
 from .requests import PhoneNumbersRequest
 
 from .serializers import WhatsAppCloudConfigureSerializer
+
+from .services.facebook_service import FacebookService
+from .services.flows_service import FlowsService
+
+from marketplace.wpp_products.serializers import (
+    CatalogSerializer,
+    ProductFeedSerializer,
+    ProductSerializer,
+    ToggleVisibilitySerializer,
+)
+
+
+if TYPE_CHECKING:
+    from rest_framework.request import Request  # pragma: no cover
 
 
 class WhatsAppCloudViewSet(
@@ -340,3 +360,236 @@ class WhatsAppCloudViewSet(
         )
 
         return Response(status=response.status_code)
+
+
+class CatalogViewSet(viewsets.ViewSet):
+    serializer_class = CatalogSerializer
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fb_service = FacebookService()
+        self.flows_service = FlowsService()
+
+    def _get_catalog(self, catalog_uuid, app_uuid):
+        return get_object_or_404(
+            Catalog, uuid=catalog_uuid, app__uuid=app_uuid, app__code="wpp-cloud"
+        )
+
+    def create(self, request, app_uuid, *args, **kwargs):
+        app = get_object_or_404(App, uuid=app_uuid, code="wpp-cloud")
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        catalog, fba_catalog_id = self.fb_service.catalog_creation(
+            serializer.validated_data, app, self.request.user
+        )
+
+        if catalog:
+            catalog = self.flows_service.update_app_and_flows_with_catalog(
+                app, catalog, fba_catalog_id
+            )
+            return Response(
+                CatalogSerializer(catalog).data, status=status.HTTP_201_CREATED
+            )
+        else:
+            return Response(
+                {"detail": "Failed to create catalog on Facebook."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    def retrieve(self, request, app_uuid, catalog_uuid, *args, **kwargs):
+        catalog = self._get_catalog(catalog_uuid, app_uuid)
+
+        connected_catalog_id = self.fb_service.get_connected_catalog(catalog.app)
+
+        serialized_data = self.serializer_class(catalog).data
+        serialized_data["is_connected"] = (
+            catalog.facebook_catalog_id == connected_catalog_id
+        )
+        return Response(serialized_data)
+
+    def list(self, request, app_uuid, *args, **kwargs):
+        app = get_object_or_404(App, uuid=app_uuid, code="wpp-cloud")
+        catalogs = Catalog.objects.filter(app__uuid=app_uuid, app=app)
+
+        connected_catalog_id = self.fb_service.get_connected_catalog(app)
+
+        catalog_data = []
+        for catalog in catalogs:
+            serialized_data = self.serializer_class(catalog).data
+            serialized_data["is_connected"] = (
+                catalog.facebook_catalog_id == connected_catalog_id
+            )
+            catalog_data.append(serialized_data)
+
+        return Response(catalog_data)
+
+    def destroy(self, request, app_uuid, catalog_uuid, *args, **kwargs):
+        catalog = self._get_catalog(catalog_uuid, app_uuid)
+        success = self.fb_service.catalog_deletion(catalog)
+
+        if success:
+            self.flows_service.remove_catalog_from_app(catalog)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        else:
+            return Response(
+                {"detail": "Failed to delete catalog on Facebook."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=True, methods=["GET"])
+    def list_products(self, request, app_uuid, catalog_uuid, *args, **kwargs):
+        catalog = self._get_catalog(catalog_uuid, app_uuid)
+        products = Product.objects.filter(catalog=catalog)
+        serializer = ProductSerializer(products, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["POST"])
+    def enable_catalog(self, request, app_uuid, catalog_uuid, *args, **kwargs):
+        catalog = self._get_catalog(catalog_uuid, app_uuid)
+        response = self.fb_service.enable_catalog(catalog)
+        return Response(response)
+
+    @action(detail=True, methods=["POST"])
+    def disable_catalog(self, request, app_uuid, catalog_uuid, *args, **kwargs):
+        catalog = self._get_catalog(catalog_uuid, app_uuid)
+        response = self.fb_service.disable_catalog(catalog)
+        return Response(response)
+
+    @action(detail=False, methods=["GET"])
+    def commerce_settings_status(self, request, app_uuid, *args, **kwargs):
+        app = get_object_or_404(App, uuid=app_uuid, code="wpp-cloud")
+        response = self.fb_service.wpp_commerce_settings(app)
+        return Response(response)
+
+    @action(detail=False, methods=["POST"])
+    def toggle_catalog_visibility(self, request, app_uuid, *args, **kwargs):
+        serializer = ToggleVisibilitySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        enable_visibility = serializer.validated_data["enable"]
+
+        app = get_object_or_404(App, uuid=app_uuid, code="wpp-cloud")
+        response = self.fb_service.toggle_catalog_visibility(app, enable_visibility)
+        return Response(response)
+
+    @action(detail=False, methods=["POST"])
+    def toggle_cart_visibility(self, request, app_uuid, *args, **kwargs):
+        serializer = ToggleVisibilitySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        enable_cart = serializer.validated_data["enable"]
+
+        app = get_object_or_404(App, uuid=app_uuid, code="wpp-cloud")
+        response = self.fb_service.toggle_cart(app, enable_cart)
+        return Response(response)
+
+    @action(detail=False, methods=["GET"])
+    def get_active_catalog(self, request, app_uuid, *args, **kwargs):
+        app = get_object_or_404(App, uuid=app_uuid, code="wpp-cloud")
+        response = self.fb_service.get_connected_catalog(app)
+        return Response(response)
+
+
+class ProductFeedViewSet(viewsets.ViewSet):
+    serializer_class = ProductFeedSerializer
+
+    def create(self, request, app_uuid, catalog_uuid, *args, **kwargs):
+        catalog = get_object_or_404(Catalog, uuid=catalog_uuid, app__uuid=app_uuid)
+
+        file_uploaded = request.FILES.get("file")
+        name = request.data.get("name")
+
+        if file_uploaded is None:
+            return Response(
+                {"error": "No file was uploaded"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        client = FacebookClient()
+        response = client.create_product_feed(
+            product_catalog_id=catalog.facebook_catalog_id, name=name
+        )
+
+        if "id" not in response:
+            return Response(
+                {"error": "Unexpected response from Facebook API", "details": response},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        product_feed = ProductFeed.objects.create(
+            facebook_feed_id=response["id"],
+            name=name,
+            catalog=catalog,
+            created_by=self.request.user,
+        )
+        response = client.upload_product_feed(
+            feed_id=product_feed.facebook_feed_id, file=file_uploaded
+        )
+        serializer = ProductFeedSerializer(product_feed)
+        data = serializer.data.copy()
+        if "id" not in response:
+            return Response(
+                {"error": "The file couldn't be sent. Please try again."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        data["facebook_session_upload_id"] = response["id"]
+        file_uploaded.seek(0)
+
+        parser = ProductFeedParser(file_uploaded)
+        file_products = parser.parse_as_dict()
+
+        if file_products is {}:
+            return Response(
+                {"error": "Error on parse uploaded file to dict"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        kwargs = dict(
+            product_feed_uuid=product_feed.uuid,
+            file_products=file_products,
+            user_email=self.request.user.email,
+        )
+        if file_products:
+            celery_app.send_task(name="create_products_by_feed", kwargs=kwargs)
+
+        return Response(data, status=status.HTTP_201_CREATED)
+
+    def retrieve(self, request, app_uuid, catalog_uuid, feed_uuid, *args, **kwargs):
+        product_feed = get_object_or_404(
+            ProductFeed, uuid=feed_uuid, catalog__uuid=catalog_uuid
+        )
+        serializer = self.serializer_class(product_feed)
+        return Response(serializer.data)
+
+    def list(self, request, app_uuid, catalog_uuid, *args, **kwargs):
+        product_feeds = ProductFeed.objects.filter(catalog__uuid=catalog_uuid)
+        serializer = self.serializer_class(product_feeds, many=True)
+        return Response(serializer.data)
+
+    def destroy(self, request, app_uuid, catalog_uuid, feed_uuid, *args, **kwargs):
+        product_feed = get_object_or_404(
+            ProductFeed, uuid=feed_uuid, catalog__uuid=catalog_uuid
+        )
+
+        client = FacebookClient()
+
+        is_deleted = client.destroy_feed(product_feed.facebook_feed_id)
+
+        if is_deleted:
+            product_feed.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        else:
+            return Response(
+                {"detail": "Failed to delete feed on Facebook"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=True, methods=["GET"])
+    def list_products(
+        self, request, app_uuid, catalog_uuid, feed_uuid, *args, **kwargs
+    ):
+        product_feed = get_object_or_404(
+            ProductFeed, uuid=feed_uuid, catalog__uuid=catalog_uuid
+        )
+        products = Product.objects.filter(feed=product_feed, catalog__uuid=catalog_uuid)
+        serializer = ProductSerializer(products, many=True)
+        return Response(serializer.data)

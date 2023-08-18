@@ -15,5 +15,11 @@ for apptype in types.APPTYPES.values():
     urlpatterns.append(path(f"apptypes/{apptype.code}/", include(router.urls)))
 
 urlpatterns.append(
-    path("apptypes/generic/", include("marketplace.core.types.channels.generic.urls"))
+    path("apptypes/generic/", include("marketplace.core.types.channels.generic.urls")),
+)
+urlpatterns.append(
+    path(
+        "apptypes/wpp-cloud/",
+        include("marketplace.core.types.channels.whatsapp_cloud.urls"),
+    ),
 )
