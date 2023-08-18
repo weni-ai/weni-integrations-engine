@@ -1,3 +1,7 @@
+v2.7.1
+----------
+* Adds endpoint that returns whatsapp demo redirect url
+
 v2.7.0
 ----------
 * Dynamically manage urls for apptypes
