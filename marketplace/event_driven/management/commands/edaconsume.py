@@ -7,7 +7,7 @@ handle_consumers_function = import_string(settings.EDA_CONSUMERS_HANDLE)
 connection_backend = import_string(settings.EDA_CONNECTION_BACKEND)(handle_consumers_function)
 
 
-class Command(BaseCommand):
+class Command(BaseCommand):  # pragma: no cover
     def handle(self, *args, **options):
 
         connection_params = dict(
