@@ -1,12 +1,12 @@
 import amqp
 
 from marketplace.event_driven.parsers import JSONParser
+from marketplace.event_driven.consumers import EDAConsumer
 from ..usecases import create_template_type
 
 
-class TemplateTypeConsumer:
-    @staticmethod
-    def consume(message: amqp.Message):
+class TemplateTypeConsumer(EDAConsumer):
+    def consume(self, message: amqp.Message):
         body = JSONParser.parse(message.body)
 
         print(f"[TemplateTypeConsumer] - Consuming a message. Body: {body}")
