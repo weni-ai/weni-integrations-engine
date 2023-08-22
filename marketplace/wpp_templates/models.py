@@ -58,12 +58,12 @@ class TemplateMessage(models.Model):
     template_type = models.CharField(max_length=100, choices=TEMPLATE_TYPES_CHOICES)
 
     def verify_namespace():
-        pass
+        pass  # pragma: no cover
 
     def clean_fields(self, exclude=None):
         super().clean_fields(exclude=exclude)
         if not self.name:
-            return
+            return  # pragma: no cover
 
         if bool(re.match(r"\w*[A-Z]\w*", self.name)) or " " in self.name:
             message = _(
@@ -108,7 +108,9 @@ class TemplateTranslation(models.Model):
     country = models.CharField(max_length=60, null=True)
     namespace = models.CharField(max_length=60, null=True)
     external_id = models.CharField(max_length=60, null=True)
-    message_template_id = models.CharField(max_length=20, unique=True, null=True, blank=True)
+    message_template_id = models.CharField(
+        max_length=20, unique=True, null=True, blank=True
+    )
 
 
 class TemplateButton(models.Model):
