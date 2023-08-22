@@ -11,6 +11,12 @@ class JSONParserTestCase(TestCase):
         with self.assertRaises(ParseError):
             JSONParser().parse(stream)
 
+    def test_parse_empty_stream(self):
+        stream = b""
+
+        with self.assertRaises(ParseError):
+            JSONParser().parse(stream)
+
     def test_parse_invalid_encoding(self):
         stream = b'{\r\n    "code": "123"\r\n}'
 

@@ -5,7 +5,6 @@ from .exceptions import ParseError
 
 
 class JSONParser(BaseParser):
-
     @staticmethod
     def parse(stream, encoding="utf-8"):
         """
@@ -13,7 +12,7 @@ class JSONParser(BaseParser):
         """
 
         if not stream:
-            ParseError("JSON parse error - stream cannot be empty")
+            raise ParseError("JSON parse error - stream cannot be empty")
 
         try:
             decoded_stream = stream.decode(encoding)
