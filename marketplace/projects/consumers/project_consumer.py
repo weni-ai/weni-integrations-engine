@@ -5,11 +5,11 @@ from ..usecases import TemplateTypeIntegrationUseCase, ProjectCreationUseCase, A
 from ..usecases.exceptions import InvalidProjectData, InvalidTemplateTypeData
 from marketplace.connect.client import ConnectProjectClient, WPPRouterChannelClient
 from marketplace.event_driven.parsers import JSONParser, ParseError
+from marketplace.event_driven.consumers import EDAConsumer
 
 
-class ProjectConsumer:
-    @staticmethod
-    def consume(message: amqp.Message):
+class ProjectConsumer(EDAConsumer):
+    def consume(self, message: amqp.Message):
         print(f"[ProjectConsumer] - Consuming a message. Body: {message.body}")
 
         try:
