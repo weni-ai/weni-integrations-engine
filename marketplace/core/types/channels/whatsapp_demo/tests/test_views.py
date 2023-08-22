@@ -36,11 +36,9 @@ class CreateWhatsAppDemoAppTestCase(APIBaseTestCase):
     def view(self):
         return self.view_class.as_view(APIBaseTestCase.ACTION_CREATE)
 
-    # @patch("marketplace.celery.app.send_task")
     @patch("marketplace.connect.client.WPPRouterChannelClient.get_channel_token")
     @patch("marketplace.connect.client.ConnectProjectClient.create_channel")
     def test_request_ok(self, create_channel_request, get_channel_token_request):
-        self.view_class.type_class.NUMBER = "+559999998888"
         channel_uuid = str(uuid.uuid4())
 
         create_channel_request.side_effect = [
