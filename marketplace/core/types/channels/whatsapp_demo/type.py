@@ -8,9 +8,9 @@ from .views import WhatsAppDemoViewSet
 
 
 if TYPE_CHECKING:
-    from django.contrib.auth import get_user_model
+    from django.contrib.auth import get_user_model  # pragma: no cover
 
-    User = get_user_model()
+    User = get_user_model()  # pragma: no cover
 
 
 class WhatsAppDemoType(AppType):
@@ -66,6 +66,7 @@ class WhatsAppDemoType(AppType):
         app.config["routerToken"] = channel_token
         app.config["redirect_url"] = f"https://wa.me/{cls.NUMBER}?text={channel_token}"
         app.modified_by = user
+        app.configured = True
         app.save()
 
         return app

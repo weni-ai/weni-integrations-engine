@@ -27,7 +27,7 @@ class ConfigureWhatsAppDemoTypeTestCase(TestCase):
 
         self.channel_client = self._get_channel_client_mock("Test App Name", "1234")
         self.channel_token_client = self._get_channel_token_client_mock("Test App Name", "1234")
-    
+
     def _get_channel_client_mock(self, name: str, uuid: str) -> MagicMock:
         channel_client_mock = MagicMock()
         channel_client_mock.create_channel.return_value = {"name": name, "uuid": uuid}
