@@ -24,6 +24,9 @@ from marketplace.core.types.channels.whatsapp_base.exceptions import (
 
 from unittest.mock import MagicMock
 
+from marketplace.wpp_templates.models import TemplateMessage
+
+
 User = get_user_model()
 logger = logging.getLogger(__name__)
 
@@ -148,6 +151,147 @@ class SyncWhatsAppAppsTaskTestCase(TestCase):
         list_channel_mock.return_value = data
         mock_redis.return_value = self.redis_mock
         sync_whatsapp_apps()
+
+    @patch("marketplace.core.types.channels.whatsapp.tasks.get_redis_connection")
+    @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
+    @patch("marketplace.core.types.channels.whatsapp.tasks.logger")
+    def test_skip_channel_with_none_uuid(
+        self, logger_mock, list_channel_mock: "MagicMock", mock_redis
+    ) -> None:
+        project_uuid = str(uuid4())
+        flow_object_uuid = None
+
+        list_channel_mock.return_value = self._get_mock_value(
+            project_uuid, flow_object_uuid
+        )
+
+        mock_redis.return_value = self.redis_mock
+        sync_whatsapp_apps()
+        logger_mock.info.assert_called_with("Skipping channel with None UUID.")
+
+    @patch("marketplace.core.types.channels.whatsapp.tasks.get_redis_connection")
+    @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
+    @patch("marketplace.core.types.channels.whatsapp.tasks.logger")
+    def test_skip_inactive_channel_and_delete_apps(
+        self, logger_mock, list_channel_mock: "MagicMock", mock_redis
+    ) -> None:
+        project_uuid = str(uuid4())
+        flow_object_uuid = str(uuid4())
+
+        channel_value = self._get_mock_value(project_uuid, flow_object_uuid)
+        channel_value[0]["is_active"] = False
+        list_channel_mock.return_value = channel_value
+        wpp_type = APPTYPES.get("wpp")
+
+        self.wpp_app = wpp_type.create_app(
+            config={"auth_token": "12345"},
+            project_uuid=project_uuid,
+            flow_object_uuid=flow_object_uuid,
+            created_by=User.objects.get_admin_user(),
+        )
+        mock_redis.return_value = self.redis_mock
+
+        sync_whatsapp_apps()
+        logger_mock.info.assert_called_with(
+            f"Skipping channel {flow_object_uuid} is inactive."
+        )
+
+        self.assertFalse(App.objects.filter(flow_object_uuid=flow_object_uuid).exists())
+
+    @patch("marketplace.core.types.channels.whatsapp.tasks.get_redis_connection")
+    @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
+    @patch("marketplace.core.types.channels.whatsapp.tasks.logger")
+    @patch("marketplace.core.types.channels.whatsapp.tasks.APPTYPES.get")
+    def test_app_creation_error(
+        self, apptype_mock, logger_mock, list_channel_mock: "MagicMock", mock_redis
+    ) -> None:
+        project_uuid = str(uuid4())
+        flow_object_uuid = str(uuid4())
+
+        channel_value = self._get_mock_value(project_uuid, flow_object_uuid)
+        channel_value[0]["is_active"] = True
+
+        list_channel_mock.return_value = channel_value
+
+        apptype_mock.return_value.create_app.side_effect = Exception()
+        mock_redis.return_value = self.redis_mock
+
+        sync_whatsapp_apps()
+
+        logger_mock.error.assert_called_with(
+            "An error occurred while creating the app: "
+        )
+
+    @patch("marketplace.core.types.channels.whatsapp.tasks.get_redis_connection")
+    @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
+    def test_skip_inactive_channel_and_delete_apps_with_templates(
+        self, list_channel_mock: "MagicMock", mock_redis
+    ) -> None:
+        project_uuid = str(uuid4())
+        flow_object_uuid = str(uuid4())
+
+        channel_value = self._get_mock_value(project_uuid, flow_object_uuid)
+        channel_value[0]["is_active"] = False
+        list_channel_mock.return_value = channel_value
+        wpp_type = APPTYPES.get("wpp")
+
+        self.wpp_app = wpp_type.create_app(
+            config={"auth_token": "12345"},
+            project_uuid=project_uuid,
+            flow_object_uuid=flow_object_uuid,
+            created_by=User.objects.get_admin_user(),
+        )
+        TemplateMessage.objects.create(
+            app=self.wpp_app,
+            name="TestTemplate",
+            created_by=User.objects.get_admin_user(),
+        )
+
+        app_template_count = self.wpp_app.template.all().count()
+        mock_redis.return_value = self.redis_mock
+
+        sync_whatsapp_apps()
+
+        app_template_after_task = self.wpp_app.template.all().count()
+        self.assertNotEqual(app_template_count, app_template_after_task)
+
+    @patch("marketplace.core.types.channels.whatsapp.tasks.get_redis_connection")
+    @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
+    @patch("marketplace.core.types.channels.whatsapp.tasks.logger")
+    @patch("django.db.models.query.QuerySet.delete", Exception)
+    def test_skip_inactive_channel_and_delete_exception(
+        self, logger_mock, list_channel_mock: "MagicMock", mock_redis
+    ) -> None:
+        project_uuid = str(uuid4())
+        flow_object_uuid = str(uuid4())
+
+        channel_value = self._get_mock_value(project_uuid, flow_object_uuid)
+        channel_value[0]["is_active"] = False
+        list_channel_mock.return_value = channel_value
+        wpp_type = APPTYPES.get("wpp")
+
+        self.wpp_app = wpp_type.create_app(
+            config={"auth_token": "12345"},
+            project_uuid=project_uuid,
+            flow_object_uuid=flow_object_uuid,
+            created_by=User.objects.get_admin_user(),
+        )
+        TemplateMessage.objects.create(
+            app=self.wpp_app,
+            name="TestTemplate",
+            created_by=User.objects.get_admin_user(),
+        )
+
+        app_template_count = self.wpp_app.template.all().count()
+        mock_redis.return_value = self.redis_mock
+
+        sync_whatsapp_apps()
+
+        app_template_after_task = self.wpp_app.template.all().count()
+        self.assertIn(
+            "Cannot delete some instances of model", str(logger_mock.error.call_args)
+        )
+        self.assertEqual(app_template_count, app_template_after_task)
 
 
 class SyncWhatsappCloudWabaViewTestCase(TestCase):

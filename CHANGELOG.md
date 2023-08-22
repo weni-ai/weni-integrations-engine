@@ -1,3 +1,24 @@
+v2.7.1
+----------
+* Adds endpoint that returns whatsapp demo redirect url
+
+v2.7.0
+----------
+* Dynamically manage urls for apptypes
+* Adds exclude filter to remove wpp-demo objects from sync_whatsapp_apps task
+* Increases test coverage
+* Add tests to wpp sync tasks
+* Remove empty templates when running delete_unexistent_translations task
+* Add new configured field in App model
+
+v2.6.5
+----------
+* Changes percentage coverage to number of lines tested
+* Setup projects app
+* Create Template type model
+* Create Project model
+* Add priority in assets and refact django-admin form
+
 v2.6.4
 ----------
 * Adjust wpp channel synchronization and add inactive deletion

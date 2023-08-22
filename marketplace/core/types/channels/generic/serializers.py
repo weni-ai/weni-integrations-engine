@@ -40,6 +40,7 @@ class GenericConfigSerializer(serializers.Serializer):
         if app.flow_object_uuid is None:
             channel = self._create_channel(data, app)
             app.flow_object_uuid = channel.get("uuid")
+            app.configured = True
             attrs["title"] = channel.get("name")
 
         return super().validate(attrs)

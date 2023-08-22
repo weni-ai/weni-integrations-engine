@@ -27,7 +27,7 @@ SYNC_WHATSAPP_PHONE_NUMBER_LOCK_KEY = "sync-whatsapp-phone-number-lock-app:{app_
 def sync_whatsapp_apps():
     apptype = APPTYPES.get("wpp")
     client = ConnectProjectClient()
-    channels = client.list_channels(apptype.flows_type_code)
+    channels = client.list_channels(apptype.flows_type_code, exclude_wpp_demo=True)
 
     redis = get_redis_connection()
 
