@@ -3,7 +3,7 @@ import time
 import amqp
 
 
-class PyAMQPConnectionBackend:
+class PyAMQPConnectionBackend:  # pragma: no cover
     _start_message = "[+] Connection established. Waiting for events"
 
     def __init__(self, handle_consumers: callable):

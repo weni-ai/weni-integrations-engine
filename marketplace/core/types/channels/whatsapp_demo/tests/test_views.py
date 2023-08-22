@@ -8,6 +8,7 @@ from marketplace.core.tests.base import APIBaseTestCase
 from ..views import WhatsAppDemoViewSet
 from marketplace.applications.models import App
 from marketplace.accounts.models import ProjectAuthorization
+from marketplace.core.types import APPTYPES
 
 
 class CeleryResponse:
@@ -190,3 +191,58 @@ class DestroyWhatsAppDemoAppTestCase(APIBaseTestCase):
         self.user_authorization.set_role(ProjectAuthorization.ROLE_NOT_SETTED)
         response = self.request.delete(self.url, uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class URLWhatsAppDemoAppTestCase(APIBaseTestCase):
+    url = reverse("wpp-demo-app-url")
+    view_class = WhatsAppDemoViewSet
+
+    def setUp(self):
+        super().setUp()
+        self.project_uuid = str(uuid.uuid4())
+
+    @property
+    def view(self):
+        return self.view_class.as_view({"get": "url"})
+
+    def test_blank_project_uuid_returns_400(self):
+        response = self.request.get(self.url)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json.get("detail"), "“project“ is a required parameter")
+
+    def test_not_valid_uuid_returns_400(self):
+        response = self.request.get(self.url + "?project=123")
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json.get("detail"), "“123” is not a valid UUID.")
+
+    def test_user_without_having_permission_returns_403(self):
+        response = self.request.get(self.url + f"?project={uuid.uuid4()}")
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json.get("detail"), "You do not have permission to access this project")
+
+    def test_user_not_setted_permission_returns_403(self):
+        self.user.authorizations.create(project_uuid=self.project_uuid, role=ProjectAuthorization.ROLE_NOT_SETTED)
+        response = self.request.get(self.url + f"?project={self.project_uuid}")
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json.get("detail"), "You do not have permission to access this project")
+
+    def tests_app_does_not_exist_returns_404(self):
+        self.user.authorizations.create(project_uuid=self.project_uuid, role=ProjectAuthorization.ROLE_ADMIN)
+        response = self.request.get(self.url + f"?project={self.project_uuid}")
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json.get("detail"), "This project does not have an integrated WhatsApp Demo")
+
+    def test_request_ok(self):
+        self.user.authorizations.create(project_uuid=self.project_uuid, role=ProjectAuthorization.ROLE_ADMIN)
+
+        redirect_url = "https://wa.me/1234?text=weni-demo-pi68n_q5A"
+        apptype = APPTYPES.get("wpp-demo")
+        apptype.create_app(project_uuid=self.project_uuid, created_by=self.user, config={"redirect_url": redirect_url})
+
+        response = self.request.get(self.url + f"?project={self.project_uuid}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json, dict(url=redirect_url))

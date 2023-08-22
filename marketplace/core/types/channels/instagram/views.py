@@ -47,6 +47,7 @@ class InstagramViewSet(views.BaseAppTypeViewSet):
 
             flows_config = response.get("config")
             app.flow_object_uuid = response.get("uuid")
+            app.configured = True
             app.config["title"] = response.get("name")
             app.config["address"] = response.get("address")
             app.config["page_name"] = flows_config.get("page_name")

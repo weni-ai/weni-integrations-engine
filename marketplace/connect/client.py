@@ -30,8 +30,10 @@ class ConnectProjectClient(ConnectAuth):  # TODO: change class name to FlowsREST
         assert endpoint.startswith("/"), "the endpoint needs to start with: /"
         return self.base_url + endpoint
 
-    def list_channels(self, channeltype_code: str) -> list:
+    def list_channels(self, channeltype_code: str, exclude_wpp_demo=None) -> list:
         params = {"channel_type": channeltype_code}
+        if exclude_wpp_demo:
+            params["exclude_wpp_demo"] = "true"
 
         url = self._get_url("/api/v2/internals/channel/")
 

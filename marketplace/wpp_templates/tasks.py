@@ -22,17 +22,29 @@ def delete_unexistent_translations(app, templates):
     templates_ids = [item["id"] for item in templates["data"]]
 
     for template in templates_message:
-        template_translation = TemplateTranslation.objects.filter(template=template)
-        for translation in template_translation:
-            if translation.message_template_id not in templates_ids:
-                print(
-                    "Removed the translation",
-                    translation,
-                    "with message_template_id:",
-                    translation.message_template_id,
-                    "\n",
-                )
-                translation.delete()
+        try:
+            template_translation = TemplateTranslation.objects.filter(template=template)
+            if not template_translation:
+                print(f"Removing template without translation: {template}")
+                template.delete()
+                continue
+
+            for translation in template_translation:
+                if translation.message_template_id not in templates_ids:
+                    print(
+                        f"Removing translation {translation.message_template_id}: {translation}"
+                    )
+                    translation.delete()
+
+            if template.translations.all().count() == 0:
+                print(f"Removing template after removing translations: {template}")
+                template.delete()
+
+        except Exception as e:
+            logger.error(
+                f"An error occurred 'on delete_unexistent_translations()': {e}"
+            )
+            continue
 
 
 @shared_task(track_started=True, name="refresh_whatsapp_templates_from_facebook")
