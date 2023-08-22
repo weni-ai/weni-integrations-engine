@@ -66,6 +66,7 @@ class WhatsAppDemoType(AppType):
         app.config["routerToken"] = channel_token
         app.config["redirect_url"] = f"https://wa.me/{cls.NUMBER}?text={channel_token}"
         app.modified_by = user
+        app.configured = True
         app.save()
 
         return app
