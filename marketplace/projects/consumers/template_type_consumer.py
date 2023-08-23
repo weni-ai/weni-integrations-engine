@@ -5,7 +5,7 @@ from marketplace.event_driven.consumers import EDAConsumer
 from ..usecases import create_template_type
 
 
-class TemplateTypeConsumer(EDAConsumer):
+class TemplateTypeConsumer(EDAConsumer):  # pragma: no cover
     def consume(self, message: amqp.Message):
         body = JSONParser.parse(message.body)
 

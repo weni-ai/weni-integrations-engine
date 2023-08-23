@@ -21,7 +21,7 @@ class ProjectCreationTestCase(TestCase):
     def test_get_user_by_email_raises_invalid_project_data(self):
         usecase = ProjectCreationUseCase(self.template_type_integration)
 
-        with self.assertRaisesMessage(InvalidProjectData, f"User with email `fake@email.com` does not exist!"):
+        with self.assertRaisesMessage(InvalidProjectData, "User with email `fake@email.com` does not exist!"):
             usecase.get_user_by_email("fake@email.com")
 
     def test_get_user_by_email(self):

@@ -6,7 +6,6 @@ from .signals import message_started, message_finished
 
 
 class EDAConsumer(ABC):
-
     def handle(self, message: amqp.Message):
         message_started.send(sender=self)
         try:

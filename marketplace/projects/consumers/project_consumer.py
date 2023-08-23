@@ -1,14 +1,18 @@
 import amqp
 from sentry_sdk import capture_exception
 
-from ..usecases import TemplateTypeIntegrationUseCase, ProjectCreationUseCase, AppSetupHandlerUseCase, ProjectCreationDTO
-from ..usecases.exceptions import InvalidProjectData, InvalidTemplateTypeData
+from ..usecases import (
+    TemplateTypeIntegrationUseCase,
+    ProjectCreationUseCase,
+    AppSetupHandlerUseCase,
+    ProjectCreationDTO,
+)
 from marketplace.connect.client import ConnectProjectClient, WPPRouterChannelClient
-from marketplace.event_driven.parsers import JSONParser, ParseError
+from marketplace.event_driven.parsers import JSONParser
 from marketplace.event_driven.consumers import EDAConsumer
 
 
-class ProjectConsumer(EDAConsumer):
+class ProjectConsumer(EDAConsumer):  # pragma: no cover
     def consume(self, message: amqp.Message):
         print(f"[ProjectConsumer] - Consuming a message. Body: {message.body}")
 

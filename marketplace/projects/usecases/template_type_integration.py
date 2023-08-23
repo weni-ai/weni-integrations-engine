@@ -5,7 +5,7 @@ from .exceptions import InvalidTemplateTypeData
 from ..models import TemplateType
 
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from ..models import Project
     from django.contrib.auth import get_user_model
 
