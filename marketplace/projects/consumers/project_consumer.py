@@ -33,10 +33,9 @@ class ProjectConsumer(EDAConsumer):
             project_creation = ProjectCreationUseCase(template_type_integration)
             project_creation.create_project(project_dto, body.get("user_email"))
 
+            message.channel.basic_ack(message.delivery_tag)
+
         except Exception as exception:
             capture_exception(exception)
             message.channel.basic_reject(message.delivery_tag, requeue=False)
             print(f"[ProjectConsumer] - Message rejected by: {exception}")
-            return None
-
-        message.channel.basic_ack(message.delivery_tag)
