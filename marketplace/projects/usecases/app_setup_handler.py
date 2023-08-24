@@ -9,9 +9,8 @@ User = get_user_model()
 
 
 class AppSetupHandlerUseCase:
-    def __init__(self, channel_client, channel_token_client):
-        self.__channel_client = channel_client
-        self.__channel_token_client = channel_token_client
+    def __init__(self, app_configuration):
+        self.__app_configuration = app_configuration
 
     def setup_apps_in_project(self, project: Project, template_type: TemplateType, user: User):
         setup = template_type.setup
@@ -31,4 +30,4 @@ class AppSetupHandlerUseCase:
                 raise InvalidTemplateTypeData(f"TemplateType {template_type.uuid} has invalid app code!")
 
             app = apptype.create_app(project_uuid=str(project.uuid), created_by=user)
-            apptype.configure_app(app, user, self.__channel_client, self.__channel_token_client)
+            self.__app_configuration.configure_app(app, apptype, user)
