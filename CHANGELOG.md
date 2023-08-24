@@ -1,3 +1,11 @@
+v3.0.0
+----------
+* Create TemplateType and Project consumers
+* Create JSONParser to use on EDA consumers
+* Setup event_driven app and configure pyamqp
+* Allow configure WhatsApp Demo from app type
+* Configure flake8 to ignore F401 error in __init__.py files
+
 v2.7.1
 ----------
 * Adds endpoint that returns whatsapp demo redirect url
