@@ -6,7 +6,6 @@ from django.contrib.auth import get_user_model
 
 from ...models import Project
 from ..project_creation import ProjectCreationDTO, ProjectCreationUseCase
-from ..exceptions import InvalidProjectData
 
 
 User = get_user_model()
@@ -18,17 +17,18 @@ class ProjectCreationTestCase(TestCase):
         self.user = User.objects.create_superuser(email="user@marketplace.ai")
         self.project = Project.objects.create(uuid=uuid.uuid4(), name="Test Project", created_by=self.user)
 
-    def test_get_user_by_email_raises_invalid_project_data(self):
+    def test_get_or_create_user_by_email(self):
         usecase = ProjectCreationUseCase(self.template_type_integration)
-
-        with self.assertRaisesMessage(InvalidProjectData, "User with email `fake@email.com` does not exist!"):
-            usecase.get_user_by_email("fake@email.com")
-
-    def test_get_user_by_email(self):
-        usecase = ProjectCreationUseCase(self.template_type_integration)
-        user = usecase.get_user_by_email("user@marketplace.ai")
+        user, _ = usecase.get_or_create_user_by_email("user@marketplace.ai")
 
         self.assertEqual(user, self.user)
+
+    def test_get_or_create_user_by_email_creates_new_user(self):
+        new_user_email = "newuser@marketplace.ai"
+        usecase = ProjectCreationUseCase(self.template_type_integration)
+        user, _ = usecase.get_or_create_user_by_email(new_user_email)
+
+        self.assertEqual(user.email, new_user_email)
 
     def test_creating_template_project_integrate_template_type_in_project_is_called(self):
         project_uuid = uuid.uuid4()

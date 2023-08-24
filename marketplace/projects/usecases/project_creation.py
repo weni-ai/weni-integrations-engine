@@ -3,7 +3,6 @@ from django.contrib.auth import get_user_model
 
 from ..models import Project
 from .interfaces import TemplateTypeIntegrationInterface
-from .exceptions import InvalidProjectData
 
 
 User = get_user_model()
@@ -23,11 +22,8 @@ class ProjectCreationUseCase:
     def __init__(self, template_type_integration: TemplateTypeIntegrationInterface):
         self.__template_type_integration = template_type_integration
 
-    def get_user_by_email(self, email: str) -> User:
-        try:
-            return User.objects.get(email=email)
-        except User.DoesNotExist:
-            raise InvalidProjectData(f"User with email `{email}` does not exist!")
+    def get_or_create_user_by_email(self, email: str) -> tuple:
+        return User.objects.get_or_create(email=email)
 
     def get_or_create_project(self, project_dto: ProjectCreationDTO, user: User) -> tuple:
         return Project.objects.get_or_create(
@@ -42,7 +38,7 @@ class ProjectCreationUseCase:
         )
 
     def create_project(self, project_dto: ProjectCreationDTO, user_email: str) -> None:
-        user = self.get_user_by_email(user_email)
+        user, _ = self.get_or_create_user_by_email(user_email)
         project, _ = self.get_or_create_project(project_dto, user)
 
         if project_dto.is_template:
