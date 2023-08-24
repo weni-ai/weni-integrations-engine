@@ -10,7 +10,6 @@ def create_template_type(uuid: str, project_uuid: Project, name: str) -> Templat
             setup["apps"].append(app.apptype.template_type_setup())
         except NotImplementedError as error:
             print(error)
-            # TODO: handle error
             pass
 
     template_type, created = TemplateType.objects.get_or_create(uuid=uuid, defaults=dict(name=name, setup=setup))
