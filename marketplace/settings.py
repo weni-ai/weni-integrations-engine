@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     "marketplace.interactions",
     "marketplace.grpc",
     "marketplace.wpp_templates",
+    "marketplace.event_driven",
     # installed apps
     "rest_framework",
     "storages",
@@ -388,3 +389,18 @@ FLOWS_REST_ENDPOINT = env.str("FLOWS_REST_ENDPOINT")
 USE_CONNECT_V2 = env.bool("USE_CONNECT_V2", default=True)
 
 IMPORTANCE_CHANNELS_ORDER = env.list("IMPORTANCE_CHANNELS_ORDER", default=[])
+
+
+# Event Driven Architecture configurations
+
+USE_EDA = env.bool("USE_EDA", default=False)
+
+if USE_EDA:
+    EDA_CONNECTION_BACKEND = "marketplace.event_driven.backends.PyAMQPConnectionBackend"
+    EDA_CONSUMERS_HANDLE = "marketplace.event_driven.handle.handle_consumers"
+
+    EDA_BROKER_HOST = env("EDA_BROKER_HOST", default="localhost")
+    EDA_VIRTUAL_HOST = env("EDA_VIRTUAL_HOST", default="/")
+    EDA_BROKER_PORT = env.int("EDA_BROKER_PORT", default=5672)
+    EDA_BROKER_USER = env("EDA_BROKER_USER", default="guest")
+    EDA_BROKER_PASSWORD = env("EDA_BROKER_PASSWORD", default="guest")
