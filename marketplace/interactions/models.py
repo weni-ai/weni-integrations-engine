@@ -45,4 +45,4 @@ class Feedback(models.Model):
     )
 
     def __str__(self):
-        return self.answer
+        return self.answer  # pragma: no cover

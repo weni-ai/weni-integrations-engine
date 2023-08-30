@@ -33,6 +33,7 @@ class ChatGPTViewSet(views.BaseAppTypeViewSet):
             code=type_code,
             config=config_data,
             project_uuid=project_uuid,
+            configured=True,
             platform=App.PLATFORM_WENI_FLOWS,
             created_by=request.user,
             flow_object_uuid=flows_data.get("uuid"),
