@@ -1,3 +1,8 @@
+v3.0.1
+----------
+* Set app.configured to True on create/configure externals apptype
+* Create tests to check_apps_uncreated_on_flow task
+
 v3.0.0
 ----------
 * Create TemplateType and Project consumers
