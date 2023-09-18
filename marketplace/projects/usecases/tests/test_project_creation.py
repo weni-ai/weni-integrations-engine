@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 
 from ...models import Project
 from ..project_creation import ProjectCreationDTO, ProjectCreationUseCase
+from marketplace.accounts.models import ProjectAuthorization
 
 
 User = get_user_model()
@@ -92,3 +93,26 @@ class ProjectCreationTestCase(TestCase):
         project, created = usecase.get_or_create_project(project_dto, self.user)
         self.assertTrue(created)
         self.assertEqual(project.uuid, project_uuid)
+
+    def test_set_user_project_authorization_role_create_new_project_authorization(self):
+        usecase = ProjectCreationUseCase(self.template_type_integration)
+        usecase.set_user_project_authorization_role(self.user, self.project, ProjectAuthorization.ROLE_ADMIN)
+
+        project_auth = ProjectAuthorization.objects.get(project_uuid=self.project.uuid, user=self.user)
+        self.assertEquals(project_auth.role, ProjectAuthorization.ROLE_ADMIN)
+
+    def test_create_project_sets_created_user_permission_equal_to_admin(self):
+        project_uuid = uuid.uuid4()
+        project_dto = ProjectCreationDTO(
+            uuid=project_uuid,
+            name="Fake Project",
+            is_template=True,
+            date_format="fake",
+            timezone="fake",
+            template_type_uuid=None,
+        )
+        usecase = ProjectCreationUseCase(self.template_type_integration)
+        usecase.create_project(project_dto, self.user.email)
+
+        project_auth = ProjectAuthorization.objects.get(project_uuid=project_uuid, user=self.user)
+        self.assertEquals(project_auth.role, ProjectAuthorization.ROLE_ADMIN)

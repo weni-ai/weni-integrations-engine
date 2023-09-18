@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 
 from ..models import Project
 from .interfaces import TemplateTypeIntegrationInterface
+from marketplace.accounts.models import ProjectAuthorization
 
 
 User = get_user_model()
@@ -22,6 +23,15 @@ class ProjectCreationUseCase:
     def __init__(self, template_type_integration: TemplateTypeIntegrationInterface):
         self.__template_type_integration = template_type_integration
 
+    def set_user_project_authorization_role(self, user: User, project: Project, role: int):
+        project_authorization, created = ProjectAuthorization.objects.get_or_create(
+            user=user, project_uuid=project.uuid, defaults={"role": role}
+        )
+
+        if not created:
+            project_authorization.role = role
+            project_authorization.save()
+
     def get_or_create_user_by_email(self, email: str) -> tuple:
         return User.objects.get_or_create(email=email)
 
@@ -40,6 +50,8 @@ class ProjectCreationUseCase:
     def create_project(self, project_dto: ProjectCreationDTO, user_email: str) -> None:
         user, _ = self.get_or_create_user_by_email(user_email)
         project, _ = self.get_or_create_project(project_dto, user)
+
+        self.set_user_project_authorization_role(user=user, project=project, role=ProjectAuthorization.ROLE_ADMIN)
 
         if project_dto.is_template:
             self.__template_type_integration.integrate_template_type_in_project(
