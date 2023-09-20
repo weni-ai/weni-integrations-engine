@@ -17,6 +17,7 @@ class ProjectCreationDTO:
     date_format: str
     timezone: str
     template_type_uuid: str
+    authorizations: list
 
 
 class ProjectCreationUseCase:
@@ -47,11 +48,24 @@ class ProjectCreationUseCase:
             ),
         )
 
+    def set_users_project_authorizations(self, project: Project, authorizations: list):
+        for authorization in authorizations:
+            user_email = authorization.get("user_email")
+            role = authorization.get("role")
+
+            if not user_email or not role:
+                continue
+
+            user, _ = self.get_or_create_user_by_email(user_email)
+
+            self.set_user_project_authorization_role(user=user, project=project, role=role)
+
     def create_project(self, project_dto: ProjectCreationDTO, user_email: str) -> None:
         user, _ = self.get_or_create_user_by_email(user_email)
         project, _ = self.get_or_create_project(project_dto, user)
 
         self.set_user_project_authorization_role(user=user, project=project, role=ProjectAuthorization.ROLE_ADMIN)
+        self.set_users_project_authorizations(project, project_dto.authorizations)
 
         if project_dto.is_template:
             self.__template_type_integration.integrate_template_type_in_project(

@@ -27,6 +27,7 @@ class ProjectConsumer(EDAConsumer):  # pragma: no cover
                 date_format=body.get("date_format"),
                 template_type_uuid=body.get("template_type_uuid"),
                 timezone=body.get("timezone"),
+                authorizations=body.get("authorizations", []),
             )
 
             connect_client = ConnectProjectClient()
