@@ -1,28 +1,22 @@
 import string
 import requests
 
-
 from typing import TYPE_CHECKING
 
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
-from rest_framework import (
-    status,
-    viewsets,
-)
+from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.exceptions import APIException
 
 from django.conf import settings
 from django.utils.crypto import get_random_string
-from django.shortcuts import get_object_or_404
 
 from marketplace.core.types import views
 from marketplace.applications.models import App
 from marketplace.celery import app as celery_app
 from marketplace.connect.client import ConnectProjectClient
 from marketplace.flows.client import FlowsClient
-from marketplace.wpp_products.models import Catalog
 
 from ..whatsapp_base import mixins
 from ..whatsapp_base.serializers import WhatsAppSerializer
@@ -32,14 +26,6 @@ from .facades import CloudProfileFacade, CloudProfileContactFacade
 from .requests import PhoneNumbersRequest
 
 from .serializers import WhatsAppCloudConfigureSerializer
-
-from .services.facebook_service import FacebookService
-from .services.flows_service import FlowsService
-
-from marketplace.wpp_products.serializers import (
-    CatalogSerializer,
-    ToggleVisibilitySerializer,
-)
 
 
 if TYPE_CHECKING:
@@ -356,88 +342,3 @@ class WhatsAppCloudViewSet(
         )
 
         return Response(status=response.status_code)
-
-
-class CatalogViewSet(viewsets.ViewSet):
-    serializer_class = CatalogSerializer
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fb_service = FacebookService()
-        self.flows_service = FlowsService()
-
-    def _get_catalog(self, catalog_uuid, app_uuid):
-        return get_object_or_404(
-            Catalog, uuid=catalog_uuid, app__uuid=app_uuid, app__code="wpp-cloud"
-        )
-
-    def retrieve(self, request, app_uuid, catalog_uuid, *args, **kwargs):
-        catalog = self._get_catalog(catalog_uuid, app_uuid)
-
-        connected_catalog_id = self.fb_service.get_connected_catalog(catalog.app)
-
-        serialized_data = self.serializer_class(catalog).data
-        serialized_data["is_connected"] = (
-            catalog.facebook_catalog_id == connected_catalog_id
-        )
-        return Response(serialized_data)
-
-    def list(self, request, app_uuid, *args, **kwargs):
-        app = get_object_or_404(App, uuid=app_uuid, code="wpp-cloud")
-        catalogs = Catalog.objects.filter(app__uuid=app_uuid, app=app)
-
-        connected_catalog_id = self.fb_service.get_connected_catalog(app)
-
-        catalog_data = []
-        for catalog in catalogs:
-            serialized_data = self.serializer_class(catalog).data
-            serialized_data["is_connected"] = (
-                catalog.facebook_catalog_id == connected_catalog_id
-            )
-            catalog_data.append(serialized_data)
-
-        return Response(catalog_data)
-
-    @action(detail=True, methods=["POST"])
-    def enable_catalog(self, request, app_uuid, catalog_uuid, *args, **kwargs):
-        catalog = self._get_catalog(catalog_uuid, app_uuid)
-        response = self.fb_service.enable_catalog(catalog)
-        return Response(response)
-
-    @action(detail=True, methods=["POST"])
-    def disable_catalog(self, request, app_uuid, catalog_uuid, *args, **kwargs):
-        catalog = self._get_catalog(catalog_uuid, app_uuid)
-        response = self.fb_service.disable_catalog(catalog)
-        return Response(response)
-
-    @action(detail=False, methods=["GET"])
-    def commerce_settings_status(self, request, app_uuid, *args, **kwargs):
-        app = get_object_or_404(App, uuid=app_uuid, code="wpp-cloud")
-        response = self.fb_service.wpp_commerce_settings(app)
-        return Response(response)
-
-    @action(detail=False, methods=["POST"])
-    def toggle_catalog_visibility(self, request, app_uuid, *args, **kwargs):
-        serializer = ToggleVisibilitySerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        enable_visibility = serializer.validated_data["enable"]
-
-        app = get_object_or_404(App, uuid=app_uuid, code="wpp-cloud")
-        response = self.fb_service.toggle_catalog_visibility(app, enable_visibility)
-        return Response(response)
-
-    @action(detail=False, methods=["POST"])
-    def toggle_cart_visibility(self, request, app_uuid, *args, **kwargs):
-        serializer = ToggleVisibilitySerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        enable_cart = serializer.validated_data["enable"]
-
-        app = get_object_or_404(App, uuid=app_uuid, code="wpp-cloud")
-        response = self.fb_service.toggle_cart(app, enable_cart)
-        return Response(response)
-
-    @action(detail=False, methods=["GET"])
-    def get_active_catalog(self, request, app_uuid, *args, **kwargs):
-        app = get_object_or_404(App, uuid=app_uuid, code="wpp-cloud")
-        response = self.fb_service.get_connected_catalog(app)
-        return Response(response)

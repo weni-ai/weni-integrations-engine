@@ -20,6 +20,6 @@ urlpatterns.append(
 urlpatterns.append(
     path(
         "apptypes/wpp-cloud/",
-        include("marketplace.core.types.channels.whatsapp_cloud.urls"),
+        include("marketplace.core.types.channels.whatsapp_cloud.catalogs.urls"),
     ),
 )

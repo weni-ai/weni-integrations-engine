@@ -34,7 +34,7 @@ class Catalog(BaseModel):
     )
 
     def __str__(self):
-        return self.name
+        return self.name  # pragma: no cover
 
     def clean(self) -> None:
         super().clean()
