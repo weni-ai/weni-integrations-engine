@@ -15,3 +15,7 @@ class CatalogSerializer(serializers.ModelSerializer):
 
 class ToggleVisibilitySerializer(serializers.Serializer):
     enable = serializers.BooleanField()
+
+
+class TresholdSerializer(serializers.Serializer):
+    treshold = serializers.FloatField()
