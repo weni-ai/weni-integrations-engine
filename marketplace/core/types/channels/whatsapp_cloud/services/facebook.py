@@ -34,7 +34,6 @@ class FacebookService:
         self.client = client
 
     def get_app_facebook_credentials(self, app):
-        print("REAL")
         wa_business_id = app.config.get("wa_business_id")
         wa_waba_id = app.config.get("wa_waba_id")
         wa_phone_number_id = app.config.get("wa_phone_number_id")
@@ -64,7 +63,11 @@ class FacebookService:
     def get_connected_catalog(self, app):
         waba_id = self.get_app_facebook_credentials(app=app).get("wa_waba_id")
         response = self.client.get_connected_catalog(waba_id=waba_id)
-        return response.get("data")[0].get("id") if response else []
+
+        if len(response.get("data")) > 0:
+            return response.get("data")[0].get("id")
+
+        return []
 
     def toggle_cart(self, app, enable=True):
         business_phone_number_id = self.get_app_facebook_credentials(app=app).get(
