@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 
 from ...models import Project
 from ..project_creation import ProjectCreationDTO, ProjectCreationUseCase
+from marketplace.accounts.models import ProjectAuthorization
 
 
 User = get_user_model()
@@ -39,6 +40,7 @@ class ProjectCreationTestCase(TestCase):
             date_format="fake",
             timezone="fake",
             template_type_uuid=None,
+            authorizations=[],
         )
         usecase = ProjectCreationUseCase(self.template_type_integration)
         usecase.create_project(project_dto, "user@marketplace.ai")
@@ -55,6 +57,7 @@ class ProjectCreationTestCase(TestCase):
             date_format="fake",
             timezone="fake",
             template_type_uuid=None,
+            authorizations=[],
         )
         usecase = ProjectCreationUseCase(self.template_type_integration)
         usecase.create_project(project_dto, "user@marketplace.ai")
@@ -70,6 +73,7 @@ class ProjectCreationTestCase(TestCase):
             date_format="fake",
             timezone="fake",
             template_type_uuid=None,
+            authorizations=[],
         )
 
         usecase = ProjectCreationUseCase(self.template_type_integration)
@@ -86,9 +90,83 @@ class ProjectCreationTestCase(TestCase):
             date_format="fake",
             timezone="fake",
             template_type_uuid=None,
+            authorizations=[],
         )
 
         usecase = ProjectCreationUseCase(self.template_type_integration)
         project, created = usecase.get_or_create_project(project_dto, self.user)
         self.assertTrue(created)
         self.assertEqual(project.uuid, project_uuid)
+
+    def test_set_user_project_authorization_role_create_new_project_authorization(self):
+        usecase = ProjectCreationUseCase(self.template_type_integration)
+        usecase.set_user_project_authorization_role(self.user, self.project, ProjectAuthorization.ROLE_ADMIN)
+
+        project_auth = ProjectAuthorization.objects.get(project_uuid=self.project.uuid, user=self.user)
+        self.assertEquals(project_auth.role, ProjectAuthorization.ROLE_ADMIN)
+
+    def test_project_authorization_already_exists_is_updated_on_set_user_project_authorization_role(self):
+        ProjectAuthorization.objects.create(user=self.user, project_uuid=self.project.uuid, role=1)
+
+        usecase = ProjectCreationUseCase(self.template_type_integration)
+        usecase.set_user_project_authorization_role(self.user, self.project, ProjectAuthorization.ROLE_ADMIN)
+
+        project_auth = ProjectAuthorization.objects.get(project_uuid=self.project.uuid, user=self.user)
+        self.assertEquals(project_auth.role, ProjectAuthorization.ROLE_ADMIN)
+
+    def test_create_project_sets_created_user_permission_equal_to_admin(self):
+        project_uuid = uuid.uuid4()
+        project_dto = ProjectCreationDTO(
+            uuid=project_uuid,
+            name="Fake Project",
+            is_template=True,
+            date_format="fake",
+            timezone="fake",
+            template_type_uuid=None,
+            authorizations=[],
+        )
+        usecase = ProjectCreationUseCase(self.template_type_integration)
+        usecase.create_project(project_dto, self.user.email)
+
+        project_auth = ProjectAuthorization.objects.get(project_uuid=project_uuid, user=self.user)
+        self.assertEquals(project_auth.role, ProjectAuthorization.ROLE_ADMIN)
+
+    def test_set_users_project_authorizations_creates_object_with_rules(self):
+
+        authorizations = [
+            {"user_email": "userrole3@marketplace.ai", "role": 3},
+            {"user_email": "userrole2@marketplace.ai", "role": 2},
+            {"user_email": "userrole1@marketplace.ai", "role": 1},
+        ]
+
+        usecase = ProjectCreationUseCase(self.template_type_integration)
+        usecase.set_users_project_authorizations(self.project, authorizations)
+
+        for authorization in authorizations:
+            db_authorization = ProjectAuthorization.objects.get(
+                user__email=authorization.get("user_email"), project_uuid=self.project.uuid
+            )
+            self.assertEquals(db_authorization.role, authorization.get("role"))
+
+    def test_set_users_project_authorizations_ignores_invalid_roles_and_emails(self):
+        authorizations = [
+            {"user_email": "userrole3@marketplace.ai", "role": 3},
+            {"user_email": "userrole2@marketplace.ai", "role": 2},
+            {"user_email": "userignore1@marketplace.ai"},
+            {"role": 1},
+            {"user_email": "userignore2@marketplace.ai", "role": None},
+            {"user_email": None, "role": 3},
+        ]
+
+        usecase = ProjectCreationUseCase(self.template_type_integration)
+        usecase.set_users_project_authorizations(self.project, authorizations)
+
+        project_authorizations = ProjectAuthorization.objects.filter(project_uuid=self.project.uuid)
+
+        self.assertEquals(project_authorizations.count(), 2)
+
+        self.assertTrue(project_authorizations.filter(user__email="userrole3@marketplace.ai").exists())
+        self.assertTrue(project_authorizations.filter(user__email="userrole2@marketplace.ai").exists())
+
+        self.assertFalse(project_authorizations.filter(user__email="userignore1@marketplace.ai").exists())
+        self.assertFalse(project_authorizations.filter(user__email="userignore2@marketplace.ai").exists())
