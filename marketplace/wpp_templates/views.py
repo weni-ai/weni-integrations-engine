@@ -249,7 +249,7 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
 
         if footer:
             list_components.append(data.get("footer"))
-            translation.body = body.get("text")
+            translation.footer = footer.get("text")
 
         translation.status = "PENDING"
         translation.save()
@@ -269,6 +269,13 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
                 template_button.country_code = button.get("country_code")
                 template_button.url = button.get("url")
                 template_button.phone_number = button.get("phone_number")
+
+                if button.get("button_type") == "OTP":
+                    template_button.otp_type = button.get("otp_type")
+                    template_button.package_name = button.get("package_name")
+                    template_button.signature_hash = button.get("signature_hash")
+                    template_button.autofill_text = button.get("autofill_text")
+
                 template_button.save()
 
                 button["type"] = button["button_type"]

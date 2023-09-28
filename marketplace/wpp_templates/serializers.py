@@ -174,6 +174,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
                             "For ONE_TAP buttons, 'package_name' and 'signature_hash' are required."
                         )
 
+                    autofill = button.get("autofill_text")
                     button = {
                         "type": "OTP",
                         "otp_type": "ONE_TAP",
@@ -182,8 +183,8 @@ class TemplateTranslationSerializer(serializers.Serializer):
                     }
 
                     # Only add autofill_text if it's provided
-                    if "autofill_text" in button:
-                        button["autofill_text"] = button.get("autofill_text")
+                    if autofill:
+                        button["autofill_text"] = autofill
 
             else:
                 if button.get("phone_number"):
@@ -205,6 +206,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
             if template.app.config.get("wa_waba_id")
             else template.app.config.get("waba").get("id")
         )
+
         new_template = template_message_request.create_template_message(
             waba_id=waba_id,
             name=template.name,
