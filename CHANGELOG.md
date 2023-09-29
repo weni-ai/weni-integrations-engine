@@ -1,3 +1,7 @@
+v3.1.0
+----------
+* Wpp-cloud products catalog cart
+
 v3.0.2
 ----------
 * Handle exceptions to sentry and dlx in TemplateTypeConsumer
