@@ -366,6 +366,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "check_apps_uncreated_on_flow",
         "schedule": timedelta(hours=2),
     },
+    "sync-facebook-catalogs": {
+        "task": "sync_facebook_catalogs",
+        "schedule": timedelta(seconds=1800),
+    },
 }
 
 
