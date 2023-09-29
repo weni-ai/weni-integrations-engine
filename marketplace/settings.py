@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     "marketplace.grpc",
     "marketplace.wpp_templates",
     "marketplace.event_driven",
+    "marketplace.wpp_products",
     # installed apps
     "rest_framework",
     "storages",
@@ -364,6 +365,10 @@ CELERY_BEAT_SCHEDULE = {
     "check-apps-uncreated-on-flow": {
         "task": "check_apps_uncreated_on_flow",
         "schedule": timedelta(hours=2),
+    },
+    "sync-facebook-catalogs": {
+        "task": "sync_facebook_catalogs",
+        "schedule": timedelta(seconds=1800),
     },
 }
 

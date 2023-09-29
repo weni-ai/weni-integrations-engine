@@ -1,5 +1,6 @@
 import string
 import requests
+
 from typing import TYPE_CHECKING
 
 from rest_framework.response import Response
@@ -10,9 +11,6 @@ from rest_framework.exceptions import APIException
 
 from django.conf import settings
 from django.utils.crypto import get_random_string
-
-if TYPE_CHECKING:
-    from rest_framework.request import Request  # pragma: no cover
 
 from marketplace.core.types import views
 from marketplace.applications.models import App
@@ -28,6 +26,10 @@ from .facades import CloudProfileFacade, CloudProfileContactFacade
 from .requests import PhoneNumbersRequest
 
 from .serializers import WhatsAppCloudConfigureSerializer
+
+
+if TYPE_CHECKING:
+    from rest_framework.request import Request  # pragma: no cover
 
 
 class WhatsAppCloudViewSet(
