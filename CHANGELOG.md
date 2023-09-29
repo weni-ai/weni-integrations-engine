@@ -1,3 +1,8 @@
+v3.0.2
+----------
+* Handle exceptions to sentry and dlx in TemplateTypeConsumer
+* Create project authorization with role ADMIN when create project
+
 v3.0.1
 ----------
 * Set app.configured to True on create/configure externals apptype
