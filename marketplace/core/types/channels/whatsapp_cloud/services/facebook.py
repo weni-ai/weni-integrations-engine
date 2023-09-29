@@ -34,7 +34,6 @@ class FacebookService:
         self.client = client
 
     def get_app_facebook_credentials(self, app):
-        print("REAL")
         wa_business_id = app.config.get("wa_business_id")
         wa_waba_id = app.config.get("wa_waba_id")
         wa_phone_number_id = app.config.get("wa_phone_number_id")

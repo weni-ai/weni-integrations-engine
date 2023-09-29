@@ -3,6 +3,7 @@ from django.urls import path
 from marketplace.core.types.channels.whatsapp_cloud.catalogs.views.view import (
     CatalogViewSet,
     CommerceSettingsViewSet,
+    TresholdViewset,
 )
 
 
@@ -52,4 +53,12 @@ commerce_settings_patterns = [
     ),
 ]
 
-urlpatterns = catalog_patterns + commerce_settings_patterns
+treshold = [
+    path(
+        "<uuid:app_uuid>/update-treshold/",
+        TresholdViewset.as_view({"post": "update_treshold"}),
+        name="update-treshold",
+    )
+]
+
+urlpatterns = catalog_patterns + commerce_settings_patterns + treshold
