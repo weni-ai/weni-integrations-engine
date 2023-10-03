@@ -1,6 +1,7 @@
 import uuid
-import unittest
 import random
+
+from django.test import TestCase
 
 from marketplace.core.types.channels.whatsapp_cloud.services.facebook import (
     FacebookService,
@@ -48,7 +49,7 @@ class MockClient:
         }
 
 
-class TestFacebookService(unittest.TestCase):
+class TestFacebookService(TestCase):
     def generate_unique_facebook_catalog_id(self):
         return "".join(random.choices("0123456789", k=10))
 
