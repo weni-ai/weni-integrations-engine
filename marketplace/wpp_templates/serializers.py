@@ -37,9 +37,26 @@ class ButtonSerializer(serializers.ModelSerializer):
     phone_number = serializers.CharField(required=False)
     url = serializers.CharField(required=False)
 
+    otp_type = serializers.ChoiceField(
+        choices=[("COPY_CODE", "COPY_CODE"), ("ONE_TAP", "ONE_TAP")], required=False
+    )
+    package_name = serializers.CharField(required=False)
+    signature_hash = serializers.CharField(required=False)
+    autofill_text = serializers.CharField(required=False)
+
     class Meta:
         model = TemplateButton
-        fields = ["button_type", "text", "country_code", "phone_number", "url"]
+        fields = [
+            "button_type",
+            "text",
+            "country_code",
+            "phone_number",
+            "url",
+            "otp_type",
+            "package_name",
+            "signature_hash",
+            "autofill_text",
+        ]
 
 
 class TemplateTranslationSerializer(serializers.Serializer):
@@ -138,19 +155,48 @@ class TemplateTranslationSerializer(serializers.Serializer):
 
         for button in buttons:
             button = dict(button)
-            button["type"] = button.get("button_type")
-            if button.get("phone_number"):
-                button[
-                    "phone_number"
-                ] = f'+{button.get("country_code")} {button.get("phone_number")}'
 
-            button_component = button
-            button_component.pop("button_type")
+            # Specific treatment for "OTP" type buttons in the "AUTHENTICATION" category
+            if (
+                template.category == "AUTHENTICATION"
+                and button.get("button_type") == "OTP"
+            ):
+                button["type"] = "OTP"
+                if button.get("otp_type") == "COPY_CODE":
+                    button = {
+                        "type": "OTP",
+                        "otp_type": "COPY_CODE",
+                    }
 
-            if button_component.get("country_code"):
-                button_component.pop("country_code")
+                elif button.get("otp_type") == "ONE_TAP":
+                    if not all(k in button for k in ["package_name", "signature_hash"]):
+                        raise ValidationError(
+                            "For ONE_TAP buttons, 'package_name' and 'signature_hash' are required."
+                        )
 
-            buttons_component.get("buttons").append(button_component)
+                    autofill = button.get("autofill_text")
+                    button = {
+                        "type": "OTP",
+                        "otp_type": "ONE_TAP",
+                        "package_name": button.get("package_name"),
+                        "signature_hash": button.get("signature_hash"),
+                    }
+
+                    # Only add autofill_text if it's provided
+                    if autofill:
+                        button["autofill_text"] = autofill
+
+            else:
+                if button.get("phone_number"):
+                    button[
+                        "phone_number"
+                    ] = f'+{button.get("country_code")} {button.get("phone_number")}'
+                button["type"] = button.get("button_type")
+                button.pop("button_type", None)
+                if button.get("country_code"):
+                    button.pop("country_code")
+
+            buttons_component.get("buttons").append(button)
 
         if buttons_component.get("buttons"):
             components = self.append_to_components(components, buttons_component)
@@ -160,6 +206,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
             if template.app.config.get("wa_waba_id")
             else template.app.config.get("waba").get("id")
         )
+
         new_template = template_message_request.create_template_message(
             waba_id=waba_id,
             name=template.name,

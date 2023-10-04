@@ -45,29 +45,29 @@ class TemplateMessageRequest(object):
         params = dict(
             name=name,
             category=category,
-            components=str(components),
+            components=components,
             language=language,
             access_token=self._access_token,
         )
         response = requests.post(
             url=f"https://graph.facebook.com/{WHATSAPP_VERSION}/{waba_id}/message_templates",
-            params=params,
+            json=params,
         )
         if response.status_code != 200:
             raise FacebookApiException(response.json())
 
         return response.json()
 
-    def update_template_message(self, message_template_id: str, name: str, components: str) -> dict:
+    def update_template_message(
+        self, message_template_id: str, name: str, components: str
+    ) -> dict:
         params = dict(
-            name=name,
-            components=str(components),
-            access_token=self._access_token
+            name=name, components=str(components), access_token=self._access_token
         )
         response = requests.post(
             url=f"https://graph.facebook.com/{WHATSAPP_VERSION}/{message_template_id}",
             params=params,
-            )
+        )
         if response.status_code != 200:
             raise FacebookApiException(response.json())
 

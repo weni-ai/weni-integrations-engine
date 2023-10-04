@@ -118,19 +118,27 @@ class TemplateButton(models.Model):
         ("QUICK_REPLY", "WhatsApp.data.templates.buttons.type.quick_reply"),
         ("PHONE_NUMBER", "WhatsApp.data.templates.buttons.type.phone_number"),
         ("URL", "WhatsApp.data.templates.buttons.type.url"),
+        ("OTP", "WhatsApp.data.templates.buttons.type.otp"),
+    )
+    OTP_TYPE_CHOICES = (
+        ("COPY_CODE", "Copy Code"),
+        ("ONE_TAP", "One Tap"),
     )
 
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-
     translation = models.ForeignKey(
         TemplateTranslation, on_delete=models.CASCADE, related_name="buttons"
     )
-
     button_type = models.CharField(max_length=20, choices=BUTTON_TYPE_CHOICES)
     text = models.CharField(max_length=30, null=True)
     country_code = models.IntegerField(null=True)
     phone_number = models.CharField(max_length=20, null=True)
     url = models.CharField(max_length=2000, null=True)
+    # to authentication category
+    otp_type = models.CharField(max_length=10, choices=OTP_TYPE_CHOICES, null=True)
+    package_name = models.CharField(max_length=255, null=True)
+    signature_hash = models.CharField(max_length=255, null=True)
+    autofill_text = models.CharField(max_length=255, null=True)
 
 
 class TemplateHeader(models.Model):
