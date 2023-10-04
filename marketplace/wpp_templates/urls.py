@@ -15,3 +15,18 @@ urlpatterns = [
     path("", include(router.urls)),
     path("", include(templates_router.urls)),
 ]
+
+
+urlpatterns.append(
+    path(
+        "apptypes/wpp/apps/",
+        include("marketplace.wpp_templates.analytics.urls"),
+    ),
+)
+
+urlpatterns.append(
+    path(
+        "apptypes/wpp-cloud/apps/",
+        include("marketplace.wpp_templates.analytics.urls"),
+    ),
+)
