@@ -19,6 +19,7 @@ from marketplace.wpp_products.serializers import (
     CatalogSerializer,
     ToggleVisibilitySerializer,
     TresholdSerializer,
+    CatalogListSerializer,
 )
 
 
@@ -47,29 +48,22 @@ class CatalogViewSet(BaseViewSet):
 
     def retrieve(self, request, app_uuid, catalog_uuid, *args, **kwargs):
         catalog = self._get_catalog(catalog_uuid, app_uuid)
-
         connected_catalog_id = self.fb_service.get_connected_catalog(catalog.app)
 
-        serialized_data = self.serializer_class(catalog).data
-        serialized_data["is_connected"] = (
-            catalog.facebook_catalog_id == connected_catalog_id
+        serializer = CatalogSerializer(
+            catalog, context={"connected_catalog_id": connected_catalog_id}
         )
-        return Response(serialized_data)
+        return Response(serializer.data)
 
     def list(self, request, app_uuid, *args, **kwargs):
         app = get_object_or_404(App, uuid=app_uuid, code="wpp-cloud")
         catalogs = Catalog.objects.filter(app__uuid=app_uuid, app=app)
         connected_catalog_id = self.fb_service.get_connected_catalog(app)
 
-        catalog_data = []
-        for catalog in catalogs:
-            serialized_data = self.serializer_class(catalog).data
-            serialized_data["is_connected"] = (
-                catalog.facebook_catalog_id == connected_catalog_id
-            )
-            catalog_data.append(serialized_data)
-
-        return Response(catalog_data)
+        serializer = CatalogListSerializer(
+            catalogs, context={"connected_catalog_id": connected_catalog_id}
+        )
+        return Response(serializer.data)
 
     @action(detail=True, methods=["POST"])
     def enable_catalog(self, request, app_uuid, catalog_uuid, *args, **kwargs):
