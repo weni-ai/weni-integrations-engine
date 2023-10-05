@@ -8,7 +8,7 @@ from rest_framework import status
 from marketplace.applications.models import App
 from marketplace.accounts.models import ProjectAuthorization
 from marketplace.core.tests.base import APIBaseTestCase
-from marketplace.core.types.channels.whatsapp_cloud.catalogs.views.view import (
+from marketplace.core.types.channels.whatsapp_cloud.catalogs.views.views import (
     CommerceSettingsViewSet,
 )
 from marketplace.wpp_products.models import Catalog

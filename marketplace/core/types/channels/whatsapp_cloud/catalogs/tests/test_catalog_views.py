@@ -6,7 +6,7 @@ from rest_framework import status
 from django.urls import reverse
 
 from marketplace.core.tests.base import APIBaseTestCase
-from marketplace.core.types.channels.whatsapp_cloud.catalogs.views.view import (
+from marketplace.core.types.channels.whatsapp_cloud.catalogs.views.views import (
     CatalogViewSet,
 )
 from marketplace.applications.models import App
