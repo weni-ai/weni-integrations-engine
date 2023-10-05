@@ -1,6 +1,6 @@
 from django.urls import path
 
-from marketplace.core.types.channels.whatsapp_cloud.catalogs.views.view import (
+from marketplace.core.types.channels.whatsapp_cloud.catalogs.views.views import (
     CatalogViewSet,
     CommerceSettingsViewSet,
     TresholdViewset,
