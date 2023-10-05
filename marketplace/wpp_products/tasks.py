@@ -23,14 +23,25 @@ def sync_facebook_catalogs():
                 app.catalogs.values_list("facebook_catalog_id", flat=True)
             )
 
-            response = client.list_all_catalogs(wa_business_id=wa_business_id)
+            try:
+                response = client.list_all_catalogs(wa_business_id=wa_business_id)
+            except Exception as e:
+                logger.error(f"Error listing all catalogs for app {app.uuid}: {str(e)}")
+                continue
+
             fba_catalogs_ids = set(response)
 
             to_create = fba_catalogs_ids - local_catalog_ids
             to_delete = local_catalog_ids - fba_catalogs_ids
 
             for catalog_id in to_create:
-                details = client.get_catalog_details(catalog_id)
+                try:
+                    details = client.get_catalog_details(catalog_id)
+                except Exception as e:
+                    logger.error(
+                        f"Error getting catalog details for app {app.uuid}, catalog {catalog_id}: {str(e)}"
+                    )
+                    continue
                 try:
                     Catalog.objects.create(
                         app=app,
@@ -45,4 +56,10 @@ def sync_facebook_catalogs():
                     continue
 
             if to_delete:
-                app.catalogs.filter(facebook_catalog_id__in=to_delete).delete()
+                try:
+                    app.catalogs.filter(facebook_catalog_id__in=to_delete).delete()
+                except Exception as e:
+                    logger.error(
+                        f"Error deleting catalogs for app {app.uuid}: {str(e)}"
+                    )
+                    continue
