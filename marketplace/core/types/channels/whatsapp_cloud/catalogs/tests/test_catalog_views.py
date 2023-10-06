@@ -77,7 +77,18 @@ class CatalogListTestCase(MockServiceTestCase):
         url = reverse("catalog-list", kwargs={"app_uuid": self.app.uuid})
         response = self.request.get(url, app_uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.json), 1)
+        self.assertEqual(len(response.json["results"]), 1)
+
+    def test_filter_by_name(self):
+        url = reverse("catalog-list", kwargs={"app_uuid": self.app.uuid})
+
+        response = self.client.get(url, {"name": "catalog test"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertNotEqual(len(response.json()["results"]), 0)
+
+        response = self.client.get(url, {"name": "non-existing name"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.json()["results"]), 0)
 
 
 class CatalogRetrieveTestCase(MockServiceTestCase):
@@ -139,5 +150,5 @@ class CatalogConnectedTestCase(MockServiceTestCase):
         response = self.request.get(url, app_uuid=self.app.uuid)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.json), 2)
-        self.assertTrue(response.json[0]["is_connected"])
+        self.assertEqual(len(response.json["results"]), 2)
+        self.assertTrue(response.json["results"][0]["is_connected"])
