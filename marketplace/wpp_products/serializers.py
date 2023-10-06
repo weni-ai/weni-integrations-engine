@@ -28,7 +28,7 @@ class TresholdSerializer(serializers.Serializer):
 
 class CatalogListSerializer(serializers.BaseSerializer):
     def to_representation(self, obj):
-        catalogs = obj.all()
+        catalogs = obj
 
         serialized_data = []
         connected_data = None
