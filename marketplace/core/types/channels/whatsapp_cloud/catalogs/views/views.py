@@ -3,6 +3,7 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
+from rest_framework import status
 
 from marketplace.core.types.channels.whatsapp_cloud.services.facebook import (
     FacebookService,
@@ -138,7 +139,7 @@ class CommerceSettingsViewSet(BaseViewSet):
         return Response(response)
 
 
-class TresholdViewset(BaseViewSet):  # pragma: no cover
+class TresholdViewset(BaseViewSet):
     serializer_class = TresholdSerializer
 
     flows_service_class = FlowsService
@@ -163,4 +164,4 @@ class TresholdViewset(BaseViewSet):  # pragma: no cover
         treshold = serializer.validated_data["treshold"]
         self.flows_service.update_treshold(app, treshold)
 
-        return Response(data={"Update has success"})
+        return Response(status=status.HTTP_204_NO_CONTENT)
