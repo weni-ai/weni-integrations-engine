@@ -9,7 +9,7 @@ from marketplace.applications.models import App
 from marketplace.wpp_templates.analytics.serializers import AnalyticsSerializer
 
 
-class TemplateAnalytics(viewsets.ViewSet):
+class TemplateAnalyticsViewSet(viewsets.ViewSet):
     fb_service_class = FacebookService
     fb_client_class = FacebookClient
 
@@ -18,7 +18,7 @@ class TemplateAnalytics(viewsets.ViewSet):
         self._fb_service = None
 
     @property
-    def fb_service(self):
+    def fb_service(self):  # pragma: no cover
         if not self._fb_service:
             self._fb_service = self.fb_service_class(self.fb_client_class())
 
