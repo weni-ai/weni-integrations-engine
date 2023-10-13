@@ -9,7 +9,6 @@ omit =
     marketplace/flows/*
     marketplace/connect/*
     marketplace/wpp_templates/requests.py
-    marketplace/core/types/channels/whatsapp_cloud/services/*
     marketplace/clients/*
     *urls.py*
 
