@@ -1,3 +1,10 @@
+v3.1.1
+----------
+* Template analytics viewset and services
+* Adds try except to continue synchronization
+* Adds tests to facebook service
+* Create tests to flows service
+
 v3.1.0
 ----------
 * Wpp-cloud products catalog cart
