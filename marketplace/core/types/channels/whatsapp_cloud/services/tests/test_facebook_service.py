@@ -15,7 +15,7 @@ User = get_user_model()
 
 class MockClient:
     def enable_catalog(self, waba_id, catalog_id):
-        return {"success": "true"}
+        return {"success": True}
 
     def disable_catalog(self, waba_id, catalog_id):
         return {"success": "true"}
@@ -89,8 +89,8 @@ class TestFacebookService(TestCase):
         self.assertEqual(credentials, expected_config)
 
     def test_enable_catalog(self):
-        response = self.service.enable_catalog(self.catalog)
-        self.assertEqual(response, {"success": "true"})
+        success, _response = self.service.enable_catalog(self.catalog)
+        self.assertEqual(success, True)
 
     def test_disable_catalog(self):
         response = self.service.disable_catalog(self.catalog)

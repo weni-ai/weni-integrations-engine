@@ -19,13 +19,21 @@ class MockFacebookService:
         pass
 
     def enable_catalog(self, catalog):
-        return {"success": "True"}
+        return True, {"success": True}
 
     def disable_catalog(self, catalog):
         return {"success": "True"}
 
     def get_connected_catalog(self, app):
         return "0123456789"
+
+
+class MockFailiedEnableCatalogFacebookService:
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def enable_catalog(self, catalog):
+        return False, {"success": False}
 
 
 class MockFlowsService:
@@ -138,7 +146,25 @@ class CatalogEnabledTestCase(MockServiceTestCase):
             url, app_uuid=self.app.uuid, catalog_uuid=self.catalog.uuid
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.json["success"], "True")
+
+    def test_failed_enable_catalog(self):
+        mock_facebook_service = MockFailiedEnableCatalogFacebookService()
+        patcher_fb_failure = patch.object(
+            self.view_class,
+            "fb_service",
+            PropertyMock(return_value=mock_facebook_service),
+        )
+        patcher_fb_failure.start()
+        self.addCleanup(patcher_fb_failure.stop)
+
+        url = reverse(
+            "catalog-enable",
+            kwargs={"app_uuid": self.app.uuid, "catalog_uuid": self.catalog.uuid},
+        )
+        response = self.request.post(
+            url, app_uuid=self.app.uuid, catalog_uuid=self.catalog.uuid
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
 class CatalogDisableTestCase(MockServiceTestCase):

@@ -1,5 +1,6 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
+from rest_framework import status
 
 from marketplace.core.types.channels.whatsapp_cloud.services.flows import (
     FlowsService,
@@ -21,6 +22,15 @@ MOCK_CONFIG = {
 }
 
 
+class MockResponse:
+    def __init__(self, status_code, json_data=None):
+        self.status_code = status_code
+        self.json_data = json_data
+
+    def json(self):
+        return self.json_data
+
+
 class MockFlowsClient:
     def detail_channel(self, flow_object_uuid):
         return {
@@ -34,6 +44,9 @@ class MockFlowsClient:
 
     def update_config(self, data, flow_object_uuid):
         return None
+
+    def update_catalogs(self, flow_object_uuid, fba_catalog_id):
+        return MockResponse(status.HTTP_200_OK)
 
 
 class TestFlowsService(TestCase):
@@ -54,3 +67,10 @@ class TestFlowsService(TestCase):
     def test_update_treshold(self):
         response = self.service.update_treshold(self.app, 3.5)
         self.assertEqual(response, True)
+
+    def test_update_active_catalog(self):
+        fake_facebook_catalog_id = "123456789"
+        response = self.service.update_active_catalog(
+            self.app, fake_facebook_catalog_id
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)

@@ -52,3 +52,15 @@ class FlowsClient(RequestClient):
             json=payload,
         )
         return response
+
+    def update_catalogs(self, channel_uuid, fba_catalog_id):
+        data = {"channel": str(channel_uuid), "facebook_catalog_id": fba_catalog_id}
+        url = f"{self.base_url}/catalogs/update-catalog/"
+
+        response = self.make_request(
+            url,
+            method="POST",
+            headers=self.authentication_instance.headers,
+            json=data,
+        )
+        return response

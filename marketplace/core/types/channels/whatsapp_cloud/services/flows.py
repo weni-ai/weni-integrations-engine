@@ -23,7 +23,4 @@ class FlowsService:
         return self._update_flows_config(app, "treshold")
 
     def update_active_catalog(self, app, fba_catalog_id):
-        app.config["catalog_id"] = fba_catalog_id
-        app.save()
-
-        return self._update_flows_config(app, "catalog_id")
+        return self.client.update_catalogs(app.flow_object_uuid, fba_catalog_id)

@@ -105,11 +105,14 @@ class CatalogViewSet(BaseViewSet):
     @action(detail=True, methods=["POST"])
     def enable_catalog(self, request, *args, **kwargs):
         catalog = self.get_object()
-        response = self.fb_service.enable_catalog(catalog)
+        success, response = self.fb_service.enable_catalog(catalog)
+        if not success:
+            return Response(status=status.HTTP_400_BAD_REQUEST, data=response)
+
         self.flows_service.update_active_catalog(
             catalog.app, catalog.facebook_catalog_id
         )
-        return Response(response)
+        return Response(status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["POST"])
     def disable_catalog(self, request, *args, **kwargs):
