@@ -28,6 +28,14 @@ class MockFacebookService:
         return "0123456789"
 
 
+class MockFlowsService:
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def update_active_catalog(self, app, fba_catalog_id):
+        return True
+
+
 class SetUpTestBase(APIBaseTestCase):
     current_view_mapping = {}
     view_class = CatalogViewSet
@@ -61,13 +69,25 @@ class MockServiceTestCase(SetUpTestBase):
     def setUp(self):
         super().setUp()
 
-        # Mock service
-        mock_service = MockFacebookService()
-        patcher = patch.object(
-            self.view_class, "fb_service", PropertyMock(return_value=mock_service)
+        # Mock Facebook service
+        mock_facebook_service = MockFacebookService()
+        patcher_fb = patch.object(
+            self.view_class,
+            "fb_service",
+            PropertyMock(return_value=mock_facebook_service),
         )
-        self.addCleanup(patcher.stop)
-        patcher.start()
+        self.addCleanup(patcher_fb.stop)
+        patcher_fb.start()
+
+        # Mock Flows service
+        mock_flows_service = MockFlowsService()
+        patcher_flows = patch.object(
+            self.view_class,
+            "flows_service",
+            PropertyMock(return_value=mock_flows_service),
+        )
+        self.addCleanup(patcher_flows.stop)
+        patcher_flows.start()
 
 
 class CatalogListTestCase(MockServiceTestCase):
