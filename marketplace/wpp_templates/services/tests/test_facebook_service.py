@@ -48,6 +48,14 @@ class MockFacebookClient:
             "paging": {"cursors": {"before": "MAZDZD", "after": "MjQZD"}},
         }
 
+    def enable_template_insights(self, waba_id):
+        return {"id": "10203040"}
+
+
+class MockFailedFacebookClient:
+    def enable_template_insights(self, waba_id):
+        return {"success": False}
+
 
 class MockFacebookClientWithMultipleDataPoints:
     def get_template_analytics(self, waba_id, fields):
@@ -209,3 +217,12 @@ class TestFacebookServiceAnalytics(SetUpBaseService):
         response = self.service.template_analytics(self.app, validated_data)
         self.service = FacebookService(client=MockFacebookClient())
         self.assertEqual(response, expected_data)
+
+    def test_enable_insights(self):
+        response = self.service.enable_insights(self.app)
+        self.assertTrue(response)
+
+    def test_falied_enable_insights(self):
+        self.service = FacebookService(client=MockFailedFacebookClient())
+        response = self.service.enable_insights(self.app)
+        self.assertIsNone(response)
