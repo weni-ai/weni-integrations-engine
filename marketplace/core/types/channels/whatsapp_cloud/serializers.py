@@ -28,3 +28,8 @@ class WhatsAppCloudConfigureSerializer(serializers.Serializer):
     waba_id = serializers.CharField(required=True)
     phone_number_id = serializers.CharField(required=True)
     business_id = serializers.CharField(required=True)
+
+class WhatsAppCloudDeleteSerializer(serializers.Serializer):
+    phone_number_id = serializers.CharField(required=True)
+    channel_uuid = serializers.CharField(required=True)
+    user_email = serializers.CharField(required=True)
