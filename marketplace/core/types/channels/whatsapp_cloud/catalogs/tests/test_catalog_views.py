@@ -6,7 +6,7 @@ from rest_framework import status
 from django.urls import reverse
 
 from marketplace.core.tests.base import APIBaseTestCase
-from marketplace.core.types.channels.whatsapp_cloud.catalogs.views.view import (
+from marketplace.core.types.channels.whatsapp_cloud.catalogs.views.views import (
     CatalogViewSet,
 )
 from marketplace.applications.models import App
@@ -25,7 +25,7 @@ class MockFacebookService:
         return {"success": "True"}
 
     def get_connected_catalog(self, app):
-        return {"0123456789"}
+        return "0123456789"
 
 
 class SetUpTestBase(APIBaseTestCase):
@@ -77,7 +77,18 @@ class CatalogListTestCase(MockServiceTestCase):
         url = reverse("catalog-list", kwargs={"app_uuid": self.app.uuid})
         response = self.request.get(url, app_uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.json), 1)
+        self.assertEqual(len(response.json["results"]), 1)
+
+    def test_filter_by_name(self):
+        url = reverse("catalog-list", kwargs={"app_uuid": self.app.uuid})
+
+        response = self.client.get(url, {"name": "catalog test"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertNotEqual(len(response.json()["results"]), 0)
+
+        response = self.client.get(url, {"name": "non-existing name"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.json()["results"]), 0)
 
 
 class CatalogRetrieveTestCase(MockServiceTestCase):
@@ -123,3 +134,21 @@ class CatalogDisableTestCase(MockServiceTestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json["success"], "True")
+
+
+class CatalogConnectedTestCase(MockServiceTestCase):
+    current_view_mapping = {"get": "list"}
+
+    def test_list_catalog_with_connected_catalog(self):
+        Catalog.objects.create(
+            app=self.app,
+            facebook_catalog_id="9876543210",
+            name="another catalog test",
+            category="commerce",
+        )
+        url = reverse("catalog-list", kwargs={"app_uuid": self.app.uuid})
+        response = self.request.get(url, app_uuid=self.app.uuid)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.json["results"]), 2)
+        self.assertTrue(response.json["results"][0]["is_connected"])
