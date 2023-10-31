@@ -368,7 +368,7 @@ CELERY_BEAT_SCHEDULE = {
     },
     "sync-facebook-catalogs": {
         "task": "sync_facebook_catalogs",
-        "schedule": timedelta(seconds=1800),
+        "schedule": timedelta(seconds=5400),
     },
 }
 
