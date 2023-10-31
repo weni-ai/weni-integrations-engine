@@ -1,3 +1,7 @@
+v3.1.3
+----------
+* Increases the synchronization time for the sync_facebook_catalogs task
+
 v3.1.2
 ----------
 * Sort active catalog to first
