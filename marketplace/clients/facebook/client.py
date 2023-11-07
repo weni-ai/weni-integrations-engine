@@ -25,6 +25,7 @@ class FacebookAuthorization:
 
 
 class FacebookClient(FacebookAuthorization, RequestClient):
+    # Product Catalog
     def create_catalog(self, business_id, name, category=None):
         url = self.get_url + f"{business_id}/owned_product_catalogs"
         data = {"name": name}
@@ -214,4 +215,11 @@ class FacebookClient(FacebookAuthorization, RequestClient):
 
         headers = self._get_headers()
         response = self.make_request(url, method="GET", headers=headers)
+        return response.json()
+
+    # Whatsapp Templates
+    def get_template_analytics(self, waba_id, fields):
+        url = self.BASE_URL + f"{waba_id}/template_analytics"
+        headers = self._get_headers()
+        response = self.make_request(url, method="GET", headers=headers, params=fields)
         return response.json()
