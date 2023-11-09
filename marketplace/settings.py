@@ -276,6 +276,7 @@ APPTYPE_FACEBOOK_CHANNEL_PATH = "channels.facebook.type.FacebookType"
 # Externals
 APPTYPE_OMIE_PATH = "externals.omie.type.OmieType"
 APPTYPE_CHATGPT_PATH = "externals.chatgpt.type.ChatGPTType"
+APPTYPE_VTEX_PATH = "externals.vtex.type.VtexType"
 
 APPTYPES_CLASSES = [
     APPTYPE_WENI_WEB_CHAT_PATH,
@@ -288,6 +289,7 @@ APPTYPES_CLASSES = [
     APPTYPE_OMIE_PATH,
     APPTYPE_GENERIC_CHANNEL_PATH,
     APPTYPE_CHATGPT_PATH,
+    APPTYPE_VTEX_PATH,
 ]
 
 # These conditions avoid dependence between apptypes,
