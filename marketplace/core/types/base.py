@@ -117,7 +117,9 @@ class AppType(AbstractAppType):
         )
 
     def template_type_setup(self) -> dict:
-        raise NotImplementedError(f"App: {self.name} cannot be configured from a project template!")
+        raise NotImplementedError(
+            f"App: {self.name} cannot be configured from a project template!"
+        )
 
 
 class GenericAppType(AppType):

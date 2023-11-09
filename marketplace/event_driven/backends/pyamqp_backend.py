@@ -25,7 +25,11 @@ class PyAMQPConnectionBackend:  # pragma: no cover
 
                     self._drain_events(connection)
 
-            except (amqp.exceptions.AMQPError, ConnectionRefusedError, OSError) as error:
+            except (
+                amqp.exceptions.AMQPError,
+                ConnectionRefusedError,
+                OSError,
+            ) as error:
                 print(f"[-] Connection error: {error}")
                 print("    [+] Reconnecting in 5 seconds...")
                 time.sleep(5)

@@ -29,7 +29,6 @@ class ConfigSerializer(serializers.Serializer):
 
 
 class TelegramConfigureSerializer(AppTypeBaseSerializer):
-
     config = ConfigSerializer(write_only=True)
 
     class Meta:
