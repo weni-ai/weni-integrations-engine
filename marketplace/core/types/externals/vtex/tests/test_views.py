@@ -98,7 +98,7 @@ class MockVtexProductsService:
             raise ValueError("The domain provided is invalid.")
 
         app.configured = True
-        app.config['domain'] = domain
+        app.config["domain"] = domain
         app.save()
         return app
 

@@ -6,7 +6,9 @@ from marketplace.core.types.externals.vtex.serializers import VtexDomainSerializ
 from marketplace.core.types.externals.vtex.serializers import VtexSerializer
 from marketplace.core.types import views
 from marketplace.clients.vtex.client import VtexPublicClient
-from marketplace.services.vtex.public.products.products_vtex_service import VtexProductsService
+from marketplace.services.vtex.public.products.products_vtex_service import (
+    VtexProductsService,
+)
 
 
 class VtexViewSet(views.BaseAppTypeViewSet):
