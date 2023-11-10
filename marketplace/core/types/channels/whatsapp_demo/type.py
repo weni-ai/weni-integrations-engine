@@ -43,7 +43,9 @@ class WhatsAppDemoType(AppType):
         return dict(code=self.code)
 
     @classmethod
-    def configure_app(cls, app: App, user: "User", channel_client: Any, channel_token_client: Any) -> App:
+    def configure_app(
+        cls, app: App, user: "User", channel_client: Any, channel_token_client: Any
+    ) -> App:
         data = dict(
             number=cls.NUMBER,
             country=cls.COUNTRY,
@@ -56,12 +58,16 @@ class WhatsAppDemoType(AppType):
             facebook_access_token="null",
         )
 
-        channel = channel_client.create_channel(user.email, str(app.project_uuid), data, app.flows_type_code)
+        channel = channel_client.create_channel(
+            user.email, str(app.project_uuid), data, app.flows_type_code
+        )
 
         app.config["title"] = channel.get("name")
         app.flow_project_uuid = channel.get("uuid")
 
-        channel_token = channel_token_client.get_channel_token(channel.get("uuid"), channel.get("name"))
+        channel_token = channel_token_client.get_channel_token(
+            channel.get("uuid"), channel.get("name")
+        )
 
         app.config["routerToken"] = channel_token
         app.config["redirect_url"] = f"https://wa.me/{cls.NUMBER}?text={channel_token}"

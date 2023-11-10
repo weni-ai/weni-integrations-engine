@@ -64,7 +64,9 @@ USE_GRPC=False
 FLOWS_REST_ENDPOINT=""
 """.strip()
 
-env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+env_path = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"
+)
 
 # TODO: Validate if file already exists
 

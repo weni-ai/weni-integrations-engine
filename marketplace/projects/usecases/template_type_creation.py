@@ -12,7 +12,9 @@ def create_template_type(uuid: str, project_uuid: Project, name: str) -> Templat
             print(error)
             pass
 
-    template_type, created = TemplateType.objects.get_or_create(uuid=uuid, defaults=dict(name=name, setup=setup))
+    template_type, created = TemplateType.objects.get_or_create(
+        uuid=uuid, defaults=dict(name=name, setup=setup)
+    )
 
     if not created:
         template_type.name = name

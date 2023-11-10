@@ -13,7 +13,11 @@ class TemplateTypeConsumer(EDAConsumer):  # pragma: no cover
         try:
             body = JSONParser.parse(message.body)
 
-            create_template_type(uuid=body.get("uuid"), project_uuid=body.get("project_uuid"), name=body.get("name"))
+            create_template_type(
+                uuid=body.get("uuid"),
+                project_uuid=body.get("project_uuid"),
+                name=body.get("name"),
+            )
 
             message.channel.basic_ack(message.delivery_tag)
 
