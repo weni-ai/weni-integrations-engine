@@ -24,7 +24,9 @@ class ProjectCreationUseCase:
     def __init__(self, template_type_integration: TemplateTypeIntegrationInterface):
         self.__template_type_integration = template_type_integration
 
-    def set_user_project_authorization_role(self, user: User, project: Project, role: int):
+    def set_user_project_authorization_role(
+        self, user: User, project: Project, role: int
+    ):
         project_authorization, created = ProjectAuthorization.objects.get_or_create(
             user=user, project_uuid=project.uuid, defaults={"role": role}
         )
@@ -36,7 +38,9 @@ class ProjectCreationUseCase:
     def get_or_create_user_by_email(self, email: str) -> tuple:
         return User.objects.get_or_create(email=email)
 
-    def get_or_create_project(self, project_dto: ProjectCreationDTO, user: User) -> tuple:
+    def get_or_create_project(
+        self, project_dto: ProjectCreationDTO, user: User
+    ) -> tuple:
         return Project.objects.get_or_create(
             uuid=project_dto.uuid,
             defaults=dict(
@@ -58,13 +62,17 @@ class ProjectCreationUseCase:
 
             user, _ = self.get_or_create_user_by_email(user_email)
 
-            self.set_user_project_authorization_role(user=user, project=project, role=role)
+            self.set_user_project_authorization_role(
+                user=user, project=project, role=role
+            )
 
     def create_project(self, project_dto: ProjectCreationDTO, user_email: str) -> None:
         user, _ = self.get_or_create_user_by_email(user_email)
         project, _ = self.get_or_create_project(project_dto, user)
 
-        self.set_user_project_authorization_role(user=user, project=project, role=ProjectAuthorization.ROLE_ADMIN)
+        self.set_user_project_authorization_role(
+            user=user, project=project, role=ProjectAuthorization.ROLE_ADMIN
+        )
         self.set_users_project_authorizations(project, project_dto.authorizations)
 
         if project_dto.is_template:
