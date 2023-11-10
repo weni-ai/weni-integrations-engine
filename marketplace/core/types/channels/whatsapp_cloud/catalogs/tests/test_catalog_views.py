@@ -18,6 +18,18 @@ class MockFacebookService:
     def __init__(self, *args, **kwargs):
         pass
 
+    def catalog_creation(self, validated_data, app, vtex_app, user):
+        if validated_data["name"] == "valid_catalog":
+            return (Catalog(app=app, facebook_catalog_id="123456789"), "123456789")
+        else:
+            return (None, None)
+
+    def catalog_deletion(self, catalog):
+        if catalog.facebook_catalog_id == "123456789":
+            return True
+        else:
+            return False
+
     def enable_catalog(self, catalog):
         return {"success": "True"}
 
@@ -47,6 +59,18 @@ class SetUpTestBase(APIBaseTestCase):
             name="catalog test",
             category="commerce",
         )
+        self.catalog_success = Catalog.objects.create(
+            app=self.app,
+            facebook_catalog_id="123456789",
+            name="valid_catalog",
+            category="commerce",
+        )
+        self.catalog_failure = Catalog.objects.create(
+            app=self.app,
+            facebook_catalog_id="987654321",
+            name="invlid_catalog",
+            category="commerce",
+        )
         self.user_authorization = self.user.authorizations.create(
             project_uuid=self.app.project_uuid
         )
@@ -74,13 +98,13 @@ class CatalogListTestCase(MockServiceTestCase):
     current_view_mapping = {"get": "list"}
 
     def test_list_catalogs(self):
-        url = reverse("catalog-list", kwargs={"app_uuid": self.app.uuid})
+        url = reverse("catalog-list-create", kwargs={"app_uuid": self.app.uuid})
         response = self.request.get(url, app_uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.json["results"]), 1)
+        self.assertEqual(len(response.json["results"]), 3)
 
     def test_filter_by_name(self):
-        url = reverse("catalog-list", kwargs={"app_uuid": self.app.uuid})
+        url = reverse("catalog-list-create", kwargs={"app_uuid": self.app.uuid})
 
         response = self.client.get(url, {"name": "catalog test"})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -96,7 +120,7 @@ class CatalogRetrieveTestCase(MockServiceTestCase):
 
     def test_retreive_catalog(self):
         url = reverse(
-            "catalog-detail",
+            "catalog-detail-delete",
             kwargs={"app_uuid": self.app.uuid, "catalog_uuid": self.catalog.uuid},
         )
         response = self.request.get(
@@ -146,9 +170,115 @@ class CatalogConnectedTestCase(MockServiceTestCase):
             name="another catalog test",
             category="commerce",
         )
-        url = reverse("catalog-list", kwargs={"app_uuid": self.app.uuid})
+        url = reverse("catalog-list-create", kwargs={"app_uuid": self.app.uuid})
         response = self.request.get(url, app_uuid=self.app.uuid)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.json["results"]), 2)
+        self.assertEqual(len(response.json["results"]), 4)
         self.assertTrue(response.json["results"][0]["is_connected"])
+
+
+class CatalogDestroyTestCase(MockServiceTestCase):
+    current_view_mapping = {"delete": "destroy"}
+
+    def test_delete_catalog_success(self):
+        url = reverse(
+            "catalog-detail-delete",
+            kwargs={"app_uuid": self.app.uuid, "catalog_uuid": self.catalog.uuid},
+        )
+
+        response = self.request.delete(
+            url, app_uuid=self.app.uuid, catalog_uuid=self.catalog_success.uuid
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_delete_catalog_failure(self):
+        url = reverse(
+            "catalog-detail-delete",
+            kwargs={"app_uuid": self.app.uuid, "catalog_uuid": self.catalog.uuid},
+        )
+        response = self.request.delete(
+            url, app_uuid=self.app.uuid, catalog_uuid=self.catalog_failure.uuid
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data["detail"], "Failed to delete catalog on Facebook."
+        )
+
+
+class CatalogCreateTestCase(MockServiceTestCase):
+    current_view_mapping = {"post": "create"}
+
+    def setUp(self):
+        super().setUp()
+        # Configures a vtex App for an already created wpp-cloud App
+        self.vtex_app_configured = App.objects.create(
+            code="vtex",
+            created_by=self.user,
+            config={"domain": "valid_domain"},
+            configured=True,
+            project_uuid=self.app.project_uuid,
+            platform=App.PLATFORM_WENI_FLOWS,
+        )
+        # Creation of a wpp-cloud App to simulate a link with two Vtex Apps
+        self.app_double_vtex = App.objects.create(
+            code="wpp-cloud",
+            created_by=self.user,
+            project_uuid=str(uuid.uuid4()),
+            platform=App.PLATFORM_WENI_FLOWS,
+        )
+        # Create a Vtex App 01 and 02 with repeating the project_uuid to simulate duplicity of integration
+        self.vtex_app_01 = App.objects.create(
+            code="vtex",
+            created_by=self.user,
+            config={"domain": "double_domain"},
+            configured=True,
+            project_uuid=self.app_double_vtex.project_uuid,
+            platform=App.PLATFORM_WENI_FLOWS,
+        )
+        self.vtex_app_02 = App.objects.create(
+            code="vtex",
+            created_by=self.user,
+            config={"domain": "double_domain"},
+            configured=True,
+            project_uuid=self.app_double_vtex.project_uuid,
+            platform=App.PLATFORM_WENI_FLOWS,
+        )
+        # Create a wpp-cloud without App-vtex linked to the project
+        self.app_without_vtex = App.objects.create(
+            code="wpp-cloud",
+            created_by=self.user,
+            project_uuid=str(uuid.uuid4()),
+            platform=App.PLATFORM_WENI_FLOWS,
+        )
+
+    def test_create_catalog_with_vtex_app(self):
+        data = {"name": "valid_catalog"}
+        url = reverse("catalog-list-create", kwargs={"app_uuid": self.app.uuid})
+
+        response = self.request.post(url, data, app_uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["facebook_catalog_id"], "123456789")
+
+    def test_create_catalog_with_unconfigured_app(self):
+        data = {"name": "valid_catalog"}
+        url = reverse(
+            "catalog-list-create", kwargs={"app_uuid": self.app_without_vtex.uuid}
+        )
+
+        response = self.request.post(url, data, app_uuid=self.app_without_vtex.uuid)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.data["detail"], "There is no VTEX App configured.")
+
+    def test_create_catalog_with_multiple_configured_apps(self):
+        data = {"name": "valid_catalog"}
+        url = reverse(
+            "catalog-list-create", kwargs={"app_uuid": self.app_double_vtex.uuid}
+        )
+
+        response = self.request.post(url, data, app_uuid=self.app_double_vtex.uuid)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data["detail"],
+            "Multiple VTEX Apps are configured, which is not expected.",
+        )
