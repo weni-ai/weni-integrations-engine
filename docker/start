@@ -1,9 +1,8 @@
 #!/bin/bash
 
 export GUNICORN_APP=${GUNICORN_APP:-"marketplace.wsgi:application"}
-export GUNICORN_LOG_CONF=${GUNICORN_LOG_CONF:-"${APP_PATH}/docker/gunicorn/gunicorn-logging.conf"}
-export GUNICORN_CONF=${GUNICORN_CONF:-"${APP_PATH}/docker/gunicorn/gunicorn.conf.py"}
-export LOG_LEVEL=${LOG_LEVEL:-"INFO"}
+#export GUNICORN_LOG_CONF=${GUNICORN_LOG_CONF:-"${APP_PATH}/gunicorn-logging.conf"}
+export GUNICORN_CONF=${GUNICORN_CONF:-"${APP_PATH}/gunicorn.conf.py"}
 #export GUNICORN_CONF=${GUNICORN_CONF:-"python:marketplace.gunicorn"
 
 do_gosu(){
@@ -35,7 +34,9 @@ do_gosu(){
 
 
 if [[ "start" == "$1" ]]; then
+    echo "Running collectstatic"
     do_gosu "${APP_USER}:${APP_GROUP}" exec python manage.py collectstatic --noinput
+    echo "Starting server..."
     do_gosu "${APP_USER}:${APP_GROUP}" exec gunicorn "${GUNICORN_APP}" \
       --name="${APP_NAME}" \
       --chdir="${APP_PATH}" \
