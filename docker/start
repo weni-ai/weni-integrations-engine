@@ -43,5 +43,5 @@ if [[ "start" == "$1" ]]; then
       --bind=0.0.0.0:8080 \
       --log-config="${GUNICORN_LOG_CONF}" \
       -c "${GUNICORN_CONF}"   
-if
+fi
 exec "$@"
