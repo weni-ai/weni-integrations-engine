@@ -21,7 +21,9 @@ class Project(models.Model):
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
     date_format = models.CharField(max_length=64, null=True)
     is_active = models.BooleanField(default=True)
-    template_type = models.ForeignKey(TemplateType, on_delete=models.SET_NULL, null=True)
+    template_type = models.ForeignKey(
+        TemplateType, on_delete=models.SET_NULL, null=True
+    )
     timezone = models.CharField(max_length=64, null=True)
 
     def __str__(self) -> str:

@@ -30,6 +30,9 @@ class AppTypeBaseSerializer(serializers.ModelSerializer):
             self.type_class = self.context.get("view").type_class
 
     def create(self, validated_data):
+        if self.type_class and hasattr(self.type_class, "platform"):
+            validated_data["platform"] = self.type_class.platform
+
         validated_data.pop("modified_by", None)
         return super().create(validated_data)
 

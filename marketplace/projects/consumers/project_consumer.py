@@ -32,10 +32,14 @@ class ProjectConsumer(EDAConsumer):  # pragma: no cover
 
             connect_client = ConnectProjectClient()
             wpp_router_client = WPPRouterChannelClient()
-            app_configuration = AppConfigurationUseCase(connect_client, wpp_router_client)
+            app_configuration = AppConfigurationUseCase(
+                connect_client, wpp_router_client
+            )
 
             app_setup_handler = AppSetupHandlerUseCase(app_configuration)
-            template_type_integration = TemplateTypeIntegrationUseCase(app_setup_handler)
+            template_type_integration = TemplateTypeIntegrationUseCase(
+                app_setup_handler
+            )
 
             project_creation = ProjectCreationUseCase(template_type_integration)
             project_creation.create_project(project_dto, body.get("user_email"))
