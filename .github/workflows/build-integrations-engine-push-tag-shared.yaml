@@ -111,7 +111,8 @@ jobs:
       - name: Check out Kubernetes Manifests
         uses: actions/checkout@master
         with:
-          ref: main
+          # ref: main
+          ref: feat/integrations-engine-new-image
           repository: "${{ env.MANIFESTS_REPOSITORY }}"
           token: "${{ secrets.DEVOPS_GITHUB_PERMANENT_TOKEN }}"
           path: ./kubernetes-manifests/
@@ -168,5 +169,6 @@ jobs:
           github_token: "${{ secrets.DEVOPS_GITHUB_PERMANENT_TOKEN }}"
           repository: "${{ env.MANIFESTS_REPOSITORY }}"
           directory: ./kubernetes-manifests/
-          branch: main
+          # branch: main
+          branch: feat/integrations-engine-new-image
           message: "From Weni Integrations Engine Build (Push Tag ${{ env.MANIFESTS_ENVIRONMENT }})"

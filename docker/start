@@ -1,10 +1,7 @@
 #!/bin/bash
 
-export GUNICORN_APP=${GUNICORN_APP:-"marketplace.wsgi:application"}
-export GUNICORN_LOG_CONF=${GUNICORN_LOG_CONF:-"${APP_PATH}/docker/gunicorn/gunicorn-logging.conf"}
-export GUNICORN_CONF=${GUNICORN_CONF:-"${APP_PATH}/docker/gunicorn/gunicorn.conf.py"}
-export LOG_LEVEL=${LOG_LEVEL:-"INFO"}
-#export GUNICORN_CONF=${GUNICORN_CONF:-"python:marketplace.gunicorn"
+export GUNICORN_APP=${GUNICORN_APP:-"marketplace.wsgi"}
+export GUNICORN_CONF=${GUNICORN_CONF:-"${PROJECT_PATH}/gunicorn.conf.py"}
 
 do_gosu(){
     user="$1"
@@ -35,12 +32,9 @@ do_gosu(){
 
 
 if [[ "start" == "$1" ]]; then
-    do_gosu "${APP_USER}:${APP_GROUP}" exec python manage.py collectstatic --noinput
-    do_gosu "${APP_USER}:${APP_GROUP}" exec gunicorn "${GUNICORN_APP}" \
-      --name="${APP_NAME}" \
-      --chdir="${APP_PATH}" \
-      --bind=0.0.0.0:8080 \
-      --log-config="${GUNICORN_LOG_CONF}" \
-      -c "${GUNICORN_CONF}"   
-if
+    echo "Running collectstatic"
+    do_gosu "${APP_USER}:${APP_GROUP}" python manage.py collectstatic --noinput
+    echo "Starting server"
+    do_gosu "${APP_USER}:${APP_GROUP}" exec gunicorn "${GUNICORN_APP}" -c "${GUNICORN_CONF}"   
+fi
 exec "$@"
