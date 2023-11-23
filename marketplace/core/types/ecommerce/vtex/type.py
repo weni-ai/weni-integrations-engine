@@ -1,8 +1,8 @@
-from ..base import ExternalAppType
+from ..base import EcommerceAppType
 from .views import VtexViewSet
 
 
-class VtexType(ExternalAppType):
+class VtexType(EcommerceAppType):
     view_class = VtexViewSet
     code = "vtex"
     flows_type_code = None
@@ -11,4 +11,4 @@ class VtexType(ExternalAppType):
     summary = "vtex.data.summary"
     bg_color = None
     developer = "Weni"
-    config_design = ""
+    config_design = "pre-popup"

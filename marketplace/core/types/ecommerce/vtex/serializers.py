@@ -8,7 +8,13 @@ class VtexDomainSerializer(serializers.Serializer):
     domain = serializers.CharField(required=True)
 
 
-class VtexSerializer(AppTypeBaseSerializer):
+class VtexSerializer(serializers.Serializer):
+    domain = serializers.CharField(required=True)
+    app_key = serializers.CharField(required=True)
+    app_token = serializers.CharField(required=True)
+
+
+class VtexAppSerializer(AppTypeBaseSerializer):
     class Meta:
         model = App
         fields = (

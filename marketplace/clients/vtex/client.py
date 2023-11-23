@@ -60,3 +60,12 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
                 break
 
         return all_skus
+
+    def is_valid_credentials(self, domain):
+        try:
+            url = f"https://{domain}/api/catalog_system/pvt/products/GetProductAndSkuIds"
+            headers = self._get_headers()
+            response = self.make_request(url, method="GET", headers=headers)
+            return response.status_code == 200
+        except Exception:
+            return False
