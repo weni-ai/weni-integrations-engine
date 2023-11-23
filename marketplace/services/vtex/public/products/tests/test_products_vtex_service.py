@@ -4,8 +4,8 @@ from django.test import TestCase
 from django.contrib.auth import get_user_model
 
 from marketplace.applications.models import App
-from marketplace.services.vtex.public.products.products_vtex_service import (
-    VtexProductsService,
+from marketplace.services.vtex.public.products.service import (
+    PublicProductsService,
 )
 
 
@@ -30,7 +30,7 @@ class MockClient:
 class TestVtexPublicProducts(TestCase):
     def setUp(self):
         user, _bool = User.objects.get_or_create(email="user-fbaservice@marketplace.ai")
-        self.service = VtexProductsService(client=MockClient())
+        self.service = PublicProductsService(client=MockClient())
         self.app = App.objects.create(
             code="vtex",
             config={},

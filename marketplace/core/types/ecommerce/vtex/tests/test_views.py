@@ -179,7 +179,7 @@ class DeleteVtexAppTestCase(APIBaseTestCase):
         response = self.request.delete(self.url, uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_release_external_service(self):
+    def test_release_ecommerce_service(self):
         response = self.request.delete(self.url, uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(App.objects.filter(uuid=self.app.uuid).exists())
