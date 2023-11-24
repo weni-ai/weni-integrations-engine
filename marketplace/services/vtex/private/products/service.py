@@ -48,6 +48,8 @@ class PrivateProductsService:
         if not self._is_domain_valid(domain):
             raise CredentialsValidationError()
 
+        return True
+
     def validate_private_credentials(self, domain):
         self.check_is_valid_domain(domain)
         return self.client.is_valid_credentials(domain)

@@ -32,7 +32,7 @@ Example:
         products = service.list_all_products("example.vtex.com")
         # Process the list of products
 """
-from rest_framework.exceptions import ValidationError
+from marketplace.services.vtex.exceptions import CredentialsValidationError
 
 
 class PublicProductsService:
@@ -44,12 +44,14 @@ class PublicProductsService:
     # ================================
 
     def list_all_products(self, domain):
-        self._check_is_valid_domain(domain)
+        self.check_is_valid_domain(domain)
         return self.client.list_products(domain)
 
     def check_is_valid_domain(self, domain):
         if not self._is_domain_valid(domain):
-            raise ValidationError("The domain provided is invalid.")
+            raise CredentialsValidationError()
+
+        return True
 
     # ================================
     # Private Methods
