@@ -71,6 +71,17 @@ class APICredentials:
 
 
 class VtexService:
+    def __init__(self, *args, **kwargs):
+        self._pvt_service = None
+
+    def get_private_service(
+        self, app_key, app_token
+    ) -> PrivateProductsService:  # pragma nocover
+        if not self._pvt_service:
+            client = VtexPrivateClient(app_key, app_token)
+            self._pvt_service = PrivateProductsService(client)
+        return self._pvt_service
+
     def get_vtex_app_or_error(self, project_uuid):
         try:
             app_vtex = App.objects.get(
@@ -83,29 +94,17 @@ class VtexService:
             raise MultipleVTEXAppsConfiguredException()
 
     def check_is_valid_credentials(self, credentials: APICredentials) -> bool:
-        pvt_service = PrivateProductsService(
-            VtexPrivateClient(
-                credentials.app_key,
-                credentials.app_token,
-            )
+        pvt_service = self.get_private_service(
+            credentials.app_key, credentials.app_token
         )
         if not pvt_service.validate_private_credentials(credentials.domain):
             raise CredentialsValidationError()
 
         return True
 
-    def configure(self, app, credentials: APICredentials) -> App:
-        updated_app = self._update_config(
-            app, key="api_credentials", data=credentials.to_dict()
-        )
-        updated_app.configured = True
-        updated_app.save()
-        return updated_app
-
-    # ================================
-    # Private Methods
-    # ================================
-
-    def _update_config(self, app, key, data):
-        app.config[key] = data
+    def configure(self, app, credentials: APICredentials, wpp_cloud_uuid) -> App:
+        app.config["api_credentials"] = credentials.to_dict()
+        app.config["wpp_cloud_uuid"] = wpp_cloud_uuid
+        app.configured = True
+        app.save()
         return app

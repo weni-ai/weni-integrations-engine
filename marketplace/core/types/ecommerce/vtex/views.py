@@ -38,12 +38,13 @@ class VtexViewSet(views.BaseAppTypeViewSet):
             app_token=validated_data.get("app_token"),
             domain=validated_data.get("domain"),
         )
+        wpp_cloud_uuid = validated_data["wpp_cloud_uuid"]
         self.service.check_is_valid_credentials(credentials)
         # Calls the create method of the base class to create the App object
         super().create(request, *args, **kwargs)
         app = self.get_app()
         try:
-            updated_app = self.service.configure(app, credentials)
+            updated_app = self.service.configure(app, credentials, wpp_cloud_uuid)
             return Response(
                 data=self.get_serializer(updated_app).data,
                 status=status.HTTP_201_CREATED,
