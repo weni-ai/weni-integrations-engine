@@ -94,18 +94,9 @@ class VtexService:
 
         return True
 
-    def configure(self, app, credentials: APICredentials) -> App:
-        updated_app = self._update_config(
-            app, key="api_credentials", data=credentials.to_dict()
-        )
-        updated_app.configured = True
-        updated_app.save()
-        return updated_app
-
-    # ================================
-    # Private Methods
-    # ================================
-
-    def _update_config(self, app, key, data):
-        app.config[key] = data
+    def configure(self, app, credentials: APICredentials, wpp_cloud_uuid) -> App:
+        app.config["api_credentials"] = credentials.to_dict()
+        app.config["wpp_cloud_uuid"] = wpp_cloud_uuid
+        app.configured = True
+        app.save()
         return app

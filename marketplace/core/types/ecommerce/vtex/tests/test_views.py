@@ -27,9 +27,10 @@ class MockVtexService:
     def check_is_valid_credentials(self, credentials):
         return True
 
-    def configure(self, app, credentials):
-        app.configured = True
+    def configure(self, app, credentials, wpp_cloud_uuid):
         app.config["api_credentials"] = credentials.to_dict()
+        app.config["wpp_cloud_uuid"] = wpp_cloud_uuid
+        app.configured = True
         app.save()
         return app
 
@@ -57,15 +58,23 @@ class CreateVtexAppTestCase(SetUpService):
 
     def setUp(self):
         super().setUp()
-        project_uuid = str(uuid.uuid4())
+        self.project_uuid = str(uuid.uuid4())
+
+        self.wpp_cloud = App.objects.create(
+            code="wpp-cloud",
+            created_by=self.user,
+            project_uuid=self.project_uuid,
+            platform=App.PLATFORM_WENI_FLOWS,
+        )
         self.body = {
-            "project_uuid": project_uuid,
+            "project_uuid": self.project_uuid,
             "app_key": "valid-app-key",
             "app_token": "valid-app-token",
             "domain": "valid.domain.com",
+            "wpp_cloud_uuid": str(self.wpp_cloud.uuid),
         }
         self.user_authorization = self.user.authorizations.create(
-            project_uuid=project_uuid, role=ProjectAuthorization.ROLE_CONTRIBUTOR
+            project_uuid=self.project_uuid, role=ProjectAuthorization.ROLE_CONTRIBUTOR
         )
 
     def test_request_ok(self):
@@ -90,6 +99,28 @@ class CreateVtexAppTestCase(SetUpService):
         self.user_authorization.delete()
         response = self.request.post(self.url, self.body)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_create_app_without_valid_wpp_cloud_app(self):
+        not_wpp_cloud = App.objects.create(
+            code="wpp",
+            created_by=self.user,
+            project_uuid=self.project_uuid,
+            platform=App.PLATFORM_WENI_FLOWS,
+        )
+        body = {
+            "project_uuid": self.project_uuid,
+            "app_key": "valid-app-key",
+            "app_token": "valid-app-token",
+            "domain": "valid.domain.com",
+            "wpp_cloud_uuid": str(not_wpp_cloud.uuid),
+        }
+        response = self.request.post(self.url, body)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("wpp_cloud_uuid", response.data)
+        self.assertIn(
+            "does not correspond to a valid 'wpp-cloud' App",
+            str(response.data["wpp_cloud_uuid"]),
+        )
 
     def test_create_app_configuration_exception(self):
         original_configure = self.mock_service.configure

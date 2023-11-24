@@ -1,17 +1,27 @@
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 from marketplace.core.serializers import AppTypeBaseSerializer
 from marketplace.applications.models import App
-
-
-class VtexDomainSerializer(serializers.Serializer):
-    domain = serializers.CharField(required=True)
 
 
 class VtexSerializer(serializers.Serializer):
     domain = serializers.CharField(required=True)
     app_key = serializers.CharField(required=True)
     app_token = serializers.CharField(required=True)
+    wpp_cloud_uuid = serializers.UUIDField(required=True)
+
+    def validate_wpp_cloud_uuid(self, value):
+        """
+        Check that the wpp_cloud_uuid corresponds to an existing App with code 'wpp-cloud'.
+        """
+        try:
+            App.objects.get(uuid=value, code="wpp-cloud")
+        except App.DoesNotExist:
+            raise ValidationError(
+                "The wpp_cloud_uuid does not correspond to a valid 'wpp-cloud' App."
+            )
+        return str(value)
 
 
 class VtexAppSerializer(AppTypeBaseSerializer):
