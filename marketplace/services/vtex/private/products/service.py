@@ -1,44 +1,45 @@
 """
-Service for interacting with VTEX private APIs that require authentication.
+Service for managing product operations with VTEX private APIs.
 
-This service is responsible for validating domain and credentials against VTEX private APIs.
-It encapsulates the logic for domain validation and credentials checking, ensuring that only
-valid and authenticated requests are processed for private VTEX operations.
+This service interacts with VTEX's private APIs for product-related operations. It handles
+domain validation, credentials verification, product listing, and updates from webhook notifications.
 
 Attributes:
-    client: A configured client instance that is capable of communicating with VTEX private APIs.
+    client: A client instance for VTEX private APIs communication.
+    data_processor: DataProcessor instance for processing product data.
 
 Public Methods:
-    check_is_valid_domain(domain): Validates the provided domain to ensure it is recognized by VTEX.
-        Raises a CredentialsValidationError if the domain is not valid.
-
-    validate_private_credentials(domain): Validates the credentials stored in the client for the given domain.
-        Returns True if the credentials are valid, False otherwise.
-
-Private Methods:
-    _is_domain_valid(domain): Performs a check against the VTEX API to determine if the provided domain is valid.
+    check_is_valid_domain(domain): Validates if a domain is recognized by VTEX.
+    validate_private_credentials(domain): Checks if stored credentials for a domain are valid.
+    list_all_products(domain): Lists all products from a domain. Returns processed product data.
+    get_product_details(sku_id, domain): Retrieves details for a specific SKU.
+    simulate_cart_for_seller(sku_id, seller_id, domain): Simulates a cart for a seller and SKU.
+    update_product_info(domain, webhook_payload): Updates product info based on webhook payload.
 
 Exceptions:
-    CredentialsValidationError: Raised when the provided domain
-    or credentials are not valid according to VTEX's standards.
+    CredentialsValidationError: Raised for invalid domain or credentials.
 
 Usage:
-    To use this service, instantiate it with a client that has the necessary API credentials (app_key and app_token).
-    The client should implement methods for checking domain validity and credentials.
+    Instantiate with a client having API credentials. Use methods for product operations with VTEX.
 
 Example:
-    client = VtexPrivateClient(app_key="your-app-key", app_token="your-app-token")
+    client = VtexPrivateClient(app_key="key", app_token="token")
     service = PrivateProductsService(client)
-    is_valid = service.validate_private_credentials("your-domain.vtex.com")
+    is_valid = service.validate_private_credentials("domain.vtex.com")
     if is_valid:
-        # Proceed with operations that require valid credentials
+        products = service.list_all_products("domain.vtex.com")
+        # Use products data as needed
 """
 from marketplace.services.vtex.exceptions import CredentialsValidationError
+from marketplace.services.vtex.utils.data_processor import DataProcessor
 
 
 class PrivateProductsService:
-    def __init__(self, client):
+    def __init__(self, client, data_processor=DataProcessor):
         self.client = client
+        self.data_processor = data_processor
+        # TODO: Check if it makes sense to leave the domain instantiated
+        # so that the domain parameter is removed from the methods
 
     # ================================
     # Public Methods
@@ -53,6 +54,40 @@ class PrivateProductsService:
     def validate_private_credentials(self, domain):
         self.check_is_valid_domain(domain)
         return self.client.is_valid_credentials(domain)
+
+    def list_all_products(self, domain):
+        active_sellers = self.client.list_active_sellers(domain)
+        skus_ids = self.client.list_all_products_sku_ids(domain)
+
+        data = self.data_processor.process_product_data(
+            skus_ids, active_sellers, self, domain
+        )
+        return data
+
+    def get_product_details(self, sku_id, domain):
+        return self.client.get_product_details(sku_id, domain)
+
+    def simulate_cart_for_seller(self, sku_id, seller_id, domain):
+        return self.client.pub_simulate_cart_for_seller(
+            sku_id, seller_id, domain
+        )  # TODO: Change to pvt_simulate_cart_for_seller
+
+    def update_product_info(self, domain, webhook_payload):
+        updated_products = []
+
+        sku_id = webhook_payload["IdSku"]
+        price_modified = webhook_payload["PriceModified"]
+        stock_modified = webhook_payload["StockModified"]
+        other_changes = webhook_payload["HasStockKeepingUnitModified"]
+
+        seller_ids = self.client.list_active_sellers(domain)
+
+        if price_modified or stock_modified or other_changes:
+            updated_products = self.data_processor.process_product_data(
+                [sku_id], seller_ids, self, domain, update_product=True
+            )
+
+        return updated_products
 
     # ================================
     # Private Methods
