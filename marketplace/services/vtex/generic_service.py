@@ -105,6 +105,7 @@ class VtexService:
     def configure(self, app, credentials: APICredentials, wpp_cloud_uuid) -> App:
         app.config["api_credentials"] = credentials.to_dict()
         app.config["wpp_cloud_uuid"] = wpp_cloud_uuid
+        app.config["initial_sync_completed"] = False
         app.configured = True
         app.save()
         return app
