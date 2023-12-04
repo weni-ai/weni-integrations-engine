@@ -52,3 +52,15 @@ class FlowsClient(RequestClient):
             json=payload,
         )
         return response
+
+    def notify_vtex_app_creation(self, project_uuid, user_email):
+        url = f"{self.base_url}/internals/orgs/{project_uuid}/update-vtex/"
+        payload = {"user_email": user_email}
+
+        self.make_request(
+            url,
+            method="POST",
+            headers=self.authentication_instance.headers,
+            data=payload,
+        )
+        return True
