@@ -23,7 +23,7 @@ from marketplace.wpp_products.serializers import (
     TresholdSerializer,
     CatalogListSerializer,
 )
-from marketplace.services.vtex.vtex_app_service import VtexAppService
+from marketplace.services.vtex.generic_service import VtexService
 
 
 class BaseViewSet(viewsets.ModelViewSet):
@@ -50,7 +50,7 @@ class Pagination(PageNumberPagination):
 class CatalogViewSet(BaseViewSet):
     serializer_class = CatalogSerializer
     pagination_class = Pagination
-    vtex_app_service_class = VtexAppService
+    vtex_generic_service_class = VtexService
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -59,7 +59,7 @@ class CatalogViewSet(BaseViewSet):
     @property
     def vtex_service(self):  # pragma: no cover
         if not self._vtex_app_service:
-            self._vtex_app_service = self.vtex_app_service_class()
+            self._vtex_app_service = self.vtex_generic_service_class()
         return self._vtex_app_service
 
     def filter_queryset(self, queryset):
