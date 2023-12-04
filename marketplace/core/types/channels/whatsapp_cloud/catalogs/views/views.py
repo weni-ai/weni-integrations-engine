@@ -87,7 +87,7 @@ class CatalogViewSet(BaseViewSet):
 
         vtex_app = self.vtex_service.get_vtex_app_or_error(app.project_uuid)
 
-        catalog, _fba_catalog_id = self.fb_service.catalog_creation(
+        catalog, _fba_catalog_id = self.fb_service.create_vtex_catalog(
             serializer.validated_data, app, vtex_app, self.request.user
         )
         if not catalog:

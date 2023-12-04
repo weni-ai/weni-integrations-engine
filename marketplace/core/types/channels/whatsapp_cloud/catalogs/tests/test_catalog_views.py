@@ -18,7 +18,7 @@ class MockFacebookService:
     def __init__(self, *args, **kwargs):
         pass
 
-    def catalog_creation(self, validated_data, app, vtex_app, user):
+    def create_vtex_catalog(self, validated_data, app, vtex_app, user):
         if validated_data["name"] == "valid_catalog":
             return (Catalog(app=app, facebook_catalog_id="123456789"), "123456789")
         else:

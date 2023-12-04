@@ -276,7 +276,7 @@ APPTYPE_FACEBOOK_CHANNEL_PATH = "channels.facebook.type.FacebookType"
 # Externals
 APPTYPE_OMIE_PATH = "externals.omie.type.OmieType"
 APPTYPE_CHATGPT_PATH = "externals.chatgpt.type.ChatGPTType"
-APPTYPE_VTEX_PATH = "externals.vtex.type.VtexType"
+APPTYPE_VTEX_PATH = "ecommerce.vtex.type.VtexType"
 
 APPTYPES_CLASSES = [
     APPTYPE_WENI_WEB_CHAT_PATH,

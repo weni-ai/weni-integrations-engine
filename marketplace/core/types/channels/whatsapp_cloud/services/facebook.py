@@ -10,7 +10,7 @@ Attributes:
     client (ClientType): An instance of a client responsible for making requests to Facebook's API.
 
 Methods:
-    catalog_creation(validated_data, app, vtex_app, user): Creates a new catalog associated
+    create_vtex_catalog(validated_data, app, vtex_app, user): Creates a new catalog associated
     with an app and returns the created,
 
     Catalog object along with the Facebook catalog ID.
@@ -48,7 +48,7 @@ class FacebookService:
     # Public Methods
     # ================================
 
-    def catalog_creation(self, validated_data, app, vtex_app, user):
+    def create_vtex_catalog(self, validated_data, app, vtex_app, user):
         business_id = self._get_app_facebook_credentials(app=app).get("wa_business_id")
         response = self.client.create_catalog(business_id, validated_data["name"])
 

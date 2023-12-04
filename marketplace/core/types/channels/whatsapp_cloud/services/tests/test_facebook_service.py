@@ -183,17 +183,17 @@ class TestFacebookCreateDeleteService(TestCase):
         )
 
     # TODO: resolve error "Key (facebook_catalog_id, app_id)=(0123456789010, 3) already exists." when running tests
-    # def test_catalog_creation_success(self):
+    # def test_create_vtex_catalog_success(self):
     #     validated_data = {"name": "Valid Catalog"}
-    #     catalog, fb_catalog_id = self.service.catalog_creation(
+    #     catalog, fb_catalog_id = self.service.create_vtex_catalog(
     #         validated_data, self.app, self.vtex_app, self.user
     #     )
     #     self.assertIsNotNone(catalog)
     #     self.assertEqual(fb_catalog_id, MockClient.VALID_CATALOGS_ID[0])
 
-    # def test_catalog_creation_failure(self):
+    # def test_create_vtex_catalog_failure(self):
     #     validated_data = {"name": "Invalid Catalog"}
-    #     catalog, fb_catalog_id = self.service.catalog_creation(
+    #     catalog, fb_catalog_id = self.service.create_vtex_catalog(
     #         validated_data, self.app, self.vtex_app, self.user
     #     )
     #     self.assertIsNone(catalog)
