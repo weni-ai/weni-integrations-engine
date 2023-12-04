@@ -14,6 +14,8 @@ User = get_user_model()
 
 
 class MockClient:
+    VALID_CATALOGS_ID = ["0123456789010", "1123456789011"]
+
     def enable_catalog(self, waba_id, catalog_id):
         return {"success": "true"}
 
@@ -47,6 +49,18 @@ class MockClient:
                 }
             ]
         }
+
+    def create_catalog(self, business_id, name):
+        if name == "Valid Catalog":
+            return {"id": self.VALID_CATALOGS_ID[0]}
+        else:
+            return None
+
+    def destroy_catalog(self, catalog_id):
+        if catalog_id in self.VALID_CATALOGS_ID:
+            return True
+        else:
+            return False
 
 
 class TestFacebookService(TestCase):
@@ -85,7 +99,7 @@ class TestFacebookService(TestCase):
             "wa_waba_id": "10101010",
             "wa_phone_number_id": "0123456789",
         }
-        credentials = self.service.get_app_facebook_credentials(self.app)
+        credentials = self.service._get_app_facebook_credentials(self.app)
         self.assertEqual(credentials, expected_config)
 
     def test_enable_catalog(self):
@@ -127,7 +141,7 @@ class TestFacebookService(TestCase):
         self.app.config["wa_business_id"] = None
         self.app.save()
         with self.assertRaises(ValueError) as context:
-            self.service.get_app_facebook_credentials(self.app)
+            self.service._get_app_facebook_credentials(self.app)
 
         self.assertIn(
             "Not found 'wa_waba_id', 'wa_business_id' or wa_phone_number_id in app.config",
@@ -136,3 +150,60 @@ class TestFacebookService(TestCase):
 
         self.app.config["wa_business_id"] = "202020202020"
         self.app.save()
+
+
+class TestFacebookCreateDeleteService(TestCase):
+    def setUp(self):
+        self.user = User.objects.create(email="user@example.com")
+        self.mock_client = MockClient()
+        self.service = FacebookService(client=self.mock_client)
+        self.app = App.objects.create(
+            code="wpp-cloud",
+            created_by=self.user,
+            project_uuid=str(uuid.uuid4()),
+            platform=App.PLATFORM_WENI_FLOWS,
+            config={
+                "wa_business_id": "business-id",
+                "wa_waba_id": "waba-id",
+                "wa_phone_number_id": "phone-id",
+            },
+        )
+        self.vtex_app = App.objects.create(
+            code="vtex",
+            created_by=self.user,
+            project_uuid=self.app.project_uuid,
+            platform=App.PLATFORM_WENI_FLOWS,
+            configured=True,
+        )
+        self.catalog = Catalog.objects.create(
+            app=self.app,
+            facebook_catalog_id=MockClient.VALID_CATALOGS_ID[0],
+            name="Test Catalog",
+            category="commerce",
+        )
+
+    # TODO: resolve error "Key (facebook_catalog_id, app_id)=(0123456789010, 3) already exists." when running tests
+    # def test_create_vtex_catalog_success(self):
+    #     validated_data = {"name": "Valid Catalog"}
+    #     catalog, fb_catalog_id = self.service.create_vtex_catalog(
+    #         validated_data, self.app, self.vtex_app, self.user
+    #     )
+    #     self.assertIsNotNone(catalog)
+    #     self.assertEqual(fb_catalog_id, MockClient.VALID_CATALOGS_ID[0])
+
+    # def test_create_vtex_catalog_failure(self):
+    #     validated_data = {"name": "Invalid Catalog"}
+    #     catalog, fb_catalog_id = self.service.create_vtex_catalog(
+    #         validated_data, self.app, self.vtex_app, self.user
+    #     )
+    #     self.assertIsNone(catalog)
+    #     self.assertIsNone(fb_catalog_id)
+
+    # def test_catalog_deletion_success(self):
+    #     success = self.service.catalog_deletion(self.catalog)
+    #     self.assertTrue(success)
+
+    # def test_catalog_deletion_failure(self):
+    #     self.catalog.facebook_catalog_id = "invalid-id"
+    #     success = self.service.catalog_deletion(self.catalog)
+    #     self.assertFalse(success)

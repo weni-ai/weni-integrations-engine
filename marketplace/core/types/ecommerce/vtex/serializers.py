@@ -25,6 +25,8 @@ class VtexSerializer(serializers.Serializer):
 
 
 class VtexAppSerializer(AppTypeBaseSerializer):
+    config = serializers.SerializerMethodField()
+
     class Meta:
         model = App
         fields = (
@@ -38,3 +40,12 @@ class VtexAppSerializer(AppTypeBaseSerializer):
             "modified_by",
         )
         read_only_fields = ("code", "uuid", "platform")
+
+    def get_config(self, obj):
+        config = obj.config.copy()
+        api_credentials = config.get("api_credentials", {})
+        if api_credentials:
+            api_credentials["app_key"] = "***"
+            api_credentials["app_token"] = "***"
+
+        return config
