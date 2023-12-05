@@ -13,6 +13,7 @@ from marketplace.accounts.models import ProjectAuthorization
 from marketplace.applications.models import App
 from marketplace.core.types.ecommerce.vtex.views import VtexViewSet
 from marketplace.core.types.ecommerce.vtex.type import VtexType
+from marketplace.clients.flows.client import FlowsClient
 
 
 apptype = VtexType()
@@ -35,13 +36,18 @@ class MockVtexService:
         return app
 
 
+class MockFlowsService:
+    def update_vtex_integration_status(self, project_uuid, user_email, action):
+        return True
+
+
 class SetUpService(APIBaseTestCase):
     view_class = VtexViewSet
 
     def setUp(self):
         super().setUp()
 
-        # Mock service
+        # Mock vtex service
         self.mock_service = MockVtexService()
         patcher = patch.object(
             self.view_class,
@@ -51,6 +57,19 @@ class SetUpService(APIBaseTestCase):
         )
         self.addCleanup(patcher.stop)
         patcher.start()
+
+        # Mock FlowsClient
+        self.mock_flows_client = Mock(spec=FlowsClient)
+        self.mock_flows_service = MockFlowsService()
+        self.mock_flows_service.flows_client = self.mock_flows_client
+
+        patcher_flows = patch.object(
+            self.view_class,
+            "flows_service",
+            PropertyMock(return_value=self.mock_flows_service),
+        )
+        self.addCleanup(patcher_flows.stop)
+        patcher_flows.start()
 
 
 class CreateVtexAppTestCase(SetUpService):
@@ -166,7 +185,7 @@ class RetrieveVtexAppTestCase(APIBaseTestCase):
         self.assertEqual(response.json["config"], {})
 
 
-class DeleteVtexAppTestCase(APIBaseTestCase):
+class DeleteVtexAppTestCase(SetUpService):
     view_class = VtexViewSet
 
     @property

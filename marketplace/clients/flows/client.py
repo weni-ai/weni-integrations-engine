@@ -1,6 +1,4 @@
 """Client for connection with flows"""
-
-
 from django.conf import settings
 from marketplace.clients.base import RequestClient
 
@@ -53,14 +51,13 @@ class FlowsClient(RequestClient):
         )
         return response
 
-    def notify_vtex_app_creation(self, project_uuid, user_email):
-        url = f"{self.base_url}/internals/orgs/{project_uuid}/update-vtex/"
+    def update_vtex_integration_status(self, project_uuid, user_email, action):
+        url = f"{self.base_url}/api/v2/internals/orgs/{project_uuid}/update-vtex/"
         payload = {"user_email": user_email}
-
         self.make_request(
-            url,
-            method="POST",
+            url=url,
+            method=action,
             headers=self.authentication_instance.headers,
-            data=payload,
+            json=payload,
         )
         return True

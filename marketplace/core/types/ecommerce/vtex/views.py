@@ -57,9 +57,9 @@ class VtexViewSet(views.BaseAppTypeViewSet):
         app = self.get_app()
         try:
             updated_app = self.service.configure(app, credentials, wpp_cloud_uuid)
-            # self.flows_service.notify_vtex_app_creation(
-            #     app.project_uuid, app.created_by.email
-            # )
+            self.flows_service.update_vtex_integration_status(
+                app.project_uuid, app.created_by.email, action="POST"
+            )
             return Response(
                 data=self.get_serializer(updated_app).data,
                 status=status.HTTP_201_CREATED,
@@ -72,4 +72,7 @@ class VtexViewSet(views.BaseAppTypeViewSet):
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         self.perform_destroy(instance)
+        self.flows_service.update_vtex_integration_status(
+            instance.project_uuid, instance.created_by.email, action="DELETE"
+        )
         return Response(status=status.HTTP_204_NO_CONTENT)

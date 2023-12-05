@@ -2,5 +2,7 @@ class FlowsService:
     def __init__(self, client):
         self.client = client
 
-    def notify_vtex_app_creation(self, project_uuid, user_email):
-        return self.client.notify_vtex_app_creation(project_uuid, user_email)
+    def update_vtex_integration_status(self, project_uuid, user_email, action):
+        return self.client.update_vtex_integration_status(
+            project_uuid, user_email, action
+        )
