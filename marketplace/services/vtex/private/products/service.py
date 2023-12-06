@@ -83,9 +83,11 @@ class PrivateProductsService:
         seller_ids = self.client.list_active_sellers(domain)
 
         if price_modified or stock_modified or other_changes:
-            updated_products = self.data_processor.process_product_data(
+            updated_products_dto = self.data_processor.process_product_data(
                 [sku_id], seller_ids, self, domain, update_product=True
             )
+
+            updated_products = DataProcessor.convert_dtos_to_dicts(updated_products_dto)
 
         return updated_products
 

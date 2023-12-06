@@ -11,12 +11,17 @@ from django.conf.urls.static import static
 from marketplace.swagger import view as swagger_view
 from marketplace.applications import urls as applications_urls
 from marketplace.interactions import urls as interactions_urls
+from marketplace.webhooks import urls as webhooks_urls
 
 
 admin.site.unregister(Group)
 
 
-api_urls = [path("", include(applications_urls)), path("", include(interactions_urls))]
+api_urls = [
+    path("", include(applications_urls)),
+    path("", include(interactions_urls)),
+    path("", include(webhooks_urls)),
+]
 
 
 urlpatterns = [

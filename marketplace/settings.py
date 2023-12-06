@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     "marketplace.wpp_templates",
     "marketplace.event_driven",
     "marketplace.wpp_products",
+    "marketplace.webhooks",
     # installed apps
     "rest_framework",
     "storages",

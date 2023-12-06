@@ -6,3 +6,6 @@ class FlowsService:
         return self.client.update_vtex_integration_status(
             project_uuid, user_email, action
         )
+
+    def update_vtex_products(self, products: list):
+        pass

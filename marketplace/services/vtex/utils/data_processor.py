@@ -157,3 +157,6 @@ class DataProcessor:
         csv_bytes = csv_content.encode("utf-8")
         csv_memory = io.BytesIO(csv_bytes)
         return csv_memory
+
+    def convert_dtos_to_dicts(dtos: List[FacebookProductDTO]) -> List[dict]:
+        return [dataclasses.asdict(dto) for dto in dtos]
