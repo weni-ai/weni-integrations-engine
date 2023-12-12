@@ -1,6 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.permissions import AllowAny
 
 from marketplace.services.vtex.private.products.service import PrivateProductsService
 from marketplace.clients.vtex.client import VtexPrivateClient
@@ -18,6 +19,9 @@ class VtexProductUpdateWebhook(APIView):
     flows_service_class = FlowsService
     vtex_client_class = VtexPrivateClient
     vtex_service_class = PrivateProductsService
+
+    authentication_classes = []
+    permission_classes = [AllowAny]
 
     def post(self, request, app_uuid):
         app = self.get_app(app_uuid)
