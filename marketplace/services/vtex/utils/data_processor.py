@@ -21,15 +21,6 @@ class FacebookProductDTO:
     sale_price: str
     product_details: dict  # TODO: Implement ProductDetailsDTO
 
-    def get_multiplier(self):
-        return self.product_details.get("UnitMultiplier", 1.0)
-
-    def get_weight(self):
-        return self.product_details["Dimension"]["weight"]
-
-    def calculates_by_weight(self):
-        return self.product_details["MeasurementUnit"] != "un"
-
 
 @dataclass
 class VtexProductDTO:  # TODO: Implement This VtexProductDTO
@@ -37,18 +28,6 @@ class VtexProductDTO:  # TODO: Implement This VtexProductDTO
 
 
 class DataProcessor:
-    SEPARATOR = "#"
-    CURRENCY = "BRL"
-
-    @staticmethod
-    def create_unique_product_id(sku_id, seller_id):
-        return f"{sku_id}{DataProcessor.SEPARATOR}{seller_id}"
-
-    @staticmethod
-    def decode_unique_product_id(unique_product_id):
-        sku_id, seller_id = unique_product_id.split(DataProcessor.SEPARATOR)
-        return sku_id, seller_id
-
     @staticmethod
     def extract_fields(product_details, availability_details) -> FacebookProductDTO:
         price = (
@@ -78,59 +57,28 @@ class DataProcessor:
         )
 
     @staticmethod
-    def format_price(price):
-        """Formats the price to the standard 'XX.XX BRL'."""
-        formatted_price = f"{price / 100:.2f} {DataProcessor.CURRENCY}"  # TODO: Move CURRENCY to business layer
-        return formatted_price
-
-    @staticmethod
-    def format_fields(
-        seller_id, product: FacebookProductDTO
-    ):  # TODO: Move this method rules to business layer
-        if product.calculates_by_weight():
-            # Apply price calculation logic per weight/unit
-            DataProcessor.calculate_price_by_weight(product)
-
-        # Format the price for all products
-        product.price = DataProcessor.format_price(product.price)
-        product.sale_price = DataProcessor.format_price(product.sale_price)
-        product.id = DataProcessor.create_unique_product_id(product.id, seller_id)
-
-        return product
-
-    @staticmethod
-    def calculate_price_by_weight(product: FacebookProductDTO):
-        unit_multiplier = product.get_multiplier()
-        product_weight = product.get_weight()
-        weight = product_weight * unit_multiplier
-        product.price = product.price * unit_multiplier
-        product.sale_price = product.sale_price * unit_multiplier
-        product.description += f" - {weight}g"
-
-    @staticmethod
     def process_product_data(
-        skus_ids, active_sellers, service, domain, update_product=False
+        skus_ids, active_sellers, service, domain, rules, update_product=False
     ):
         facebook_products = []
         for sku_id in skus_ids:
             product_details = service.get_product_details(sku_id, domain)
-
             for seller_id in active_sellers:
                 availability_details = service.simulate_cart_for_seller(
                     sku_id, seller_id, domain
                 )
+                if update_product is False and not availability_details["is_available"]:
+                    continue
 
-                if update_product is False:
-                    if not availability_details["is_available"]:
-                        continue
-
-                extracted_product_dto = DataProcessor.extract_fields(
+                product_dto = DataProcessor.extract_fields(
                     product_details, availability_details
                 )
-                formatted_product_dto = DataProcessor.format_fields(
-                    seller_id, extracted_product_dto
-                )
-                facebook_products.append(formatted_product_dto)
+                params = {"seller_id": seller_id}
+                for rule in rules:
+                    if not rule.apply(product_dto, **params):
+                        break
+                else:
+                    facebook_products.append(product_dto)
 
         return facebook_products
 

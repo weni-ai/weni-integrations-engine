@@ -32,6 +32,7 @@ Example:
 """
 from marketplace.services.vtex.exceptions import CredentialsValidationError
 from marketplace.services.vtex.utils.data_processor import DataProcessor
+from marketplace.services.vtex.business.rules.rule_mappings import RULE_MAPPINGS
 
 
 class PrivateProductsService:
@@ -55,12 +56,12 @@ class PrivateProductsService:
         self.check_is_valid_domain(domain)
         return self.client.is_valid_credentials(domain)
 
-    def list_all_products(self, domain):
+    def list_all_products(self, domain, config):
         active_sellers = self.client.list_active_sellers(domain)
         skus_ids = self.client.list_all_products_sku_ids(domain)
-
+        rules = self._load_rules(config.get("rules", []))
         data = self.data_processor.process_product_data(
-            skus_ids, active_sellers, self, domain
+            skus_ids, active_sellers, self, domain, rules
         )
         return data
 
@@ -72,7 +73,7 @@ class PrivateProductsService:
             sku_id, seller_id, domain
         )  # TODO: Change to pvt_simulate_cart_for_seller
 
-    def update_product_info(self, domain, webhook_payload):
+    def update_product_info(self, domain, webhook_payload, config):
         updated_products = []
 
         sku_id = webhook_payload["IdSku"]
@@ -83,8 +84,9 @@ class PrivateProductsService:
         seller_ids = self.client.list_active_sellers(domain)
 
         if price_modified or stock_modified or other_changes:
+            rules = self._load_rules(config.get("rules", []))
             updated_products_dto = self.data_processor.process_product_data(
-                [sku_id], seller_ids, self, domain, update_product=True
+                [sku_id], seller_ids, self, domain, rules, update_product=True
             )
 
             updated_products = DataProcessor.convert_dtos_to_dicts(updated_products_dto)
@@ -97,3 +99,13 @@ class PrivateProductsService:
 
     def _is_domain_valid(self, domain):
         return self.client.check_domain(domain)
+
+    def _load_rules(self, rule_names):
+        rules = []
+        for rule_name in rule_names:
+            rule_class = RULE_MAPPINGS.get(rule_name)
+            if rule_class:
+                rules.append(rule_class())
+            else:
+                print(f"Rule {rule_name} not found or not mapped.")
+        return rules

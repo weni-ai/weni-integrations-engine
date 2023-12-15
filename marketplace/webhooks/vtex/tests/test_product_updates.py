@@ -10,7 +10,7 @@ from marketplace.applications.models import App
 
 
 class MockVtexService:
-    def update_product_info(self, domain, webhook_payload):
+    def update_product_info(self, domain, webhook_payload, config):
         return [{"id": 1, "sku": 1}, {"id": 2, "sku": 2}]
 
 
@@ -29,9 +29,16 @@ class SetUpTestBase(APIBaseTestCase):
             "app_key": "valid_key",
             "app_token": "valid_token",
         }
+        rules = [
+            "calculate_by_weight",
+            "currency_pt_br",
+            "exclude_alcoholic_drinks",
+            "unifies_id_with_seller",
+        ]
         config = {
             "api_credentials": api_credentials,
             "initial_sync_completed": True,
+            "rules": rules,
         }
         self.app = App.objects.create(
             code="vtex",

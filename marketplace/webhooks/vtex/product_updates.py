@@ -34,7 +34,9 @@ class VtexProductUpdateWebhook(APIView):
         domain, app_key, app_token = self.get_credentials_or_raise(app)
         vtex_service = self.get_vtex_service(app_key, app_token)
 
-        products_updated = vtex_service.update_product_info(domain, request.data)
+        products_updated = vtex_service.update_product_info(
+            domain, request.data, app.config
+        )
         self.send_products_to_flows(products_updated)
         return Response(status=status.HTTP_200_OK)
 
