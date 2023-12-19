@@ -17,7 +17,7 @@ class VerticalChoices(models.TextChoices):
 
 
 class Catalog(BaseModel):
-    facebook_catalog_id = models.CharField(max_length=30, unique=True)
+    facebook_catalog_id = models.CharField(max_length=30)
     name = models.CharField(max_length=100)
     category = models.CharField(
         max_length=20,
@@ -44,3 +44,11 @@ class Catalog(BaseModel):
     def save(self, *args, **kwargs):
         self.clean()
         super().save(*args, **kwargs)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facebook_catalog_id", "app"],
+                name="unique_facebook_catalog_id_per_app",
+            )
+        ]

@@ -206,7 +206,9 @@ class URLWhatsAppDemoAppTestCase(APIBaseTestCase):
     def test_blank_project_uuid_returns_400(self):
         response = self.request.get(self.url)
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.json.get("detail"), "“project“ is a required parameter")
+        self.assertEqual(
+            response.json.get("detail"), "“project“ is a required parameter"
+        )
 
     def test_not_valid_uuid_returns_400(self):
         response = self.request.get(self.url + "?project=123")
@@ -217,28 +219,47 @@ class URLWhatsAppDemoAppTestCase(APIBaseTestCase):
         response = self.request.get(self.url + f"?project={uuid.uuid4()}")
 
         self.assertEqual(response.status_code, 403)
-        self.assertEqual(response.json.get("detail"), "You do not have permission to access this project")
+        self.assertEqual(
+            response.json.get("detail"),
+            "You do not have permission to access this project",
+        )
 
     def test_user_not_setted_permission_returns_403(self):
-        self.user.authorizations.create(project_uuid=self.project_uuid, role=ProjectAuthorization.ROLE_NOT_SETTED)
+        self.user.authorizations.create(
+            project_uuid=self.project_uuid, role=ProjectAuthorization.ROLE_NOT_SETTED
+        )
         response = self.request.get(self.url + f"?project={self.project_uuid}")
 
         self.assertEqual(response.status_code, 403)
-        self.assertEqual(response.json.get("detail"), "You do not have permission to access this project")
+        self.assertEqual(
+            response.json.get("detail"),
+            "You do not have permission to access this project",
+        )
 
     def tests_app_does_not_exist_returns_404(self):
-        self.user.authorizations.create(project_uuid=self.project_uuid, role=ProjectAuthorization.ROLE_ADMIN)
+        self.user.authorizations.create(
+            project_uuid=self.project_uuid, role=ProjectAuthorization.ROLE_ADMIN
+        )
         response = self.request.get(self.url + f"?project={self.project_uuid}")
 
         self.assertEqual(response.status_code, 404)
-        self.assertEqual(response.json.get("detail"), "This project does not have an integrated WhatsApp Demo")
+        self.assertEqual(
+            response.json.get("detail"),
+            "This project does not have an integrated WhatsApp Demo",
+        )
 
     def test_request_ok(self):
-        self.user.authorizations.create(project_uuid=self.project_uuid, role=ProjectAuthorization.ROLE_ADMIN)
+        self.user.authorizations.create(
+            project_uuid=self.project_uuid, role=ProjectAuthorization.ROLE_ADMIN
+        )
 
         redirect_url = "https://wa.me/1234?text=weni-demo-pi68n_q5A"
         apptype = APPTYPES.get("wpp-demo")
-        apptype.create_app(project_uuid=self.project_uuid, created_by=self.user, config={"redirect_url": redirect_url})
+        apptype.create_app(
+            project_uuid=self.project_uuid,
+            created_by=self.user,
+            config={"redirect_url": redirect_url},
+        )
 
         response = self.request.get(self.url + f"?project={self.project_uuid}")
 

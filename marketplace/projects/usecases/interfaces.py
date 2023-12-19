@@ -11,5 +11,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 class TemplateTypeIntegrationInterface(ABC):  # pragma: no cover
     @abstractmethod
-    def integrate_template_type_in_project(self, project: "Project", template_type_uuid: str, user: "User"):
+    def integrate_template_type_in_project(
+        self, project: "Project", template_type_uuid: str, user: "User"
+    ):
         pass

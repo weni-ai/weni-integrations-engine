@@ -1,3 +1,13 @@
+v3.1.3
+----------
+* Increases the synchronization time for the sync_facebook_catalogs task
+
+v3.1.2
+----------
+* Sort active catalog to first
+* Adds filter by name and pagination class to catalog listing
+* Adds unique_facebook_catalog_id_per_app constraint to Catalog model
+
 v3.1.1
 ----------
 * Template analytics viewset and services
