@@ -64,3 +64,18 @@ class FlowsClient(RequestClient):
             json=data,
         )
         return response
+
+    def update_status_catalog(self, flow_object_uuid, fba_catalog_id, is_active: bool):
+        data = {
+            "facebook_catalog_id": fba_catalog_id,
+            "is_active": is_active,
+        }
+        url = f"{self.base_url}/catalogs/{flow_object_uuid}/update-status-catalog/"
+
+        response = self.make_request(
+            url,
+            method="POST",
+            headers=self.authentication_instance.headers,
+            json=data,
+        )
+        return response
