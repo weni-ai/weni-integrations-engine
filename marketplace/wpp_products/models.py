@@ -25,6 +25,14 @@ class Catalog(BaseModel):
         default=VerticalChoices.ECOMMERCE,
     )
     app = models.ForeignKey(App, on_delete=models.CASCADE, related_name="catalogs")
+    vtex_app = models.ForeignKey(
+        App,
+        on_delete=models.SET_NULL,
+        related_name="vtex_catalogs",
+        blank=True,
+        null=True,
+        limit_choices_to={"code": "vtex"},
+    )
     created_by = models.ForeignKey(
         "accounts.User",
         on_delete=models.PROTECT,
