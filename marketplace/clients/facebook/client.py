@@ -54,15 +54,17 @@ class FacebookClient(FacebookAuthorization, RequestClient):
 
         return response.json()
 
-    def upload_product_feed(self, feed_id, file, update_only=False):
+    def upload_product_feed(
+        self, feed_id, file, file_name, file_content_type, update_only=False
+    ):
         url = self.get_url + f"{feed_id}/uploads"
 
         headers = self._get_headers()
         files = {
             "file": (
-                file.name,
+                file_name,
                 file,
-                file.content_type,
+                file_content_type,
             )
         }
         params = {"update_only": update_only}

@@ -3,7 +3,7 @@ import random
 
 from django.test import TestCase
 
-from marketplace.core.types.channels.whatsapp_cloud.services.facebook import (
+from marketplace.services.facebook.service import (
     FacebookService,
 )
 from marketplace.applications.models import App

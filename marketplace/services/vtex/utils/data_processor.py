@@ -1,4 +1,4 @@
-import csv
+import pandas as pd
 import io
 import dataclasses
 
@@ -82,29 +82,14 @@ class DataProcessor:
 
         return facebook_products
 
-    def products_to_csv(products: List[FacebookProductDTO]) -> str:
-        output = io.StringIO()
-        fieldnames = [
-            field.name
-            for field in dataclasses.fields(FacebookProductDTO)
-            if field.name != "product_details"
-        ]
-        writer = csv.DictWriter(output, fieldnames=fieldnames)
-        writer.writeheader()
-        for product in products:
-            row = dataclasses.asdict(product)
-            row.pop(
-                "product_details", None
-            )  # TODO: should change this logic before going to production
-            writer.writerow(row)
-
-        return output.getvalue()
-
-    @staticmethod
-    def generate_csv_file(csv_content: str) -> io.BytesIO:
-        csv_bytes = csv_content.encode("utf-8")
-        csv_memory = io.BytesIO(csv_bytes)
-        return csv_memory
+    def products_to_csv(products: List[FacebookProductDTO]) -> io.BytesIO:
+        product_dicts = [dataclasses.asdict(product) for product in products]
+        df = pd.DataFrame(product_dicts)
+        df = df.drop(columns=["product_details"])
+        buffer = io.BytesIO()
+        df.to_csv(buffer, index=False, encoding="utf-8")
+        buffer.seek(0)
+        return buffer
 
     def convert_dtos_to_dicts(dtos: List[FacebookProductDTO]) -> List[dict]:
         return [dataclasses.asdict(dto) for dto in dtos]

@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from rest_framework import status
 
-from marketplace.core.types.channels.whatsapp_cloud.services.facebook import (
+from marketplace.services.facebook.service import (
     FacebookService,
 )
 from marketplace.core.types.channels.whatsapp_cloud.services.flows import (
@@ -24,6 +24,7 @@ from marketplace.wpp_products.serializers import (
     CatalogListSerializer,
 )
 from marketplace.services.vtex.generic_service import VtexService
+from marketplace.services.vtex.generic_service import APICredentials
 
 
 class BaseViewSet(viewsets.ModelViewSet):
@@ -90,6 +91,16 @@ class CatalogViewSet(BaseViewSet):
         catalog, _fba_catalog_id = self.fb_service.create_vtex_catalog(
             serializer.validated_data, app, vtex_app, self.request.user
         )
+
+        credentials = APICredentials(
+            app_key=vtex_app.config.get("api_credentials", {}).get("app_key"),
+            app_token=vtex_app.config.get("api_credentials", {}).get("app_token"),
+            domain=vtex_app.config.get("api_credentials", {}).get("domain"),
+        )
+
+        self.vtex_service.first_insert(
+            credentials, catalog
+        )  # TODO: change to celery task
         if not catalog:
             return Response(
                 {"detail": "Failed to create catalog on Facebook."},
