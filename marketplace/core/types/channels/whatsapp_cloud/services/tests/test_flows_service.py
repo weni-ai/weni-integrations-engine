@@ -1,3 +1,5 @@
+from unittest.mock import Mock
+
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 
@@ -33,7 +35,14 @@ class MockFlowsClient:
         }
 
     def update_config(self, data, flow_object_uuid):
-        return None
+        mock_response = Mock()
+        mock_response.status_code = 200
+        return mock_response
+
+    def update_status_catalog(self, flow_object_uuid, fba_catalog_id, is_active):
+        mock_response = Mock()
+        mock_response.status_code = 200
+        return mock_response
 
 
 class TestFlowsService(TestCase):
@@ -54,3 +63,11 @@ class TestFlowsService(TestCase):
     def test_update_treshold(self):
         response = self.service.update_treshold(self.app, 3.5)
         self.assertEqual(response, True)
+
+    def test_update_catalog_to_active(self):
+        response = self.service.update_catalog_to_active(self.app, "123456789")
+        self.assertEqual(response.status_code, 200)
+
+    def test_update_catalog_to_inactive(self):
+        response = self.service.update_catalog_to_inactive(self.app, "123456789")
+        self.assertEqual(response.status_code, 200)
