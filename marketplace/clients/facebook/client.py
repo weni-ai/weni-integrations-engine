@@ -142,14 +142,18 @@ class FacebookClient(FacebookAuthorization, RequestClient):
         url = self.get_url + f"{wa_business_id}/owned_product_catalogs"
         headers = self._get_headers()
         all_catalog_ids = []
+        all_catalogs = []
 
         while url:
             response = self.make_request(url, method="GET", headers=headers).json()
             catalog_data = response.get("data", [])
-            all_catalog_ids.extend([item["id"] for item in catalog_data])
+            for item in catalog_data:
+                all_catalog_ids.append(item["id"])
+                all_catalogs.append(item)
+
             url = response.get("paging", {}).get("next")
 
-        return all_catalog_ids
+        return all_catalog_ids, all_catalogs
 
     def destroy_feed(self, feed_id):
         url = self.get_url + f"{feed_id}"
