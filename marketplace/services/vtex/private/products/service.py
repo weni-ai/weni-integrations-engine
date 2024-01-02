@@ -94,7 +94,9 @@ class PrivateProductsService:
                 [sku_id], seller_ids, self, domain, rules, update_product=True
             )
 
-            updated_products = DataProcessor.convert_dtos_to_dicts(updated_products_dto)
+            updated_products = DataProcessor.convert_dtos_to_dicts_list(
+                updated_products_dto
+            )
 
         return updated_products
 

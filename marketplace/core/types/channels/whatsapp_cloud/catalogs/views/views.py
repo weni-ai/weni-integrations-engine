@@ -24,7 +24,7 @@ from marketplace.wpp_products.serializers import (
     CatalogListSerializer,
 )
 from marketplace.services.vtex.generic_service import VtexService
-from marketplace.services.vtex.generic_service import APICredentials
+from marketplace.celery import app as celery_app
 
 
 class BaseViewSet(viewsets.ModelViewSet):
@@ -96,26 +96,27 @@ class CatalogViewSet(BaseViewSet):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        vtex_app = self.vtex_service.get_vtex_app_or_error(app.project_uuid)
+        vtex_app = self.vtex_service.app_manager.get_vtex_app_or_error(app.project_uuid)
 
         catalog, _fba_catalog_id = self.fb_service.create_vtex_catalog(
             serializer.validated_data, app, vtex_app, self.request.user
         )
-
-        credentials = APICredentials(
-            app_key=vtex_app.config.get("api_credentials", {}).get("app_key"),
-            app_token=vtex_app.config.get("api_credentials", {}).get("app_token"),
-            domain=vtex_app.config.get("api_credentials", {}).get("domain"),
-        )
-
-        self.vtex_service.first_insert(
-            credentials, catalog
-        )  # TODO: change to celery task
         if not catalog:
             return Response(
                 {"detail": "Failed to create catalog on Facebook."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        credentials = {
+            "app_key": vtex_app.config.get("api_credentials", {}).get("app_key"),
+            "app_token": vtex_app.config.get("api_credentials", {}).get("app_token"),
+            "domain": vtex_app.config.get("api_credentials", {}).get("domain"),
+        }
+
+        celery_app.send_task(
+            name="task_insert_vtex_products",
+            kwargs={"credentials": credentials, "catalog_uuid": str(catalog.uuid)},
+        )
 
         return Response(CatalogSerializer(catalog).data, status=status.HTTP_201_CREATED)
 

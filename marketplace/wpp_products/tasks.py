@@ -8,6 +8,10 @@ from marketplace.clients.facebook.client import FacebookClient
 from marketplace.wpp_products.models import Catalog
 from marketplace.applications.models import App
 from marketplace.clients.flows.client import FlowsClient
+from marketplace.celery import app as celery_app
+from marketplace.services.vtex.generic_service import VtexService
+from marketplace.services.vtex.generic_service import APICredentials
+from marketplace.services.flows.service import FlowsService
 
 
 logger = logging.getLogger(__name__)
@@ -112,3 +116,29 @@ def create_catalog_task(app, details):
 )
 def delete_catalogs_task(app, to_delete):
     app.catalogs.filter(facebook_catalog_id__in=to_delete).delete()
+
+
+@celery_app.task(name="task_insert_vtex_products")
+def task_insert_vtex_products(**kwargs):
+    vtex_service = VtexService()
+    flows_service = FlowsService(FlowsClient())
+
+    credentials = kwargs.get("credentials")
+    catalog_uuid = kwargs.get("catalog_uuid")
+
+    catalog = Catalog.objects.get(uuid=catalog_uuid)
+    try:
+        api_credentials = APICredentials(
+            app_key=credentials.get("app_key"),
+            app_token=credentials.get("app_token"),
+            domain=credentials.get("domain"),
+        )
+        products = vtex_service.first_product_insert(api_credentials, catalog)
+        flows_service.update_vtex_products(
+            products, str(catalog.app.flow_object_uuid), catalog.facebook_catalog_id
+        )
+        print("Products created and sent to flows successfully")
+    except Exception as e:
+        logger.error(
+            f"Error on insert vtex products for catalog {str(catalog.uuid)}, {e}"
+        )

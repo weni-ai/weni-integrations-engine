@@ -20,11 +20,6 @@ apptype = VtexType()
 
 
 class MockVtexService:
-    def get_vtex_app_or_error(self, project_uuid):
-        mock_app = Mock(spec=App)
-        mock_app.config = {}
-        return mock_app
-
     def check_is_valid_credentials(self, credentials):
         return True
 

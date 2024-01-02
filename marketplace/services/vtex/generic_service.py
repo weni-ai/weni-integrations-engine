@@ -8,10 +8,6 @@ Attributes:
     None
 
 Methods:
-    get_vtex_app_or_error(project_uuid): Retrieves a single configured VTEX App instance
-        associated with the provided project UUID or raises an exception if not found or if
-        multiple instances are found.
-
     check_is_valid_credentials(credentials): Validates the provided API credentials against
         VTEX's services. Raises an exception if the credentials are invalid.
 
@@ -45,8 +41,6 @@ from datetime import datetime
 
 from dataclasses import dataclass
 
-from django.core.exceptions import MultipleObjectsReturned
-
 from marketplace.applications.models import App
 from marketplace.services.vtex.private.products.service import (
     PrivateProductsService,
@@ -54,8 +48,6 @@ from marketplace.services.vtex.private.products.service import (
 from marketplace.clients.vtex.client import VtexPrivateClient
 from marketplace.services.vtex.exceptions import (
     CredentialsValidationError,
-    NoVTEXAppConfiguredException,
-    MultipleVTEXAppsConfiguredException,
 )
 from marketplace.services.facebook.service import (
     FacebookService,
@@ -68,6 +60,7 @@ from marketplace.services.vtex.exceptions import (
     UnexpectedFacebookApiResponseValidationError,
 )
 from marketplace.services.vtex.exceptions import FileNotSendValidationError
+from marketplace.services.vtex.app_manager import AppVtexManager
 
 
 @dataclass
@@ -92,6 +85,7 @@ class VtexService:
         self._pvt_service = None
         self._fb_service = None
         self.product_manager = ProductFacebookManager()
+        self.app_manager = AppVtexManager()
 
     @property
     def fb_service(self) -> FacebookService:  # pragma: no cover
@@ -107,17 +101,6 @@ class VtexService:
             self._pvt_service = PrivateProductsService(client)
         return self._pvt_service
 
-    def get_vtex_app_or_error(self, project_uuid):
-        try:
-            app_vtex = App.objects.get(
-                code="vtex", project_uuid=str(project_uuid), configured=True
-            )
-            return app_vtex
-        except App.DoesNotExist:
-            raise NoVTEXAppConfiguredException()
-        except MultipleObjectsReturned:
-            raise MultipleVTEXAppsConfiguredException()
-
     def check_is_valid_credentials(self, credentials: APICredentials) -> bool:
         pvt_service = self.get_private_service(
             credentials.app_key, credentials.app_token
@@ -132,8 +115,8 @@ class VtexService:
         app.config["wpp_cloud_uuid"] = wpp_cloud_uuid
         app.config["initial_sync_completed"] = False
         app.config["rules"] = [
-            "currency_pt_br",
             "calculate_by_weight",
+            "currency_pt_br",
             "exclude_alcoholic_drinks",
             "unifies_id_with_seller",
         ]
@@ -141,7 +124,7 @@ class VtexService:
         app.save()
         return app
 
-    def first_insert(self, credentials: APICredentials, catalog):
+    def first_product_insert(self, credentials: APICredentials, catalog: Catalog):
         pvt_service = self.get_private_service(
             credentials.app_key, credentials.app_token
         )
@@ -151,7 +134,9 @@ class VtexService:
         products_csv = pvt_service.data_processor.products_to_csv(products)
         product_feed = self._send_products_to_facebook(products_csv, catalog)
         self.product_manager.save_products_on_database(products, catalog, product_feed)
-        return True
+        self.app_manager.initial_sync_products_completed(catalog.vtex_app)
+
+        return pvt_service.data_processor.convert_dtos_to_dicts_list(products)
 
     def _send_products_to_facebook(self, products_csv, catalog: Catalog):
         current_time = datetime.now().strftime("%Y-%m-%d_%H-%M")

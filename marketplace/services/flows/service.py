@@ -7,5 +7,17 @@ class FlowsService:
             project_uuid, user_email, action
         )
 
-    def update_vtex_products(self, products: list):
-        pass
+    def update_vtex_products(
+        self, products: list, flow_object_uuid, facebook_catalog_id
+    ):
+        return self.client.update_vtex_products(
+            products, flow_object_uuid, facebook_catalog_id
+        )
+
+    def update_webhook_vtex_products(self, products: list, app):
+        for catalog in app.catalogs.all():
+            self.update_vtex_products(
+                products, str(app.flow_object_uuid), catalog.facebook_catalog_id
+            )
+
+        return True

@@ -40,6 +40,11 @@ class DataProcessor:
             if availability_details["list_price"] is not None
             else 0
         )
+        image_url = (
+            product_details.get("Images", [])[0].get("ImageUrl")
+            if product_details.get("Images")
+            else product_details.get("ImageUrl")
+        )
         return FacebookProductDTO(
             id=product_details["Id"],
             title=product_details["SkuName"],
@@ -49,8 +54,8 @@ class DataProcessor:
             else "out of stock",
             condition="new",
             price=list_price,
-            link="",  # TODO: Needs Implement This based on FacebookAPI
-            image_link=product_details["ImageUrl"],
+            link="https://www.google.com.br/",  # TODO:  Need to set up the product link.
+            image_link=image_url,
             brand=product_details.get("BrandName", "N/A"),
             sale_price=price,
             product_details=product_details,
@@ -91,5 +96,11 @@ class DataProcessor:
         buffer.seek(0)
         return buffer
 
-    def convert_dtos_to_dicts(dtos: List[FacebookProductDTO]) -> List[dict]:
-        return [dataclasses.asdict(dto) for dto in dtos]
+    def convert_dtos_to_dicts_list(dtos: List[FacebookProductDTO]) -> List[dict]:
+        dicts_list = []
+        for dto in dtos:
+            dto_dict = dataclasses.asdict(dto)
+            dto_dict.pop("product_details", None)
+            dicts_list.append(dto_dict)
+
+        return dicts_list

@@ -78,7 +78,7 @@ class Product(BaseModel):
         ("refurbished", "refurbished"),
         ("used", "used"),
     ]
-    facebook_product_id = models.CharField(max_length=30, unique=True)
+    facebook_product_id = models.CharField(max_length=30)
     # facebook required fields
     title = models.CharField(max_length=200)
     description = models.TextField(max_length=9999)
@@ -103,3 +103,11 @@ class Product(BaseModel):
 
     def __str__(self):
         return self.title
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facebook_product_id", "catalog"],
+                name="unique_facebook_product_id_per_catalog",
+            )
+        ]
