@@ -75,7 +75,19 @@ def get_extra_info(app, *args, **kwargs):
     logger, "Error listing all catalogs for App: ", extra_info_func=get_extra_info
 )
 def list_all_catalogs_task(app, client):
-    return client.list_all_catalogs(wa_business_id=app.config.get("wa_business_id"))
+    all_catalog_ids = []
+    all_catalogs = []
+
+    try:
+        result = client.list_all_catalogs(
+            wa_business_id=app.config.get("wa_business_id")
+        )
+        if result:
+            all_catalog_ids, all_catalogs = result
+    except Exception as e:
+        logger.error(f"Error on list all catalogs for App: {str(e)}")
+
+    return all_catalog_ids, all_catalogs
 
 
 @handle_exceptions(
