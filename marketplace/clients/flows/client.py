@@ -1,6 +1,4 @@
 """Client for connection with flows"""
-
-
 from django.conf import settings
 from marketplace.clients.base import RequestClient
 
@@ -53,6 +51,17 @@ class FlowsClient(RequestClient):
         )
         return response
 
+    def update_vtex_integration_status(self, project_uuid, user_email, action):
+        url = f"{self.base_url}/api/v2/internals/orgs/{project_uuid}/update-vtex/"
+        payload = {"user_email": user_email}
+        self.make_request(
+            url=url,
+            method=action,
+            headers=self.authentication_instance.headers,
+            json=payload,
+        )
+        return True
+
     def update_catalogs(self, flow_object_uuid, catalogs_data):
         data = {"data": catalogs_data}
         url = f"{self.base_url}/catalogs/{flow_object_uuid}/update-catalog/"
@@ -71,6 +80,22 @@ class FlowsClient(RequestClient):
             "is_active": is_active,
         }
         url = f"{self.base_url}/catalogs/{flow_object_uuid}/update-status-catalog/"
+
+        response = self.make_request(
+            url,
+            method="POST",
+            headers=self.authentication_instance.headers,
+            json=data,
+        )
+        return response
+
+    def update_vtex_products(self, products, flow_object_uuid, facebook_catalog_id):
+        data = {
+            "facebook_catalog_id": facebook_catalog_id,
+            "products": products,
+            "channel_uuid": flow_object_uuid,
+        }
+        url = f"{self.base_url}/products/update-products/"
 
         response = self.make_request(
             url,
