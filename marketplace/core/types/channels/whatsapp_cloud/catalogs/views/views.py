@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from rest_framework import status
 
-from marketplace.core.types.channels.whatsapp_cloud.services.facebook import (
+from marketplace.services.facebook.service import (
     FacebookService,
 )
 from marketplace.core.types.channels.whatsapp_cloud.services.flows import (
@@ -24,21 +24,32 @@ from marketplace.wpp_products.serializers import (
     CatalogListSerializer,
 )
 from marketplace.services.vtex.generic_service import VtexService
+from marketplace.celery import app as celery_app
 
 
 class BaseViewSet(viewsets.ModelViewSet):
     fb_service_class = FacebookService
+    flows_service_class = FlowsService
+
     fb_client_class = FacebookClient
+    flows_client_class = FlowsClient
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._fb_service = None
+        self._flows_service = None
 
     @property
     def fb_service(self):  # pragma: no cover
         if not self._fb_service:
             self._fb_service = self.fb_service_class(self.fb_client_class())
         return self._fb_service
+
+    @property
+    def flows_service(self):  # pragma: no cover
+        if not self._flows_service:
+            self._flows_service = self.flows_service_class(self.flows_client_class())
+        return self._flows_service
 
 
 class Pagination(PageNumberPagination):
@@ -85,7 +96,7 @@ class CatalogViewSet(BaseViewSet):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        vtex_app = self.vtex_service.get_vtex_app_or_error(app.project_uuid)
+        vtex_app = self.vtex_service.app_manager.get_vtex_app_or_error(app.project_uuid)
 
         catalog, _fba_catalog_id = self.fb_service.create_vtex_catalog(
             serializer.validated_data, app, vtex_app, self.request.user
@@ -95,6 +106,17 @@ class CatalogViewSet(BaseViewSet):
                 {"detail": "Failed to create catalog on Facebook."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        credentials = {
+            "app_key": vtex_app.config.get("api_credentials", {}).get("app_key"),
+            "app_token": vtex_app.config.get("api_credentials", {}).get("app_token"),
+            "domain": vtex_app.config.get("api_credentials", {}).get("domain"),
+        }
+
+        celery_app.send_task(
+            name="task_insert_vtex_products",
+            kwargs={"credentials": credentials, "catalog_uuid": str(catalog.uuid)},
+        )
 
         return Response(CatalogSerializer(catalog).data, status=status.HTTP_201_CREATED)
 
@@ -134,13 +156,27 @@ class CatalogViewSet(BaseViewSet):
 
     @action(detail=True, methods=["POST"])
     def enable_catalog(self, request, *args, **kwargs):
-        response = self.fb_service.enable_catalog(self.get_object())
-        return Response(response)
+        catalog = self.get_object()
+        success, response = self.fb_service.enable_catalog(catalog)
+        if not success:
+            return Response(status=status.HTTP_400_BAD_REQUEST, data=response)
+
+        self.flows_service.update_catalog_to_active(
+            catalog.app, catalog.facebook_catalog_id
+        )
+        return Response(status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["POST"])
     def disable_catalog(self, request, *args, **kwargs):
-        response = self.fb_service.disable_catalog(self.get_object())
-        return Response(response)
+        catalog = self.get_object()
+        success, response = self.fb_service.disable_catalog(catalog)
+        if not success:
+            return Response(status=status.HTTP_400_BAD_REQUEST, data=response)
+
+        self.flows_service.update_catalog_to_inactive(
+            catalog.app, catalog.facebook_catalog_id
+        )
+        return Response(status=status.HTTP_200_OK)
 
 
 class CommerceSettingsViewSet(BaseViewSet):
@@ -181,19 +217,6 @@ class CommerceSettingsViewSet(BaseViewSet):
 
 class TresholdViewset(BaseViewSet):
     serializer_class = TresholdSerializer
-
-    flows_service_class = FlowsService
-    flows_client_class = FlowsClient
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._flows_service = None
-
-    @property
-    def flows_service(self):  # pragma: no cover
-        if not self._flows_service:
-            self._flows_service = self.flows_service_class(self.flows_client_class())
-        return self._flows_service
 
     @action(detail=True, methods=["POST"])
     def update_treshold(self, request, app_uuid, *args, **kwargs):

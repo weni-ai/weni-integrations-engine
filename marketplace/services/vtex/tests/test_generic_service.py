@@ -78,18 +78,18 @@ class VtexServiceTestCase(TestCase):
         )
 
     def test_get_vtex_app_or_error_found(self):
-        response = self.service.get_vtex_app_or_error(self.project_uuid)
+        response = self.service.app_manager.get_vtex_app_or_error(self.project_uuid)
         self.assertEqual(True, response.configured)
 
     def test_get_vtex_app_or_error_not_found(self):
         project_uuid = uuid.uuid4()
 
         with self.assertRaises(NoVTEXAppConfiguredException):
-            self.service.get_vtex_app_or_error(project_uuid)
+            self.service.app_manager.get_vtex_app_or_error(project_uuid)
 
     def test_get_vtex_app_or_error_multiple_found(self):
         with self.assertRaises(MultipleVTEXAppsConfiguredException):
-            self.service.get_vtex_app_or_error(self.duplicate_project)
+            self.service.app_manager.get_vtex_app_or_error(self.duplicate_project)
 
     def test_check_is_valid_credentials_valid(self):
         credentials = APICredentials(

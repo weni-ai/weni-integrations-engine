@@ -31,13 +31,35 @@ class MockFacebookService:
             return False
 
     def enable_catalog(self, catalog):
-        return {"success": "True"}
+        return True, {"success": "True"}
 
     def disable_catalog(self, catalog):
-        return {"success": "True"}
+        return True, {"success": "True"}
 
     def get_connected_catalog(self, app):
         return "0123456789"
+
+
+class MockFailiedEnableDisableCatalogFacebookService:
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def enable_catalog(self, catalog):
+        return False, {"success": False}
+
+    def disable_catalog(self, catalog):
+        return False, {"success": False}
+
+
+class MockFlowsService:
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def update_catalog_to_active(self, app, fba_catalog_id):
+        pass
+
+    def update_catalog_to_inactive(self, app, fba_catalog_id):
+        pass
 
 
 class SetUpTestBase(APIBaseTestCase):
@@ -84,14 +106,30 @@ class SetUpTestBase(APIBaseTestCase):
 class MockServiceTestCase(SetUpTestBase):
     def setUp(self):
         super().setUp()
+        # Mock Celery Task
+        self.mock_celery_task = patch("marketplace.celery.app.send_task")
+        self.mock_celery_task.start()
+        self.addCleanup(self.mock_celery_task.stop)
 
-        # Mock service
-        mock_service = MockFacebookService()
-        patcher = patch.object(
-            self.view_class, "fb_service", PropertyMock(return_value=mock_service)
+        # Mock Facebook service
+        mock_facebook_service = MockFacebookService()
+        patcher_fb = patch.object(
+            self.view_class,
+            "fb_service",
+            PropertyMock(return_value=mock_facebook_service),
         )
-        self.addCleanup(patcher.stop)
-        patcher.start()
+        self.addCleanup(patcher_fb.stop)
+        patcher_fb.start()
+
+        # Mock Flows service
+        mock_flows_service = MockFlowsService()
+        patcher_flows = patch.object(
+            self.view_class,
+            "flows_service",
+            PropertyMock(return_value=mock_flows_service),
+        )
+        self.addCleanup(patcher_flows.stop)
+        patcher_flows.start()
 
 
 class CatalogListTestCase(MockServiceTestCase):
@@ -142,7 +180,25 @@ class CatalogEnabledTestCase(MockServiceTestCase):
             url, app_uuid=self.app.uuid, catalog_uuid=self.catalog.uuid
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.json["success"], "True")
+
+    def test_failed_enable_catalog(self):
+        mock_facebook_service = MockFailiedEnableDisableCatalogFacebookService()
+        patcher_fb_failure = patch.object(
+            self.view_class,
+            "fb_service",
+            PropertyMock(return_value=mock_facebook_service),
+        )
+        patcher_fb_failure.start()
+        self.addCleanup(patcher_fb_failure.stop)
+
+        url = reverse(
+            "catalog-enable",
+            kwargs={"app_uuid": self.app.uuid, "catalog_uuid": self.catalog.uuid},
+        )
+        response = self.request.post(
+            url, app_uuid=self.app.uuid, catalog_uuid=self.catalog.uuid
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
 class CatalogDisableTestCase(MockServiceTestCase):
@@ -157,7 +213,25 @@ class CatalogDisableTestCase(MockServiceTestCase):
             url, app_uuid=self.app.uuid, catalog_uuid=self.catalog.uuid
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.json["success"], "True")
+
+    def test_failed_disable_catalog(self):
+        mock_facebook_service = MockFailiedEnableDisableCatalogFacebookService()
+        patcher_fb_failure = patch.object(
+            self.view_class,
+            "fb_service",
+            PropertyMock(return_value=mock_facebook_service),
+        )
+        patcher_fb_failure.start()
+        self.addCleanup(patcher_fb_failure.stop)
+
+        url = reverse(
+            "catalog-disable",
+            kwargs={"app_uuid": self.app.uuid, "catalog_uuid": self.catalog.uuid},
+        )
+        response = self.request.post(
+            url, app_uuid=self.app.uuid, catalog_uuid=self.catalog.uuid
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
 class CatalogConnectedTestCase(MockServiceTestCase):
@@ -282,3 +356,16 @@ class CatalogCreateTestCase(MockServiceTestCase):
             response.data["detail"],
             "Multiple VTEX Apps are configured, which is not expected.",
         )
+
+    def test_create_catalog_failure(self):
+        with patch.object(
+            MockFacebookService, "create_vtex_catalog", return_value=(None, None)
+        ):
+            data = {"name": "valid_catalog"}
+            url = reverse("catalog-list-create", kwargs={"app_uuid": self.app.uuid})
+
+            response = self.request.post(url, data, app_uuid=self.app.uuid)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+            self.assertEqual(
+                response.data["detail"], "Failed to create catalog on Facebook."
+            )

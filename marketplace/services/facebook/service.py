@@ -1,42 +1,3 @@
-"""
-Service for interfacing with Facebook APIs.
-
-This service facilitates the communication with Facebook's APIs, specifically focusing on
-WhatsApp Business features and their configurations. The service provides functions for
-enabling and disabling catalogs, toggling cart settings, and managing the visibility of
-catalogs, among other actions.
-
-Attributes:
-    client (ClientType): An instance of a client responsible for making requests to Facebook's API.
-
-Methods:
-    create_vtex_catalog(validated_data, app, vtex_app, user): Creates a new catalog associated
-    with an app and returns the created,
-
-    Catalog object along with the Facebook catalog ID.
-
-    catalog_deletion(catalog): Deletes a catalog from Facebook and the local database.
-
-    enable_catalog(catalog): Enables a catalog for use with WhatsApp Business.
-
-    disable_catalog(catalog): Disables a catalog for use with WhatsApp Business.
-
-    get_connected_catalog(app): Retrieves the ID of the catalog currently connected to a WhatsApp Business account.
-
-    toggle_cart(app, enable=True): Toggles the shopping cart feature for WhatsApp Business.
-
-    toggle_catalog_visibility(app, visible=True): Toggles the visibility of the catalog for WhatsApp Business.
-
-    wpp_commerce_settings(app): Retrieves the WhatsApp commerce settings associated with a business phone number.
-
-Private Methods:
-    _get_app_facebook_credentials(app): Retrieves the Facebook credentials from the app's configuration.
-
-    _create_catalog_object(data): Creates a Catalog object in the local database using provided data.
-
-Raises:
-    ValueError: If required Facebook credentials are missing from the app's configuration.
-"""
 from marketplace.wpp_products.models import Catalog
 
 
@@ -70,15 +31,19 @@ class FacebookService:
 
     def enable_catalog(self, catalog):
         waba_id = self._get_app_facebook_credentials(app=catalog.app).get("wa_waba_id")
-        return self.client.enable_catalog(
+        response = self.client.enable_catalog(
             waba_id=waba_id, catalog_id=catalog.facebook_catalog_id
         )
+        success = response.get("success") is True
+        return success, response
 
     def disable_catalog(self, catalog):
         waba_id = self._get_app_facebook_credentials(app=catalog.app).get("wa_waba_id")
-        return self.client.disable_catalog(
+        response = self.client.disable_catalog(
             waba_id=waba_id, catalog_id=catalog.facebook_catalog_id
         )
+        success = response.get("success") is True
+        return success, response
 
     def get_connected_catalog(self, app):
         waba_id = self._get_app_facebook_credentials(app=app).get("wa_waba_id")
@@ -106,6 +71,16 @@ class FacebookService:
             "wa_phone_number_id"
         )
         return self.client.get_wpp_commerce_settings(business_phone_number_id)
+
+    def create_product_feed(self, product_catalog_id, name):
+        return self.client.create_product_feed(product_catalog_id, name)
+
+    def upload_product_feed(
+        self, feed_id, file, file_name, file_content_type, update_only=False
+    ):
+        return self.client.upload_product_feed(
+            feed_id, file, file_name, file_content_type, update_only
+        )
 
     # ================================
     # Private Methods

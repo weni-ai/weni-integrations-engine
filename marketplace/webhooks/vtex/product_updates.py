@@ -17,11 +17,22 @@ from marketplace.services.flows.service import FlowsService
 class VtexProductUpdateWebhook(APIView):
     flows_client_class = FlowsClient
     flows_service_class = FlowsService
+
     vtex_client_class = VtexPrivateClient
     vtex_service_class = PrivateProductsService
 
     authentication_classes = []
     permission_classes = [AllowAny]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._flows_service = None
+
+    @property
+    def flows_service(self):  # pragma: no cover
+        if not self._flows_service:
+            self._flows_service = self.flows_service_class(self.flows_client_class())
+        return self._flows_service
 
     def post(self, request, app_uuid):
         app = self.get_app(app_uuid)
@@ -30,14 +41,13 @@ class VtexProductUpdateWebhook(APIView):
                 {"error": "initial sync not completed"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
         domain, app_key, app_token = self.get_credentials_or_raise(app)
         vtex_service = self.get_vtex_service(app_key, app_token)
-
+        # TODO: Generate task for update by webhook
         products_updated = vtex_service.update_product_info(
             domain, request.data, app.config
         )
-        self.send_products_to_flows(products_updated)
+        self.flows_service.update_webhook_vtex_products(products_updated, app)
         return Response(status=status.HTTP_200_OK)
 
     def get_app(self, app_uuid):
@@ -50,6 +60,7 @@ class VtexProductUpdateWebhook(APIView):
         return app.config.get("initial_sync_completed", False)
 
     def get_credentials_or_raise(self, app):
+        # TODO: Move this to service
         domain = app.config["api_credentials"]["domain"]
         app_key = app.config["api_credentials"]["app_key"]
         app_token = app.config["api_credentials"]["app_token"]
@@ -60,7 +71,3 @@ class VtexProductUpdateWebhook(APIView):
     def get_vtex_service(self, app_key, app_token):
         client = self.vtex_client_class(app_key, app_token)
         return self.vtex_service_class(client)
-
-    def send_products_to_flows(self, products):
-        flows_service = self.flows_service_class(self.flows_client_class())
-        flows_service.update_vtex_products(products)

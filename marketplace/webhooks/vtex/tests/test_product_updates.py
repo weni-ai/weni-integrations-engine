@@ -15,8 +15,11 @@ class MockVtexService:
 
 
 class MockFlowsService:
-    def update_vtex_products(self, products):
+    def update_vtex_products(self, products, flow_object_uuid, facebook_catalog_id):
         return None
+
+    def update_webhook_vtex_products(self, products, app):
+        return True
 
 
 class SetUpTestBase(APIBaseTestCase):
