@@ -69,16 +69,20 @@ class FacebookService:
         return self.client.destroy_catalog(catalog.facebook_catalog_id)
 
     def enable_catalog(self, catalog):
-        waba_id = self._get_app_facebook_credentials(app=catalog.app).get("wa_waba_id")
-        return self.client.enable_catalog(
+        waba_id = self.get_app_facebook_credentials(app=catalog.app).get("wa_waba_id")
+        response = self.client.enable_catalog(
             waba_id=waba_id, catalog_id=catalog.facebook_catalog_id
         )
+        success = response.get("success") is True
+        return success, response
 
     def disable_catalog(self, catalog):
-        waba_id = self._get_app_facebook_credentials(app=catalog.app).get("wa_waba_id")
-        return self.client.disable_catalog(
+        waba_id = self.get_app_facebook_credentials(app=catalog.app).get("wa_waba_id")
+        response = self.client.disable_catalog(
             waba_id=waba_id, catalog_id=catalog.facebook_catalog_id
         )
+        success = response.get("success") is True
+        return success, response
 
     def get_connected_catalog(self, app):
         waba_id = self._get_app_facebook_credentials(app=app).get("wa_waba_id")

@@ -17,10 +17,10 @@ class MockClient:
     VALID_CATALOGS_ID = ["0123456789010", "1123456789011"]
 
     def enable_catalog(self, waba_id, catalog_id):
-        return {"success": "true"}
+        return {"success": True}
 
     def disable_catalog(self, waba_id, catalog_id):
-        return {"success": "true"}
+        return {"success": True}
 
     def get_connected_catalog(self, waba_id):
         return {
@@ -34,17 +34,17 @@ class MockClient:
         }
 
     def toggle_cart(self, wa_phone_number_id, enable=True):
-        return {"success": "true"}
+        return {"success": True}
 
     def toggle_catalog_visibility(self, wa_phone_number_id, make_visible=True):
-        return {"success": "true"}
+        return {"success": True}
 
     def get_wpp_commerce_settings(self, wa_phone_number_id):
         return {
             "data": [
                 {
-                    "is_cart_enabled": "true",
-                    "is_catalog_visible": "true",
+                    "is_cart_enabled": True,
+                    "is_catalog_visible": True,
                     "id": "012345678901234",
                 }
             ]
@@ -103,12 +103,14 @@ class TestFacebookService(TestCase):
         self.assertEqual(credentials, expected_config)
 
     def test_enable_catalog(self):
-        response = self.service.enable_catalog(self.catalog)
-        self.assertEqual(response, {"success": "true"})
+        status, response = self.service.enable_catalog(self.catalog)
+        self.assertEqual(response, {"success": True})
+        self.assertEqual(True, status)
 
     def test_disable_catalog(self):
-        response = self.service.disable_catalog(self.catalog)
-        self.assertEqual(response, {"success": "true"})
+        status, response = self.service.disable_catalog(self.catalog)
+        self.assertEqual(response, {"success": True})
+        self.assertEqual(True, status)
 
     def test_get_connected_catalog(self):
         catalog_id = self.service.get_connected_catalog(self.app)
@@ -116,16 +118,16 @@ class TestFacebookService(TestCase):
 
     def test_toggle_cart(self):
         response = self.service.toggle_cart(self.app, enable=True)
-        self.assertEqual(response, {"success": "true"})
+        self.assertEqual(response, {"success": True})
 
     def test_toggle_catalog_visibility(self):
         response = self.service.toggle_catalog_visibility(self.app, visible=True)
-        self.assertEqual(response, {"success": "true"})
+        self.assertEqual(response, {"success": True})
 
     def test_wpp_commerce_settings(self):
         settings = self.service.wpp_commerce_settings(self.app)
-        self.assertEqual(settings["data"][0]["is_cart_enabled"], "true")
-        self.assertEqual(settings["data"][0]["is_catalog_visible"], "true")
+        self.assertEqual(settings["data"][0]["is_cart_enabled"], True)
+        self.assertEqual(settings["data"][0]["is_catalog_visible"], True)
         self.assertEqual(settings["data"][0]["id"], "012345678901234")
 
     def test_get_connected_catalog_with_no_data(self):
