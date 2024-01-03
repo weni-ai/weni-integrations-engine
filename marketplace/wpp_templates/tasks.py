@@ -60,7 +60,7 @@ def refresh_whatsapp_templates_from_facebook():
         for template in templates:
             try:
                 translation = TemplateTranslation.objects.filter(
-                    message_template_id=template.get("id")
+                    message_template_id=template.get("id"), template__app=app
                 )
                 if translation:
                     translation = translation.last()
