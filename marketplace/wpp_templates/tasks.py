@@ -51,7 +51,9 @@ def refresh_whatsapp_templates_from_facebook():
             flows_client.update_facebook_templates(str(app.flow_object_uuid), templates)
         except Exception as error:
             logger.error(
-                f"An error occurred when sending facebook templates to flows: App-{str(app.uuid)}, Error: {error}"
+                f"An error occurred when sending facebook templates to flows: "
+                f"App-{str(app.uuid)}, flows_object_uuid: {str(app.flow_object_uuid)} "
+                f"Error: {error}"
             )
 
         if waba_id:
