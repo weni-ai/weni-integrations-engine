@@ -366,7 +366,9 @@ CELERY_BEAT_SCHEDULE = {
     },
     "refresh-whatsapp-templates-from-facebook": {
         "task": "refresh_whatsapp_templates_from_facebook",
-        "schedule": timedelta(seconds=1800),
+        "schedule": timedelta(
+            seconds=env.int("REFRESH_WHATSAPP_TEMPLATES_TIME", default=1800)
+        ),
     },
     "check-apps-uncreated-on-flow": {
         "task": "check_apps_uncreated_on_flow",
@@ -374,7 +376,9 @@ CELERY_BEAT_SCHEDULE = {
     },
     "sync-facebook-catalogs": {
         "task": "sync_facebook_catalogs",
-        "schedule": timedelta(seconds=5400),
+        "schedule": timedelta(
+            seconds=env.int("SYNC_FACEBOOK_CATALOGS_TIME", default=5400)
+        ),
     },
 }
 
