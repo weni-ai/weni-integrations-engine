@@ -134,8 +134,12 @@ def task_insert_vtex_products(**kwargs):
             domain=credentials.get("domain"),
         )
         products = vtex_service.first_product_insert(api_credentials, catalog)
+        dict_catalog = {
+            "name": catalog.name,
+            "facebook_catalog_id": catalog.facebook_catalog_id,
+        }
         flows_service.update_vtex_products(
-            products, str(catalog.app.flow_object_uuid), catalog.facebook_catalog_id
+            products, str(catalog.app.flow_object_uuid), dict_catalog
         )
         print("Products created and sent to flows successfully")
     except Exception as e:

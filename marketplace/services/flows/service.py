@@ -7,11 +7,9 @@ class FlowsService:
             project_uuid, user_email, action
         )
 
-    def update_vtex_products(
-        self, products: list, flow_object_uuid, facebook_catalog_id
-    ):
+    def update_vtex_products(self, products: list, flow_object_uuid, dict_catalog):
         return self.client.update_vtex_products(
-            products, flow_object_uuid, facebook_catalog_id
+            products, flow_object_uuid, dict_catalog
         )
 
     def update_webhook_vtex_products(self, products: list, app):

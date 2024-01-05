@@ -89,14 +89,13 @@ class FlowsClient(RequestClient):
         )
         return response
 
-    def update_vtex_products(self, products, flow_object_uuid, facebook_catalog_id):
+    def update_vtex_products(self, products, flow_object_uuid, dict_catalog):
         data = {
-            "facebook_catalog_id": facebook_catalog_id,
-            "products": products,
+            "catalog": dict_catalog,
             "channel_uuid": flow_object_uuid,
+            "products": products,
         }
         url = f"{self.base_url}/products/update-products/"
-
         response = self.make_request(
             url,
             method="POST",
