@@ -1,12 +1,36 @@
+import json
+
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth import get_user_model
+from django_redis import get_redis_connection
+from django.conf import settings
+
 from mozilla_django_oidc.auth import OIDCAuthenticationBackend
+
 
 User = get_user_model()
 
 
 class WeniOIDCAuthenticationBackend(OIDCAuthenticationBackend):  # pragma: no cover
+    cache_token = settings.OIDC_CACHE_TOKEN
+    cache_ttl = settings.OIDC_CACHE_TTL
+
+    def get_userinfo(self, access_token, *args):
+        if not self.cache_token:
+            return super().get_userinfo(access_token, *args)
+
+        redis_connection = get_redis_connection()
+        userinfo = redis_connection.get(access_token)
+
+        if userinfo is not None:
+            return json.loads(userinfo)
+
+        userinfo = super().get_userinfo(access_token, *args)
+        redis_connection.set(access_token, json.dumps(userinfo), self.cache_ttl)
+
+        return userinfo
+
     def check_module_permission(self, claims, user) -> None:
         if claims.get("can_communicate_internally", False):
             content_type = ContentType.objects.get_for_model(User)
