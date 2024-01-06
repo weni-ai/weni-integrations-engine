@@ -9,19 +9,6 @@ from marketplace.webhooks.vtex.product_updates import VtexProductUpdateWebhook
 from marketplace.applications.models import App
 
 
-class MockVtexService:
-    def update_product_info(self, domain, webhook_payload, config):
-        return [{"id": 1, "sku": 1}, {"id": 2, "sku": 2}]
-
-
-class MockFlowsService:
-    def update_vtex_products(self, products, flow_object_uuid, facebook_catalog_id):
-        return None
-
-    def update_webhook_vtex_products(self, products, app):
-        return True
-
-
 class SetUpTestBase(APIBaseTestCase):
     view_class = VtexProductUpdateWebhook
 
@@ -74,25 +61,10 @@ class MockServiceTestCase(SetUpTestBase):
     def setUp(self):
         super().setUp()
 
-        # Mock Vtex service
-        self.mock_vtex_service = MockVtexService()
-        patcher_vtex = patch.object(
-            self.view_class,
-            "vtex_service_class",
-            lambda *args, **kwargs: self.mock_vtex_service,
-        )
-        self.addCleanup(patcher_vtex.stop)
-        patcher_vtex.start()
-
-        # Mock Flows service
-        self.mock_flows_service = MockFlowsService()
-        patcher_flows = patch.object(
-            self.view_class,
-            "flows_service_class",
-            lambda *args, **kwargs: self.mock_flows_service,
-        )
-        self.addCleanup(patcher_flows.stop)
-        patcher_flows.start()
+        # Mock Celery send_task
+        patcher_celery = patch("marketplace.celery.app.send_task")
+        self.mock_send_task = patcher_celery.start()
+        self.addCleanup(patcher_celery.stop)
 
 
 class WebhookTestCase(MockServiceTestCase):
@@ -126,17 +98,3 @@ class WebhookTestCase(MockServiceTestCase):
             url, {"data": "webhook_payload"}, app_uuid=app_uuid
         )
         self.assertEqual(response.status_code, 404)
-
-    def test_webhook_with_invalid_credentials(self):
-        self.app.config["initial_sync_completed"] = True
-        self.app.config["api_credentials"] = {
-            "domain": "",
-            "app_key": "",
-            "app_token": "",
-        }
-        self.app.save()
-
-        response = self.request.post(
-            self.url, {"data": "webhook_payload"}, app_uuid=self.app.uuid
-        )
-        self.assertEqual(response.status_code, 400)
