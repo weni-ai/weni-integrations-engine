@@ -1,41 +1,5 @@
 """
 Service for managing VTEX App instances within a project.
-
-This service provides methods to retrieve a configured VTEX App instance by its project UUID,
-validate API credentials, and configure a VTEX App instance with provided credentials.
-
-Attributes:
-    None
-
-Methods:
-    check_is_valid_credentials(credentials): Validates the provided API credentials against
-        VTEX's services. Raises an exception if the credentials are invalid.
-
-    configure(app, credentials): Configures a VTEX App instance with the provided API credentials.
-        Updates the app configuration and marks it as configured.
-
-Private Methods:
-    _update_config(app, key, data): Updates the configuration of the given App instance
-        with the provided data under the specified configuration key.
-
-Raises:
-    NoVTEXAppConfiguredException: If no VTEX App is configured for the given project UUID.
-    MultipleVTEXAppsConfiguredException: If multiple configured VTEX Apps are found for the
-        given project UUID, which is unexpected behavior.
-    CredentialsValidationError: If the provided API credentials are found to be invalid during
-        validation.
-
-Data Classes:
-    APICredentials: Data class that holds the structure for VTEX API credentials.
-
-Exceptions:
-    NoVTEXAppConfiguredException: Raised as an HTTP 404 Not Found if no VTEX App is configured
-        for the given project UUID.
-    MultipleVTEXAppsConfiguredException: Raised as an HTTP 400 Bad Request if multiple configured
-        VTEX Apps are found for the given project UUID, which is unexpected behavior.
-    CredentialsValidationError: Raised as an HTTP 400 Bad Request if provided API credentials
-        are invalid.
-
 """
 from datetime import datetime
 
@@ -124,6 +88,15 @@ class VtexService:
         app.save()
         return app
 
+    def get_vtex_credentials_or_raise(self, app):
+        domain = app.config["api_credentials"]["domain"]
+        app_key = app.config["api_credentials"]["app_key"]
+        app_token = app.config["api_credentials"]["app_token"]
+        if not domain or not app_key or not app_token:
+            raise CredentialsValidationError()
+
+        return domain, app_key, app_token
+
     def first_product_insert(self, credentials: APICredentials, catalog: Catalog):
         pvt_service = self.get_private_service(
             credentials.app_key, credentials.app_token
@@ -137,6 +110,25 @@ class VtexService:
         self.app_manager.initial_sync_products_completed(catalog.vtex_app)
 
         return pvt_service.data_processor.convert_dtos_to_dicts_list(products)
+
+    def webhook_product_insert(
+        self, credentials: APICredentials, catalog: Catalog, webhook_data, product_feed
+    ):
+        pvt_service = self.get_private_service(
+            credentials.app_key, credentials.app_token
+        )
+        products_dto = pvt_service.update_webhook_product_info(
+            credentials.domain, webhook_data, catalog.vtex_app.config
+        )
+        if not products_dto:
+            return None
+
+        products_csv = pvt_service.data_processor.products_to_csv(products_dto)
+        self._update_products_on_facebook(products_csv, catalog, product_feed)
+        self.product_manager.update_products_on_database(
+            products_dto, catalog, product_feed
+        )
+        return pvt_service.data_processor.convert_dtos_to_dicts_list(products_dto)
 
     def _send_products_to_facebook(self, products_csv, catalog: Catalog):
         current_time = datetime.now().strftime("%Y-%m-%d_%H-%M")
@@ -165,11 +157,25 @@ class VtexService:
         )
         return product_feed
 
-    def _upload_product_feed(self, product_feed_id, csv_file, file_name):
+    def _upload_product_feed(
+        self, product_feed_id, csv_file, file_name, update_only=False
+    ):
         response = self.fb_service.upload_product_feed(
-            product_feed_id, csv_file, file_name, "text/csv"
+            product_feed_id, csv_file, file_name, "text/csv", update_only
         )
         if "id" not in response:
             raise FileNotSendValidationError()
 
         return True
+
+    def _update_products_on_facebook(
+        self, products_csv, catalog: Catalog, product_feed
+    ) -> bool:
+        current_time = datetime.now().strftime("%Y-%m-%d_%H-%M")
+        file_name = f"update_{current_time}_{product_feed.name}"
+        return self._upload_product_feed(
+            product_feed.facebook_feed_id,
+            products_csv,
+            file_name,
+            update_only=True,
+        )

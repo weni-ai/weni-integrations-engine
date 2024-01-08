@@ -45,10 +45,16 @@ class DataProcessor:
             if product_details.get("Images")
             else product_details.get("ImageUrl")
         )
+        description = (
+            product_details["ProductDescription"]
+            if product_details["ProductDescription"] != ""
+            else product_details["SkuName"]
+        )
+
         return FacebookProductDTO(
             id=product_details["Id"],
             title=product_details["SkuName"],
-            description=product_details["SkuName"],
+            description=description,
             availability="in stock"
             if availability_details["is_available"]
             else "out of stock",

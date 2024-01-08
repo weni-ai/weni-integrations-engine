@@ -76,11 +76,9 @@ class PrivateProductsService:
             sku_id, seller_id, domain
         )  # TODO: Change to pvt_simulate_cart_for_seller
 
-    def update_product_info(
+    def update_webhook_product_info(
         self, domain, webhook_payload, config
     ) -> List[FacebookProductDTO]:
-        updated_products = []
-
         sku_id = webhook_payload["IdSku"]
         price_modified = webhook_payload["PriceModified"]
         stock_modified = webhook_payload["StockModified"]
@@ -94,11 +92,7 @@ class PrivateProductsService:
                 [sku_id], seller_ids, self, domain, rules, update_product=True
             )
 
-            updated_products = DataProcessor.convert_dtos_to_dicts_list(
-                updated_products_dto
-            )
-
-        return updated_products
+        return updated_products_dto
 
     # ================================
     # Private Methods

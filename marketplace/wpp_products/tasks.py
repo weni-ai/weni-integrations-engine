@@ -153,3 +153,47 @@ def task_insert_vtex_products(**kwargs):
         logger.error(
             f"Error on insert vtex products for catalog {str(catalog.uuid)}, {e}"
         )
+
+
+@celery_app.task(name="task_update_vtex_products")
+def task_update_vtex_products(**kwargs):
+    vtex_service = VtexService()
+    flows_service = FlowsService(FlowsClient())
+
+    app_uuid = kwargs.get("app_uuid")
+    webhook_data = kwargs.get("webhook_data")
+    vtex_app = App.objects.get(uuid=app_uuid, configured=True, code="vtex")
+
+    try:
+        domain, app_key, app_token = vtex_service.get_vtex_credentials_or_raise(
+            vtex_app
+        )
+        api_credentials = APICredentials(
+            app_key=app_key,
+            app_token=app_token,
+            domain=domain,
+        )
+        for catalog in vtex_app.vtex_catalogs.all():
+            if catalog.feeds.all().exists():
+                product_feed = catalog.feeds.all().first()  # The first feed created
+                products = vtex_service.webhook_product_insert(
+                    api_credentials, catalog, webhook_data, product_feed
+                )
+                if products is None:
+                    logger.info(
+                        f"No products to process after treatment for VTEX app {app_uuid}. Task ending."
+                    )
+                    return
+
+                dict_catalog = {
+                    "name": catalog.name,
+                    "facebook_catalog_id": catalog.facebook_catalog_id,
+                }
+                flows_service.update_vtex_products(
+                    products, str(catalog.app.flow_object_uuid), dict_catalog
+                )
+                print("Webhook Products updated and sent to flows successfully")
+    except Exception as e:
+        logger.error(
+            f"Error on updating Webhook vtex products for app {app_uuid}, {str(e)}"
+        )
