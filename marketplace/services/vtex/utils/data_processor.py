@@ -1,6 +1,9 @@
+import concurrent.futures
 import pandas as pd
 import io
 import dataclasses
+import os
+import time
 
 from dataclasses import dataclass
 
@@ -69,27 +72,62 @@ class DataProcessor:
 
     @staticmethod
     def process_product_data(
-        skus_ids, active_sellers, service, domain, rules, update_product=False
+        skus_ids,
+        active_sellers,
+        service,
+        domain,
+        rules,
+        update_product=False,
+        max_workers=10,
+    ):
+        print("Process product data")
+        active_sellers = [1]
+        num_cpus = os.cpu_count()
+        all_facebook_products = []
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=num_cpus) as executor:
+            futures = [
+                executor.submit(
+                    DataProcessor.process_single_sku,
+                    sku_id,
+                    active_sellers,
+                    service,
+                    domain,
+                    rules,
+                    update_product,
+                )
+                for sku_id in skus_ids
+            ]
+            time.sleep(
+                15
+            )  # TODO: Test whether by waiting this time the processes are terminated correctly
+            for future in concurrent.futures.as_completed(futures):
+                try:
+                    all_facebook_products.extend(future.result())
+                except Exception as e:
+                    print(f"Exception in thread: {e}")
+
+        return all_facebook_products
+
+    @staticmethod
+    def process_single_sku(
+        sku_id, active_sellers, service, domain, rules, update_product
     ):
         facebook_products = []
-        for sku_id in skus_ids:
-            product_details = service.get_product_details(sku_id, domain)
-            for seller_id in active_sellers:
-                availability_details = service.simulate_cart_for_seller(
-                    sku_id, seller_id, domain
-                )
-                if update_product is False and not availability_details["is_available"]:
-                    continue
+        product_details = service.get_product_details(sku_id, domain)
+        for seller_id in active_sellers:
+            availability_details = service.simulate_cart_for_seller(
+                sku_id, seller_id, domain
+            )
+            if update_product is False and not availability_details["is_available"]:
+                continue
 
-                product_dto = DataProcessor.extract_fields(
-                    product_details, availability_details
-                )
-                params = {"seller_id": seller_id}
-                for rule in rules:
-                    if not rule.apply(product_dto, **params):
-                        break
-                else:
-                    facebook_products.append(product_dto)
+            product_dto = DataProcessor.extract_fields(
+                product_details, availability_details
+            )
+            params = {"seller_id": seller_id}
+            if all(rule.apply(product_dto, **params) for rule in rules):
+                facebook_products.append(product_dto)
 
         return facebook_products
 

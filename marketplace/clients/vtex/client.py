@@ -1,4 +1,5 @@
 from marketplace.clients.base import RequestClient
+from marketplace.clients.decorators import retry_on_rate_limit
 
 
 class VtexAuthorization(RequestClient):
@@ -70,6 +71,7 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
         sellers_data = response.json()
         return [seller["id"] for seller in sellers_data["items"] if seller["isActive"]]
 
+    @retry_on_rate_limit()
     def get_product_details(self, sku_id, domain):
         url = (
             f"https://{domain}/api/catalog_system/pvt/sku/stockkeepingunitbyid/{sku_id}"
