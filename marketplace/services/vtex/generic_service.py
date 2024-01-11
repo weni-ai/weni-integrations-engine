@@ -78,6 +78,7 @@ class VtexService:
         app.config["api_credentials"] = credentials.to_dict()
         app.config["wpp_cloud_uuid"] = wpp_cloud_uuid
         app.config["initial_sync_completed"] = False
+        app.config["title"] = credentials.domain
         app.config["rules"] = [
             "exclude_alcoholic_drinks",
             "calculate_by_weight",
