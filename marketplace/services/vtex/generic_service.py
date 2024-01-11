@@ -79,9 +79,9 @@ class VtexService:
         app.config["wpp_cloud_uuid"] = wpp_cloud_uuid
         app.config["initial_sync_completed"] = False
         app.config["rules"] = [
+            "exclude_alcoholic_drinks",
             "calculate_by_weight",
             "currency_pt_br",
-            "exclude_alcoholic_drinks",
             "unifies_id_with_seller",
         ]
         app.configured = True
