@@ -1,5 +1,5 @@
 from marketplace.clients.base import RequestClient
-from marketplace.clients.decorators import retry_on_rate_limit
+from marketplace.clients.decorators import retry_on_exception
 
 
 class VtexAuthorization(RequestClient):
@@ -46,6 +46,7 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
         except Exception:
             return False
 
+    @retry_on_exception()
     def list_all_products_sku_ids(self, domain, page_size=1000):
         all_skus = []
         page = 1
@@ -64,6 +65,7 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
 
         return all_skus
 
+    @retry_on_exception()
     def list_active_sellers(self, domain):
         url = f"https://{domain}/api/seller-register/pvt/sellers"
         headers = self._get_headers()
@@ -71,7 +73,7 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
         sellers_data = response.json()
         return [seller["id"] for seller in sellers_data["items"] if seller["isActive"]]
 
-    @retry_on_rate_limit()
+    @retry_on_exception()
     def get_product_details(self, sku_id, domain):
         url = (
             f"https://{domain}/api/catalog_system/pvt/sku/stockkeepingunitbyid/{sku_id}"
@@ -80,6 +82,7 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
         response = self.make_request(url, method="GET", headers=headers)
         return response.json()
 
+    @retry_on_exception()
     def pub_simulate_cart_for_seller(self, sku_id, seller_id, domain):
         cart_simulation_url = f"https://{domain}/api/checkout/pub/orderForms/simulation"
         payload = {"items": [{"id": sku_id, "quantity": 1, "seller": seller_id}]}

@@ -106,7 +106,9 @@ class VtexService:
         )
         products_csv = pvt_service.data_processor.products_to_csv(products)
         product_feed = self._send_products_to_facebook(products_csv, catalog)
-        self.product_manager.save_products_on_database(products, catalog, product_feed)
+        self.product_manager.create_or_update_products_on_database(
+            products, catalog, product_feed
+        )
         self.app_manager.initial_sync_products_completed(catalog.vtex_app)
 
         return pvt_service.data_processor.convert_dtos_to_dicts_list(products)
@@ -125,7 +127,7 @@ class VtexService:
 
         products_csv = pvt_service.data_processor.products_to_csv(products_dto)
         self._update_products_on_facebook(products_csv, catalog, product_feed)
-        self.product_manager.update_products_on_database(
+        self.product_manager.create_or_update_products_on_database(
             products_dto, catalog, product_feed
         )
         return pvt_service.data_processor.convert_dtos_to_dicts_list(products_dto)

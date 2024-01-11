@@ -1,10 +1,8 @@
 import time
 import functools
 
-from marketplace.clients.exceptions import CustomAPIException
 
-
-def retry_on_rate_limit(max_attempts=11, start_sleep_time=1, factor=2):
+def retry_on_exception(max_attempts=11, start_sleep_time=1, factor=2):
     def decorator_retry(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -13,7 +11,7 @@ def retry_on_rate_limit(max_attempts=11, start_sleep_time=1, factor=2):
                 try:
                     return func(*args, **kwargs)
                 except (
-                    CustomAPIException
+                    Exception
                 ) as e:  # TODO: Map only timeout errors or errors from many requests
                     print(
                         f"Retrying... Attempt {attempts + 1} after {sleep_time} seconds, {str(e)}"

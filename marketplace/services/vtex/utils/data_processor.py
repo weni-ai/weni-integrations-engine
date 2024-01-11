@@ -78,10 +78,7 @@ class DataProcessor:
         domain,
         rules,
         update_product=False,
-        max_workers=10,
     ):
-        print("Process product data")
-        active_sellers = [1]
         num_cpus = os.cpu_count()
         all_facebook_products = []
 
@@ -104,6 +101,7 @@ class DataProcessor:
             for future in concurrent.futures.as_completed(futures):
                 try:
                     all_facebook_products.extend(future.result())
+                    print("total products extend to", len(all_facebook_products))
                 except Exception as e:
                     print(f"Exception in thread: {e}")
 
