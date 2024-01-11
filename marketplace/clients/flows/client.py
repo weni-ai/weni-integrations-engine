@@ -2,6 +2,7 @@
 from django.conf import settings
 
 from marketplace.clients.base import RequestClient
+from marketplace.clients.decorators import retry_on_exception
 
 
 class InternalAuthentication(RequestClient):
@@ -102,6 +103,8 @@ class FlowsClient(RequestClient):
         )
         return response
 
+
+    @retry_on_exception()
     def update_vtex_products(self, products, flow_object_uuid, dict_catalog):
         data = {
             "catalog": dict_catalog,

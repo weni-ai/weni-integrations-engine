@@ -162,9 +162,9 @@ def task_update_vtex_products(**kwargs):
 
     app_uuid = kwargs.get("app_uuid")
     webhook_data = kwargs.get("webhook_data")
-    vtex_app = App.objects.get(uuid=app_uuid, configured=True, code="vtex")
 
     try:
+        vtex_app = App.objects.get(uuid=app_uuid, configured=True, code="vtex")
         domain, app_key, app_token = vtex_service.get_vtex_credentials_or_raise(
             vtex_app
         )

@@ -1,6 +1,5 @@
 from typing import List
 
-from django.db import transaction
 from django.contrib.auth import get_user_model
 
 from marketplace.services.vtex.utils.data_processor import FacebookProductDTO
@@ -11,34 +10,7 @@ User = get_user_model()
 
 
 class ProductFacebookManager:
-    def save_products_on_database(
-        self, products: List[FacebookProductDTO], catalog, product_feed
-    ):
-        product_instances = [
-            Product(
-                facebook_product_id=dto.id,
-                title=dto.title,
-                description=dto.description,
-                availability=dto.availability,
-                condition=dto.condition,
-                price=dto.price,
-                link=dto.link,
-                image_link=dto.image_link,
-                brand=dto.brand,
-                sale_price=dto.sale_price,
-                catalog=catalog,
-                created_by=catalog.created_by,
-                feed=product_feed,
-            )
-            for dto in products
-        ]
-
-        with transaction.atomic():
-            Product.objects.bulk_create(product_instances)
-
-        return True
-
-    def update_products_on_database(
+    def create_or_update_products_on_database(
         self, products: List[FacebookProductDTO], catalog, product_feed
     ):
         products_to_update = []
@@ -47,7 +19,7 @@ class ProductFacebookManager:
         for dto in products:
             try:
                 product = Product.objects.get(
-                    facebook_product_id=dto.id, catalog=catalog, feed=product_feed
+                    facebook_product_id=dto.id, catalog=catalog
                 )  # TODO: Optimize to make a single query at the bank
                 product.title = dto.title
                 product.description = dto.description
