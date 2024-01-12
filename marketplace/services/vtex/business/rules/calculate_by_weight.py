@@ -7,9 +7,12 @@ class CalculateByWeight(Rule):
         if self._calculates_by_weight(product):
             unit_multiplier = self._get_multiplier(product)
             weight = self._get_weight(product) * unit_multiplier
+            price_per_kg = product.price * unit_multiplier
             product.price *= unit_multiplier
             product.sale_price *= unit_multiplier
-            product.description += f" - {weight}g"
+            product.description = (
+                f"{product.title} - Aprox. {weight}g, Preço do KG: {price_per_kg}"
+            )
 
         return True
 
