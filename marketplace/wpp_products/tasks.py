@@ -1,10 +1,14 @@
 import logging
 
+from functools import wraps
+
 from celery import shared_task
 
 from marketplace.clients.facebook.client import FacebookClient
 from marketplace.wpp_products.models import Catalog
 from marketplace.applications.models import App
+from marketplace.clients.flows.client import FlowsClient
+
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +17,7 @@ logger = logging.getLogger(__name__)
 def sync_facebook_catalogs():
     apps = App.objects.filter(code="wpp-cloud")
     client = FacebookClient()
+    flows_client = FlowsClient()
 
     for app in apps:
         wa_business_id = app.config.get("wa_business_id")
@@ -23,43 +28,94 @@ def sync_facebook_catalogs():
                 app.catalogs.values_list("facebook_catalog_id", flat=True)
             )
 
+            all_catalogs_id, all_catalogs = list_all_catalogs_task(app, client)
+
+            if all_catalogs_id:
+                update_catalogs_on_flows_task(app, flows_client, all_catalogs)
+
+                fba_catalogs_ids = set(all_catalogs_id)
+                to_create = fba_catalogs_ids - local_catalog_ids
+                to_delete = local_catalog_ids - fba_catalogs_ids
+
+                for catalog_id in to_create:
+                    details = get_catalog_details_task(client, app, catalog_id)
+                    if details:
+                        create_catalog_task(app, details)
+
+                if to_delete:
+                    delete_catalogs_task(app, to_delete)
+
+
+def handle_exceptions(
+    logger, error_msg, continue_on_exception=True, extra_info_func=None
+):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
             try:
-                response = client.list_all_catalogs(wa_business_id=wa_business_id)
+                return func(*args, **kwargs)
             except Exception as e:
-                logger.error(f"Error listing all catalogs for app {app.uuid}: {str(e)}")
-                continue
+                extra_info_str = (
+                    extra_info_func(*args, **kwargs) if extra_info_func else ""
+                )
+                logger.error(f"{error_msg}{extra_info_str}: {str(e)}")
+                if not continue_on_exception:
+                    raise
 
-            fba_catalogs_ids = set(response)
+        return wrapper
 
-            to_create = fba_catalogs_ids - local_catalog_ids
-            to_delete = local_catalog_ids - fba_catalogs_ids
+    return decorator
 
-            for catalog_id in to_create:
-                try:
-                    details = client.get_catalog_details(catalog_id)
-                except Exception as e:
-                    logger.error(
-                        f"Error getting catalog details for app {app.uuid}, catalog {catalog_id}: {str(e)}"
-                    )
-                    continue
-                try:
-                    Catalog.objects.create(
-                        app=app,
-                        facebook_catalog_id=details["id"],
-                        name=details["name"],
-                        category=details["vertical"],
-                    )
-                except Exception as e:
-                    logger.error(
-                        f"Error creating catalog for app {app.uuid}: {str(e)} , object: {details}"
-                    )
-                    continue
 
-            if to_delete:
-                try:
-                    app.catalogs.filter(facebook_catalog_id__in=to_delete).delete()
-                except Exception as e:
-                    logger.error(
-                        f"Error deleting catalogs for app {app.uuid}: {str(e)}"
-                    )
-                    continue
+def get_extra_info(app, *args, **kwargs):
+    return f"- UUID: {app.uuid}"
+
+
+@handle_exceptions(
+    logger, "Error listing all catalogs for App: ", extra_info_func=get_extra_info
+)
+def list_all_catalogs_task(app, client):
+    try:
+        all_catalog_ids, all_catalogs = client.list_all_catalogs(
+            wa_business_id=app.config.get("wa_business_id")
+        )
+        return all_catalog_ids, all_catalogs
+    except Exception as e:
+        logger.error(f"Error on list all catalogs for App: {str(e)}")
+        return [], []
+
+
+@handle_exceptions(
+    logger, "Error updating catalogs for App: ", extra_info_func=get_extra_info
+)
+def update_catalogs_on_flows_task(app, flows_client, all_catalogs):
+    flows_client.update_catalogs(str(app.flow_object_uuid), all_catalogs)
+
+
+@handle_exceptions(
+    logger,
+    "Error getting catalog details for App",
+    continue_on_exception=False,
+    extra_info_func=get_extra_info,
+)
+def get_catalog_details_task(client, app, catalog_id):
+    return client.get_catalog_details(catalog_id)
+
+
+@handle_exceptions(
+    logger, "Error creating catalog for App: ", extra_info_func=get_extra_info
+)
+def create_catalog_task(app, details):
+    Catalog.objects.create(
+        app=app,
+        facebook_catalog_id=details["id"],
+        name=details["name"],
+        category=details["vertical"],
+    )
+
+
+@handle_exceptions(
+    logger, "Error deleting catalogs for App: ", extra_info_func=get_extra_info
+)
+def delete_catalogs_task(app, to_delete):
+    app.catalogs.filter(facebook_catalog_id__in=to_delete).delete()
