@@ -19,6 +19,11 @@ catalog_patterns = [
         name="catalog-detail-delete",
     ),
     path(
+        "<uuid:app_uuid>/catalogs/<uuid:catalog_uuid>/products/",
+        CatalogViewSet.as_view({"get": "list_products"}),
+        name="catalog-list-products",
+    ),
+    path(
         "<uuid:app_uuid>/catalogs/<uuid:catalog_uuid>/enable/",
         CatalogViewSet.as_view({"post": "enable_catalog"}),
         name="catalog-enable",
