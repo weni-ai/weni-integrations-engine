@@ -10,13 +10,13 @@ from marketplace.core.types.channels.whatsapp_cloud.catalogs.views.views import 
 catalog_patterns = [
     path(
         "<uuid:app_uuid>/catalogs/",
-        CatalogViewSet.as_view({"get": "list"}),
-        name="catalog-list",
+        CatalogViewSet.as_view({"get": "list", "post": "create"}),
+        name="catalog-list-create",
     ),
     path(
         "<uuid:app_uuid>/catalogs/<uuid:catalog_uuid>/",
-        CatalogViewSet.as_view({"get": "retrieve"}),
-        name="catalog-detail",
+        CatalogViewSet.as_view({"get": "retrieve", "delete": "destroy"}),
+        name="catalog-detail-delete",
     ),
     path(
         "<uuid:app_uuid>/catalogs/<uuid:catalog_uuid>/enable/",
