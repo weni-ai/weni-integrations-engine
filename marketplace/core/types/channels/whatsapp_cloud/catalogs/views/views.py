@@ -19,6 +19,7 @@ from marketplace.clients.flows.client import FlowsClient
 
 from marketplace.wpp_products.serializers import (
     CatalogSerializer,
+    ProductSerializer,
     ToggleVisibilitySerializer,
     TresholdSerializer,
     CatalogListSerializer,
@@ -91,6 +92,11 @@ class CatalogViewSet(BaseViewSet):
         catalog_uuid = self.kwargs.get("catalog_uuid")
         return get_object_or_404(queryset, uuid=catalog_uuid)
 
+    def _get_catalog(self, catalog_uuid, app_uuid):
+        return get_object_or_404(
+            Catalog, uuid=catalog_uuid, app__uuid=app_uuid, app__code="wpp-cloud"
+        )
+
     def create(self, request, app_uuid, *args, **kwargs):
         app = get_object_or_404(App, uuid=app_uuid, code="wpp-cloud")
         serializer = self.serializer_class(data=request.data)
@@ -143,6 +149,15 @@ class CatalogViewSet(BaseViewSet):
             serialized_data = serializer.data
 
         return self.get_paginated_response(serialized_data)
+
+    @action(detail=True, methods=["GET"], url_path="list-products")
+    def list_products(self, request, app_uuid, catalog_uuid, *args, **kwargs):
+        catalog = self._get_catalog(catalog_uuid, app_uuid)
+        queryset = catalog.products.all()
+        page_data = self.paginate_queryset(queryset)
+        serializer = ProductSerializer(page_data, many=True)
+
+        return self.get_paginated_response(serializer.data)
 
     def destroy(self, request, *args, **kwargs):
         success = self.fb_service.catalog_deletion(self.get_object())
