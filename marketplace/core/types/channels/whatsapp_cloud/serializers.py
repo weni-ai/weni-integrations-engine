@@ -27,4 +27,4 @@ class WhatsAppCloudConfigureSerializer(serializers.Serializer):
     input_token = serializers.CharField(required=True)
     waba_id = serializers.CharField(required=True)
     phone_number_id = serializers.CharField(required=True)
-    business_id = serializers.CharField(required=True)
+    auth_code = serializers.CharField(required=True)
