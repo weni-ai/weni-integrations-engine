@@ -28,6 +28,7 @@ class VtexProductUpdateWebhook(APIView):
         celery_app.send_task(
             name="task_update_vtex_products",
             kwargs={"webhook_data": request.data, "app_uuid": app_uuid},
+            queue="product_synchronization",
         )
         return Response(status=status.HTTP_200_OK)
 
