@@ -154,8 +154,10 @@ class CatalogViewSet(BaseViewSet):
     @action(detail=True, methods=["GET"], url_path="list-products")
     def list_products(self, request, app_uuid, catalog_uuid, *args, **kwargs):
         catalog = self._get_catalog(catalog_uuid, app_uuid)
-        products = catalog.products.all()
-        serializer = ProductSerializer(products, many=True)
+        queryset = catalog.products.all()
+        page_data = self.paginate_queryset(queryset)
+        serializer = ProductSerializer(page_data, many=True)
+
         return self.get_paginated_response(serializer.data)
 
     def destroy(self, request, *args, **kwargs):
