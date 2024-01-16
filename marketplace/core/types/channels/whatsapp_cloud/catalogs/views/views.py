@@ -155,7 +155,9 @@ class CatalogViewSet(BaseViewSet):
     def list_products(self, request, app_uuid, catalog_uuid, *args, **kwargs):
         catalog = self._get_catalog(catalog_uuid, app_uuid)
         products = catalog.products.all()
+        self.paginate_queryset(products)
         serializer = ProductSerializer(products, many=True)
+
         return self.get_paginated_response(serializer.data)
 
     def destroy(self, request, *args, **kwargs):
