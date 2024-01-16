@@ -156,7 +156,7 @@ class CatalogViewSet(BaseViewSet):
         catalog = self._get_catalog(catalog_uuid, app_uuid)
         products = catalog.products.all()
         serializer = ProductSerializer(products, many=True)
-        return Response(serializer.data)
+        return self.get_paginated_response(serializer.data)
 
     def destroy(self, request, *args, **kwargs):
         success = self.fb_service.catalog_deletion(self.get_object())
