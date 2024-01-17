@@ -32,7 +32,7 @@ class VtexProductDTO:  # TODO: Implement This VtexProductDTO
 
 class DataProcessor:
     @staticmethod
-    def extract_fields(product_details, availability_details) -> FacebookProductDTO:
+    def extract_fields(domain, product_details, availability_details) -> FacebookProductDTO:
         price = (
             availability_details["price"]
             if availability_details["price"] is not None
@@ -48,6 +48,7 @@ class DataProcessor:
             if product_details.get("Images")
             else product_details.get("ImageUrl")
         )
+        product_url = f"https://{domain}/{product_details.get('DetailUrl')}"
         description = (
             product_details["ProductDescription"]
             if product_details["ProductDescription"] != ""
@@ -63,7 +64,7 @@ class DataProcessor:
             else "out of stock",
             condition="new",
             price=list_price,
-            link="https://www.google.com.br/",  # TODO:  Need to set up the product link.
+            link=product_url,
             image_link=image_url,
             brand=product_details.get("BrandName", "N/A"),
             sale_price=price,
@@ -121,7 +122,7 @@ class DataProcessor:
                 continue
 
             product_dto = DataProcessor.extract_fields(
-                product_details, availability_details
+                domain, product_details, availability_details
             )
             params = {"seller_id": seller_id}
             if all(rule.apply(product_dto, **params) for rule in rules):
