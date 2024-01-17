@@ -16,11 +16,22 @@ class CalculateByWeight(Rule):
 
         return True
 
-    def _calculates_by_weight(self, product: FacebookProductDTO) -> bool:
-        return product.product_details["MeasurementUnit"] != "un"
-
     def _get_multiplier(self, product: FacebookProductDTO) -> float:
         return product.product_details.get("UnitMultiplier", 1.0)
 
     def _get_weight(self, product: FacebookProductDTO) -> float:
         return product.product_details["Dimension"]["weight"]
+    
+    def _calculates_by_weight(self, product: FacebookProductDTO) -> bool:
+        categories_to_calculate = [
+            "Hortifruti",
+            "Carnes e Aves",
+            "Frios e Laticínios",
+            "Padaria"
+        ]
+        products_categories = product.product_details["ProductCategories"]
+
+        for category in categories_to_calculate:
+            if category in products_categories.values():
+                return True
+        return False
