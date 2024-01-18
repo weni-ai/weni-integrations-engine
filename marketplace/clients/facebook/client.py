@@ -232,3 +232,10 @@ class FacebookClient(FacebookAuthorization, RequestClient):
         headers = self._get_headers()
         response = self.make_request(url, method="GET", headers=headers, params=fields)
         return response.json()
+
+    def enable_template_insights(self, waba_id):
+        url = self.BASE_URL + f"{waba_id}"
+        params = {"is_enabled_for_insights": "true"}
+        headers = self._get_headers()
+        response = self.make_request(url, method="POST", headers=headers, params=params)
+        return response.json()
