@@ -107,6 +107,8 @@ class CatalogViewSet(BaseViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # self._update_connected_catalog_flag(app)
+
         credentials = {
             "app_key": vtex_app.config.get("api_credentials", {}).get("app_key"),
             "app_token": vtex_app.config.get("api_credentials", {}).get("app_token"),
@@ -177,6 +179,10 @@ class CatalogViewSet(BaseViewSet):
             catalog.app, catalog.facebook_catalog_id
         )
         return Response(status=status.HTTP_200_OK)
+
+    def _update_connected_catalog_flag(self, app) -> None:
+        app.config["connected_catalog"] = True
+        app.save()
 
 
 class CommerceSettingsViewSet(BaseViewSet):
