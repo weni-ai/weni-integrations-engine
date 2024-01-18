@@ -35,7 +35,11 @@ def refresh_whatsapp_templates_from_facebook():
         if app.code == "wpp" and app.config.get("fb_access_token"):
             acess_token = app.config.get("fb_access_token")
         else:
-            acess_token = settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
+            acess_token = (
+                app.config.get("wa_user_token")
+                if app.config.get("wa_user_token")
+                else settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
+            )
 
         template_message_request = TemplateMessageRequest(access_token=acess_token)
         templates = template_message_request.list_template_messages(waba_id)

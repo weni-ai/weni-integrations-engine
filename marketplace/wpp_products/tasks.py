@@ -77,7 +77,7 @@ def get_extra_info(app, *args, **kwargs):
 def list_all_catalogs_task(app, client):
     try:
         all_catalog_ids, all_catalogs = client.list_all_catalogs(
-            wa_business_id=app.config.get("wa_business_id")
+            app=app, wa_business_id=app.config.get("wa_business_id")
         )
         return all_catalog_ids, all_catalogs
     except Exception as e:
@@ -99,7 +99,7 @@ def update_catalogs_on_flows_task(app, flows_client, all_catalogs):
     extra_info_func=get_extra_info,
 )
 def get_catalog_details_task(client, app, catalog_id):
-    return client.get_catalog_details(catalog_id)
+    return client.get_catalog_details(app, catalog_id)
 
 
 @handle_exceptions(
