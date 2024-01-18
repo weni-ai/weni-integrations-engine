@@ -140,6 +140,12 @@ def task_insert_vtex_products(**kwargs):
             app_token=credentials.get("app_token"),
             domain=credentials.get("domain"),
         )
+
+        # Save app config to frontend knows that this catalog has been configured
+        app = catalog.app
+        app.config["connected_catalog"]=True
+        app.save()
+
         products = vtex_service.first_product_insert(api_credentials, catalog)
         dict_catalog = {
             "name": catalog.name,
