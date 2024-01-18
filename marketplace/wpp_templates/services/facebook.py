@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from marketplace.wpp_templates.models import TemplateTranslation
 
 
@@ -16,45 +18,44 @@ class FacebookService:
         return fields
 
     def format_analytics_data(self, analytics_data):
-        formatted_data = []
-        totals = {"sent": 0, "delivered": 0, "read": 0}
+        formatted_data = {}
+        grand_totals = {"sent": 0, "delivered": 0, "read": 0}
 
         data_points = analytics_data.get("data", [])[0].get("data_points", [])
 
-        template_totals = {}
-
         for point in data_points:
             template_id = point.get("template_id")
+            start = self.timestamp_to_date(point.get("start"))
             sent = point.get("sent")
             delivered = point.get("delivered")
             read = point.get("read")
 
-            if template_id not in template_totals:
-                template_totals[template_id] = {
+            grand_totals["sent"] += sent
+            grand_totals["delivered"] += delivered
+            grand_totals["read"] += read
+
+            if template_id not in formatted_data:
+                template_name = self.fba_template_id_to_template_name(template_id)
+                formatted_data[template_id] = {
                     "template_id": template_id,
-                    "sent": sent,
-                    "delivered": delivered,
-                    "read": read,
+                    "template_name": template_name,
+                    "totals": {"sent": 0, "delivered": 0, "read": 0},
+                    "dates": [],
                 }
 
-            else:
-                template_totals[template_id]["sent"] += sent
-                template_totals[template_id]["delivered"] += delivered
-                template_totals[template_id]["read"] += read
+            formatted_data[template_id]["totals"]["sent"] += sent
+            formatted_data[template_id]["totals"]["delivered"] += delivered
+            formatted_data[template_id]["totals"]["read"] += read
 
-            totals["sent"] += sent
-            totals["delivered"] += delivered
-            totals["read"] += read
+            formatted_data[template_id]["dates"].append(
+                {"start": start, "sent": sent, "delivered": delivered, "read": read}
+            )
 
-        for template_id, data in template_totals.items():
-            template_name = self.fba_template_id_to_template_name(template_id)
-            if template_name is not None:
-                data["template"] = template_name
+        output = {"data": list(formatted_data.values()), "grand_totals": grand_totals}
+        return output
 
-                formatted_data.append(data)
-
-        formatted_output = {"data": formatted_data, "totals": totals}
-        return formatted_output
+    def timestamp_to_date(self, timestamp):
+        return datetime.utcfromtimestamp(timestamp).strftime("%Y-%m-%d")
 
     def get_waba(self, app):
         wa_waba_id = app.config.get("wa_waba_id")
