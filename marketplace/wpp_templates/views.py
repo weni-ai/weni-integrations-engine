@@ -116,7 +116,11 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
                     f"This app: {instance.app.uuid} does not have fb_access_token in config"
                 )
         else:
-            access_token = settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
+            access_token = (
+                instance.app.config.get("wa_user_token")
+                if instance.app.config.get("wa_user_token")
+                else settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
+            )
             waba_id = instance.app.config.get("wa_waba_id")
 
         if waba_id is None:
@@ -171,7 +175,11 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
                     f"This app: {template.app.uuid} does not have fb_access_token in config"
                 )
         else:
-            access_token = settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
+            access_token = (
+                template.app.config.get("wa_user_token")
+                if template.app.config.get("wa_user_token")
+                else settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
+            )
 
         message_template_id = request.data.get("message_template_id")
 
@@ -200,7 +208,7 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
                 or header.get("format") == "VIDEO"
             ):
                 photo_api_request = PhotoAPIRequest(
-                    template.app.config.get("wa_waba_id")
+                    template.app, template.app.config.get("wa_waba_id")
                 )
                 photo = header.get("example")
                 file_type = re.search("(?<=data:)(.*)(?=;base64)", photo).group(0)

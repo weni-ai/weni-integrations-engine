@@ -67,8 +67,12 @@ class WhatsAppCloudViewSet(
 
     @property
     def get_access_token(self) -> str:
-        access_token = settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
-
+        user_acess_token = self.get_object().config.get("wa_user_token")
+        access_token = (
+            user_acess_token
+            if user_acess_token
+            else settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
+        )
         if access_token is None:
             raise ValidationError("This app does not have fb_access_token in settings")
 
@@ -104,12 +108,10 @@ class WhatsAppCloudViewSet(
         response = requests.get(url, params=params)
         if response.status_code != status.HTTP_200_OK:
             raise ValidationError(response.json())
-        
+
         user_auth = response.json().get("access_token")
-        
-        headers = {
-            "Authorization": f"Bearer {user_auth}"
-        }
+
+        headers = {"Authorization": f"Bearer {user_auth}"}
 
         url = f"{base_url}/{waba_id}"
         params = dict(fields="on_behalf_of_business_info,message_template_namespace")
@@ -151,7 +153,7 @@ class WhatsAppCloudViewSet(
 
         if response.status_code != status.HTTP_200_OK:
             raise ValidationError(response.json())
-        
+
         phone_number_request = PhoneNumbersRequest(user_auth)
         phone_number = phone_number_request.get_phone_number(phone_number_id)
 
