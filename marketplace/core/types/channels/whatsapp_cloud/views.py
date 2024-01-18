@@ -150,6 +150,7 @@ class WhatsAppCloudViewSet(
             wa_business_id=business_id,
             wa_message_template_namespace=message_template_namespace,
             wa_pin=pin,
+            connected_catalog=False,
         )
 
         client = ConnectProjectClient()
