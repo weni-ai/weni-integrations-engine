@@ -4,6 +4,8 @@ import requests
 from rest_framework import status
 
 from django.conf import settings
+
+from marketplace.applications.models import App
 from ..whatsapp_base.interfaces import ProfileHandlerInterface
 from ..whatsapp_base.exceptions import FacebookApiException
 
@@ -15,7 +17,8 @@ class CloudProfileRequest(ProfileHandlerInterface):
         fields="about,address,description,email,profile_picture_url,websites,vertical"
     )
 
-    def __init__(self, phone_number_id: "str") -> None:
+    def __init__(self, app: App, phone_number_id: "str") -> None:
+        self.app = app
         self._phone_number_id = phone_number_id
 
     @property
@@ -25,6 +28,12 @@ class CloudProfileRequest(ProfileHandlerInterface):
     @property
     def _headers(self) -> dict:
         access_token = settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
+        user_token = self.app.config.get("wa_user_token")
+        if user_token:
+            return {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {user_token}",
+            }
         return {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {access_token}",
@@ -94,12 +103,15 @@ class PhoneNumbersRequest(object):
 
 
 class PhotoAPIRequest(object):
-    def __init__(self, phone_number_id: str) -> None:
+    def __init__(self, phone_number_id: str, app: App) -> None:
         self._access_token = settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
         self._phone_number_id = phone_number_id
+        self.app = app
 
     @property
     def _headers(self) -> dict:
+        if self.app.config.get("wa_user_token"):
+            return {"Authorization": f"Bearer {self.app.config.get('wa_user_token')}"}
         return {"Authorization": f"Bearer {self._access_token}"}
 
     def _get_url(self, endpoint: str) -> str:

@@ -129,8 +129,8 @@ class WhatsAppProfileMixin(object, metaclass=abc.ABCMeta):
     )
     def profile(self, request: "Request", **kwargs) -> Response:
         # TODO: Split this view in a APIView
-        profile_handler = self.profile_class(**self.profile_config_credentials)
-
+        profile_handler = self.profile_class(self.get_object(), **self.profile_config_credentials)
+    
         try:
             serializer: WhatsAppProfileSerializer = None
 

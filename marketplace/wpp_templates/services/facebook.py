@@ -72,7 +72,7 @@ class FacebookService:
 
         waba_id = self.get_waba(app=app).get("wa_waba_id")
         fields = self.get_fields(start, end, fba_template_ids)
-        analytics = self.client.get_template_analytics(waba_id=waba_id, fields=fields)
+        analytics = self.client.get_template_analytics(app=app, waba_id=waba_id, fields=fields)
         return self.format_analytics_data(analytics)
 
     def fba_template_id_to_template_name(self, fba_template_id):
