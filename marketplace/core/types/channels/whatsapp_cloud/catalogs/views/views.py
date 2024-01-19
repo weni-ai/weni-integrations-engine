@@ -124,6 +124,7 @@ class CatalogViewSet(BaseViewSet):
             kwargs={"credentials": credentials, "catalog_uuid": str(catalog.uuid)},
             queue="product_synchronization",
         )
+        self._update_connected_catalog_flag(app)
 
         return Response(CatalogSerializer(catalog).data, status=status.HTTP_201_CREATED)
 
@@ -193,6 +194,10 @@ class CatalogViewSet(BaseViewSet):
             catalog.app, catalog.facebook_catalog_id
         )
         return Response(status=status.HTTP_200_OK)
+
+    def _update_connected_catalog_flag(self, app) -> None:
+        app.config["connected_catalog"] = True
+        app.save()
 
 
 class CommerceSettingsViewSet(BaseViewSet):
