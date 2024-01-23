@@ -24,6 +24,8 @@ class FacebookService:
             catalog = self._create_catalog_object(data)
             app.config["connected_catalog"] = True
             app.save()
+            vtex_app.config["connected_catalog"] = True
+            vtex_app.save()
             return catalog, response.get("id")
 
         return None, None
