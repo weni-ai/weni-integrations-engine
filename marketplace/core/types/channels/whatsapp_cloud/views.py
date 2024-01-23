@@ -99,7 +99,7 @@ class WhatsAppCloudViewSet(
 
         base_url = settings.WHATSAPP_API_URL
 
-        url = f"{base_url}/{settings.WHATSAPP_VERSION}/oauth/access_token/"
+        url = f"{base_url}/{settings.WHATSAPP_VERSION}/oauth/access_token"
         params = dict(
             client_id=settings.WHATSAPP_APPLICATION_ID,
             client_secret=settings.WHATSAPP_APPLICATION_SECRET,
