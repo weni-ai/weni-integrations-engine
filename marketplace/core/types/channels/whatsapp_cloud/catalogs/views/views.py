@@ -113,6 +113,8 @@ class CatalogViewSet(BaseViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        self._update_connected_catalog_flag(app)
+
         credentials = {
             "app_key": vtex_app.config.get("api_credentials", {}).get("app_key"),
             "app_token": vtex_app.config.get("api_credentials", {}).get("app_token"),
