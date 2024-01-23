@@ -113,7 +113,7 @@ class CatalogViewSet(BaseViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        self._update_connected_catalog_flag(app)
+        # self._update_connected_catalog_flag(app)
 
         credentials = {
             "app_key": vtex_app.config.get("api_credentials", {}).get("app_key"),
@@ -126,7 +126,7 @@ class CatalogViewSet(BaseViewSet):
             kwargs={"credentials": credentials, "catalog_uuid": str(catalog.uuid)},
             queue="product_synchronization",
         )
-        self._update_connected_catalog_flag(app)
+        # self._update_connected_catalog_flag(app)
 
         return Response(CatalogSerializer(catalog).data, status=status.HTTP_201_CREATED)
 
