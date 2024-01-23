@@ -105,19 +105,21 @@ class WhatsAppCloudViewSet(
             client_secret=settings.WHATSAPP_APPLICATION_SECRET,
             code=auth_code,
         )
-        print('URL', url)
+        print('URL', url, params)
         response = requests.get(url, params=params)
-        print('RESPONSE', response)
+        print('RESPONSE', response.json())
         if response.status_code != status.HTTP_200_OK:
             raise ValidationError(response.json())
 
         user_auth = response.json().get("access_token")
-
+        print('USER TOKEN NEW', user_auth)
         headers = {"Authorization": f"Bearer {user_auth}"}
 
         url = f"{base_url}/{waba_id}"
         params = dict(fields="on_behalf_of_business_info,message_template_namespace")
+        print(url, params)
         response = requests.get(url, params=params, headers=headers)
+        print(response.json())
 
         message_template_namespace = response.json().get("message_template_namespace")
         business_id = response.json().get("on_behalf_of_business_info").get("id")
@@ -125,17 +127,21 @@ class WhatsAppCloudViewSet(
         url = f"{base_url}/{waba_id}/assigned_users"
         params = dict(
             user=settings.WHATSAPP_CLOUD_SYSTEM_USER_ID,
-            access_token=user_auth,
+            access_token=settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN,
             tasks="MANAGE",
         )
+        print(url, params)
         response = requests.post(url, params=params, headers=headers)
+        print(response.json())
 
         if response.status_code != status.HTTP_200_OK:
             raise ValidationError(response.json())
 
         url = f"{base_url}/{settings.WHATSAPP_CLOUD_EXTENDED_CREDIT_ID}/whatsapp_credit_sharing_and_attach"
         params = dict(waba_id=waba_id, waba_currency=waba_currency)
+        print(url, params)
         response = requests.post(url, params=params, headers=headers)
+        print(response.json())
 
         if response.status_code != status.HTTP_200_OK:
             raise ValidationError(response.json())
@@ -143,7 +149,9 @@ class WhatsAppCloudViewSet(
         allocation_config_id = response.json().get("allocation_config_id")
 
         url = f"{base_url}/{waba_id}/subscribed_apps"
+        print(url)
         response = requests.post(url, headers=headers)
+        print(response.json())
 
         if response.status_code != status.HTTP_200_OK:
             raise ValidationError(response.json())
@@ -151,13 +159,16 @@ class WhatsAppCloudViewSet(
         url = f"{base_url}/{phone_number_id}/register"
         pin = get_random_string(6, string.digits)
         data = dict(messaging_product="whatsapp", pin=pin)
+        print(url, data)
         response = requests.post(url, headers=headers, data=data)
+        print(response.json())
 
         if response.status_code != status.HTTP_200_OK:
             raise ValidationError(response.json())
 
         phone_number_request = PhoneNumbersRequest(user_auth)
         phone_number = phone_number_request.get_phone_number(phone_number_id)
+        print('PHONE NUMBER', phone_number)
 
         config = dict(
             wa_number=phone_number.get("display_phone_number"),
