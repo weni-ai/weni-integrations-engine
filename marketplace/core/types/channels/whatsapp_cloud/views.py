@@ -98,6 +98,7 @@ class WhatsAppCloudViewSet(
         waba_currency = "USD"
 
         base_url = settings.WHATSAPP_API_URL
+        weni_token_headers = {"Authorization": f"Bearer {settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN}"}
 
         url = f"{base_url}/oauth/access_token"
         params = dict(
@@ -140,7 +141,8 @@ class WhatsAppCloudViewSet(
         url = f"{base_url}/{settings.WHATSAPP_CLOUD_EXTENDED_CREDIT_ID}/whatsapp_credit_sharing_and_attach"
         params = dict(waba_id=waba_id, waba_currency=waba_currency)
         print(url, params)
-        response = requests.post(url, params=params, headers=headers)
+
+        response = requests.post(url, params=params, headers=weni_token_headers)
         print(response.json())
 
         if response.status_code != status.HTTP_200_OK:
