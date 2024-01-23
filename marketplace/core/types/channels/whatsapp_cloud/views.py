@@ -99,13 +99,15 @@ class WhatsAppCloudViewSet(
 
         base_url = settings.WHATSAPP_API_URL
 
-        url = f"{base_url}/{settings.WHATSAPP_VERSION}/oauth/access_token"
+        url = f"{base_url}/oauth/access_token"
         params = dict(
             client_id=settings.WHATSAPP_APPLICATION_ID,
             client_secret=settings.WHATSAPP_APPLICATION_SECRET,
             code=auth_code,
         )
+        print('URL', url)
         response = requests.get(url, params=params)
+        print('RESPONSE', response)
         if response.status_code != status.HTTP_200_OK:
             raise ValidationError(response.json())
 
