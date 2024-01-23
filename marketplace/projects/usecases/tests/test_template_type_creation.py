@@ -21,14 +21,18 @@ class TemplateTypeCreationTestCase(TestCase):
         apptype = APPTYPES.get("wpp-demo")
         apptype.create_app(created_by=self.user, project_uuid=self.project_uuid)
 
-        create_template_type(template_type_uuid, self.project_uuid, "Fake Template Type")
+        create_template_type(
+            template_type_uuid, self.project_uuid, "Fake Template Type"
+        )
 
         template_type = TemplateType.objects.get(uuid=template_type_uuid)
         self.assertEqual(template_type.setup, {"apps": [{"code": "wpp-demo"}]})
 
     def test_renamed_when_passing_existing_template_type_uuid(self):
         template_type_uuid = uuid.uuid4()
-        TemplateType.objects.create(uuid=template_type_uuid, name="Fake Template Type", setup={"fake": "test"})
+        TemplateType.objects.create(
+            uuid=template_type_uuid, name="Fake Template Type", setup={"fake": "test"}
+        )
 
         create_template_type(template_type_uuid, self.project_uuid, "New Name")
 
@@ -43,4 +47,6 @@ class TemplateTypeCreationTestCase(TestCase):
         apptype.create_app(created_by=self.user, project_uuid=self.project_uuid)
 
         template_type_uuid = uuid.uuid4()
-        create_template_type(template_type_uuid, self.project_uuid, "Fake Template Type")
+        create_template_type(
+            template_type_uuid, self.project_uuid, "Fake Template Type"
+        )

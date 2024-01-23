@@ -1,7 +1,8 @@
-FROM python:3.8-slim-buster AS base
+# syntax = docker/dockerfile:1
 
-ARG APP_UID=1000
-ARG APP_GID=1000
+ARG PYTHON_VERSION="3.8"
+ARG DEBIAN_VERSION="buster"
+ARG POETRY_VERSION="1.7.0"
 
 ARG BUILD_DEPS="\
   python3-dev \
@@ -21,64 +22,91 @@ ARG RUNTIME_DEPS="\
   gettext \
   postgresql-client"
 
-ARG APP_PORT="8000"
 
-ARG APP_VERSION="0.1"
+FROM python:${PYTHON_VERSION}-slim-${DEBIAN_VERSION} as base
 
-# set environment variables
-ENV PROJECT_PATH="/marketplace"
+ARG POETRY_VERSION
 
-ENV APPLICATION_NAME="Marketplace"
-
-ENV APP_VERSION=${APP_VERSION} \
-  RUNTIME_DEPS=${RUNTIME_DEPS} \
-  BUILD_DEPS=${BUILD_DEPS} \
-  APP_UID=${APP_UID} \
-  APP_GID=${APP_GID} \
+ENV PYTHONUNBUFFERED=1 \
   PYTHONDONTWRITEBYTECODE=1 \
-  PYTHONUNBUFFERED=1 \
-  PYTHONIOENCODING=UTF-8 \
+  DEBIAN_FRONTEND=noninteractive \
+  PROJECT=Marketplace \
+  PROJECT_PATH=/marketplace \
+  PROJECT_USER=app_user \
+  PROJECT_GROUP=app_group \
   PIP_DISABLE_PIP_VERSION_CHECK=1 \
   PATH="/install/bin:${PATH}" \
-  APP_PORT=${APP_PORT}
+  APP_PORT=${APP_PORT} \
+  APPLICATION_NAME="Marketplace" \
+  RUNTIME_DEPS=${RUNTIME_DEPS} \
+  BUILD_DEPS=${BUILD_DEPS} \
+  PYTHONIOENCODING=UTF-8
+  
+ARG COMPRESS_ENABLED
+ARG BRANDING_ENABLED
+ 
+ARG RAPIDPRO_APPS_GIT_URL
+ARG RAPIDPRO_APPS_GIT_BRANCH
 
 LABEL app=${VERSION} \
   os="debian" \
   os.version="10" \
-  name="${APPLICATION_NAME} ${APP_VERSION}" \
-  description="${APPLICATION_NAME} image" \
-  maintainer="${APPLICATION_NAME} Team"
+  name="Weni-integrations-engine" \
+  description="Weni-integrations-engine image" \
+  maintainer="https://github.com/weni-ai" \
+  org.opencontainers.image.url="https://github.com/weni-ai/weni-integrations-engine" \
+  org.opencontainers.image.documentation="https://github.com/weni-ai/weni-integrations-engine" \
+  org.opencontainers.image.source="https://github.com/weni-ai/weni-integrations-engine" \
+  org.opencontainers.image.title="Weni-integrations-engine"
 
-RUN addgroup --gid "${APP_GID}" app_group \
-  && useradd --system -m -d ${PROJECT_PATH} -u "${APP_UID}" -g "${APP_GID}" app_user
+RUN addgroup --gid 1999 "${PROJECT_GROUP}" \
+  && useradd --system -m -d "${PROJECT_PATH}" -u 1999 -g 1999 "${PROJECT_USER}"
 
-# set work directory
-WORKDIR ${PROJECT_PATH}
+WORKDIR "${PROJECT_PATH}"
+
+RUN rm -f /etc/apt/apt.conf.d/docker-clean; echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
+
+FROM base as build-poetry
+
+ARG POETRY_VERSION
+ARG REQUESTS_VERSION
+
+COPY pyproject.toml poetry.lock ./
+
+RUN --mount=type=cache,mode=0755,target=/pip_cache,id=pip pip install --cache-dir /pip_cache -U poetry=="${POETRY_VERSION}" \
+  && poetry cache clear -n --all pypi \
+  && poetry export --without-hashes --output requirements.txt
+#  && poetry add -n --lock $(cat pip-requires.txt) \
+
+FROM base as build
+
+ARG BUILD_DEPS
+
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+  --mount=type=cache,target=/var/lib/apt,sharing=locked \
+  apt-get update \
+  && apt-get install --no-install-recommends --no-install-suggests -y ${BUILD_DEPS}
+ 
+COPY --from=build-poetry "${PROJECT_PATH}/requirements.txt" /tmp/dep/
+RUN --mount=type=cache,mode=0755,target=/pip_cache,id=pip pip install --cache-dir /pip_cache --prefix=/install -r /tmp/dep/requirements.txt
 
 FROM base
 
-# Clear image and install runtime dependences
-RUN apt-get update \
+ARG BUILD_DEPS
+ARG RUNTIME_DEPS
+
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+  --mount=type=cache,target=/var/lib/apt,sharing=locked \
+  apt-get update \
   && SUDO_FORCE_REMOVE=yes apt-get remove --purge -y ${BUILD_DEPS} \
   && apt-get autoremove -y \
   && apt-get install -y --no-install-recommends ${RUNTIME_DEPS} \
-  && rm -rf /usr/share/man \
-  && apt-get clean \
-  && rm -rf /var/lib/apt/lists/*
+  && rm -rf /usr/share/man /usr/share/doc
 
-# TODO: Move it to build stage
-RUN if [ ! "x${BUILD_DEPS}" = "x" ] ; then apt-get update \
-  && apt-get install -y --no-install-recommends ${BUILD_DEPS} ; fi
+COPY --from=build /install /usr/local
+COPY --chown=${PROJECT_USER}:${PROJECT_GROUP} . ${PROJECT_PATH}
 
-# copy project
-COPY --chown=app_user:app_group . .
-
-# Install project dependencies 
-RUN python -m pip install --no-cache-dir --upgrade pip \
-  && python -m pip install --no-cache-dir -U poetry \
-  && poetry config virtualenvs.create false \
-  && poetry install --no-dev \
-  && pip uninstall --yes poetry
-
-
-ENTRYPOINT ["/marketplace/docker-entrypoint.sh"]
+USER "${PROJECT_USER}:${PROJECT_USER}"
+EXPOSE 8000
+ENTRYPOINT ["bash", "./docker/start"]
+CMD ["start"]
