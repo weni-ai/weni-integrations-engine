@@ -13,42 +13,16 @@ from marketplace.wpp_templates.models import (
     TemplateHeader,
     TemplateButton,
 )
+from marketplace.clients.flows.client import FlowsClient
+
 
 logger = logging.getLogger(__name__)
 
 
-def delete_unexistent_translations(app, templates):
-    templates_message = app.template.all()
-    templates_ids = [item["id"] for item in templates["data"]]
-
-    for template in templates_message:
-        try:
-            template_translation = TemplateTranslation.objects.filter(template=template)
-            if not template_translation:
-                print(f"Removing template without translation: {template}")
-                template.delete()
-                continue
-
-            for translation in template_translation:
-                if translation.message_template_id not in templates_ids:
-                    print(
-                        f"Removing translation {translation.message_template_id}: {translation}"
-                    )
-                    translation.delete()
-
-            if template.translations.all().count() == 0:
-                print(f"Removing template after removing translations: {template}")
-                template.delete()
-
-        except Exception as e:
-            logger.error(
-                f"An error occurred 'on delete_unexistent_translations()': {e}"
-            )
-            continue
-
-
 @shared_task(track_started=True, name="refresh_whatsapp_templates_from_facebook")
 def refresh_whatsapp_templates_from_facebook():
+    flows_client = FlowsClient()
+
     for app in App.objects.filter(code__in=["wpp", "wpp-cloud"]):
         if not (app.config.get("wa_waba_id") or app.config.get("waba")):
             continue
@@ -61,7 +35,11 @@ def refresh_whatsapp_templates_from_facebook():
         if app.code == "wpp" and app.config.get("fb_access_token"):
             acess_token = app.config.get("fb_access_token")
         else:
-            acess_token = settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
+            acess_token = (
+                app.config.get("wa_user_token")
+                if app.config.get("wa_user_token")
+                else settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
+            )
 
         template_message_request = TemplateMessageRequest(access_token=acess_token)
         templates = template_message_request.list_template_messages(waba_id)
@@ -72,13 +50,23 @@ def refresh_whatsapp_templates_from_facebook():
             )
             continue
 
+        templates = templates.get("data", [])
+        try:
+            flows_client.update_facebook_templates(str(app.flow_object_uuid), templates)
+        except Exception as error:
+            logger.error(
+                f"An error occurred when sending facebook templates to flows: "
+                f"App-{str(app.uuid)}, flows_object_uuid: {str(app.flow_object_uuid)} "
+                f"Error: {error}"
+            )
+
         if waba_id:
             delete_unexistent_translations(app, templates)
 
-        for template in templates.get("data", []):
+        for template in templates:
             try:
                 translation = TemplateTranslation.objects.filter(
-                    message_template_id=template.get("id")
+                    message_template_id=template.get("id"), template__app=app
                 )
                 if translation:
                     translation = translation.last()
@@ -146,3 +134,33 @@ def refresh_whatsapp_templates_from_facebook():
             except Exception as error:
                 capture_exception(error)
                 continue
+
+
+def delete_unexistent_translations(app, templates):
+    templates_message = app.template.all()
+    templates_ids = [item["id"] for item in templates]
+
+    for template in templates_message:
+        try:
+            template_translation = TemplateTranslation.objects.filter(template=template)
+            if not template_translation:
+                print(f"Removing template without translation: {template}")
+                template.delete()
+                continue
+
+            for translation in template_translation:
+                if translation.message_template_id not in templates_ids:
+                    print(
+                        f"Removing translation {translation.message_template_id}: {translation}"
+                    )
+                    translation.delete()
+
+            if template.translations.all().count() == 0:
+                print(f"Removing template after removing translations: {template}")
+                template.delete()
+
+        except Exception as e:
+            logger.error(
+                f"An error occurred 'on delete_unexistent_translations()': {e}"
+            )
+            continue

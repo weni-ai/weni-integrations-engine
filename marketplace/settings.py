@@ -216,6 +216,12 @@ if USE_OIDC:
     )
     OIDC_RP_SCOPES = env.str("OIDC_RP_SCOPES", default="openid email")
 
+OIDC_CACHE_TOKEN = env.bool(
+    "OIDC_CACHE_TOKEN", default=False
+)  # Enable/disable user token caching (default: False).
+OIDC_CACHE_TTL = env.int(
+    "OIDC_CACHE_TTL", default=600
+)  # Time-to-live for cached user tokens (default: 600 seconds).
 
 # django-cors-headers Configurations
 
@@ -299,6 +305,8 @@ WHATSAPP_VERSION = env.str("WHATSAPP_VERSION", default="v16.0")
 WHATSAPP_API_URL = urllib.parse.urljoin(
     env.str("WHATSAPP_API_URL", default="https://graph.facebook.com/"), WHATSAPP_VERSION
 )
+WHATSAPP_APPLICATION_SECRET = env.str("WHATSAPP_APPLICATION_SECRET")
+WHATSAPP_APPLICATION_ID = env.str("WHATSAPP_APPLICATION_ID")
 
 if APPTYPE_WHATSAPP_PATH in APPTYPES_CLASSES:
     WHATSAPP_TIME_BETWEEN_SYNC_WABA_IN_HOURS = (

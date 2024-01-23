@@ -50,19 +50,23 @@ class FacebookService:
 
     def enable_catalog(self, catalog):
         waba_id = self.get_app_facebook_credentials(app=catalog.app).get("wa_waba_id")
-        return self.client.enable_catalog(
-            waba_id=waba_id, catalog_id=catalog.facebook_catalog_id
+        response = self.client.enable_catalog(
+            app=catalog.app, waba_id=waba_id, catalog_id=catalog.facebook_catalog_id
         )
+        success = response.get("success") is True
+        return success, response
 
     def disable_catalog(self, catalog):
         waba_id = self.get_app_facebook_credentials(app=catalog.app).get("wa_waba_id")
-        return self.client.disable_catalog(
-            waba_id=waba_id, catalog_id=catalog.facebook_catalog_id
+        response = self.client.disable_catalog(
+            app=catalog.app, waba_id=waba_id, catalog_id=catalog.facebook_catalog_id
         )
+        success = response.get("success") is True
+        return success, response
 
     def get_connected_catalog(self, app):
         waba_id = self.get_app_facebook_credentials(app=app).get("wa_waba_id")
-        response = self.client.get_connected_catalog(waba_id=waba_id)
+        response = self.client.get_connected_catalog(app=app, waba_id=waba_id)
 
         if len(response.get("data")) > 0:
             return response.get("data")[0].get("id")
@@ -85,4 +89,4 @@ class FacebookService:
         business_phone_number_id = self.get_app_facebook_credentials(app=app).get(
             "wa_phone_number_id"
         )
-        return self.client.get_wpp_commerce_settings(business_phone_number_id)
+        return self.client.get_wpp_commerce_settings(app, business_phone_number_id)

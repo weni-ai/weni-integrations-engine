@@ -1,7 +1,6 @@
 """Client for connection with flows"""
-
-
 from django.conf import settings
+
 from marketplace.clients.base import RequestClient
 
 
@@ -50,5 +49,44 @@ class FlowsClient(RequestClient):
             method="PATCH",
             headers=self.authentication_instance.headers,
             json=payload,
+        )
+        return response
+
+    def update_catalogs(self, flow_object_uuid, catalogs_data):
+        data = {"data": catalogs_data}
+        url = f"{self.base_url}/catalogs/{flow_object_uuid}/update-catalog/"
+
+        response = self.make_request(
+            url,
+            method="POST",
+            headers=self.authentication_instance.headers,
+            json=data,
+        )
+        return response
+
+    def update_status_catalog(self, flow_object_uuid, fba_catalog_id, is_active: bool):
+        data = {
+            "facebook_catalog_id": fba_catalog_id,
+            "is_active": is_active,
+        }
+        url = f"{self.base_url}/catalogs/{flow_object_uuid}/update-status-catalog/"
+
+        response = self.make_request(
+            url,
+            method="POST",
+            headers=self.authentication_instance.headers,
+            json=data,
+        )
+        return response
+
+    def update_facebook_templates(self, flow_object_uuid, fba_templates):
+        data = {"data": fba_templates}
+        url = f"{self.base_url}/template/{flow_object_uuid}/"
+
+        response = self.make_request(
+            url,
+            method="PATCH",
+            headers=self.authentication_instance.headers,
+            json=data,
         )
         return response

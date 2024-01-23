@@ -67,8 +67,12 @@ class WhatsAppCloudViewSet(
 
     @property
     def get_access_token(self) -> str:
-        access_token = settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
-
+        user_acess_token = self.get_object().config.get("wa_user_token")
+        access_token = (
+            user_acess_token
+            if user_acess_token
+            else settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
+        )
         if access_token is None:
             raise ValidationError("This app does not have fb_access_token in settings")
 
@@ -88,27 +92,38 @@ class WhatsAppCloudViewSet(
 
         project_uuid = request.data.get("project_uuid")
 
-        input_token = serializer.validated_data.get("input_token")
         waba_id = serializer.validated_data.get("waba_id")
         phone_number_id = serializer.validated_data.get("phone_number_id")
-        business_id = serializer.validated_data.get("business_id")
+        auth_code = serializer.validated_data.get("auth_code")
         waba_currency = "USD"
 
         base_url = settings.WHATSAPP_API_URL
-        headers = {
-            "Authorization": f"Bearer {settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN}"
-        }
+
+        url = f"{base_url}/{settings.WHATSAPP_VERSION}/oauth/access_token/"
+        params = dict(
+            client_id=settings.WHATSAPP_APPLICATION_ID,
+            client_secret=settings.WHATSAPP_APPLICATION_SECRET,
+            code=auth_code,
+        )
+        response = requests.get(url, params=params)
+        if response.status_code != status.HTTP_200_OK:
+            raise ValidationError(response.json())
+
+        user_auth = response.json().get("access_token")
+
+        headers = {"Authorization": f"Bearer {user_auth}"}
 
         url = f"{base_url}/{waba_id}"
-        params = dict(fields="message_template_namespace")
+        params = dict(fields="on_behalf_of_business_info,message_template_namespace")
         response = requests.get(url, params=params, headers=headers)
 
         message_template_namespace = response.json().get("message_template_namespace")
+        business_id = response.json().get("on_behalf_of_business_info").get("id")
 
         url = f"{base_url}/{waba_id}/assigned_users"
         params = dict(
             user=settings.WHATSAPP_CLOUD_SYSTEM_USER_ID,
-            access_token=settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN,
+            access_token=user_auth,
             tasks="MANAGE",
         )
         response = requests.post(url, params=params, headers=headers)
@@ -139,7 +154,7 @@ class WhatsAppCloudViewSet(
         if response.status_code != status.HTTP_200_OK:
             raise ValidationError(response.json())
 
-        phone_number_request = PhoneNumbersRequest(input_token)
+        phone_number_request = PhoneNumbersRequest(user_auth)
         phone_number = phone_number_request.get_phone_number(phone_number_id)
 
         config = dict(
@@ -150,6 +165,7 @@ class WhatsAppCloudViewSet(
             wa_business_id=business_id,
             wa_message_template_namespace=message_template_namespace,
             wa_pin=pin,
+            wa_user_token=user_auth,
         )
 
         client = ConnectProjectClient()
@@ -175,110 +191,6 @@ class WhatsAppCloudViewSet(
         celery_app.send_task(name="sync_whatsapp_cloud_phone_numbers")
 
         return Response(serializer.validated_data)
-
-    @action(detail=False, methods=["GET"])
-    def debug_token(self, request: "Request", **kwargs):
-        """
-        Returns the waba id for the input token.
-
-            Query Parameters:
-                - input_token (str): User Facebook Access Token
-
-            Return body:
-            "<WABA_ID"
-        """
-        input_token = request.query_params.get("input_token", None)
-
-        if input_token is None:
-            raise ValidationError("input_token is a required parameter!")
-
-        url = f"{settings.WHATSAPP_API_URL}/debug_token"
-        params = dict(input_token=input_token)
-        headers = {
-            "Authorization": f"Bearer {settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN}"
-        }
-
-        response = requests.get(url, params=params, headers=headers)
-
-        if response.status_code != 200:
-            raise ValidationError(response.json())
-
-        data = response.json().get("data")
-
-        # TODO: This code snippet needs refactoring
-
-        try:
-            whatsapp_business_management = next(
-                filter(
-                    lambda scope: scope.get("scope") == "whatsapp_business_management",
-                    data.get("granular_scopes"),
-                )
-            )
-        except StopIteration:
-            raise ValidationError("Invalid token permissions")
-
-        try:
-            business_management = next(
-                filter(
-                    lambda scope: scope.get("scope") == "business_management",
-                    data.get("granular_scopes"),
-                )
-            )
-        except StopIteration:
-            business_management = dict()
-
-        try:
-            waba_id = whatsapp_business_management.get("target_ids")[0]
-        except IndexError:
-            raise ValidationError("Missing WhatsApp Business Accound Id")
-
-        try:
-            business_id = business_management.get("target_ids", [])[0]
-        except IndexError:
-            url = f"{settings.WHATSAPP_API_URL}/{waba_id}/"
-            params = dict(
-                access_token=settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN,
-                fields="owner_business_info,on_behalf_of_business_info",
-            )
-
-            business_id = (
-                requests.get(url, params=params, headers=headers)
-                .json()
-                .get("owner_business_info", {"id": None})
-                .get("id")
-            )
-
-        return Response(dict(waba_id=waba_id, business_id=business_id))
-
-    @action(detail=False, methods=["GET"])
-    def phone_numbers(self, request: "Request", **kwargs):
-        """
-        Returns a list of phone numbers for a given WABA Id.
-
-            Query Parameters:
-                - input_token (str): User Facebook Access Token
-                - waba_id (str): WhatsApp Business Account Id
-
-            Return body:
-            [
-                {
-                    "phone_number": "",
-                    "phone_number_id": ""
-                },
-            ]
-        """
-
-        waba_id = request.query_params.get("waba_id", None)
-
-        if waba_id is None:
-            raise ValidationError("waba_id is a required parameter!")
-
-        request = PhoneNumbersRequest(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
-
-        try:
-            return Response(request.get_phone_numbers(waba_id))
-        except FacebookApiException as error:
-            raise ValidationError(error)
 
     @action(detail=True, methods=["PATCH"])
     def update_webhook(self, request, uuid=None):

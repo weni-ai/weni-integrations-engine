@@ -27,17 +27,27 @@ from marketplace.wpp_products.serializers import (
 
 class BaseViewSet(viewsets.ModelViewSet):
     fb_service_class = FacebookService
+    flows_service_class = FlowsService
+
     fb_client_class = FacebookClient
+    flows_client_class = FlowsClient
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._fb_service = None
+        self._flows_service = None
 
     @property
     def fb_service(self):  # pragma: no cover
         if not self._fb_service:
             self._fb_service = self.fb_service_class(self.fb_client_class())
         return self._fb_service
+
+    @property
+    def flows_service(self):  # pragma: no cover
+        if not self._flows_service:
+            self._flows_service = self.flows_service_class(self.flows_client_class())
+        return self._flows_service
 
 
 class Pagination(PageNumberPagination):
@@ -94,13 +104,27 @@ class CatalogViewSet(BaseViewSet):
 
     @action(detail=True, methods=["POST"])
     def enable_catalog(self, request, *args, **kwargs):
-        response = self.fb_service.enable_catalog(self.get_object())
-        return Response(response)
+        catalog = self.get_object()
+        success, response = self.fb_service.enable_catalog(catalog)
+        if not success:
+            return Response(status=status.HTTP_400_BAD_REQUEST, data=response)
+
+        self.flows_service.update_catalog_to_active(
+            catalog.app, catalog.facebook_catalog_id
+        )
+        return Response(status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["POST"])
     def disable_catalog(self, request, *args, **kwargs):
-        response = self.fb_service.disable_catalog(self.get_object())
-        return Response(response)
+        catalog = self.get_object()
+        success, response = self.fb_service.disable_catalog(catalog)
+        if not success:
+            return Response(status=status.HTTP_400_BAD_REQUEST, data=response)
+
+        self.flows_service.update_catalog_to_inactive(
+            catalog.app, catalog.facebook_catalog_id
+        )
+        return Response(status=status.HTTP_200_OK)
 
 
 class CommerceSettingsViewSet(BaseViewSet):
@@ -141,19 +165,6 @@ class CommerceSettingsViewSet(BaseViewSet):
 
 class TresholdViewset(BaseViewSet):
     serializer_class = TresholdSerializer
-
-    flows_service_class = FlowsService
-    flows_client_class = FlowsClient
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._flows_service = None
-
-    @property
-    def flows_service(self):  # pragma: no cover
-        if not self._flows_service:
-            self._flows_service = self.flows_service_class(self.flows_client_class())
-        return self._flows_service
 
     @action(detail=True, methods=["POST"])
     def update_treshold(self, request, app_uuid, *args, **kwargs):

@@ -21,3 +21,13 @@ class FlowsService:
         app.save()
 
         return self._update_flows_config(app)
+
+    def update_catalog_to_active(self, app, fba_catalog_id):
+        return self.client.update_status_catalog(
+            str(app.flow_object_uuid), fba_catalog_id, is_active=True
+        )
+
+    def update_catalog_to_inactive(self, app, fba_catalog_id):
+        return self.client.update_status_catalog(
+            str(app.flow_object_uuid), fba_catalog_id, is_active=False
+        )
