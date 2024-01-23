@@ -169,7 +169,7 @@ class WhatsAppCloudViewSet(
             raise ValidationError(response.json())
 
         phone_number_request = PhoneNumbersRequest(user_auth)
-        phone_number = phone_number_request.get_phone_number(phone_number_id)
+        phone_number = phone_number_request.get_phone_number(user_auth, phone_number_id)
         print('PHONE NUMBER', phone_number)
 
         config = dict(

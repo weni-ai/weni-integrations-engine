@@ -69,12 +69,8 @@ class PhoneNumbersRequest(object):
     def __init__(self, access_token: str) -> None:
         self._access_token = access_token
 
-    def _headers(self, app) -> dict:
-        user_token = app.config.get("wa_user_token")
-        if user_token:
-            return {"Authorization": f"Bearer {user_token}"}
-        else:
-            return {"Authorization": f"Bearer {self._access_token}"}
+    def _headers(self) -> dict:
+        return {"Authorization": f"Bearer {self._access_token}"}
 
     def _get_url(self, endpoint: str) -> str:
         return f"{settings.WHATSAPP_API_URL}/{endpoint}"
