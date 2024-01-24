@@ -75,23 +75,23 @@ class PhoneNumbersRequest(object):
     def _get_url(self, endpoint: str) -> str:
         return f"{settings.WHATSAPP_API_URL}/{endpoint}"
 
-    def get_phone_numbers(self, app, waba_id: str) -> list:
+    def get_phone_numbers(self, waba_id: str) -> list:
         url = self._get_url(f"{waba_id}/phone_numbers")
-        response = requests.get(url, headers=self._headers(app))
+        response = requests.get(url, headers=self._headers)
 
         for i in range(2):
             if response.status_code != status.HTTP_200_OK:
                 time.sleep(10)
-                response = requests.get(url, headers=self._headers(app))
+                response = requests.get(url, headers=self._headers)
 
         if response.status_code != status.HTTP_200_OK:
             raise FacebookApiException(response.json())
 
         return response.json().get("data", [])
 
-    def get_phone_number(self, app, phone_number_id: str):
+    def get_phone_number(self, phone_number_id: str):
         url = self._get_url(phone_number_id)
-        response = requests.get(url, headers=self._headers(app))
+        response = requests.get(url, headers=self._headers)
 
         if response.status_code != status.HTTP_200_OK:
             raise FacebookApiException(response.json())
