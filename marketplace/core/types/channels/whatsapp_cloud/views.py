@@ -158,6 +158,10 @@ class WhatsAppCloudViewSet(
         if response.status_code != status.HTTP_200_OK:
             raise ValidationError(response.json())
 
+        phone_number_request = PhoneNumbersRequest(user_auth)
+        phone_number = phone_number_request.get_phone_number(phone_number_id)
+        print('PHONE NUMBER', phone_number)
+
         url = f"{base_url}/{phone_number_id}/register"
         pin = get_random_string(6, string.digits)
         data = dict(messaging_product="whatsapp", pin=pin)
@@ -167,10 +171,6 @@ class WhatsAppCloudViewSet(
 
         if response.status_code != status.HTTP_200_OK:
             raise ValidationError(response.json())
-
-        phone_number_request = PhoneNumbersRequest(user_auth)
-        phone_number = phone_number_request.get_phone_number(phone_number_id)
-        print('PHONE NUMBER', phone_number)
 
         config = dict(
             wa_number=phone_number.get("display_phone_number"),
