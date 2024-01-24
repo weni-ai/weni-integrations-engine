@@ -46,5 +46,9 @@ class TemplateAnalyticsViewSet(viewsets.ViewSet):
                 {"detail": "Failed to activate template analytics"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
+        self._update_has_insights_key(self.get_object())
         return Response(status=status.HTTP_200_OK)
+
+    def _update_has_insights_key(self, app):
+        app.config["has_insights"] = True
+        app.save()
