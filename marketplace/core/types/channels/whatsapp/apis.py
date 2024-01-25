@@ -159,22 +159,28 @@ class FacebookWABAApi(BaseFacebookBaseApi):
     def __init__(self, access_token: str) -> None:
         self._access_token = access_token
 
-    def _headers(self, app) -> dict:
+    def _headers(self, app: App) -> dict:
         user_token = app.config.get("wa_user_token")
         if user_token:
             return {"Authorization": f"Bearer {user_token}"}
         return {"Authorization": f"Bearer {self._access_token}"}
 
-    def get_waba(self, waba_id: str) -> dict:
+    def get_waba(self, app: App, waba_id: str) -> dict:
         response = self._request(
             f"https://graph.facebook.com/{WHATSAPP_VERSION}/{waba_id}/",
-            headers=self._headers,
+            headers=self._headers(app),
         )  # TODO: Change to environment variables
 
         return response.json()
 
 
 class FacebookPhoneNumbersAPI(BaseFacebookBaseApi):
+    def _headers(self, app: App) -> dict:
+        user_token = app.config.get("wa_user_token")
+        if user_token:
+            return {"Authorization": f"Bearer {user_token}"}
+        return {"Authorization": f"Bearer {self._access_token}"}
+
     def _get_url(self, endpoint: str) -> str:
         return f"{settings.WHATSAPP_API_URL}/{endpoint}"
 

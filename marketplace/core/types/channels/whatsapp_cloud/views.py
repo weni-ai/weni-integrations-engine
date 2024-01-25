@@ -157,7 +157,7 @@ class WhatsAppCloudViewSet(
 
         if response.status_code != status.HTTP_200_OK:
             raise ValidationError(response.json())
-
+        
         phone_number_request = PhoneNumbersRequest(user_auth)
         phone_number = phone_number_request.get_phone_number(phone_number_id)
         print('PHONE NUMBER', phone_number)

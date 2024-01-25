@@ -17,7 +17,8 @@ class CloudProfileRequest(ProfileHandlerInterface):
         fields="about,address,description,email,profile_picture_url,websites,vertical"
     )
 
-    def __init__(self, phone_number_id: "str") -> None:
+    def __init__(self, app: App, phone_number_id: "str") -> None:
+        self.app = app
         self._phone_number_id = phone_number_id
 
     @property
@@ -26,7 +27,7 @@ class CloudProfileRequest(ProfileHandlerInterface):
 
     def _headers(self, app) -> dict:
         access_token = settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
-        user_token = app.config.get("wa_user_token")
+        user_token = self.app.config.get("wa_user_token")
         if user_token:
             return {
                 "Content-Type": "application/json",
