@@ -69,6 +69,7 @@ class PhoneNumbersRequest(object):
     def __init__(self, access_token: str) -> None:
         self._access_token = access_token
 
+    @property
     def _headers(self) -> dict:
         return {"Authorization": f"Bearer {self._access_token}"}
 
@@ -91,6 +92,7 @@ class PhoneNumbersRequest(object):
 
     def get_phone_number(self, phone_number_id: str):
         url = self._get_url(phone_number_id)
+        print('URL PHONE NUMBER', url, 'HEADER', self._h)
         response = requests.get(url, headers=self._headers)
 
         if response.status_code != status.HTTP_200_OK:
