@@ -345,7 +345,9 @@ class SyncWhatsappCloudWabaViewTestCase(TestCase):
 
         apptypes_mock.get.return_value = MagicMock(apps=[app])
 
-        facebook_waba_api_mock.return_value = MagicMock(get_waba=lambda x: "0123456789")
+        facebook_waba_api_mock.return_value = MagicMock(
+            get_waba=lambda x, y: "0123456789"
+        )
         sync_whatsapp_cloud_wabas()
         self.assertNotEqual(before_config, app.config)
 
@@ -476,7 +478,9 @@ class SyncWhatsappWabaViewTestCase(TestCase):
             created_by=User.objects.get_admin_user(),
         )
         before_config = app.config.copy()
-        facebook_waba_api_mock.return_value = MagicMock(get_waba=lambda x: "0123456789")
+        facebook_waba_api_mock.return_value = MagicMock(
+            get_waba=lambda x, y: "0123456789"
+        )
         apptypes_mock.get.return_value = MagicMock(apps=[app])
         sync_whatsapp_wabas()
         # Assert the app has modifiedy after runing sync task
@@ -682,7 +686,7 @@ class SyncWhatsappPhoneNumberViewTestCase(TestCase):
         )
         before_config = app.config.copy()
         facebook_get_phone_number_api_mock.return_value = MagicMock(
-            get_phone_numbers=lambda x: [phone_number_data]
+            get_phone_numbers=lambda x, y: [phone_number_data]
         )
         apptypes_mock.get.return_value = MagicMock(apps=[app])
         sync_whatsapp_phone_numbers()
@@ -835,7 +839,7 @@ class SyncWhatsappCloudPhoneNumberViewTestCase(TestCase):
         )
         before_config = app.config.copy()
         facebook_get_phone_number_api_mock.return_value = MagicMock(
-            get_phone_number=lambda x: phone_number_data
+            get_phone_number=lambda x, y: phone_number_data,
         )
         apptypes_mock.get.return_value = MagicMock(apps=[app])
         sync_whatsapp_cloud_phone_numbers()
