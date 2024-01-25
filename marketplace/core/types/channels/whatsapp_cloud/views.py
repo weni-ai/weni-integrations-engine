@@ -63,7 +63,7 @@ class WhatsAppCloudViewSet(
         if phone_numbrer_id is None:
             raise ValidationError("The phone number is not configured")
 
-        return dict(phone_number_id=phone_numbrer_id)
+        return dict(app=self.get_object(), phone_number_id=phone_numbrer_id)
 
     @property
     def get_access_token(self) -> str:

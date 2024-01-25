@@ -33,10 +33,11 @@ class CloudProfileRequest(ProfileHandlerInterface):
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {user_token}",
             }
-        return {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {access_token}",
-        }
+        else:
+            return {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {access_token}",
+            }
 
     def get_profile(self):
         response = requests.get(self._url, params=self._fields, headers=self._headers)
