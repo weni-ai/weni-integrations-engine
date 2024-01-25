@@ -25,7 +25,8 @@ class CloudProfileRequest(ProfileHandlerInterface):
     def _url(self) -> str:
         return settings.WHATSAPP_API_URL + f"/{self._phone_number_id}" + self._endpoint
 
-    def _headers(self, app) -> dict:
+    @property
+    def _headers(self) -> dict:
         access_token = settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
         user_token = self.app.config.get("wa_user_token")
         if user_token:
