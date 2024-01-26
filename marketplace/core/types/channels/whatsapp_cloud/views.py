@@ -20,7 +20,6 @@ from marketplace.flows.client import FlowsClient
 
 from ..whatsapp_base import mixins
 from ..whatsapp_base.serializers import WhatsAppSerializer
-from ..whatsapp_base.exceptions import FacebookApiException
 
 from .facades import CloudProfileFacade, CloudProfileContactFacade
 from .requests import PhoneNumbersRequest
@@ -57,22 +56,19 @@ class WhatsAppCloudViewSet(
 
     @property
     def profile_config_credentials(self) -> dict:
-        config = self.get_object().config
+        app = self.get_object()
+        access_token = app.apptype.get_access_token(app)
+        config = app.config
         phone_numbrer_id = config.get("wa_phone_number_id", None)
 
         if phone_numbrer_id is None:
             raise ValidationError("The phone number is not configured")
 
-        return dict(app=self.get_object(), phone_number_id=phone_numbrer_id)
+        return dict(access_token=access_token, phone_number_id=phone_numbrer_id)
 
     @property
     def get_access_token(self) -> str:
-        user_acess_token = self.get_object().config.get("wa_user_token")
-        access_token = (
-            user_acess_token
-            if user_acess_token
-            else settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
-        )
+        access_token = self.get_object().apptype.get_access_token(self.get_object())
         if access_token is None:
             raise ValidationError("This app does not have fb_access_token in settings")
 
@@ -98,7 +94,9 @@ class WhatsAppCloudViewSet(
         waba_currency = "USD"
 
         base_url = settings.WHATSAPP_API_URL
-        weni_token_headers = {"Authorization": f"Bearer {settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN}"}
+        weni_token_headers = {
+            "Authorization": f"Bearer {settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN}"
+        }
 
         url = f"{base_url}/oauth/access_token"
         params = dict(
@@ -113,7 +111,6 @@ class WhatsAppCloudViewSet(
             raise ValidationError(response.json())
 
         user_auth = response.json().get("access_token")
-        print('USER TOKEN NEW', user_auth)
         headers = {"Authorization": f"Bearer {user_auth}"}
 
         url = f"{base_url}/{waba_id}"
@@ -131,7 +128,6 @@ class WhatsAppCloudViewSet(
             access_token=settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN,
             tasks="MANAGE",
         )
-        print(url, params)
         response = requests.post(url, params=params, headers=headers)
         print(response.json())
 
@@ -140,10 +136,8 @@ class WhatsAppCloudViewSet(
 
         url = f"{base_url}/{settings.WHATSAPP_CLOUD_EXTENDED_CREDIT_ID}/whatsapp_credit_sharing_and_attach"
         params = dict(waba_id=waba_id, waba_currency=waba_currency)
-        print(url, params)
 
         response = requests.post(url, params=params, headers=weni_token_headers)
-        print(response.json())
 
         if response.status_code != status.HTTP_200_OK:
             raise ValidationError(response.json())
@@ -153,21 +147,17 @@ class WhatsAppCloudViewSet(
         url = f"{base_url}/{waba_id}/subscribed_apps"
         print(url)
         response = requests.post(url, headers=headers)
-        print(response.json())
 
         if response.status_code != status.HTTP_200_OK:
             raise ValidationError(response.json())
-        
+
         phone_number_request = PhoneNumbersRequest(user_auth)
         phone_number = phone_number_request.get_phone_number(phone_number_id)
-        print('PHONE NUMBER', phone_number)
 
         url = f"{base_url}/{phone_number_id}/register"
         pin = get_random_string(6, string.digits)
         data = dict(messaging_product="whatsapp", pin=pin)
-        print(url, data)
         response = requests.post(url, headers=headers, data=data)
-        print(response.json())
 
         if response.status_code != status.HTTP_200_OK:
             raise ValidationError(response.json())

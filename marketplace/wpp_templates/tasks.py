@@ -1,8 +1,9 @@
 from celery import shared_task
 import logging
 
-from django.conf import settings
 from sentry_sdk import capture_exception
+
+from marketplace.core.types import APPTYPES
 
 from .models import TemplateMessage
 from .requests import TemplateMessageRequest
@@ -33,15 +34,11 @@ def refresh_whatsapp_templates_from_facebook():
             else app.config.get("wa_waba_id")
         )
         if app.code == "wpp" and app.config.get("fb_access_token"):
-            acess_token = app.config.get("fb_access_token")
+            access_token = app.config.get("fb_access_token")
         else:
-            acess_token = (
-                app.config.get("wa_user_token")
-                if app.config.get("wa_user_token")
-                else settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
-            )
+            access_token = APPTYPES.get("wpp-cloud").get_access_token(app)
 
-        template_message_request = TemplateMessageRequest(access_token=acess_token)
+        template_message_request = TemplateMessageRequest(access_token=access_token)
         templates = template_message_request.list_template_messages(waba_id)
 
         if templates.get("error"):

@@ -175,24 +175,21 @@ class FacebookWABAApi(BaseFacebookBaseApi):
 
 
 class FacebookPhoneNumbersAPI(BaseFacebookBaseApi):
-    def _headers(self, app: App) -> dict:
-        user_token = app.config.get("wa_user_token")
-        if user_token:
-            return {"Authorization": f"Bearer {user_token}"}
+    def _headers(self) -> dict:
         return {"Authorization": f"Bearer {self._access_token}"}
 
     def _get_url(self, endpoint: str) -> str:
         return f"{settings.WHATSAPP_API_URL}/{endpoint}"
 
-    def get_phone_numbers(self, app: App, waba_id: str) -> list:
+    def get_phone_numbers(self, waba_id: str) -> list:
         url = self._get_url(f"{waba_id}/phone_numbers")
-        response = self._request(url, headers=self._headers(app))
+        response = self._request(url, headers=self._headers())
 
         return response.json().get("data", [])
 
-    def get_phone_number(self, app: App, phone_number_id: str):
+    def get_phone_number(self, phone_number_id: str):
         url = self._get_url(phone_number_id)
-        response = self._request(url, headers=self._headers(app))
+        response = self._request(url, headers=self._headers())
 
         return response.json()
 

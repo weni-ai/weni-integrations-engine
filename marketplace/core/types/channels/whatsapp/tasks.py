@@ -179,11 +179,7 @@ def sync_whatsapp_cloud_wabas():
 
             logger.info(f"Syncing app WABA. UUID: {app.uuid}")
 
-            api = (
-                FacebookWABAApi(app.config.get("wa_user_token"))
-                if app.config.get("wa_user_token")
-                else FacebookWABAApi(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
-            )
+            api = FacebookWABAApi(apptype.get_access_token(app))
 
             try:
                 waba = api.get_waba(app, wa_waba_id)
@@ -316,14 +312,8 @@ def sync_whatsapp_cloud_phone_numbers():
                 continue
 
             try:
-                api = (
-                    FacebookPhoneNumbersAPI(app.config.get("wa_user_token"))
-                    if app.config.get("wa_user_token")
-                    else FacebookPhoneNumbersAPI(
-                        settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
-                    )
-                )
-                phone_number = api.get_phone_number(app, phone_number_id)
+                api = FacebookPhoneNumbersAPI(apptype.get_access_token(app))
+                phone_number = api.get_phone_number(phone_number_id)
 
                 phone_number_id = phone_number.get("id", None)
                 display_phone_number = phone_number.get("display_phone_number", None)

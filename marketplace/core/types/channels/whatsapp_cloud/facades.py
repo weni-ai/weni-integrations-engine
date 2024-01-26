@@ -25,9 +25,9 @@ class CloudProfileFacade(object):  # TODO: Interface
         "Other": "OTHER",
     }
 
-    def __init__(self, app: App, phone_number_id: "str") -> None:
-        self._profile_api = CloudProfileRequest(app, phone_number_id)
-        self._photo_api = PhotoAPIRequest(app, phone_number_id)
+    def __init__(self, access_token: str, phone_number_id: "str") -> None:
+        self._profile_api = CloudProfileRequest(access_token, phone_number_id)
+        self._photo_api = PhotoAPIRequest(access_token, phone_number_id)
 
     def get_profile(self):
         profile = self._profile_api.get_profile()
@@ -62,8 +62,8 @@ class CloudProfileFacade(object):  # TODO: Interface
 
 
 class CloudProfileContactFacade(object):  # TODO: Interface
-    def __init__(self, app: App, phone_number_id: "str") -> None:
-        self._profile_api = CloudProfileRequest(app, phone_number_id)
+    def __init__(self, access_token: str, phone_number_id: "str") -> None:
+        self._profile_api = CloudProfileRequest(access_token, phone_number_id)
 
     def get_profile(self):
         return self._profile_api.get_profile()
