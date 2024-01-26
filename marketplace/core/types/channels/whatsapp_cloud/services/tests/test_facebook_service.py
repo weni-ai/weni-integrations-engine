@@ -14,13 +14,13 @@ User = get_user_model()
 
 
 class MockClient:
-    def enable_catalog(self, app, waba_id, catalog_id):
+    def enable_catalog(self, waba_id, catalog_id):
         return {"success": True}
 
-    def disable_catalog(self, app, waba_id, catalog_id):
+    def disable_catalog(self, waba_id, catalog_id):
         return {"success": True}
 
-    def get_connected_catalog(self, app, waba_id):
+    def get_connected_catalog(self, waba_id):
         return {
             "data": [
                 {
@@ -37,7 +37,7 @@ class MockClient:
     def toggle_catalog_visibility(self, wa_phone_number_id, make_visible=True):
         return {"success": True}
 
-    def get_wpp_commerce_settings(self, app, wa_phone_number_id):
+    def get_wpp_commerce_settings(self, wa_phone_number_id):
         return {
             "data": [
                 {
@@ -118,7 +118,7 @@ class TestFacebookService(TestCase):
 
     def test_get_connected_catalog_with_no_data(self):
         original_method = self.mock_client.get_connected_catalog
-        self.mock_client.get_connected_catalog = lambda app, waba_id: {"data": []}
+        self.mock_client.get_connected_catalog = lambda waba_id: {"data": []}
 
         result = self.service.get_connected_catalog(self.app)
         self.assertEqual(result, [])

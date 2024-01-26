@@ -12,7 +12,7 @@ User = get_user_model()
 
 
 class MockFacebookClient:
-    def get_template_analytics(self, app, waba_id, fields):
+    def get_template_analytics(self, waba_id, fields):
         return {
             "data": [
                 {
@@ -50,7 +50,7 @@ class MockFacebookClient:
 
 
 class MockFacebookClientWithMultipleDataPoints:
-    def get_template_analytics(self, app, waba_id, fields):
+    def get_template_analytics(self, waba_id, fields):
         return {
             "data": [
                 {

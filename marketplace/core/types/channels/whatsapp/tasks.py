@@ -139,7 +139,7 @@ def sync_whatsapp_wabas():
             api = FacebookWABAApi(access_token)
 
             try:
-                waba = api.get_waba(app, business_id)
+                waba = api.get_waba(business_id)
                 app.config["waba"] = waba
                 app.modified_by = User.objects.get_admin_user()
                 app.save()
@@ -179,14 +179,10 @@ def sync_whatsapp_cloud_wabas():
 
             logger.info(f"Syncing app WABA. UUID: {app.uuid}")
 
-            api = (
-                FacebookWABAApi(app.config.get("wa_user_token"))
-                if app.config.get("wa_user_token")
-                else FacebookWABAApi(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
-            )
+            api = FacebookWABAApi(apptype.get_access_token(app))
 
             try:
-                waba = api.get_waba(app, wa_waba_id)
+                waba = api.get_waba(wa_waba_id)
                 app.config["waba"] = waba
                 app.modified_by = User.objects.get_admin_user()
                 app.save()
@@ -272,7 +268,7 @@ def sync_whatsapp_phone_numbers():
                         )
                         continue
 
-                    phone_numbers = api.get_phone_numbers(app, business_id)
+                    phone_numbers = api.get_phone_numbers(business_id)
 
                     for phone_number in phone_numbers:
                         display_phone_number = phone_number.get("display_phone_number")
@@ -316,14 +312,8 @@ def sync_whatsapp_cloud_phone_numbers():
                 continue
 
             try:
-                api = (
-                    FacebookPhoneNumbersAPI(app.config.get("wa_user_token"))
-                    if app.config.get("wa_user_token")
-                    else FacebookPhoneNumbersAPI(
-                        settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
-                    )
-                )
-                phone_number = api.get_phone_number(app, phone_number_id)
+                api = FacebookPhoneNumbersAPI(apptype.get_access_token(app))
+                phone_number = api.get_phone_number(phone_number_id)
 
                 phone_number_id = phone_number.get("id", None)
                 display_phone_number = phone_number.get("display_phone_number", None)

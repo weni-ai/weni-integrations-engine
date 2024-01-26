@@ -5,7 +5,6 @@ from rest_framework import status
 
 from django.conf import settings
 
-from marketplace.applications.models import App
 from ..whatsapp_base.interfaces import ProfileHandlerInterface
 from ..whatsapp_base.exceptions import FacebookApiException
 
@@ -17,8 +16,8 @@ class CloudProfileRequest(ProfileHandlerInterface):
         fields="about,address,description,email,profile_picture_url,websites,vertical"
     )
 
-    def __init__(self, app: App, phone_number_id: "str") -> None:
-        self.app = app
+    def __init__(self, access_token: str, phone_number_id: "str") -> None:
+        self._access_token = access_token
         self._phone_number_id = phone_number_id
 
     @property
@@ -27,18 +26,10 @@ class CloudProfileRequest(ProfileHandlerInterface):
 
     @property
     def _headers(self) -> dict:
-        access_token = settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
-        user_token = self.app.config.get("wa_user_token")
-        if user_token:
-            return {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {user_token}",
-            }
-        else:
-            return {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {access_token}",
-            }
+        return {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self._access_token}",
+        }
 
     def get_profile(self):
         response = requests.get(self._url, params=self._fields, headers=self._headers)
@@ -104,15 +95,12 @@ class PhoneNumbersRequest(object):
 
 
 class PhotoAPIRequest(object):
-    def __init__(self, phone_number_id: str, app: App) -> None:
-        self._access_token = settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
+    def __init__(self, phone_number_id: str, access_token: str) -> None:
+        self._access_token = access_token
         self._phone_number_id = phone_number_id
-        self.app = app
 
     @property
     def _headers(self) -> dict:
-        if self.app.config.get("wa_user_token"):
-            return {"Authorization": f"Bearer {self.app.config.get('wa_user_token')}"}
         return {"Authorization": f"Bearer {self._access_token}"}
 
     def _get_url(self, endpoint: str) -> str:
