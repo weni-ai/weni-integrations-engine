@@ -268,7 +268,7 @@ def sync_whatsapp_phone_numbers():
                         )
                         continue
 
-                    phone_numbers = api.get_phone_numbers(app, business_id)
+                    phone_numbers = api.get_phone_numbers(business_id)
 
                     for phone_number in phone_numbers:
                         display_phone_number = phone_number.get("display_phone_number")
@@ -313,6 +313,8 @@ def sync_whatsapp_cloud_phone_numbers():
 
             try:
                 api = FacebookPhoneNumbersAPI(apptype.get_access_token(app))
+                print('API', api)
+                print('token', apptype.get_access_token(app))
                 phone_number = api.get_phone_number(phone_number_id)
 
                 phone_number_id = phone_number.get("id", None)
