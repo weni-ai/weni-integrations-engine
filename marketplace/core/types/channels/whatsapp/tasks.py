@@ -314,6 +314,7 @@ def sync_whatsapp_cloud_phone_numbers():
             try:
                 api = FacebookPhoneNumbersAPI(apptype.get_access_token(app))
                 print('API', api)
+                print('APP CONFIG', app.config)
                 print('token', apptype.get_access_token(app))
                 phone_number = api.get_phone_number(phone_number_id)
 
