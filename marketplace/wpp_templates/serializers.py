@@ -17,6 +17,7 @@ from marketplace.core.types.channels.whatsapp_cloud.requests import PhotoAPIRequ
 from marketplace.core.types.channels.whatsapp_base.exceptions import (
     FacebookApiException,
 )
+from marketplace.core.types import APPTYPES
 
 WHATSAPP_VERSION = settings.WHATSAPP_VERSION
 
@@ -79,11 +80,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
                     f"This app: {template.app.uuid} does not have fb_access_token in config"
                 )
         else:
-            access_token = (
-                template.app.config.get("wa_user_token")
-                if template.app.config.get("wa_user_token")
-                else settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
-            )
+            access_token = APPTYPES.get("wpp-cloud").get_access_token(template.app)
 
         template_message_request = TemplateMessageRequest(access_token=access_token)
         components = [validated_data.get("body", {})]
@@ -101,7 +98,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
                 or header.get("format") == "VIDEO"
             ):
                 photo_api_request = PhotoAPIRequest(
-                    template.app, template.app.config.get("wa_waba_id")
+                    access_token, template.app.config.get("wa_waba_id")
                 )
                 photo = header.get("example")
                 file_type = re.search("(?<=data:)(.*)(?=;base64)", photo).group(0)

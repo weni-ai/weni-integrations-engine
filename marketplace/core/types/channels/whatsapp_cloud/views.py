@@ -56,22 +56,19 @@ class WhatsAppCloudViewSet(
 
     @property
     def profile_config_credentials(self) -> dict:
-        config = self.get_object().config
+        app = self.get_object()
+        access_token = app.apptype.get_access_token(app)
+        config = app.config
         phone_numbrer_id = config.get("wa_phone_number_id", None)
 
         if phone_numbrer_id is None:
             raise ValidationError("The phone number is not configured")
 
-        return dict(app=self.get_object(), phone_number_id=phone_numbrer_id)
+        return dict(access_token=access_token, phone_number_id=phone_numbrer_id)
 
     @property
     def get_access_token(self) -> str:
-        user_acess_token = self.get_object().config.get("wa_user_token")
-        access_token = (
-            user_acess_token
-            if user_acess_token
-            else settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
-        )
+        access_token = self.get_object().apptype.get_access_token(self.get_object())
         if access_token is None:
             raise ValidationError("This app does not have fb_access_token in settings")
 
