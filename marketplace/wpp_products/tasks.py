@@ -6,12 +6,12 @@ from celery import shared_task
 
 from marketplace.clients.facebook.client import FacebookClient
 from marketplace.wpp_products.models import Catalog
-from marketplace.applications.models import App
 from marketplace.clients.flows.client import FlowsClient
 from marketplace.celery import app as celery_app
 from marketplace.services.vtex.generic_service import VtexService
 from marketplace.services.vtex.generic_service import APICredentials
 from marketplace.services.flows.service import FlowsService
+from marketplace.core.types import APPTYPES
 
 
 logger = logging.getLogger(__name__)
@@ -19,11 +19,11 @@ logger = logging.getLogger(__name__)
 
 @shared_task(name="sync_facebook_catalogs")
 def sync_facebook_catalogs():
-    apps = App.objects.filter(code="wpp-cloud")
-    client = FacebookClient()
+    apptype = APPTYPES.get("wpp-cloud")
     flows_client = FlowsClient()
 
-    for app in apps:
+    for app in apptype.apps:
+        client = FacebookClient(apptype.get_access_token(app))
         wa_business_id = app.config.get("wa_business_id")
         wa_waba_id = app.config.get("wa_waba_id")
 
@@ -42,7 +42,7 @@ def sync_facebook_catalogs():
                 to_delete = local_catalog_ids - fba_catalogs_ids
 
                 for catalog_id in to_create:
-                    details = get_catalog_details_task(client, app, catalog_id)
+                    details = get_catalog_details_task(client, catalog_id)
                     if details:
                         create_catalog_task(app, details)
 
@@ -102,7 +102,7 @@ def update_catalogs_on_flows_task(app, flows_client, all_catalogs):
     continue_on_exception=False,
     extra_info_func=get_extra_info,
 )
-def get_catalog_details_task(client, app, catalog_id):
+def get_catalog_details_task(client, catalog_id):
     return client.get_catalog_details(catalog_id)
 
 

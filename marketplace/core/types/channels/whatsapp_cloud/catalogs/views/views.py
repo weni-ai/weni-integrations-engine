@@ -39,11 +39,14 @@ class BaseViewSet(viewsets.ModelViewSet):
         super().__init__(*args, **kwargs)
         self._fb_service = None
         self._flows_service = None
+        self._access_token = None
 
     @property
     def fb_service(self):  # pragma: no cover
         if not self._fb_service:
-            self._fb_service = self.fb_service_class(self.fb_client_class())
+            self._fb_service = self.fb_service_class(
+                self.fb_client_class(self._access_token)
+            )
         return self._fb_service
 
     @property
@@ -85,6 +88,7 @@ class CatalogViewSet(BaseViewSet):
     def get_queryset(self):
         app_uuid = self.kwargs.get("app_uuid")
         app = get_object_or_404(App, uuid=app_uuid, code="wpp-cloud")
+        self._access_token = app.apptype.get_access_token(app)
         return Catalog.objects.filter(app=app).order_by("name")
 
     def get_object(self):
@@ -132,6 +136,7 @@ class CatalogViewSet(BaseViewSet):
 
     def retrieve(self, request, *args, **kwargs):
         catalog = self.get_object()
+        # self.fb_client_class(catalog.app.apptype.get_access_token(catalog.app))
         connected_catalog_id = self.fb_service.get_connected_catalog(catalog.app)
         serializer = self.serializer_class(
             catalog, context={"connected_catalog_id": connected_catalog_id}
@@ -144,6 +149,7 @@ class CatalogViewSet(BaseViewSet):
         serialized_data = []
 
         if queryset.exists():
+            # self.fb_client_class(queryset.first().app.apptype.get_access_token(queryset.first().app))
             connected_catalog_id = self.fb_service.get_connected_catalog(
                 queryset.first().app
             )
@@ -208,6 +214,7 @@ class CommerceSettingsViewSet(BaseViewSet):
     @action(detail=False, methods=["GET"])
     def commerce_settings_status(self, request, app_uuid, *args, **kwargs):
         app = get_object_or_404(App, uuid=app_uuid, code="wpp-cloud")
+        self._access_token = app.apptype.get_access_token(app)
         response = self.fb_service.wpp_commerce_settings(app)
         return Response(response)
 
@@ -218,6 +225,7 @@ class CommerceSettingsViewSet(BaseViewSet):
         enable_visibility = serializer.validated_data["enable"]
 
         app = get_object_or_404(App, uuid=app_uuid, code="wpp-cloud")
+        self._access_token = app.apptype.get_access_token(app)
         response = self.fb_service.toggle_catalog_visibility(app, enable_visibility)
         return Response(response)
 
@@ -228,12 +236,14 @@ class CommerceSettingsViewSet(BaseViewSet):
         enable_cart = serializer.validated_data["enable"]
 
         app = get_object_or_404(App, uuid=app_uuid, code="wpp-cloud")
+        self._access_token = app.apptype.get_access_token(app)
         response = self.fb_service.toggle_cart(app, enable_cart)
         return Response(response)
 
     @action(detail=False, methods=["GET"])
     def get_active_catalog(self, request, app_uuid, *args, **kwargs):
         app = get_object_or_404(App, uuid=app_uuid, code="wpp-cloud")
+        self._access_token = app.apptype.get_access_token(app)
         response = self.fb_service.get_connected_catalog(app)
         return Response(response)
 

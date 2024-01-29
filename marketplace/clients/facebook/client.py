@@ -6,18 +6,16 @@ from django.conf import settings
 from marketplace.clients.base import RequestClient
 
 WHATSAPP_VERSION = settings.WHATSAPP_VERSION
-ACCESS_TOKEN = settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
 
 
 class FacebookAuthorization:
     BASE_URL = f"https://graph.facebook.com/{WHATSAPP_VERSION}/"
 
-    def __init__(self):
-        self.access_token = ACCESS_TOKEN
+    def __init__(self, access_token):
+        self.access_token = access_token
 
     def _get_headers(self):
-        headers = {"Authorization": f"Bearer {self.access_token}"}
-        return headers
+        return {"Authorization": f"Bearer {self.access_token}"}
 
     @property
     def get_url(self):

@@ -4,6 +4,7 @@ import requests
 from rest_framework import status
 
 from django.conf import settings
+
 from ..whatsapp_base.interfaces import ProfileHandlerInterface
 from ..whatsapp_base.exceptions import FacebookApiException
 
@@ -15,7 +16,8 @@ class CloudProfileRequest(ProfileHandlerInterface):
         fields="about,address,description,email,profile_picture_url,websites,vertical"
     )
 
-    def __init__(self, phone_number_id: "str") -> None:
+    def __init__(self, access_token: str, phone_number_id: "str") -> None:
+        self._access_token = access_token
         self._phone_number_id = phone_number_id
 
     @property
@@ -24,10 +26,9 @@ class CloudProfileRequest(ProfileHandlerInterface):
 
     @property
     def _headers(self) -> dict:
-        access_token = settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
         return {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {access_token}",
+            "Authorization": f"Bearer {self._access_token}",
         }
 
     def get_profile(self):
@@ -94,8 +95,8 @@ class PhoneNumbersRequest(object):
 
 
 class PhotoAPIRequest(object):
-    def __init__(self, phone_number_id: str) -> None:
-        self._access_token = settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
+    def __init__(self, phone_number_id: str, access_token: str) -> None:
+        self._access_token = access_token
         self._phone_number_id = phone_number_id
 
     @property
