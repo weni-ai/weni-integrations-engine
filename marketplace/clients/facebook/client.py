@@ -24,42 +24,38 @@ class FacebookAuthorization:
 
 class FacebookClient(FacebookAuthorization, RequestClient):
     # Product Catalog
-    def create_catalog(self, app, business_id, name, category=None):
+    def create_catalog(self, business_id, name, category=None):
         url = self.get_url + f"{business_id}/owned_product_catalogs"
         data = {"name": name}
         if category:
             data["vertical"] = category
 
-        user_token = self._get_user_token(app)
-        headers = self._get_headers(user_token)
+        headers = self._get_headers()
         response = self.make_request(url, method="POST", headers=headers, data=data)
 
         return response.json()
 
-    def destroy_catalog(self, app, catalog_id):
+    def destroy_catalog(self, catalog_id):
         url = self.get_url + f"{catalog_id}"
 
-        user_token = self._get_user_token(app)
-        headers = self._get_headers(user_token)
+        headers = self._get_headers()
         response = self.make_request(url, method="DELETE", headers=headers)
 
         return response.json().get("success")
 
-    def create_product_feed(self, app, product_catalog_id, name):
+    def create_product_feed(self, product_catalog_id, name):
         url = self.get_url + f"{product_catalog_id}/product_feeds"
 
         data = {"name": name}
-        user_token = self._get_user_token(app)
-        headers = self._get_headers(user_token)
+        headers = self._get_headers()
         response = self.make_request(url, method="POST", headers=headers, data=data)
 
         return response.json()
 
-    def upload_product_feed(self, app, feed_id, file):
+    def upload_product_feed(self, feed_id, file):
         url = self.get_url + f"{feed_id}/uploads"
 
-        user_token = self._get_user_token(app)
-        headers = self._get_headers(user_token)
+        headers = self._get_headers()
         files = {
             "file": (
                 file.name,
@@ -71,7 +67,7 @@ class FacebookClient(FacebookAuthorization, RequestClient):
         return response.json()
 
     def create_product_feed_via_url(
-        self, app, product_catalog_id, name, feed_url, file_type, interval, hour
+        self, product_catalog_id, name, feed_url, file_type, interval, hour
     ):  # TODO: adjust this method
         url = self.get_url + f"{product_catalog_id}/product_feeds"
 
@@ -79,12 +75,11 @@ class FacebookClient(FacebookAuthorization, RequestClient):
 
         data = {"name": name, "schedule": json.dumps(schedule), "file_type": file_type}
 
-        user_token = self._get_user_token(app)
-        headers = self._get_headers(user_token)
+        headers = self._get_headers()
         response = self.make_request(url, method="POST", headers=headers, data=data)
         return response.json()
 
-    def get_upload_status(self, app, feed_id, max_attempts=10, wait_time=30):
+    def get_upload_status(self, feed_id, max_attempts=10, wait_time=30):
         """
         Checks the upload status using long polling.
 
@@ -97,8 +92,7 @@ class FacebookClient(FacebookAuthorization, RequestClient):
             bool or str: True if 'end_time' is found, otherwise a formatted error message.
         """
         url = self.get_url + f"{feed_id}/uploads"
-        user_token = self._get_user_token(app)
-        headers = self._get_headers(user_token)
+        headers = self._get_headers()
 
         attempts = 0
         while attempts < max_attempts:
@@ -117,19 +111,17 @@ class FacebookClient(FacebookAuthorization, RequestClient):
             f"Waited for a total of {total_wait_time} seconds."
         )
 
-    def list_products_by_feed(self, app, feed_id):
+    def list_products_by_feed(self, feed_id):
         url = self.get_url + f"{feed_id}/products"
 
-        user_token = self._get_user_token(app)
-        headers = self._get_headers(user_token)
+        headers = self._get_headers()
         response = self.make_request(url, method="GET", headers=headers)
 
         return response.json()
 
-    def list_all_products_by_feed(self, app, feed_id):
+    def list_all_products_by_feed(self, feed_id):
         url = self.get_url + f"{feed_id}/products"
-        user_token = self._get_user_token(app)
-        headers = self._get_headers(user_token)
+        headers = self._get_headers()
         all_products = []
 
         while url:
@@ -139,10 +131,9 @@ class FacebookClient(FacebookAuthorization, RequestClient):
 
         return all_products
 
-    def list_all_catalogs(self, app, wa_business_id):
+    def list_all_catalogs(self, wa_business_id):
         url = self.get_url + f"{wa_business_id}/owned_product_catalogs"
-        user_token = self._get_user_token(app)
-        headers = self._get_headers(user_token)
+        headers = self._get_headers()
         all_catalog_ids = []
         all_catalogs = []
 
@@ -157,51 +148,45 @@ class FacebookClient(FacebookAuthorization, RequestClient):
 
         return all_catalog_ids, all_catalogs
 
-    def destroy_feed(self, app, feed_id):
+    def destroy_feed(self, feed_id):
         url = self.get_url + f"{feed_id}"
 
-        user_token = self._get_user_token(app)
-        headers = self._get_headers(user_token)
+        headers = self._get_headers()
         response = self.make_request(url, method="DELETE", headers=headers)
 
         return response.json().get("success")
 
-    def get_connected_catalog(self, app, waba_id):
+    def get_connected_catalog(self, waba_id):
         url = self.get_url + f"{waba_id}/product_catalogs"
-        user_token = self._get_user_token(app)
-        headers = self._get_headers(user_token)
+        headers = self._get_headers()
         response = self.make_request(url, method="GET", headers=headers)
         return response.json()
 
-    def enable_catalog(self, app, waba_id, catalog_id):
+    def enable_catalog(self, waba_id, catalog_id):
         url = self.get_url + f"{waba_id}/product_catalogs"
         data = {"catalog_id": catalog_id}
-        user_token = self._get_user_token(app)
-        headers = self._get_headers(user_token)
+        headers = self._get_headers()
         response = self.make_request(url, method="POST", headers=headers, data=data)
         return response.json()
 
-    def disable_catalog(self, app, waba_id, catalog_id):
+    def disable_catalog(self, waba_id, catalog_id):
         url = self.get_url + f"{waba_id}/product_catalogs"
         data = {"catalog_id": catalog_id, "method": "delete"}
-        user_token = self._get_user_token(app)
-        headers = self._get_headers(user_token)
+        headers = self._get_headers()
         response = self.make_request(url, method="POST", headers=headers, data=data)
         return response.json()
 
-    def get_catalog_details(self, app, catalog_id):
+    def get_catalog_details(self, catalog_id):
         url = self.get_url + f"{catalog_id}"
         params = {"fields": "name,vertical"}
-        user_token = self._get_user_token(app)
-        headers = self._get_headers(user_token)
+        headers = self._get_headers()
         response = self.make_request(url, method="GET", headers=headers, params=params)
 
         return response.json()
 
-    def _update_commerce_settings(self, app, wa_phone_number_id, **settings):
+    def _update_commerce_settings(self, wa_phone_number_id, **settings):
         url = self.BASE_URL + f"{wa_phone_number_id}/whatsapp_commerce_settings"
-        user_token = self._get_user_token(app)
-        headers = self._get_headers(user_token)
+        headers = self._get_headers()
         response = self.make_request(url, method="POST", headers=headers, data=settings)
         return response.json()
 
@@ -215,7 +200,7 @@ class FacebookClient(FacebookAuthorization, RequestClient):
             wa_phone_number_id, is_catalog_visible=make_visible
         )
 
-    def get_wpp_commerce_settings(self, app, wa_phone_number_id):
+    def get_wpp_commerce_settings(self, wa_phone_number_id):
         """
         Returns:
             "data": [
@@ -230,15 +215,13 @@ class FacebookClient(FacebookAuthorization, RequestClient):
         """
         url = self.BASE_URL + f"{wa_phone_number_id}/whatsapp_commerce_settings"
 
-        user_token = self._get_user_token(app)
-        headers = self._get_headers(user_token)
+        headers = self._get_headers()
         response = self.make_request(url, method="GET", headers=headers)
         return response.json()
 
     # Whatsapp Templates
-    def get_template_analytics(self, app, waba_id, fields):
+    def get_template_analytics(self, waba_id, fields):
         url = self.BASE_URL + f"{waba_id}/template_analytics"
-        user_token = self._get_user_token(app)
-        headers = self._get_headers(user_token)
+        headers = self._get_headers()
         response = self.make_request(url, method="GET", headers=headers, params=fields)
         return response.json()

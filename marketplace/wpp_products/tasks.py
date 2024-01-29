@@ -77,7 +77,7 @@ def get_extra_info(app, *args, **kwargs):
 def list_all_catalogs_task(app, client):
     try:
         all_catalog_ids, all_catalogs = client.list_all_catalogs(
-            app=app, wa_business_id=app.config.get("wa_business_id")
+            wa_business_id=app.config.get("wa_business_id")
         )
         return all_catalog_ids, all_catalogs
     except Exception as e:

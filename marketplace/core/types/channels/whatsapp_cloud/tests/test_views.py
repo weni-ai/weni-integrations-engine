@@ -334,7 +334,6 @@ class CreateWhatsAppCloudTestCase(APIBaseTestCase):
             "auth_code": "token0123456789",
             "waba_id": "0123456789",
             "phone_number_id": "0123456789",
-            # "business_id": "0123456789",
         }
         self.user_authorization = self.user.authorizations.create(
             project_uuid=self.payload["project_uuid"]
@@ -359,6 +358,7 @@ class CreateWhatsAppCloudTestCase(APIBaseTestCase):
         mock_post,
         mock_get,
     ):
+        mock_get.return_value.status_code = status.HTTP_200_OK
         mock_get.return_value.status_code = status.HTTP_200_OK
         mock_post.return_value.status_code = status.HTTP_200_OK
         mock_get.return_value.json.return_value = {

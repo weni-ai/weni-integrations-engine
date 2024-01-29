@@ -1,3 +1,7 @@
+v3.2.1
+----------
+* Update WAC create according to express signup
+
 v3.2.0
 ----------
 * When synchronizing Facebook templates, they are sent to flows #382

@@ -117,11 +117,7 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
                     f"This app: {instance.app.uuid} does not have fb_access_token in config"
                 )
         else:
-            access_token = (
-                instance.app.config.get("wa_user_token")
-                if instance.app.config.get("wa_user_token")
-                else settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
-            )
+            access_token = APPTYPES.get("wpp-cloud").get_access_token(instance.app)
             waba_id = instance.app.config.get("wa_waba_id")
 
         if waba_id is None:

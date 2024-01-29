@@ -102,8 +102,6 @@ class PhotoAPIRequest(object):
 
     @property
     def _headers(self) -> dict:
-        if self.app.config.get("wa_user_token"):
-            return {"Authorization": f"Bearer {self.app.config.get('wa_user_token')}"}
         return {"Authorization": f"Bearer {self._access_token}"}
 
     def _get_url(self, endpoint: str) -> str:

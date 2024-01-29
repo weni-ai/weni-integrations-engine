@@ -1,4 +1,3 @@
-from marketplace.applications.models import App
 from .requests import CloudProfileRequest, PhotoAPIRequest
 
 
