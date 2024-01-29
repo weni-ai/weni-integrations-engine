@@ -1,9 +1,9 @@
-from django.conf import settings
 from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
-from marketplace import status
+from rest_framework import status
+from marketplace import settings
 
 from marketplace.clients.facebook.client import FacebookClient
 from marketplace.wpp_templates.services.facebook import FacebookService
