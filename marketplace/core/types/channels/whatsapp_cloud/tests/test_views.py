@@ -388,6 +388,18 @@ class CreateWhatsAppCloudTestCase(APIBaseTestCase):
         )
 
     @patch("requests.get")
+    def test_create_wpp_cloud_failure_on_get_user_token(
+        self,
+        mock_get,
+    ):
+
+        mock_get.return_value = MagicMock(status_code=status.HTTP_400_BAD_REQUEST)
+
+        response = self.request.post(self.url, body=self.payload)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    @patch("requests.get")
     @patch("requests.post")
     def test_create_wpp_cloud_failure_on_assigned_users(
         self,
@@ -512,6 +524,7 @@ class WhatsAppCloudContactTestCase(APIBaseTestCase):
                 "fb_access_token": str(uuid.uuid4()),
                 "wa_waba_id": "0123456789",
                 "wa_phone_number_id": "1234567890",
+                "wa_user_token": "123456789",
             },
             created_by=self.user,
             project_uuid=uuid.uuid4(),
