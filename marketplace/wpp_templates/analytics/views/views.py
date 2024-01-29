@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework import status
-from marketplace import settings
+from django.conf import settings
 
 from marketplace.clients.facebook.client import FacebookClient
 from marketplace.wpp_templates.services.facebook import FacebookService
@@ -20,12 +20,9 @@ class TemplateAnalyticsViewSet(viewsets.ViewSet):
         self._fb_service = None
         self._access_token = None
 
-    @property
-    def fb_service(self):  # pragma: no cover
+    def fb_service(self, access_token: str):  # pragma: no cover
         if not self._fb_service:
-            self._fb_service = self.fb_service_class(
-                self.fb_client_class(self._access_token)
-            )
+            self._fb_service = self.fb_service_class(self.fb_client_class(access_token))
 
         return self._fb_service
 
@@ -36,16 +33,15 @@ class TemplateAnalyticsViewSet(viewsets.ViewSet):
     def template_analytics(self, request, app_uuid=None, **kwargs):
         app = get_object_or_404(App, uuid=app_uuid, code__in=["wpp-cloud", "wpp"])
         if app.code == "wpp-cloud":
-            self._access_token = app.apptype.get_access_token(app)
+            service = self.fb_service(app.apptype.get_access_token(app))
         else:
-            self._access_token = settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
-        # self.fb_client_class(app.apptype.get_access_token(app))
+            service = self.fb_service(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
 
         serializer = AnalyticsSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
         validated_data = serializer.validated_data
 
-        response = self.fb_service.template_analytics(self.get_object(), validated_data)
+        response = service.template_analytics(app, validated_data)
         return Response(response)
 
     @action(detail=True, methods=["POST"])
