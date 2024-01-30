@@ -9,8 +9,13 @@ from marketplace.wpp_products.models import Catalog
 from marketplace.clients.flows.client import FlowsClient
 from marketplace.core.types import APPTYPES
 
+from django_redis import get_redis_connection
+
 
 logger = logging.getLogger(__name__)
+
+
+SYNC_WHATSAPP_CATALOGS_LOCK_KEY = "sync-whatsapp-catalogs-lock"
 
 
 @shared_task(name="sync_facebook_catalogs")
@@ -18,32 +23,39 @@ def sync_facebook_catalogs():
     apptype = APPTYPES.get("wpp-cloud")
     flows_client = FlowsClient()
 
-    for app in apptype.apps:
-        client = FacebookClient(apptype.get_access_token(app))
-        wa_business_id = app.config.get("wa_business_id")
-        wa_waba_id = app.config.get("wa_waba_id")
+    redis = get_redis_connection()
+    if redis.get(SYNC_WHATSAPP_CATALOGS_LOCK_KEY):
+        logger.info("The catalogs are already syncing by another task!")
+        return None
 
-        if wa_business_id and wa_waba_id:
-            local_catalog_ids = set(
-                app.catalogs.values_list("facebook_catalog_id", flat=True)
-            )
+    else:
+        with redis.lock(SYNC_WHATSAPP_CATALOGS_LOCK_KEY):
+            for app in apptype.apps:
+                client = FacebookClient(apptype.get_access_token(app))
+                wa_business_id = app.config.get("wa_business_id")
+                wa_waba_id = app.config.get("wa_waba_id")
 
-            all_catalogs_id, all_catalogs = list_all_catalogs_task(app, client)
+                if wa_business_id and wa_waba_id:
+                    local_catalog_ids = set(
+                        app.catalogs.values_list("facebook_catalog_id", flat=True)
+                    )
 
-            if all_catalogs_id:
-                update_catalogs_on_flows_task(app, flows_client, all_catalogs)
+                    all_catalogs_id, all_catalogs = list_all_catalogs_task(app, client)
 
-                fba_catalogs_ids = set(all_catalogs_id)
-                to_create = fba_catalogs_ids - local_catalog_ids
-                to_delete = local_catalog_ids - fba_catalogs_ids
+                    if all_catalogs_id:
+                        update_catalogs_on_flows_task(app, flows_client, all_catalogs)
 
-                for catalog_id in to_create:
-                    details = get_catalog_details_task(client, catalog_id)
-                    if details:
-                        create_catalog_task(app, details)
+                        fba_catalogs_ids = set(all_catalogs_id)
+                        to_create = fba_catalogs_ids - local_catalog_ids
+                        to_delete = local_catalog_ids - fba_catalogs_ids
 
-                if to_delete:
-                    delete_catalogs_task(app, to_delete)
+                        for catalog_id in to_create:
+                            details = get_catalog_details_task(client, catalog_id)
+                            if details:
+                                create_catalog_task(app, details)
+
+                        if to_delete:
+                            delete_catalogs_task(app, to_delete)
 
 
 def handle_exceptions(
