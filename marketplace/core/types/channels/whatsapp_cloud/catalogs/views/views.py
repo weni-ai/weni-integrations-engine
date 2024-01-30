@@ -116,6 +116,7 @@ class CatalogViewSet(BaseViewSet):
         celery_app.send_task(
             name="task_insert_vtex_products",
             kwargs={"credentials": credentials, "catalog_uuid": str(catalog.uuid)},
+            queue="product_synchronization",
         )
 
         return Response(CatalogSerializer(catalog).data, status=status.HTTP_201_CREATED)
