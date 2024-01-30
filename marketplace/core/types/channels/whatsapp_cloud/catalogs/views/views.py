@@ -145,9 +145,9 @@ class CatalogViewSet(BaseViewSet):
         queryset = self.filter_queryset(self.get_queryset())
         page_data = self.paginate_queryset(queryset)
         serialized_data = []
-        service = self.fb_service(queryset.first().app)
 
         if queryset.exists():
+            service = self.fb_service(queryset.first().app)
             connected_catalog_id = service.get_connected_catalog(queryset.first().app)
             serializer = CatalogListSerializer(
                 page_data, context={"connected_catalog_id": connected_catalog_id}

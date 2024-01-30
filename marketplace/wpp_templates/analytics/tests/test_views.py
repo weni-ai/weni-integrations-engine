@@ -1,6 +1,6 @@
 import uuid
 
-from unittest.mock import patch, PropertyMock
+from unittest.mock import Mock, patch
 from rest_framework import status
 
 from django.urls import reverse
@@ -71,16 +71,13 @@ class SetUpTestBase(APIBaseTestCase):
 class MockServices(SetUpTestBase):
     def setUp(self):
         super().setUp()
-
-        # Mock Facebook service
-        mock_facebook_service = MockFacebookService()
-        patcher_fb = patch.object(
-            self.view_class,
-            "fb_service",
-            PropertyMock(return_value=mock_facebook_service),
+        # Mock service
+        mock_service = MockFacebookService()
+        patcher = patch.object(
+            self.view_class, "fb_service", Mock(return_value=mock_service)
         )
-        self.addCleanup(patcher_fb.stop)
-        patcher_fb.start()
+        self.addCleanup(patcher.stop)
+        patcher.start()
 
 
 class TemplateAnalyticsViewSetTestCase(MockServices):
