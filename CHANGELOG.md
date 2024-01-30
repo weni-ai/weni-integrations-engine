@@ -1,3 +1,8 @@
+v3.2.2
+----------
+* Fix error in pass access token to facebook client
+* Add tests to express signup
+
 v3.2.1
 ----------
 * Update WAC create according to express signup
