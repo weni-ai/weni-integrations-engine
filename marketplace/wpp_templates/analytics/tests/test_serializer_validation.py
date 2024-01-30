@@ -46,12 +46,15 @@ class TemplateAnalyticsViewSetSerializerTestCase(SetUpTestBase):
         # Mock service
         mock_service = MockFacebookService()
         patcher = patch.object(
-            self.view_class, "fb_service", PropertyMock(return_value=mock_service)
+            self.view_class,
+            "fb_service",
+            PropertyMock(return_value=mock_service),
         )
         self.addCleanup(patcher.stop)
         patcher.start()
 
     def test_start_date_after_end_date(self):
+
         url = reverse(
             "template-analytics",
             kwargs={"app_uuid": self.app.uuid},
