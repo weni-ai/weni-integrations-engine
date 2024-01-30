@@ -1,3 +1,8 @@
+v3.2.3
+----------
+* Add redis lock key to sync_facebook_catalogs task
+* Fix Ignores channels that have empty project_uuid
+
 v3.2.2
 ----------
 * Fix error in pass access token to facebook client
