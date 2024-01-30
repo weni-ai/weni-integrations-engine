@@ -117,3 +117,13 @@ class VtexServiceTestCase(TestCase):
             configured_app.config["api_credentials"], credentials.to_dict()
         )
         self.assertEqual(configured_app.config["wpp_cloud_uuid"], wpp_cloud_uuid)
+
+    def test_initial_sync_products_completed(self):
+        response = self.service.app_manager.initial_sync_products_completed(self.app)
+        self.assertEqual(response, True)
+        self.assertEqual(self.app.config["initial_sync_completed"], True)
+
+    def test_initial_sync_products_completed_error(self):
+        with self.assertRaises(Exception):
+            # send a app.uuid will raise a exception
+            self.service.app_manager.initial_sync_products_completed(self.app.uuid)
