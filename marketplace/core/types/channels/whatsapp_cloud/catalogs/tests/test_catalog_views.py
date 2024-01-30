@@ -1,6 +1,6 @@
 import uuid
 
-from unittest.mock import patch, PropertyMock
+from unittest.mock import Mock, patch
 from rest_framework import status
 
 from django.urls import reverse
@@ -88,7 +88,7 @@ class MockServiceTestCase(SetUpTestBase):
         patcher_fb = patch.object(
             self.view_class,
             "fb_service",
-            PropertyMock(return_value=mock_facebook_service),
+            Mock(return_value=mock_facebook_service),
         )
         self.addCleanup(patcher_fb.stop)
         patcher_fb.start()
@@ -98,7 +98,7 @@ class MockServiceTestCase(SetUpTestBase):
         patcher_flows = patch.object(
             self.view_class,
             "flows_service",
-            PropertyMock(return_value=mock_flows_service),
+            Mock(return_value=mock_flows_service),
         )
         self.addCleanup(patcher_flows.stop)
         patcher_flows.start()
@@ -158,7 +158,7 @@ class CatalogEnabledTestCase(MockServiceTestCase):
         patcher_fb_failure = patch.object(
             self.view_class,
             "fb_service",
-            PropertyMock(return_value=mock_facebook_service),
+            Mock(return_value=mock_facebook_service),
         )
         patcher_fb_failure.start()
         self.addCleanup(patcher_fb_failure.stop)
@@ -191,7 +191,7 @@ class CatalogDisableTestCase(MockServiceTestCase):
         patcher_fb_failure = patch.object(
             self.view_class,
             "fb_service",
-            PropertyMock(return_value=mock_facebook_service),
+            Mock(return_value=mock_facebook_service),
         )
         patcher_fb_failure.start()
         self.addCleanup(patcher_fb_failure.stop)
