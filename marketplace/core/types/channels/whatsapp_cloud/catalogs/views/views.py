@@ -99,14 +99,19 @@ class CatalogViewSet(BaseViewSet):
             Catalog, uuid=catalog_uuid, app__uuid=app_uuid, app__code="wpp-cloud"
         )
 
+    def _get_catalog(self, catalog_uuid, app_uuid):
+        return get_object_or_404(
+            Catalog, uuid=catalog_uuid, app__uuid=app_uuid, app__code="wpp-cloud"
+        )
+
     def create(self, request, app_uuid, *args, **kwargs):
         app = get_object_or_404(App, uuid=app_uuid, code="wpp-cloud")
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         vtex_app = self.vtex_service.app_manager.get_vtex_app_or_error(app.project_uuid)
-
-        catalog, _fba_catalog_id = self.fb_service.create_vtex_catalog(
+        service = self.fb_service(app)
+        catalog, _fba_catalog_id = service.create_vtex_catalog(
             serializer.validated_data, app, vtex_app, self.request.user
         )
         if not catalog:
@@ -166,7 +171,9 @@ class CatalogViewSet(BaseViewSet):
         return self.get_paginated_response(serializer.data)
 
     def destroy(self, request, *args, **kwargs):
-        success = self.fb_service.catalog_deletion(self.get_object())
+        catalog = self.get_object()
+        service = self.fb_service(catalog.app)
+        success = service.catalog_deletion(catalog)
         if not success:
             return Response(
                 {"detail": "Failed to delete catalog on Facebook."},

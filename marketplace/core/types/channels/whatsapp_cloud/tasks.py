@@ -32,10 +32,13 @@ def sync_whatsapp_cloud_apps():
 
     for channel in channels:
         project_uuid = channel.get("project_uuid")
-
         uuid = channel.get("uuid")
         address = channel.get("address")
         user = User.objects.get_admin_user()
+
+        if project_uuid is None:
+            logger.info(f"The channel {uuid} does not have a project_uuid.")
+            continue
 
         config = channel.get("config")
         config["title"] = config.get("wa_number")

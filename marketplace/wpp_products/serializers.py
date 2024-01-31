@@ -46,6 +46,7 @@ class CatalogListSerializer(serializers.BaseSerializer):
 
         return serialized_data
 
+
 class ProductSerializer(serializers.ModelSerializer):
     title = serializers.CharField(required=True)
     available = serializers.SerializerMethodField()
@@ -54,13 +55,19 @@ class ProductSerializer(serializers.ModelSerializer):
     facebook_product_id = serializers.CharField()
     image_link = serializers.CharField()
 
-
     class Meta:
         model = Product
-        fields = ("title", "available", "price", "sale_price", "facebook_product_id", "image_link")
+        fields = (
+            "title",
+            "available",
+            "price",
+            "sale_price",
+            "facebook_product_id",
+            "image_link",
+        )
 
     def get_available(self, obj):
-        if obj.availability == 'in stock':
+        if obj.availability == "in stock":
             return True
         else:
             return False

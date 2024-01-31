@@ -122,6 +122,27 @@ class SyncWhatsAppCloudAppsTaskTestCase(TestCase):
         self.assertIsNone(result)
         list_channel_mock.assert_called_once()
 
+    @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.get_redis_connection")
+    @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
+    def test_sync_with_missing_project_uuid(
+        self, list_channel_mock, mock_redis
+    ) -> None:
+        # Simulate a channel with missing project_uuid
+        channels = self._get_mock_value(
+            str(self.wpp_cloud_app.project_uuid),
+            str(self.wpp_cloud_app.flow_object_uuid),
+        )
+        channels[0]["project_uuid"] = None
+
+        list_channel_mock.return_value = channels
+        mock_redis.return_value = self.redis_mock
+
+        sync_whatsapp_cloud_apps()
+
+        app = App.objects.get(id=self.wpp_cloud_app.id)
+        self.assertEqual(app.code, "wpp-cloud")
+        self.assertIn("have_to_stay", app.config)
+
 
 class CheckAppsUncreatedOnFlowTaskTestCase(TestCase):
     def setUp(self) -> None:
