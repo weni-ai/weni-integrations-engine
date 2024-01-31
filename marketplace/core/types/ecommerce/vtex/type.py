@@ -1,3 +1,4 @@
+from marketplace.applications.models import App
 from ..base import EcommerceAppType
 from .views import VtexViewSet
 
@@ -12,3 +13,8 @@ class VtexType(EcommerceAppType):
     bg_color = None
     developer = "Weni"
     config_design = "pre-popup"
+
+    def can_add(self, project_uuid: str) -> bool:
+        return not App.objects.filter(
+            code=self.code, project_uuid=project_uuid
+        ).exists()
