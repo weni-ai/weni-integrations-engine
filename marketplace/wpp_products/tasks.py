@@ -153,6 +153,7 @@ def task_insert_vtex_products(**kwargs):
             app_token=credentials.get("app_token"),
             domain=credentials.get("domain"),
         )
+
         products = vtex_service.first_product_insert(api_credentials, catalog)
         dict_catalog = {
             "name": catalog.name,
