@@ -10,7 +10,7 @@ class VtexSerializer(serializers.Serializer):
     app_key = serializers.CharField(required=True)
     app_token = serializers.CharField(required=True)
     wpp_cloud_uuid = serializers.UUIDField(required=True)
-    app_uuid = serializers.UUIDField(required=True)
+    uuid = serializers.UUIDField(required=True)
     project_uuid = serializers.UUIDField(required=True)
 
     def validate_wpp_cloud_uuid(self, value):

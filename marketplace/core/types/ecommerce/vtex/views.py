@@ -41,9 +41,7 @@ class VtexViewSet(views.BaseAppTypeViewSet):
         return self._flows_service
 
     def perform_create(self, serializer):
-        serializer.save(
-            code=self.type_class.code, uuid=serializer.initial_data["app_uuid"]
-        )
+        serializer.save(code=self.type_class.code, uuid=serializer.initial_data["uuid"])
 
     def create(self, request, *args, **kwargs):
         serializer = VtexSerializer(data=request.data)

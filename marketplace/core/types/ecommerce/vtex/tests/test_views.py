@@ -86,7 +86,7 @@ class CreateVtexAppTestCase(SetUpService):
             "app_token": "valid-app-token",
             "domain": "valid.domain.com",
             "wpp_cloud_uuid": str(self.wpp_cloud.uuid),
-            "app_uuid": str(uuid.uuid4()),
+            "uuid": str(uuid.uuid4()),
         }
         self.user_authorization = self.user.authorizations.create(
             project_uuid=self.project_uuid, role=ProjectAuthorization.ROLE_CONTRIBUTOR
