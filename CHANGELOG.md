@@ -1,3 +1,27 @@
+v3.2.3
+----------
+* Add redis lock key to sync_facebook_catalogs task
+* Fix Ignores channels that have empty project_uuid
+
+v3.2.2
+----------
+* Fix error in pass access token to facebook client
+* Add tests to express signup
+
+v3.2.1
+----------
+* Update WAC create according to express signup
+
+v3.2.0
+----------
+* When synchronizing Facebook templates, they are sent to flows #382
+* Filter template by app on sync facebook template #382
+* Correction to allow apps from the same waba to have the same templates #382
+* When sync facebook catalogs sends them to flows
+* Adds cache to OIDC Authentication
+* Add try-except to the catalog listing in the sync catalogs task
+* Add variable catalog and template time to run task
+
 v3.1.3
 ----------
 * Increases the synchronization time for the sync_facebook_catalogs task

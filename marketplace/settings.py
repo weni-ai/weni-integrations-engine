@@ -216,6 +216,12 @@ if USE_OIDC:
     )
     OIDC_RP_SCOPES = env.str("OIDC_RP_SCOPES", default="openid email")
 
+OIDC_CACHE_TOKEN = env.bool(
+    "OIDC_CACHE_TOKEN", default=False
+)  # Enable/disable user token caching (default: False).
+OIDC_CACHE_TTL = env.int(
+    "OIDC_CACHE_TTL", default=600
+)  # Time-to-live for cached user tokens (default: 600 seconds).
 
 # django-cors-headers Configurations
 
@@ -299,6 +305,8 @@ WHATSAPP_VERSION = env.str("WHATSAPP_VERSION", default="v16.0")
 WHATSAPP_API_URL = urllib.parse.urljoin(
     env.str("WHATSAPP_API_URL", default="https://graph.facebook.com/"), WHATSAPP_VERSION
 )
+WHATSAPP_APPLICATION_SECRET = env.str("WHATSAPP_APPLICATION_SECRET", default="")
+WHATSAPP_APPLICATION_ID = env.str("WHATSAPP_APPLICATION_ID", default="")
 
 if APPTYPE_WHATSAPP_PATH in APPTYPES_CLASSES:
     WHATSAPP_TIME_BETWEEN_SYNC_WABA_IN_HOURS = (
@@ -360,7 +368,9 @@ CELERY_BEAT_SCHEDULE = {
     },
     "refresh-whatsapp-templates-from-facebook": {
         "task": "refresh_whatsapp_templates_from_facebook",
-        "schedule": timedelta(seconds=1800),
+        "schedule": timedelta(
+            seconds=env.int("REFRESH_WHATSAPP_TEMPLATES_TIME", default=1800)
+        ),
     },
     "check-apps-uncreated-on-flow": {
         "task": "check_apps_uncreated_on_flow",
@@ -368,7 +378,9 @@ CELERY_BEAT_SCHEDULE = {
     },
     "sync-facebook-catalogs": {
         "task": "sync_facebook_catalogs",
-        "schedule": timedelta(seconds=5400),
+        "schedule": timedelta(
+            seconds=env.int("SYNC_FACEBOOK_CATALOGS_TIME", default=5400)
+        ),
     },
 }
 
