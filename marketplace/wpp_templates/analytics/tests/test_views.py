@@ -55,7 +55,7 @@ class SetUpTestBase(APIBaseTestCase):
 
     @property
     def view(self):
-        return self.view_class.as_view({"get": "template_analytics"})
+        return self.view_class.as_view({"post": "template_analytics"})
 
 
 class TemplateAnalyticsViewSetTestCase(SetUpTestBase):
@@ -74,12 +74,12 @@ class TemplateAnalyticsViewSetTestCase(SetUpTestBase):
             "template-analytics",
             kwargs={"app_uuid": self.app.uuid},
         )
-        params = {
+        body = {
             "start": "9-27-2023",
             "end": "9-28-2023",
             "fba_template_ids": [831797345020910, 1515371305882507, 768404021753348],
         }
-        response = self.request.get(url, app_uuid=self.app.uuid, params=params)
+        response = self.request.post(url, body=body, app_uuid=self.app.uuid)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.json["data"]), 2)

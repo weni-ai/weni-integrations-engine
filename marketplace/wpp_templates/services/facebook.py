@@ -13,7 +13,7 @@ class FacebookService:
             "end": end,
             "granularity": "DAILY",
             "metric_types": "['SENT','DELIVERED','READ']",
-            "template_ids": fba_template_ids,
+            "template_ids": str(fba_template_ids),
         }
         return fields
 
@@ -21,7 +21,7 @@ class FacebookService:
         formatted_data = {}
         grand_totals = {"sent": 0, "delivered": 0, "read": 0}
 
-        data_points = analytics_data.get("data", [])[0].get("data_points", [])
+        data_points = analytics_data.get("data", {}).get("data_points", [])
 
         for point in data_points:
             template_id = point.get("template_id")

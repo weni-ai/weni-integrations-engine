@@ -14,37 +14,34 @@ User = get_user_model()
 class MockFacebookClient:
     def get_template_analytics(self, waba_id, fields):
         return {
-            "data": [
-                {
-                    "granularity": "DAILY",
-                    "data_points": [
-                        {
-                            "template_id": "831797345020910",
-                            "start": 1695859200,
-                            "end": 1695945600,
-                            "sent": 3,
-                            "delivered": 3,
-                            "read": 1,
-                        },
-                        {
-                            "template_id": "831797345020911",
-                            "start": 1695859200,
-                            "end": 1695945600,
-                            "sent": 0,
-                            "delivered": 0,
-                            "read": 0,
-                        },
-                        {
-                            "template_id": "831797345020909",
-                            "start": 1695859200,
-                            "end": 1695945600,
-                            "sent": 0,
-                            "delivered": 0,
-                            "read": 0,
-                        },
-                    ],
-                }
-            ],
+            "data": {
+                "data_points": [
+                    {
+                        "template_id": "831797345020910",
+                        "start": 1695859200,
+                        "end": 1695945600,
+                        "sent": 3,
+                        "delivered": 3,
+                        "read": 1,
+                    },
+                    {
+                        "template_id": "831797345020911",
+                        "start": 1695859200,
+                        "end": 1695945600,
+                        "sent": 0,
+                        "delivered": 0,
+                        "read": 0,
+                    },
+                    {
+                        "template_id": "831797345020909",
+                        "start": 1695859200,
+                        "end": 1695945600,
+                        "sent": 0,
+                        "delivered": 0,
+                        "read": 0,
+                    },
+                ],
+            },
             "paging": {"cursors": {"before": "MAZDZD", "after": "MjQZD"}},
         }
 
@@ -52,29 +49,26 @@ class MockFacebookClient:
 class MockFacebookClientWithMultipleDataPoints:
     def get_template_analytics(self, waba_id, fields):
         return {
-            "data": [
-                {
-                    "granularity": "DAILY",
-                    "data_points": [
-                        {
-                            "template_id": "831797345020910",
-                            "start": 1695859200,
-                            "end": 1695945600,
-                            "sent": 3,
-                            "delivered": 3,
-                            "read": 1,
-                        },
-                        {
-                            "template_id": "831797345020910",
-                            "start": 1695945600,
-                            "end": 1696032000,
-                            "sent": 2,
-                            "delivered": 2,
-                            "read": 1,
-                        },
-                    ],
-                }
-            ],
+            "data": {
+                "data_points": [
+                    {
+                        "template_id": "831797345020910",
+                        "start": 1695859200,
+                        "end": 1695945600,
+                        "sent": 3,
+                        "delivered": 3,
+                        "read": 1,
+                    },
+                    {
+                        "template_id": "831797345020910",
+                        "start": 1695945600,
+                        "end": 1696032000,
+                        "sent": 2,
+                        "delivered": 2,
+                        "read": 1,
+                    },
+                ],
+            },
             "paging": {"cursors": {"before": "MAZDZD", "after": "MjQZD"}},
         }
 
