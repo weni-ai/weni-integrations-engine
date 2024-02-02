@@ -1,6 +1,7 @@
 import uuid
 
 from django.urls import reverse
+from django.test import override_settings
 
 from rest_framework import status
 
@@ -25,6 +26,12 @@ from marketplace.core.types.channels.whatsapp_base.serializers import (
 from ..views import WhatsAppCloudViewSet
 
 User = get_user_model()
+
+
+FACEBOOK_CONVERSATION_API_PATH = (
+    "marketplace.core.types.channels.whatsapp_base."
+    + "requests.facebook.FacebookConversationAPI.conversations"
+)
 
 
 class RetrieveWhatsAppCloudTestCase(APIBaseTestCase):
@@ -249,9 +256,7 @@ class WhatsAppCloudConversationsTestCase(APIBaseTestCase):
     def view(self):
         return self.view_class.as_view({"get": "conversations"})
 
-    @patch(
-        "marketplace.core.types.channels.whatsapp_base.requests.facebook.FacebookConversationAPI.conversations"
-    )
+    @patch(FACEBOOK_CONVERSATION_API_PATH)
     def test_get_conversations(self, mock_conversations):
         mock_conversations.return_value = MockConversation()
 
@@ -263,9 +268,7 @@ class WhatsAppCloudConversationsTestCase(APIBaseTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-    @patch(
-        "marketplace.core.types.channels.whatsapp_base.requests.facebook.FacebookConversationAPI.conversations"
-    )
+    @patch(FACEBOOK_CONVERSATION_API_PATH)
     def test_get_conversations_with_facebook_api_exception(self, mock_conversations):
         error_message = "Facebook API exception"
         mock_conversations.side_effect = FacebookApiException(error_message)
@@ -321,6 +324,70 @@ class WhatsAppCloudConversationsTestCase(APIBaseTestCase):
             response.json,
             ["This app does not have WABA (Whatsapp Business Account ID) configured"],
         )
+
+
+class WhatsAppCloudConversationsPermissionTestCase(APIBaseTestCase):
+    view_class = WhatsAppCloudViewSet
+
+    def setUp(self):
+        super().setUp()
+
+        self.app = App.objects.create(
+            code="wpp-cloud",
+            config={"fb_access_token": str(uuid.uuid4()), "wa_waba_id": "0123456789"},
+            created_by=self.user,
+            project_uuid=str(uuid.uuid4()),
+            platform=App.PLATFORM_WENI_FLOWS,
+        )
+        self.start_date = "6-1-2023"
+        self.end_date = "6-30-2023"
+        self.url = reverse(
+            "wpp-cloud-app-conversations", kwargs={"uuid": self.app.uuid}
+        )
+
+    @property
+    def view(self):
+        return self.view_class.as_view({"get": "conversations"})
+
+    @patch(FACEBOOK_CONVERSATION_API_PATH)
+    def test_get_conversations_without_authorization(self, mock_conversations):
+        mock_conversations.return_value = MockConversation()
+
+        params = {
+            "start": self.start_date,
+            "end": self.end_date,
+        }
+        response = self.request.get(self.url, params=params, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    @patch(FACEBOOK_CONVERSATION_API_PATH)
+    @override_settings(
+        ALLOW_CRM_ACCESS=True, CRM_EMAILS_LIST=["otheremail@marketplace.ai"]
+    )
+    def test_get_conversations_allow_crm_access_true_email_not_in_list(
+        self, mock_conversations
+    ):
+        mock_conversations.return_value = MockConversation()
+
+        params = {
+            "start": self.start_date,
+            "end": self.end_date,
+        }
+        response = self.request.get(self.url, params=params, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    @patch(FACEBOOK_CONVERSATION_API_PATH)
+    @override_settings(ALLOW_CRM_ACCESS=True, CRM_EMAILS_LIST=["user@marketplace.ai"])
+    def test_get_conversations_with_crm_user(self, mock_conversations):
+        mock_conversations.return_value = MockConversation()
+
+        params = {
+            "start": self.start_date,
+            "end": self.end_date,
+        }
+        response = self.request.get(self.url, params=params, uuid=self.app.uuid)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
 
 class CreateWhatsAppCloudTestCase(APIBaseTestCase):
