@@ -1,3 +1,7 @@
+v3.2.4
+----------
+* Add CRM permission to the whatsapp-cloud conversations API
+
 v3.2.3
 ----------
 * Add redis lock key to sync_facebook_catalogs task
