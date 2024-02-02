@@ -164,7 +164,7 @@ class VtexService:
     def _upload_product_feed(
         self, catalog, product_feed_id, csv_file, file_name, update_only=False
     ):
-        service = self.fb_service(catalog)
+        service = self.fb_service(catalog.app)
         response = service.upload_product_feed(
             product_feed_id, csv_file, file_name, "text/csv", update_only
         )
