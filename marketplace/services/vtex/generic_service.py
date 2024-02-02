@@ -139,7 +139,7 @@ class VtexService:
         file_name = f"csv_vtex_products_{current_time}.csv"
         product_feed = self._create_product_feed(file_name, catalog)
         self._upload_product_feed(
-            catalog,
+            catalog.app,
             product_feed.facebook_feed_id,
             products_csv,
             file_name,
@@ -162,9 +162,9 @@ class VtexService:
         return product_feed
 
     def _upload_product_feed(
-        self, catalog, product_feed_id, csv_file, file_name, update_only=False
+        self, app, product_feed_id, csv_file, file_name, update_only=False
     ):
-        service = self.fb_service(catalog.app)
+        service = self.fb_service(app)
         response = service.upload_product_feed(
             product_feed_id, csv_file, file_name, "text/csv", update_only
         )
@@ -179,6 +179,7 @@ class VtexService:
         current_time = datetime.now().strftime("%Y-%m-%d_%H-%M")
         file_name = f"update_{current_time}_{product_feed.name}"
         return self._upload_product_feed(
+            catalog.app,
             product_feed.facebook_feed_id,
             products_csv,
             file_name,
