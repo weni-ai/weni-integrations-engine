@@ -51,10 +51,10 @@ class VtexService:
         self.product_manager = ProductFacebookManager()
         self.app_manager = AppVtexManager()
 
-    @property
-    def fb_service(self) -> FacebookService:  # pragma: no cover
+    def fb_service(self, app: App) -> FacebookService:  # pragma: no cover
+        access_token = app.apptype.get_access_token(app)
         if not self._fb_service:
-            self._fb_service = self.fb_service_class(self.fb_client_class())
+            self._fb_service = self.fb_service_class(self.fb_client_class(access_token))
         return self._fb_service
 
     def get_private_service(
@@ -74,7 +74,9 @@ class VtexService:
 
         return True
 
-    def configure(self, app, credentials: APICredentials, wpp_cloud_uuid) -> App:
+    def configure(
+        self, app, credentials: APICredentials, wpp_cloud_uuid, store_domain
+    ) -> App:
         app.config["api_credentials"] = credentials.to_dict()
         app.config["wpp_cloud_uuid"] = wpp_cloud_uuid
         app.config["initial_sync_completed"] = False
@@ -86,6 +88,7 @@ class VtexService:
             "currency_pt_br",
             "unifies_id_with_seller",
         ]
+        app.config["store_domain"] = store_domain
         app.configured = True
         app.save()
         return app
@@ -139,6 +142,7 @@ class VtexService:
         file_name = f"csv_vtex_products_{current_time}.csv"
         product_feed = self._create_product_feed(file_name, catalog)
         self._upload_product_feed(
+            catalog.app,
             product_feed.facebook_feed_id,
             products_csv,
             file_name,
@@ -146,9 +150,8 @@ class VtexService:
         return product_feed
 
     def _create_product_feed(self, name, catalog: Catalog) -> ProductFeed:
-        response = self.fb_service.create_product_feed(
-            catalog.facebook_catalog_id, name
-        )
+        service = self.fb_service(catalog.app)
+        response = service.create_product_feed(catalog.facebook_catalog_id, name)
 
         if "id" not in response:
             raise UnexpectedFacebookApiResponseValidationError()
@@ -162,9 +165,10 @@ class VtexService:
         return product_feed
 
     def _upload_product_feed(
-        self, product_feed_id, csv_file, file_name, update_only=False
+        self, app, product_feed_id, csv_file, file_name, update_only=False
     ):
-        response = self.fb_service.upload_product_feed(
+        service = self.fb_service(app)
+        response = service.upload_product_feed(
             product_feed_id, csv_file, file_name, "text/csv", update_only
         )
         if "id" not in response:
@@ -178,6 +182,7 @@ class VtexService:
         current_time = datetime.now().strftime("%Y-%m-%d_%H-%M")
         file_name = f"update_{current_time}_{product_feed.name}"
         return self._upload_product_feed(
+            catalog.app,
             product_feed.facebook_feed_id,
             products_csv,
             file_name,
