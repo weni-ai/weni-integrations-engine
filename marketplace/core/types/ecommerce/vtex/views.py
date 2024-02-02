@@ -54,6 +54,8 @@ class VtexViewSet(views.BaseAppTypeViewSet):
             domain=validated_data.get("domain"),
         )
         wpp_cloud_uuid = validated_data["wpp_cloud_uuid"]
+        store_domain = validated_data["store_domain"]
+
         self.service.check_is_valid_credentials(credentials)
 
         # Calls the create method of the base class to create the App object
@@ -63,7 +65,9 @@ class VtexViewSet(views.BaseAppTypeViewSet):
             return response
 
         try:
-            updated_app = self.service.configure(app, credentials, wpp_cloud_uuid)
+            updated_app = self.service.configure(
+                app, credentials, wpp_cloud_uuid, store_domain
+            )
             self.flows_service.update_vtex_integration_status(
                 app.project_uuid, app.created_by.email, action="POST"
             )
