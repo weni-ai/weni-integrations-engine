@@ -23,9 +23,10 @@ class MockVtexService:
     def check_is_valid_credentials(self, credentials):
         return True
 
-    def configure(self, app, credentials, wpp_cloud_uuid):
+    def configure(self, app, credentials, wpp_cloud_uuid, store_domain):
         app.config["api_credentials"] = credentials.to_dict()
         app.config["wpp_cloud_uuid"] = wpp_cloud_uuid
+        app.config["store_domain"] = store_domain
         app.configured = True
         app.save()
         return app
@@ -87,6 +88,7 @@ class CreateVtexAppTestCase(SetUpService):
             "domain": "valid.domain.com",
             "wpp_cloud_uuid": str(self.wpp_cloud.uuid),
             "uuid": str(uuid.uuid4()),
+            "store_domain": "www.test.com.br",
         }
         self.user_authorization = self.user.authorizations.create(
             project_uuid=self.project_uuid, role=ProjectAuthorization.ROLE_CONTRIBUTOR
@@ -128,6 +130,7 @@ class CreateVtexAppTestCase(SetUpService):
             "app_token": "valid-app-token",
             "domain": "valid.domain.com",
             "wpp_cloud_uuid": str(not_wpp_cloud.uuid),
+            "store_domain": "www.test.com.br",
         }
         response = self.request.post(self.url, body)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

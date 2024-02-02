@@ -110,7 +110,9 @@ class VtexServiceTestCase(TestCase):
             domain="valid.domain.com", app_key="key", app_token="token"
         )
         wpp_cloud_uuid = str(self.wpp_cloud.uuid)
-        configured_app = self.service.configure(self.app, credentials, wpp_cloud_uuid)
+        configured_app = self.service.configure(
+            self.app, credentials, wpp_cloud_uuid, "www.test.com.br"
+        )
 
         self.assertTrue(configured_app.configured)
         self.assertEqual(

@@ -74,7 +74,9 @@ class VtexService:
 
         return True
 
-    def configure(self, app, credentials: APICredentials, wpp_cloud_uuid) -> App:
+    def configure(
+        self, app, credentials: APICredentials, wpp_cloud_uuid, store_domain
+    ) -> App:
         app.config["api_credentials"] = credentials.to_dict()
         app.config["wpp_cloud_uuid"] = wpp_cloud_uuid
         app.config["initial_sync_completed"] = False
@@ -86,6 +88,7 @@ class VtexService:
             "currency_pt_br",
             "unifies_id_with_seller",
         ]
+        app.config["store_domain"] = store_domain
         app.configured = True
         app.save()
         return app

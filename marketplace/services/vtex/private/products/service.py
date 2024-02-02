@@ -63,8 +63,9 @@ class PrivateProductsService:
         active_sellers = self.client.list_active_sellers(domain)
         skus_ids = self.client.list_all_products_sku_ids(domain)
         rules = self._load_rules(config.get("rules", []))
+        store_domain = config.get("store_domain")
         products_dto = self.data_processor.process_product_data(
-            skus_ids, active_sellers, self, domain, rules
+            skus_ids, active_sellers, self, domain, store_domain, rules
         )
         return products_dto
 
@@ -88,8 +89,15 @@ class PrivateProductsService:
 
         if price_modified or stock_modified or other_changes:
             rules = self._load_rules(config.get("rules", []))
+            store_domain = config.get("store_domain")
             updated_products_dto = self.data_processor.process_product_data(
-                [sku_id], seller_ids, self, domain, rules, update_product=True
+                [sku_id],
+                seller_ids,
+                self,
+                domain,
+                store_domain,
+                rules,
+                update_product=True,
             )
 
         return updated_products_dto
