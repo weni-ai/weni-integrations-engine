@@ -24,7 +24,7 @@ class FacebookAuthorization:
 
 class FacebookClient(FacebookAuthorization, RequestClient):
     # Product Catalog
-    def create_catalog(self, business_id, name, category=None):
+    def create_catalog(self, business_id, name, category="commerce"):
         url = self.get_url + f"{business_id}/owned_product_catalogs"
         data = {"name": name}
         if category:
@@ -52,21 +52,26 @@ class FacebookClient(FacebookAuthorization, RequestClient):
 
         return response.json()
 
-    def upload_product_feed(self, feed_id, file):
+    def upload_product_feed(
+        self, feed_id, file, file_name, file_content_type, update_only=False
+    ):
         url = self.get_url + f"{feed_id}/uploads"
 
         headers = self._get_headers()
         files = {
             "file": (
-                file.name,
+                file_name,
                 file,
-                file.content_type,
+                file_content_type,
             )
         }
-        response = self.make_request(url, method="POST", headers=headers, files=files)
+        params = {"update_only": update_only}
+        response = self.make_request(
+            url, method="POST", headers=headers, params=params, files=files
+        )
         return response.json()
 
-    def create_product_feed_via_url(
+    def create_product_feed_by_url(
         self, product_catalog_id, name, feed_url, file_type, interval, hour
     ):  # TODO: adjust this method
         url = self.get_url + f"{product_catalog_id}/product_feeds"

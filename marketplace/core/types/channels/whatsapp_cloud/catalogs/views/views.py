@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from rest_framework import status
 
-from marketplace.core.types.channels.whatsapp_cloud.services.facebook import (
+from marketplace.services.facebook.service import (
     FacebookService,
 )
 from marketplace.core.types.channels.whatsapp_cloud.services.flows import (
@@ -19,10 +19,13 @@ from marketplace.clients.flows.client import FlowsClient
 
 from marketplace.wpp_products.serializers import (
     CatalogSerializer,
+    ProductSerializer,
     ToggleVisibilitySerializer,
     TresholdSerializer,
     CatalogListSerializer,
 )
+from marketplace.services.vtex.generic_service import VtexService
+from marketplace.celery import app as celery_app
 
 
 class BaseViewSet(viewsets.ModelViewSet):
@@ -59,6 +62,17 @@ class Pagination(PageNumberPagination):
 class CatalogViewSet(BaseViewSet):
     serializer_class = CatalogSerializer
     pagination_class = Pagination
+    vtex_generic_service_class = VtexService
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._vtex_app_service = None
+
+    @property
+    def vtex_service(self):  # pragma: no cover
+        if not self._vtex_app_service:
+            self._vtex_app_service = self.vtex_generic_service_class()
+        return self._vtex_app_service
 
     def filter_queryset(self, queryset):
         params = self.request.query_params
@@ -77,6 +91,41 @@ class CatalogViewSet(BaseViewSet):
         queryset = self.get_queryset()
         catalog_uuid = self.kwargs.get("catalog_uuid")
         return get_object_or_404(queryset, uuid=catalog_uuid)
+
+    def _get_catalog(self, catalog_uuid, app_uuid):
+        return get_object_or_404(
+            Catalog, uuid=catalog_uuid, app__uuid=app_uuid, app__code="wpp-cloud"
+        )
+
+    def create(self, request, app_uuid, *args, **kwargs):
+        app = get_object_or_404(App, uuid=app_uuid, code="wpp-cloud")
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        vtex_app = self.vtex_service.app_manager.get_vtex_app_or_error(app.project_uuid)
+        service = self.fb_service(app)
+        catalog, _fba_catalog_id = service.create_vtex_catalog(
+            serializer.validated_data, app, vtex_app, self.request.user
+        )
+        if not catalog:
+            return Response(
+                {"detail": "Failed to create catalog on Facebook."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        credentials = {
+            "app_key": vtex_app.config.get("api_credentials", {}).get("app_key"),
+            "app_token": vtex_app.config.get("api_credentials", {}).get("app_token"),
+            "domain": vtex_app.config.get("api_credentials", {}).get("domain"),
+        }
+
+        celery_app.send_task(
+            name="task_insert_vtex_products",
+            kwargs={"credentials": credentials, "catalog_uuid": str(catalog.uuid)},
+            queue="product_synchronization",
+        )
+
+        return Response(CatalogSerializer(catalog).data, status=status.HTTP_201_CREATED)
 
     def retrieve(self, request, *args, **kwargs):
         catalog = self.get_object()
@@ -101,6 +150,27 @@ class CatalogViewSet(BaseViewSet):
             serialized_data = serializer.data
 
         return self.get_paginated_response(serialized_data)
+
+    @action(detail=True, methods=["GET"], url_path="list-products")
+    def list_products(self, request, app_uuid, catalog_uuid, *args, **kwargs):
+        catalog = self._get_catalog(catalog_uuid, app_uuid)
+        queryset = catalog.products.all()
+        page_data = self.paginate_queryset(queryset)
+        serializer = ProductSerializer(page_data, many=True)
+
+        return self.get_paginated_response(serializer.data)
+
+    def destroy(self, request, *args, **kwargs):
+        catalog = self.get_object()
+        service = self.fb_service(catalog.app)
+        success = service.catalog_deletion(catalog)
+        if not success:
+            return Response(
+                {"detail": "Failed to delete catalog on Facebook."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=["POST"])
     def enable_catalog(self, request, *args, **kwargs):
