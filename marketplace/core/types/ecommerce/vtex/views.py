@@ -1,5 +1,8 @@
+import uuid
+
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.decorators import action
 
 from marketplace.core.types.ecommerce.vtex.serializers import (
     VtexSerializer,
@@ -38,7 +41,7 @@ class VtexViewSet(views.BaseAppTypeViewSet):
         return self._flows_service
 
     def perform_create(self, serializer):
-        serializer.save(code=self.type_class.code)
+        serializer.save(code=self.type_class.code, uuid=serializer.initial_data["uuid"])
 
     def create(self, request, *args, **kwargs):
         serializer = VtexSerializer(data=request.data)
@@ -52,9 +55,13 @@ class VtexViewSet(views.BaseAppTypeViewSet):
         )
         wpp_cloud_uuid = validated_data["wpp_cloud_uuid"]
         self.service.check_is_valid_credentials(credentials)
+
         # Calls the create method of the base class to create the App object
-        super().create(request, *args, **kwargs)
+        response = super().create(request, *args, **kwargs)
         app = self.get_app()
+        if not app:
+            return response
+
         try:
             updated_app = self.service.configure(app, credentials, wpp_cloud_uuid)
             self.flows_service.update_vtex_integration_status(
@@ -76,3 +83,7 @@ class VtexViewSet(views.BaseAppTypeViewSet):
             instance.project_uuid, instance.created_by.email, action="DELETE"
         )
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=["GET"], url_path="get-app-uuid")
+    def get_app_uuid(self, request, *args, **kwargs):
+        return Response(data={"uuid": str(uuid.uuid4())}, status=status.HTTP_200_OK)

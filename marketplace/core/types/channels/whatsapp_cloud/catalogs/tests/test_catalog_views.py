@@ -1,6 +1,6 @@
 import uuid
 
-from unittest.mock import patch, PropertyMock
+from unittest.mock import Mock, patch
 from rest_framework import status
 
 from django.urls import reverse
@@ -11,7 +11,7 @@ from marketplace.core.types.channels.whatsapp_cloud.catalogs.views.views import 
 )
 from marketplace.applications.models import App
 from marketplace.accounts.models import ProjectAuthorization
-from marketplace.wpp_products.models import Catalog
+from marketplace.wpp_products.models import Catalog, Product, ProductFeed
 
 
 class MockFacebookService:
@@ -97,6 +97,44 @@ class SetUpTestBase(APIBaseTestCase):
             project_uuid=self.app.project_uuid
         )
         self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+        self.product_feed = ProductFeed.objects.create(
+            facebook_feed_id="050505050505",
+            name="product_feed",
+            catalog=self.catalog,
+            created_by=self.user,
+        )
+
+        self.product = Product.objects.create(
+            facebook_product_id="0202020202",
+            title="Refrigerator",
+            description="A FrostFree that works",
+            availability="in stock",
+            condition="new",
+            price="9.99 USD",
+            link="https://myproduct.com",
+            image_link="https://myimage.com",
+            brand="Mybrand",
+            sale_price="919.99 USD",
+            catalog=self.catalog,
+            feed=self.product_feed,
+            created_by=self.user,
+        )
+
+        self.product2 = Product.objects.create(
+            facebook_product_id="0303030303",
+            title="Monitor",
+            description="A Game monitor that works",
+            availability="out of stock",
+            condition="new",
+            price="200.90 USD",
+            link="https://myproduct.com",
+            image_link="https://myimage.com",
+            brand="Mybrand",
+            sale_price="200.90 USD",
+            catalog=self.catalog,
+            feed=self.product_feed,
+            created_by=self.user,
+        )
 
     @property
     def view(self):
@@ -116,7 +154,7 @@ class MockServiceTestCase(SetUpTestBase):
         patcher_fb = patch.object(
             self.view_class,
             "fb_service",
-            PropertyMock(return_value=mock_facebook_service),
+            Mock(return_value=mock_facebook_service),
         )
         self.addCleanup(patcher_fb.stop)
         patcher_fb.start()
@@ -126,7 +164,7 @@ class MockServiceTestCase(SetUpTestBase):
         patcher_flows = patch.object(
             self.view_class,
             "flows_service",
-            PropertyMock(return_value=mock_flows_service),
+            Mock(return_value=mock_flows_service),
         )
         self.addCleanup(patcher_flows.stop)
         patcher_flows.start()
@@ -186,7 +224,7 @@ class CatalogEnabledTestCase(MockServiceTestCase):
         patcher_fb_failure = patch.object(
             self.view_class,
             "fb_service",
-            PropertyMock(return_value=mock_facebook_service),
+            Mock(return_value=mock_facebook_service),
         )
         patcher_fb_failure.start()
         self.addCleanup(patcher_fb_failure.stop)
@@ -219,7 +257,7 @@ class CatalogDisableTestCase(MockServiceTestCase):
         patcher_fb_failure = patch.object(
             self.view_class,
             "fb_service",
-            PropertyMock(return_value=mock_facebook_service),
+            Mock(return_value=mock_facebook_service),
         )
         patcher_fb_failure.start()
         self.addCleanup(patcher_fb_failure.stop)
@@ -369,3 +407,19 @@ class CatalogCreateTestCase(MockServiceTestCase):
             self.assertEqual(
                 response.data["detail"], "Failed to create catalog on Facebook."
             )
+
+
+class CatalogListProductsTestCase(MockServiceTestCase):
+    current_view_mapping = {"get": "list_products"}
+
+    def test_list_catalog_products(self):
+        url = reverse(
+            "catalog-list-products",
+            kwargs={"app_uuid": self.app.uuid, "catalog_uuid": self.catalog.uuid},
+        )
+        response = self.request.get(
+            url, app_uuid=self.app.uuid, catalog_uuid=self.catalog.uuid
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.json["results"]), 2)

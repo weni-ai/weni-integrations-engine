@@ -22,6 +22,7 @@ class FacebookService:
                 "created_by": user,
             }
             catalog = self._create_catalog_object(data)
+            self._update_connected_catalog_flag(vtex_app)
             return catalog, response.get("id")
 
         return None, None
@@ -109,3 +110,7 @@ class FacebookService:
             name=data.get("name"),
             created_by=data.get("created_by"),
         )
+
+    def _update_connected_catalog_flag(self, app) -> None:
+        app.config["connected_catalog"] = True
+        app.save()

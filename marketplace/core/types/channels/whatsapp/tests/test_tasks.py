@@ -835,7 +835,7 @@ class SyncWhatsappCloudPhoneNumberViewTestCase(TestCase):
         )
         before_config = app.config.copy()
         facebook_get_phone_number_api_mock.return_value = MagicMock(
-            get_phone_number=lambda x: phone_number_data
+            get_phone_number=lambda x: phone_number_data,
         )
         apptypes_mock.get.return_value = MagicMock(apps=[app])
         sync_whatsapp_cloud_phone_numbers()
