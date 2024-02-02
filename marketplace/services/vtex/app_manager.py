@@ -1,3 +1,5 @@
+import uuid
+
 from django.core.exceptions import MultipleObjectsReturned
 
 from marketplace.services.vtex.exceptions import (
@@ -26,3 +28,11 @@ class AppVtexManager:
             return True
         except Exception as e:
             raise e
+
+    def get_vtex_app_uuid():
+        while True:
+            new_uuid = str(uuid.uuid4())
+            try:
+                App.objects.get(uuid=new_uuid)
+            except App.DoesNotExist:
+                return new_uuid
