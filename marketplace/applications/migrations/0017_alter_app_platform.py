@@ -4,15 +4,22 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('applications', '0016_app_configured'),
+        ("applications", "0016_app_configured"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='app',
-            name='platform',
-            field=models.CharField(choices=[('IA', 'inteligence-artificial'), ('WF', 'weni-flows'), ('RC', 'rocketchat'), ('VT', 'vtex')], max_length=2),
+            model_name="app",
+            name="platform",
+            field=models.CharField(
+                choices=[
+                    ("IA", "inteligence-artificial"),
+                    ("WF", "weni-flows"),
+                    ("RC", "rocketchat"),
+                    ("VT", "vtex"),
+                ],
+                max_length=2,
+            ),
         ),
     ]
