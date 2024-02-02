@@ -1,5 +1,3 @@
-import uuid
-
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import action
@@ -13,6 +11,7 @@ from marketplace.services.vtex.generic_service import VtexService
 from marketplace.services.vtex.generic_service import APICredentials
 from marketplace.services.flows.service import FlowsService
 from marketplace.clients.flows.client import FlowsClient
+from marketplace.services.vtex.app_manager import AppVtexManager
 
 
 class VtexViewSet(views.BaseAppTypeViewSet):
@@ -25,6 +24,7 @@ class VtexViewSet(views.BaseAppTypeViewSet):
         super().__init__(*args, **kwargs)
         self._service = None
         self._flows_service = None
+        self.app_manager = AppVtexManager()
 
     @property
     def service(self):  # pragma: no cover
@@ -90,4 +90,5 @@ class VtexViewSet(views.BaseAppTypeViewSet):
 
     @action(detail=False, methods=["GET"], url_path="get-app-uuid")
     def get_app_uuid(self, request, *args, **kwargs):
-        return Response(data={"uuid": str(uuid.uuid4())}, status=status.HTTP_200_OK)
+        uuid = self.app_manager.get_vtex_app_uuid()
+        return Response(data={"uuid": uuid}, status=status.HTTP_200_OK)
