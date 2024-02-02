@@ -14,37 +14,34 @@ User = get_user_model()
 class MockFacebookClient:
     def get_template_analytics(self, waba_id, fields):
         return {
-            "data": [
-                {
-                    "granularity": "DAILY",
-                    "data_points": [
-                        {
-                            "template_id": "831797345020910",
-                            "start": 1695859200,
-                            "end": 1695945600,
-                            "sent": 3,
-                            "delivered": 3,
-                            "read": 1,
-                        },
-                        {
-                            "template_id": "831797345020911",
-                            "start": 1695859200,
-                            "end": 1695945600,
-                            "sent": 0,
-                            "delivered": 0,
-                            "read": 0,
-                        },
-                        {
-                            "template_id": "831797345020909",
-                            "start": 1695859200,
-                            "end": 1695945600,
-                            "sent": 0,
-                            "delivered": 0,
-                            "read": 0,
-                        },
-                    ],
-                }
-            ],
+            "data": {
+                "data_points": [
+                    {
+                        "template_id": "831797345020910",
+                        "start": 1695859200,
+                        "end": 1695945600,
+                        "sent": 3,
+                        "delivered": 3,
+                        "read": 1,
+                    },
+                    {
+                        "template_id": "831797345020911",
+                        "start": 1695859200,
+                        "end": 1695945600,
+                        "sent": 0,
+                        "delivered": 0,
+                        "read": 0,
+                    },
+                    {
+                        "template_id": "831797345020909",
+                        "start": 1695859200,
+                        "end": 1695945600,
+                        "sent": 0,
+                        "delivered": 0,
+                        "read": 0,
+                    },
+                ],
+            },
             "paging": {"cursors": {"before": "MAZDZD", "after": "MjQZD"}},
         }
 
@@ -52,29 +49,26 @@ class MockFacebookClient:
 class MockFacebookClientWithMultipleDataPoints:
     def get_template_analytics(self, waba_id, fields):
         return {
-            "data": [
-                {
-                    "granularity": "DAILY",
-                    "data_points": [
-                        {
-                            "template_id": "831797345020910",
-                            "start": 1695859200,
-                            "end": 1695945600,
-                            "sent": 3,
-                            "delivered": 3,
-                            "read": 1,
-                        },
-                        {
-                            "template_id": "831797345020910",
-                            "start": 1695945600,
-                            "end": 1696032000,
-                            "sent": 2,
-                            "delivered": 2,
-                            "read": 1,
-                        },
-                    ],
-                }
-            ],
+            "data": {
+                "data_points": [
+                    {
+                        "template_id": "831797345020910",
+                        "start": 1695859200,
+                        "end": 1695945600,
+                        "sent": 3,
+                        "delivered": 3,
+                        "read": 1,
+                    },
+                    {
+                        "template_id": "831797345020910",
+                        "start": 1695945600,
+                        "end": 1696032000,
+                        "sent": 2,
+                        "delivered": 2,
+                        "read": 1,
+                    },
+                ],
+            },
             "paging": {"cursors": {"before": "MAZDZD", "after": "MjQZD"}},
         }
 
@@ -140,23 +134,32 @@ class TestFacebookServiceAnalytics(SetUpBaseService):
             "data": [
                 {
                     "template_id": "831797345020910",
-                    "sent": 3,
-                    "delivered": 3,
-                    "read": 1,
-                    "template": "test_template1",
+                    "template_name": "test_template1",
+                    "totals": {"sent": 3, "delivered": 3, "read": 1},
+                    "dates": [
+                        {"start": "2023-09-28", "sent": 3, "delivered": 3, "read": 1}
+                    ],
                 },
                 {
                     "template_id": "831797345020911",
-                    "sent": 0,
-                    "delivered": 0,
-                    "read": 0,
-                    "template": "test_template2",
+                    "template_name": "test_template2",
+                    "totals": {"sent": 0, "delivered": 0, "read": 0},
+                    "dates": [
+                        {"start": "2023-09-28", "sent": 0, "delivered": 0, "read": 0}
+                    ],
+                },
+                {
+                    "template_id": "831797345020909",
+                    "template_name": None,
+                    "totals": {"sent": 0, "delivered": 0, "read": 0},
+                    "dates": [
+                        {"start": "2023-09-28", "sent": 0, "delivered": 0, "read": 0}
+                    ],
                 },
             ],
-            "totals": {"sent": 3, "delivered": 3, "read": 1},
+            "grand_totals": {"sent": 3, "delivered": 3, "read": 1},
         }
         response = self.service.template_analytics(self.app, validated_data)
-
         self.assertEqual(response, expected_data)
 
     def test_raise_value_error(self):
@@ -198,14 +201,17 @@ class TestFacebookServiceAnalytics(SetUpBaseService):
             "data": [
                 {
                     "template_id": "831797345020910",
-                    "sent": 5,
-                    "delivered": 5,
-                    "read": 2,
-                    "template": "test_template1",
-                },
+                    "template_name": "test_template1",
+                    "totals": {"sent": 5, "delivered": 5, "read": 2},
+                    "dates": [
+                        {"start": "2023-09-28", "sent": 3, "delivered": 3, "read": 1},
+                        {"start": "2023-09-29", "sent": 2, "delivered": 2, "read": 1},
+                    ],
+                }
             ],
-            "totals": {"sent": 5, "delivered": 5, "read": 2},
+            "grand_totals": {"sent": 5, "delivered": 5, "read": 2},
         }
         response = self.service.template_analytics(self.app, validated_data)
+
         self.service = FacebookService(client=MockFacebookClient())
         self.assertEqual(response, expected_data)
