@@ -17,6 +17,7 @@ from marketplace.applications.models import App
 from marketplace.celery import app as celery_app
 from marketplace.connect.client import ConnectProjectClient
 from marketplace.flows.client import FlowsClient
+from marketplace.accounts.permissions import ProjectManagePermission, IsCRMUser
 
 from ..whatsapp_base import mixins
 from ..whatsapp_base.serializers import WhatsAppSerializer
@@ -38,6 +39,7 @@ class WhatsAppCloudViewSet(
     mixins.WhatsAppProfileMixin,
 ):
     serializer_class = WhatsAppSerializer
+    permission_classes = [ProjectManagePermission | IsCRMUser]
 
     business_profile_class = CloudProfileContactFacade
     profile_class = CloudProfileFacade
