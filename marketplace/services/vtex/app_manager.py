@@ -29,7 +29,7 @@ class AppVtexManager:
         except Exception as e:
             raise e
 
-    def get_vtex_app_uuid():
+    def get_vtex_app_uuid(self):
         while True:
             new_uuid = str(uuid.uuid4())
             try:
