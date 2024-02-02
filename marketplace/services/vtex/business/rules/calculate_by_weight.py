@@ -21,13 +21,13 @@ class CalculateByWeight(Rule):
 
     def _get_weight(self, product: FacebookProductDTO) -> float:
         return product.product_details["Dimension"]["weight"]
-    
+
     def _calculates_by_weight(self, product: FacebookProductDTO) -> bool:
         categories_to_calculate = [
             "Hortifruti",
             "Carnes e Aves",
             "Frios e Laticínios",
-            "Padaria"
+            "Padaria",
         ]
         products_categories = product.product_details["ProductCategories"]
 
