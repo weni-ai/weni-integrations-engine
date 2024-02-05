@@ -3,11 +3,13 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.exceptions import ValidationError, PermissionDenied
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 
 from marketplace.applications.serializers import AppTypeSerializer, MyAppSerializer
 from marketplace.core import types
 from marketplace.applications.models import App, AppTypeFeatured
 from marketplace.accounts.models import ProjectAuthorization
+from marketplace.accounts.permissions import is_crm_user
 
 
 class AppTypeViewSet(viewsets.ViewSet):
@@ -61,6 +63,7 @@ class MyAppViewSet(viewsets.ReadOnlyModelViewSet):
     lookup_field = "uuid"
     serializer_class = MyAppSerializer
     queryset = App.objects
+    permission_classes = (IsAuthenticated,)
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -72,10 +75,13 @@ class MyAppViewSet(viewsets.ReadOnlyModelViewSet):
         if not project_uuid:
             raise ValidationError("project_uuid is a required parameter!")
 
-        try:
-            self.request.user.authorizations.get(project_uuid=project_uuid)
-        except ProjectAuthorization.DoesNotExist:
-            raise PermissionDenied()
+        user = self.request.user
+
+        if not is_crm_user(user):
+            try:
+                user.authorizations.get(project_uuid=project_uuid)
+            except ProjectAuthorization.DoesNotExist:
+                raise PermissionDenied()
 
         queryset = queryset.filter(project_uuid=project_uuid)
 

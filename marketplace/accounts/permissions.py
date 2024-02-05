@@ -10,7 +10,7 @@ MODIFY_METHODS = ["DELETE", "PATCH", "PUT"]
 READ_METHODS = ["GET"]
 
 
-def _is_crm_user(user):
+def is_crm_user(user):
     if not settings.ALLOW_CRM_ACCESS:
         return False
 
@@ -89,7 +89,7 @@ class IsCRMUser(permissions.IsAuthenticated):
         if not is_authenticated:
             return False
 
-        return _is_crm_user(request.user)
+        return is_crm_user(request.user)
 
     def has_object_permission(self, request, view, obj):
-        return _is_crm_user(request.user)
+        return is_crm_user(request.user)
