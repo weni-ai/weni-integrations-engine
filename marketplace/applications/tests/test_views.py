@@ -2,6 +2,7 @@ import uuid
 
 from django.urls import reverse
 from django.contrib.auth import get_user_model
+from django.test import override_settings
 from rest_framework import status
 
 from marketplace.applications.models import AppTypeAsset, AppTypeFeatured, App
@@ -306,3 +307,9 @@ class ListMyAppViewTestCase(AppTypeViewTestCase):
         self.user_authorization.delete()
         response = self.request.get(self.url + f"?project_uuid={self.project_uuid}")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    @override_settings(ALLOW_CRM_ACCESS=True, CRM_EMAILS_LIST=["user@marketplace.ai"])
+    def test_request_with_crm_authorization(self):
+        self.user_authorization.delete()
+        response = self.request.get(self.url + f"?project_uuid={self.project_uuid}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
