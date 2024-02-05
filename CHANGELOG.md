@@ -1,6 +1,6 @@
 v3.3.1
 ----------
-* Create Vtex-Apptype, service and client
+* Grants project app listing permission to CRM users
 
 v3.3.0
 ----------
