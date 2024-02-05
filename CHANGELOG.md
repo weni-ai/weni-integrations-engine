@@ -1,3 +1,7 @@
+v3.3.1
+----------
+* Create Vtex-Apptype, service and client
+
 v3.3.0
 ----------
 * Create Vtex-Apptype, service and client
