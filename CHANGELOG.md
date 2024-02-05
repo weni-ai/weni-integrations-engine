@@ -1,3 +1,12 @@
+v3.3.0
+----------
+* Create Vtex-Apptype, service and client
+* Display wa_business_id on retrieve wpp-cloud App 
+
+v3.2.4
+----------
+* Add CRM permission to the whatsapp-cloud conversations API
+
 v3.2.3
 ----------
 * Add redis lock key to sync_facebook_catalogs task
