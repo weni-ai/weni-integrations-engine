@@ -109,6 +109,9 @@ class VtexService:
         products = pvt_service.list_all_products(
             credentials.domain, catalog.vtex_app.config
         )
+        if not products:
+            return None
+
         products_csv = pvt_service.data_processor.products_to_csv(products)
         product_feed = self._send_products_to_facebook(products_csv, catalog)
         self.product_manager.create_or_update_products_on_database(

@@ -14,9 +14,7 @@ class ExcludeAlcoholicDrinks(Rule):
         ALCOHOLIC_DRINKS_CATEGORIES (set): A set of category names that identify alcoholic drinks.
     """
 
-    ALCOHOLIC_DRINKS_CATEGORIES = {
-        "Bebida Alcoólica",
-    }
+    ALCOHOLIC_DRINKS_CATEGORIES = {"bebida alcoólica", "bebidas alcoólicas"}
 
     def apply(self, product: FacebookProductDTO, **kwargs) -> bool:
         """
@@ -44,7 +42,9 @@ class ExcludeAlcoholicDrinks(Rule):
             bool: True if the product belongs to alcoholic drinks category, False otherwise.
         """
         product_categories = set(
-            product.product_details.get("ProductCategories", {}).values()
+            category.lower()
+            for category in product.product_details.get(
+                "ProductCategories", {}
+            ).values()
         )
-        # Check if there's any intersection between product categories and alcoholic drinks categories.
         return bool(self.ALCOHOLIC_DRINKS_CATEGORIES.intersection(product_categories))

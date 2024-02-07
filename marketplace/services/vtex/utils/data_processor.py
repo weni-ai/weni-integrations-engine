@@ -59,11 +59,10 @@ class DataProcessor:
             if product_details["ProductDescription"] != ""
             else product_details["SkuName"]
         )
-
         return FacebookProductDTO(
             id=sku_id,
-            title=product_details["SkuName"],
-            description=description,
+            title=product_details["SkuName"].title(),
+            description=description.title(),
             availability="in stock"
             if availability_details["is_available"]
             else "out of stock",
@@ -108,8 +107,10 @@ class DataProcessor:
             )  # TODO: Test whether by waiting this time the processes are terminated correctly
             for future in concurrent.futures.as_completed(futures):
                 try:
-                    all_facebook_products.extend(future.result())
-                    print("total products extend to", len(all_facebook_products))
+                    results = future.result()
+                    if results:
+                        all_facebook_products.extend(results)
+                        print("total products extend to", len(all_facebook_products))
                 except Exception as e:
                     print(f"Exception in thread: {e}")
 
@@ -132,7 +133,13 @@ class DataProcessor:
                 store_domain, product_details, availability_details
             )
             params = {"seller_id": seller_id}
-            if all(rule.apply(product_dto, **params) for rule in rules):
+            all_rules_applied = True
+            for rule in rules:
+                if not rule.apply(product_dto, **params):
+                    all_rules_applied = False
+                    break
+
+            if all_rules_applied:
                 facebook_products.append(product_dto)
 
         return facebook_products

@@ -155,6 +155,10 @@ def task_insert_vtex_products(**kwargs):
         )
 
         products = vtex_service.first_product_insert(api_credentials, catalog)
+        if products is None:
+            print("There are no products to be shipped after processing the rules")
+            return
+
         dict_catalog = {
             "name": catalog.name,
             "facebook_catalog_id": catalog.facebook_catalog_id,
