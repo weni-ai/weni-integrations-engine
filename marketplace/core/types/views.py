@@ -24,6 +24,7 @@ class BaseAppTypeViewSet(
     queryset = App.objects
     lookup_field = "uuid"
     permission_classes = [ProjectManagePermission]
+    app = None
 
     def get_queryset(self):
         return super().get_queryset().filter(code=self.type_class.code)
@@ -35,7 +36,14 @@ class BaseAppTypeViewSet(
             data = {"error": "Exceeded the integration limit for this App"}
             return Response(data, status=status.HTTP_403_FORBIDDEN)
 
-        return super().create(request, *args, **kwargs)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        self.set_app(serializer.instance)
+        headers = self.get_success_headers(serializer.data)
+        return Response(
+            serializer.data, status=status.HTTP_201_CREATED, headers=headers
+        )
 
     def perform_destroy(self, instance):
         super().perform_destroy(instance)
@@ -44,3 +52,9 @@ class BaseAppTypeViewSet(
         if channel_uuid:
             client = ConnectProjectClient()
             client.release_channel(channel_uuid, project_uuid, self.request.user.email)
+
+    def set_app(self, instance: App):
+        self.app = instance
+
+    def get_app(self) -> App:
+        return self.app

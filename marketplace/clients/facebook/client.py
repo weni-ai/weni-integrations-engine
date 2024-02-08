@@ -6,18 +6,16 @@ from django.conf import settings
 from marketplace.clients.base import RequestClient
 
 WHATSAPP_VERSION = settings.WHATSAPP_VERSION
-ACCESS_TOKEN = settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
 
 
 class FacebookAuthorization:
     BASE_URL = f"https://graph.facebook.com/{WHATSAPP_VERSION}/"
 
-    def __init__(self):
-        self.access_token = ACCESS_TOKEN
+    def __init__(self, access_token):
+        self.access_token = access_token
 
     def _get_headers(self):
-        headers = {"Authorization": f"Bearer {self.access_token}"}
-        return headers
+        return {"Authorization": f"Bearer {self.access_token}"}
 
     @property
     def get_url(self):
@@ -26,7 +24,7 @@ class FacebookAuthorization:
 
 class FacebookClient(FacebookAuthorization, RequestClient):
     # Product Catalog
-    def create_catalog(self, business_id, name, category=None):
+    def create_catalog(self, business_id, name, category="commerce"):
         url = self.get_url + f"{business_id}/owned_product_catalogs"
         data = {"name": name}
         if category:
@@ -54,21 +52,26 @@ class FacebookClient(FacebookAuthorization, RequestClient):
 
         return response.json()
 
-    def upload_product_feed(self, feed_id, file):
+    def upload_product_feed(
+        self, feed_id, file, file_name, file_content_type, update_only=False
+    ):
         url = self.get_url + f"{feed_id}/uploads"
 
         headers = self._get_headers()
         files = {
             "file": (
-                file.name,
+                file_name,
                 file,
-                file.content_type,
+                file_content_type,
             )
         }
-        response = self.make_request(url, method="POST", headers=headers, files=files)
+        params = {"update_only": update_only}
+        response = self.make_request(
+            url, method="POST", headers=headers, params=params, files=files
+        )
         return response.json()
 
-    def create_product_feed_via_url(
+    def create_product_feed_by_url(
         self, product_catalog_id, name, feed_url, file_type, interval, hour
     ):  # TODO: adjust this method
         url = self.get_url + f"{product_catalog_id}/product_feeds"
@@ -137,14 +140,18 @@ class FacebookClient(FacebookAuthorization, RequestClient):
         url = self.get_url + f"{wa_business_id}/owned_product_catalogs"
         headers = self._get_headers()
         all_catalog_ids = []
+        all_catalogs = []
 
         while url:
             response = self.make_request(url, method="GET", headers=headers).json()
             catalog_data = response.get("data", [])
-            all_catalog_ids.extend([item["id"] for item in catalog_data])
+            for item in catalog_data:
+                all_catalog_ids.append(item["id"])
+                all_catalogs.append(item)
+
             url = response.get("paging", {}).get("next")
 
-        return all_catalog_ids
+        return all_catalog_ids, all_catalogs
 
     def destroy_feed(self, feed_id):
         url = self.get_url + f"{feed_id}"
@@ -221,8 +228,27 @@ class FacebookClient(FacebookAuthorization, RequestClient):
     def get_template_analytics(self, waba_id, fields):
         url = self.BASE_URL + f"{waba_id}/template_analytics"
         headers = self._get_headers()
-        response = self.make_request(url, method="GET", headers=headers, params=fields)
-        return response.json()
+        combined_data = {}
+
+        while url:
+            response = self.make_request(
+                url, method="GET", headers=headers, params=fields
+            )
+            data = response.json()
+
+            for entry in data.get("data", []):
+                data_points = entry.get("data_points", [])
+
+                if "data" not in combined_data:
+                    combined_data["data"] = {"data_points": []}
+
+                combined_data["data"]["data_points"].extend(data_points)
+
+            paging = data.get("paging", {})
+            next_url = paging.get("next")
+            url = next_url if next_url else None
+
+        return combined_data
 
     def enable_template_insights(self, waba_id):
         url = self.BASE_URL + f"{waba_id}"

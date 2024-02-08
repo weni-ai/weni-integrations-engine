@@ -1,12 +1,11 @@
 from rest_framework import serializers
 
-from marketplace.wpp_products.models import Catalog
+from marketplace.wpp_products.models import Catalog, Product
 
 
 class CatalogSerializer(serializers.ModelSerializer):
     name = serializers.CharField(required=True)
     facebook_catalog_id = serializers.CharField(read_only=True)
-    category = serializers.CharField(required=True)
     is_connected = serializers.SerializerMethodField()
 
     class Meta:
@@ -46,3 +45,29 @@ class CatalogListSerializer(serializers.BaseSerializer):
             serialized_data.insert(0, connected_data)
 
         return serialized_data
+
+
+class ProductSerializer(serializers.ModelSerializer):
+    title = serializers.CharField(required=True)
+    available = serializers.SerializerMethodField()
+    price = serializers.CharField()
+    sale_price = serializers.CharField()
+    facebook_product_id = serializers.CharField()
+    image_link = serializers.CharField()
+
+    class Meta:
+        model = Product
+        fields = (
+            "title",
+            "available",
+            "price",
+            "sale_price",
+            "facebook_product_id",
+            "image_link",
+        )
+
+    def get_available(self, obj):
+        if obj.availability == "in stock":
+            return True
+        else:
+            return False

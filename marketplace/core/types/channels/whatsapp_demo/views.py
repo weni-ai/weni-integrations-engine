@@ -43,10 +43,14 @@ class WhatsAppDemoViewSet(views.BaseAppTypeViewSet):
         except ValueError:
             raise ValidationError(dict(detail=f"“{project_uuid}” is not a valid UUID."))
 
-        permission = request.user.authorizations.filter(project_uuid=project_uuid).first()
+        permission = request.user.authorizations.filter(
+            project_uuid=project_uuid
+        ).first()
 
         if not permission or permission.role == ProjectAuthorization.ROLE_NOT_SETTED:
-            raise PermissionDenied(detail="You do not have permission to access this project")
+            raise PermissionDenied(
+                detail="You do not have permission to access this project"
+            )
 
         app = self.type_class.apps.filter(project_uuid=project_uuid).first()
 

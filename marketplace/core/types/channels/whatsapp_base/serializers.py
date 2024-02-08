@@ -39,6 +39,7 @@ class WhatsAppConfigSerializer(serializers.Serializer):
     title = serializers.CharField(required=False)
     waba = WhatsAppConfigWABASerializer(required=False)
     phone_number = WhatsAppConfigPhoneNumberSerializer(required=False)
+    wa_business_id = serializers.CharField(required=False)
 
 
 class WhatsAppSerializer(AppTypeBaseSerializer):

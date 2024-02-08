@@ -16,4 +16,6 @@ class AppConfigurationUseCase:  # pragma: no cover
         self.__channel_token_client = channel_token_client
 
     def configure_app(self, app: "App", apptype: "AppType", user: "User") -> None:
-        apptype.configure_app(app, user, self.__channel_client, self.__channel_token_client)
+        apptype.configure_app(
+            app, user, self.__channel_client, self.__channel_token_client
+        )

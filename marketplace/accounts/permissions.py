@@ -1,5 +1,6 @@
 from rest_framework import permissions
 from django.contrib.auth.models import AnonymousUser
+from django.conf import settings
 
 from .models import ProjectAuthorization
 
@@ -7,6 +8,16 @@ from .models import ProjectAuthorization
 WRITE_METHODS = ["POST"]
 MODIFY_METHODS = ["DELETE", "PATCH", "PUT"]
 READ_METHODS = ["GET"]
+
+
+def is_crm_user(user):
+    if not settings.ALLOW_CRM_ACCESS:
+        return False
+
+    if user.email not in settings.CRM_EMAILS_LIST:
+        return False
+
+    return True
 
 
 class ProjectManagePermission(permissions.IsAuthenticated):
@@ -69,3 +80,16 @@ class ProjectViewPermission(permissions.BasePermission):
             or authorization.is_contributor
             or authorization.is_admin
         )
+
+
+class IsCRMUser(permissions.IsAuthenticated):
+    def has_permission(self, request, view) -> bool:
+        is_authenticated = super().has_permission(request, view)
+
+        if not is_authenticated:
+            return False
+
+        return is_crm_user(request.user)
+
+    def has_object_permission(self, request, view, obj):
+        return is_crm_user(request.user)

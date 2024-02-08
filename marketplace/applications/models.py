@@ -21,11 +21,13 @@ class App(AppTypeBaseModel):
     PLATFORM_IA = "IA"
     PLATFORM_WENI_FLOWS = "WF"
     PLATFORM_RC = "RC"
+    PLATFORM_VTEX = "VT"
 
     PLATFORM_CHOICES = (
         (PLATFORM_IA, "inteligence-artificial"),
         (PLATFORM_WENI_FLOWS, "weni-flows"),
         (PLATFORM_RC, "rocketchat"),
+        (PLATFORM_VTEX, "vtex"),
     )
 
     config = models.JSONField(default=dict)

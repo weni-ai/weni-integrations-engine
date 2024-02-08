@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from rest_framework.request import Request
     from .interfaces import ProfileHandlerInterface, BusinessProfileHandlerInterface
 
-from marketplace.accounts.permissions import ProjectViewPermission
+from marketplace.accounts.permissions import ProjectViewPermission, IsCRMUser
 from .requests.facebook import FacebookConversationAPI
 from .exceptions import FacebookApiException, UnableProcessProfilePhoto
 from .serializers import WhatsAppBusinessContactSerializer, WhatsAppProfileSerializer
@@ -60,8 +60,13 @@ class WhatsAppConversationsMixin(object, metaclass=abc.ABCMeta):
     def get_access_token(self) -> dict:
         pass  # pragma: no cover
 
-    @action(detail=True, methods=["GET"], permission_classes=[ProjectViewPermission])
+    @action(
+        detail=True,
+        methods=["GET"],
+        permission_classes=[ProjectViewPermission | IsCRMUser],
+    )
     def conversations(self, request: "Request", **kwargs) -> Response:
+        self.get_object()
         date_params = QueryParamsParser(request.query_params)
 
         try:

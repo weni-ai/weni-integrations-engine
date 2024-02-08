@@ -25,6 +25,14 @@ class Catalog(BaseModel):
         default=VerticalChoices.ECOMMERCE,
     )
     app = models.ForeignKey(App, on_delete=models.CASCADE, related_name="catalogs")
+    vtex_app = models.ForeignKey(
+        App,
+        on_delete=models.SET_NULL,
+        related_name="vtex_catalogs",
+        blank=True,
+        null=True,
+        limit_choices_to={"code": "vtex"},
+    )
     created_by = models.ForeignKey(
         "accounts.User",
         on_delete=models.PROTECT,
@@ -50,5 +58,56 @@ class Catalog(BaseModel):
             models.UniqueConstraint(
                 fields=["facebook_catalog_id", "app"],
                 name="unique_facebook_catalog_id_per_app",
+            )
+        ]
+
+
+class ProductFeed(BaseModel):
+    facebook_feed_id = models.CharField(max_length=30, unique=True)
+    name = models.CharField(max_length=100)
+    catalog = models.ForeignKey(Catalog, on_delete=models.CASCADE, related_name="feeds")
+
+    def __str__(self):
+        return self.name
+
+
+class Product(BaseModel):
+    AVAILABILITY_CHOICES = [("in stock", "in stock"), ("out of stock", "out of stock")]
+    CONDITION_CHOICES = [
+        ("new", "new"),
+        ("refurbished", "refurbished"),
+        ("used", "used"),
+    ]
+    facebook_product_id = models.CharField(max_length=30)
+    # facebook required fields
+    title = models.CharField(max_length=200)
+    description = models.TextField(max_length=9999)
+    availability = models.CharField(max_length=12, choices=AVAILABILITY_CHOICES)
+    condition = models.CharField(max_length=11, choices=CONDITION_CHOICES)
+    price = models.CharField(max_length=50)  # Example: "9.99 USD"
+    link = models.URLField()
+    image_link = models.URLField()
+    brand = models.CharField(max_length=100)
+    sale_price = models.CharField(max_length=50)  # Example: "9.99 USD"
+
+    catalog = models.ForeignKey(
+        Catalog, on_delete=models.CASCADE, related_name="products"
+    )
+    feed = models.ForeignKey(
+        ProductFeed,
+        on_delete=models.CASCADE,
+        related_name="products",
+        null=True,
+        blank=True,
+    )
+
+    def __str__(self):
+        return self.title
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facebook_product_id", "catalog"],
+                name="unique_facebook_product_id_per_catalog",
             )
         ]

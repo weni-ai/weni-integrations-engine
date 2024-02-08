@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     "marketplace.wpp_templates",
     "marketplace.event_driven",
     "marketplace.wpp_products",
+    "marketplace.webhooks",
     # installed apps
     "rest_framework",
     "storages",
@@ -216,6 +217,12 @@ if USE_OIDC:
     )
     OIDC_RP_SCOPES = env.str("OIDC_RP_SCOPES", default="openid email")
 
+OIDC_CACHE_TOKEN = env.bool(
+    "OIDC_CACHE_TOKEN", default=False
+)  # Enable/disable user token caching (default: False).
+OIDC_CACHE_TTL = env.int(
+    "OIDC_CACHE_TTL", default=600
+)  # Time-to-live for cached user tokens (default: 600 seconds).
 
 # django-cors-headers Configurations
 
@@ -276,6 +283,7 @@ APPTYPE_FACEBOOK_CHANNEL_PATH = "channels.facebook.type.FacebookType"
 # Externals
 APPTYPE_OMIE_PATH = "externals.omie.type.OmieType"
 APPTYPE_CHATGPT_PATH = "externals.chatgpt.type.ChatGPTType"
+APPTYPE_VTEX_PATH = "ecommerce.vtex.type.VtexType"
 
 APPTYPES_CLASSES = [
     APPTYPE_WENI_WEB_CHAT_PATH,
@@ -288,6 +296,7 @@ APPTYPES_CLASSES = [
     APPTYPE_OMIE_PATH,
     APPTYPE_GENERIC_CHANNEL_PATH,
     APPTYPE_CHATGPT_PATH,
+    APPTYPE_VTEX_PATH,
 ]
 
 # These conditions avoid dependence between apptypes,
@@ -299,6 +308,8 @@ WHATSAPP_VERSION = env.str("WHATSAPP_VERSION", default="v16.0")
 WHATSAPP_API_URL = urllib.parse.urljoin(
     env.str("WHATSAPP_API_URL", default="https://graph.facebook.com/"), WHATSAPP_VERSION
 )
+WHATSAPP_APPLICATION_SECRET = env.str("WHATSAPP_APPLICATION_SECRET", default="")
+WHATSAPP_APPLICATION_ID = env.str("WHATSAPP_APPLICATION_ID", default="")
 
 if APPTYPE_WHATSAPP_PATH in APPTYPES_CLASSES:
     WHATSAPP_TIME_BETWEEN_SYNC_WABA_IN_HOURS = (
@@ -360,7 +371,9 @@ CELERY_BEAT_SCHEDULE = {
     },
     "refresh-whatsapp-templates-from-facebook": {
         "task": "refresh_whatsapp_templates_from_facebook",
-        "schedule": timedelta(seconds=1800),
+        "schedule": timedelta(
+            seconds=env.int("REFRESH_WHATSAPP_TEMPLATES_TIME", default=1800)
+        ),
     },
     "check-apps-uncreated-on-flow": {
         "task": "check_apps_uncreated_on_flow",
@@ -368,7 +381,9 @@ CELERY_BEAT_SCHEDULE = {
     },
     "sync-facebook-catalogs": {
         "task": "sync_facebook_catalogs",
-        "schedule": timedelta(seconds=1800),
+        "schedule": timedelta(
+            seconds=env.int("SYNC_FACEBOOK_CATALOGS_TIME", default=5400)
+        ),
     },
 }
 
@@ -409,3 +424,9 @@ if USE_EDA:
     EDA_BROKER_PORT = env.int("EDA_BROKER_PORT", default=5672)
     EDA_BROKER_USER = env("EDA_BROKER_USER", default="guest")
     EDA_BROKER_PASSWORD = env("EDA_BROKER_PASSWORD", default="guest")
+
+
+ALLOW_CRM_ACCESS = env.bool("ALLOW_CRM_ACCESS", default=False)
+
+if ALLOW_CRM_ACCESS:
+    CRM_EMAILS_LIST = env.list("CRM_EMAILS_LIST")
