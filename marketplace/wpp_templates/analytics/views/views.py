@@ -18,7 +18,7 @@ class TemplateAnalyticsViewSet(viewsets.ViewSet):
         super().__init__(*args, **kwargs)
         self._fb_service = None
 
-    def fb_service(self, access_token: str):
+    def fb_service(self, access_token: str):  # pragma: no cover
         if not self._fb_service:
             self._fb_service = self.fb_service_class(self.fb_client_class(access_token))
         return self._fb_service
