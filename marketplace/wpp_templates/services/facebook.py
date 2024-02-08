@@ -85,3 +85,11 @@ class FacebookService:
             return translation.template.name
 
         return None
+
+    def enable_insights(self, app):
+        waba_id = self.get_waba(app=app).get("wa_waba_id")
+        response = self.client.enable_template_insights(waba_id=waba_id)
+        if response.get("id") != waba_id:
+            return None
+
+        return True

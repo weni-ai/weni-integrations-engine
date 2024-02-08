@@ -249,3 +249,10 @@ class FacebookClient(FacebookAuthorization, RequestClient):
             url = next_url if next_url else None
 
         return combined_data
+
+    def enable_template_insights(self, waba_id):
+        url = self.BASE_URL + f"{waba_id}"
+        params = {"is_enabled_for_insights": "true"}
+        headers = self._get_headers()
+        response = self.make_request(url, method="POST", headers=headers, params=params)
+        return response.json()

@@ -1,6 +1,6 @@
 import uuid
 
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 from rest_framework import status
 
 from django.urls import reverse
@@ -36,8 +36,17 @@ class MockFacebookService:
             "totals": {"sent": 6, "delivered": 6, "read": 2},
         }
 
+    def enable_insights(self, app):
+        return True
+
+
+class MockFacebookServiceFailure(MockFacebookService):
+    def enable_insights(self, app):
+        return None
+
 
 class SetUpTestBase(APIBaseTestCase):
+    current_view_mapping = {}
     view_class = TemplateAnalyticsViewSet
 
     def setUp(self):
@@ -45,6 +54,7 @@ class SetUpTestBase(APIBaseTestCase):
         self.app = App.objects.create(
             code="wpp-cloud",
             created_by=self.user,
+            config={"wa_waba_id": "123456789"},
             project_uuid=str(uuid.uuid4()),
             platform=App.PLATFORM_WENI_FLOWS,
         )
@@ -55,19 +65,24 @@ class SetUpTestBase(APIBaseTestCase):
 
     @property
     def view(self):
-        return self.view_class.as_view({"post": "template_analytics"})
+        return self.view_class.as_view(self.current_view_mapping)
 
 
-class TemplateAnalyticsViewSetTestCase(SetUpTestBase):
+class MockServices(SetUpTestBase):
     def setUp(self):
         super().setUp()
-        # Mock service
-        mock_service = MockFacebookService()
+
+        # Mock Facebook service
+        self.mock_facebook_service = MockFacebookService()
         patcher = patch.object(
-            self.view_class, "fb_service", Mock(return_value=mock_service)
+            self.view_class, "get_app_service", return_value=self.mock_facebook_service
         )
         self.addCleanup(patcher.stop)
         patcher.start()
+
+
+class TemplateAnalyticsViewSetTestCase(MockServices):
+    current_view_mapping = {"post": "template_analytics"}
 
     def test_get_template_analytics(self):
         url = reverse(
@@ -83,3 +98,23 @@ class TemplateAnalyticsViewSetTestCase(SetUpTestBase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.json["data"]), 2)
+
+
+class EnableTemplateAnalyticsViewSetTestCase(MockServices):
+    current_view_mapping = {"post": "enable_template_analytics"}
+
+    def test_enable_template_analytics(self):
+        url = reverse(
+            "enable-template-analytics",
+            kwargs={"app_uuid": self.app.uuid},
+        )
+        response = self.request.post(url, app_uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_failed_to_enable_template_analytics(self):
+        with patch.object(MockFacebookService, "enable_insights", return_value=None):
+            url = reverse(
+                "enable-template-analytics", kwargs={"app_uuid": self.app.uuid}
+            )
+            response = self.client.post(url, app_uuid=self.app.uuid)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
