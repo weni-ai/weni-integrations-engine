@@ -1,3 +1,11 @@
+v3.3.2
+----------
+* Create action to activate the analytics template on Facebook
+* Refactoring of the catalog synchronization task
+* Fix product description and adds new business rules
+* Displays date information for the template analytics
+* Add flag has_insights in wpp-cloud channel config
+
 v3.3.1
 ----------
 * Create Vtex-Apptype, service and client
