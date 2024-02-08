@@ -24,7 +24,7 @@ class TemplateAnalyticsViewSet(viewsets.ViewSet):
 
         return self._fb_service
 
-    @action(detail=True, methods=["GET"])
+    @action(detail=True, methods=["POST"])
     def template_analytics(self, request, app_uuid=None, **kwargs):
         app = get_object_or_404(App, uuid=app_uuid, code__in=["wpp-cloud", "wpp"])
         if app.code == "wpp-cloud":
@@ -32,7 +32,7 @@ class TemplateAnalyticsViewSet(viewsets.ViewSet):
         else:
             service = self.fb_service(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
 
-        serializer = AnalyticsSerializer(data=request.query_params)
+        serializer = AnalyticsSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         validated_data = serializer.validated_data
 

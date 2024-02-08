@@ -37,7 +37,7 @@ class SetUpTestBase(APIBaseTestCase):
 
     @property
     def view(self):
-        return self.view_class.as_view({"get": "template_analytics"})
+        return self.view_class.as_view({"post": "template_analytics"})
 
 
 class TemplateAnalyticsViewSetSerializerTestCase(SetUpTestBase):
@@ -56,12 +56,12 @@ class TemplateAnalyticsViewSetSerializerTestCase(SetUpTestBase):
             "template-analytics",
             kwargs={"app_uuid": self.app.uuid},
         )
-        params = {
+        body = {
             "start": "12-31-2023",
             "end": "01-01-2023",
             "fba_template_ids": ["831797345020910"],
         }
-        response = self.client.get(url, params, format="json")
+        response = self.client.post(url, body, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
@@ -80,12 +80,12 @@ class TemplateAnalyticsViewSetSerializerTestCase(SetUpTestBase):
             "template-analytics",
             kwargs={"app_uuid": app.uuid},
         )
-        params = {
+        body = {
             "start": "12-31-2023",
             "end": "01-01-2023",
             "fba_template_ids": ["831797345020910"],
         }
-        response = self.client.get(url, params, format="json")
+        response = self.client.post(url, body, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
