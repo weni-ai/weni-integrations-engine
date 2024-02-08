@@ -178,6 +178,7 @@ class WhatsAppCloudViewSet(
         config["title"] = config.get("wa_number")
         config["wa_allocation_config_id"] = allocation_config_id
         config["wa_phone_number_id"] = phone_number_id
+        config["has_insights"] = False
 
         App.objects.create(
             code=self.type_class.code,

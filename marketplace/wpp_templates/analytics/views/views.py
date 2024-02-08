@@ -52,4 +52,10 @@ class TemplateAnalyticsViewSet(viewsets.ViewSet):
             return Response(
                 {"detail": "Failed to activate template analytics"}, status=400
             )
+        self._update_has_insights_key(app)
+
         return Response(status=200)
+
+    def _update_has_insights_key(self, app):
+        app.config["has_insights"] = True
+        app.save()
