@@ -1,6 +1,8 @@
 import time
 import json
 
+from requests_toolbelt.utils import dump
+
 from django.conf import settings
 
 from marketplace.clients.base import RequestClient
@@ -141,17 +143,46 @@ class FacebookClient(FacebookAuthorization, RequestClient):
         headers = self._get_headers()
         all_catalog_ids = []
         all_catalogs = []
+        request = None
+        response_data = None
+        initial_url = url
 
         while url:
-            response = self.make_request(url, method="GET", headers=headers).json()
-            catalog_data = response.get("data", [])
+            response = self.make_request(url, method="GET", headers=headers)
+            catalog_data = response.json().get("data", [])
+
             for item in catalog_data:
+
                 all_catalog_ids.append(item["id"])
                 all_catalogs.append(item)
 
-            url = response.get("paging", {}).get("next")
+            url = response.json().get("paging", {}).get("next")
 
-        return all_catalog_ids, all_catalogs
+            request, response_data = self.request_http_log(response)
+
+        return all_catalog_ids, all_catalogs, request, response_data, initial_url
+
+    def request_http_log(self, response):
+        request_delim = ">!>!>! "
+        response_delim = "<!<!<! "
+
+        data = dump.dump_response(
+            response,
+            request_prefix=request_delim.encode("utf-8"),
+            response_prefix=response_delim.encode("utf-8"),
+        ).decode("utf-8")
+
+        request_lines = data.split(request_delim)
+
+        response_lines = request_lines[-1].split(response_delim)
+
+        request_lines[-1] = response_lines[0]
+        response_lines = response_lines[1:]
+
+        request = "".join(request_lines)
+        response = "".join(response_lines)
+
+        return request, response
 
     def destroy_feed(self, feed_id):
         url = self.get_url + f"{feed_id}"
