@@ -1,4 +1,5 @@
 import requests
+from marketplace.clients.facebook.client import FacebookClient
 
 from marketplace.core.types.channels.whatsapp_base.exceptions import (
     FacebookApiException,
@@ -17,16 +18,22 @@ class TemplateMessageRequest(object):
     def _headers(self) -> dict:
         return {"Authorization": f"Bearer {self._access_token}"}
 
-    def list_template_messages(self, waba_id: str) -> dict:
+    def list_template_messages(self, waba_id: str) -> tuple:
+        url = (
+            f"https://graph.facebook.com/{WHATSAPP_VERSION}/{waba_id}/message_templates"
+        )
         params = dict(
             limit=999,
             access_token=self._access_token,
         )
         response = requests.get(
-            url=f"https://graph.facebook.com/{WHATSAPP_VERSION}/{waba_id}/message_templates",
+            url,
             params=params,
         )
-        return response.json()
+
+        request, response_data = FacebookClient.request_http_log(response)
+
+        return response.json(), request, response_data, url
 
     def get_template_namespace(self, waba_id: str) -> dict:
         params = dict(
