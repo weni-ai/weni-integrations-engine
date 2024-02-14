@@ -95,9 +95,8 @@ class PhoneNumbersRequest(object):
 
 
 class PhotoAPIRequest(object):
-    def __init__(self, phone_number_id: str, access_token: str) -> None:
+    def __init__(self, access_token: str) -> None:
         self._access_token = access_token
-        self._phone_number_id = phone_number_id
 
     @property
     def _headers(self) -> dict:
@@ -106,9 +105,7 @@ class PhotoAPIRequest(object):
     def _get_url(self, endpoint: str) -> str:
         return f"{settings.WHATSAPP_API_URL}/{endpoint}"
 
-    def create_upload_session(
-        self, access_token: str, file_length: int, file_type: str
-    ) -> str:
+    def create_upload_session(self, file_length: int, file_type: str) -> str:
         url = self._get_url(
             f"app/uploads?access_token={self._access_token}&file_length={file_length}&file_type={file_type}"
         )
@@ -139,8 +136,8 @@ class PhotoAPIRequest(object):
 
         return response.json().get("h", "")
 
-    def set_photo(self, photo):
-        url = self._get_url(f"{self._phone_number_id}/whatsapp_business_profile")
+    def set_photo(self, photo, phone_number_id):
+        url = self._get_url(f"{phone_number_id}/whatsapp_business_profile")
 
         upload_session_id = self.create_upload_session(
             self._access_token, len(photo.file.getvalue()), file_type=photo.content_type

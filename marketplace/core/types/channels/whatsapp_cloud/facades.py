@@ -26,7 +26,8 @@ class CloudProfileFacade(object):  # TODO: Interface
 
     def __init__(self, access_token: str, phone_number_id: "str") -> None:
         self._profile_api = CloudProfileRequest(access_token, phone_number_id)
-        self._photo_api = PhotoAPIRequest(access_token, phone_number_id)
+        self._photo_api = PhotoAPIRequest(access_token)
+        self._phone_number_id = phone_number_id
 
     def get_profile(self):
         profile = self._profile_api.get_profile()
@@ -41,7 +42,7 @@ class CloudProfileFacade(object):  # TODO: Interface
 
     def set_profile(self, photo: str = None, status: str = None, business: dict = {}):
         if photo is not None:
-            self._photo_api.set_photo(photo)
+            self._photo_api.set_photo(photo, self._phone_number_id)
 
         data = dict()
 
