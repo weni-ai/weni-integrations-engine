@@ -1,3 +1,8 @@
+v3.3.3
+----------
+* Fixing the order of parameters for PhotoAPIRequest
+* Upgrade python version from 3.8.x to 3.9.x 
+
 v3.3.2
 ----------
 * Create action to activate the analytics template on Facebook
