@@ -55,7 +55,7 @@ class CloudProfileRequest(ProfileHandlerInterface):
         if response.status_code != status.HTTP_200_OK:
             raise FacebookApiException(response.json())
 
-    def delete_profile_photo(self):
+    def delete_profile_photo(self):  # pragma: no cover
         ...
 
 
