@@ -1,6 +1,7 @@
 from typing import List
 
 from django.contrib.auth import get_user_model
+from django.db import transaction
 
 from marketplace.services.vtex.utils.data_processor import FacebookProductDTO
 from marketplace.wpp_products.models import Product
@@ -13,14 +14,21 @@ class ProductFacebookManager:
     def create_or_update_products_on_database(
         self, products: List[FacebookProductDTO], catalog, product_feed
     ):
+        print("Starting the data insertion process in integrations databases")
+        existing_products = (
+            Product.objects.filter(
+                facebook_product_id__in=[dto.id for dto in products], catalog=catalog
+            )
+            .select_related("catalog")
+            .in_bulk(field_name="facebook_product_id")
+        )
+
         products_to_update = []
         products_to_create = []
 
         for dto in products:
-            try:
-                product = Product.objects.get(
-                    facebook_product_id=dto.id, catalog=catalog
-                )  # TODO: Optimize to make a single query at the bank
+            product = existing_products.get(dto.id)
+            if product:
                 product.title = dto.title
                 product.description = dto.description
                 product.availability = dto.availability
@@ -31,7 +39,7 @@ class ProductFacebookManager:
                 product.brand = dto.brand
                 product.sale_price = dto.sale_price
                 products_to_update.append(product)
-            except Product.DoesNotExist:
+            else:
                 new_product = Product(
                     facebook_product_id=dto.id,
                     title=dto.title,
@@ -49,23 +57,25 @@ class ProductFacebookManager:
                 )
                 products_to_create.append(new_product)
 
-        if products_to_update:
-            # Bulk update
-            fields_to_update = [
-                "title",
-                "description",
-                "availability",
-                "condition",
-                "price",
-                "link",
-                "image_link",
-                "brand",
-                "sale_price",
-            ]
-            Product.objects.bulk_update(products_to_update, fields_to_update)
+        with transaction.atomic():
+            if products_to_update:
+                Product.objects.bulk_update(
+                    products_to_update,
+                    [
+                        "title",
+                        "description",
+                        "availability",
+                        "condition",
+                        "price",
+                        "link",
+                        "image_link",
+                        "brand",
+                        "sale_price",
+                    ],
+                    batch_size=1000,
+                )
 
-        # Bulk create
-        if products_to_create:
-            Product.objects.bulk_create(products_to_create)
+            if products_to_create:
+                Product.objects.bulk_create(products_to_create, batch_size=1000)
 
         return True

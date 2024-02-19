@@ -67,7 +67,9 @@ class FacebookCatalogSyncService:
         try:
             return self.client.list_all_catalogs(self.app.config.get("wa_business_id"))
         except Exception as e:
-            logger.error(f"Error on list all catalogs for App: {str(e)}")
+            logger.error(
+                f"Error on list all catalogs for App: {self.app.uuid} {str(e)}"
+            )
             return [], []
 
     def _update_catalogs_on_flows(self, all_catalogs):
