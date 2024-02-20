@@ -143,6 +143,30 @@ class SyncWhatsAppCloudAppsTaskTestCase(TestCase):
         self.assertEqual(app.code, "wpp-cloud")
         self.assertIn("have_to_stay", app.config)
 
+    @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.get_redis_connection")
+    @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
+    @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.logger")
+    @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.APPTYPES.get")
+    def test_app_cloud_creation_error(
+        self, apptype_mock, logger_mock, list_channel_mock: "MagicMock", mock_redis
+    ) -> None:
+        project_uuid = str(uuid4())
+        flow_object_uuid = str(uuid4())
+
+        channel_value = self._get_mock_value(project_uuid, flow_object_uuid)
+        channel_value[0]["is_active"] = True
+
+        list_channel_mock.return_value = channel_value
+
+        apptype_mock.return_value.create_app.side_effect = Exception("Test exception")
+        mock_redis.return_value = self.redis_mock
+
+        sync_whatsapp_cloud_apps()
+
+        logger_mock.error.assert_called_with(
+            f"Error on processing sync_whatsapp_cloud_apps for channel {flow_object_uuid}: Test exception"
+        )
+
 
 class CheckAppsUncreatedOnFlowTaskTestCase(TestCase):
     def setUp(self) -> None:
