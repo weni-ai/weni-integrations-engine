@@ -14,6 +14,7 @@ class FacebookService:
             "granularity": "DAILY",
             "metric_types": "['SENT','DELIVERED','READ']",
             "template_ids": str(fba_template_ids),
+            "limit": 9999,
         }
         return fields
 

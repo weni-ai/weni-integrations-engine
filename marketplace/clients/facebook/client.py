@@ -228,25 +228,15 @@ class FacebookClient(FacebookAuthorization, RequestClient):
     def get_template_analytics(self, waba_id, fields):
         url = self.BASE_URL + f"{waba_id}/template_analytics"
         headers = self._get_headers()
-        combined_data = {}
+        combined_data = {"data": {"data_points": []}}
 
-        while url:
-            response = self.make_request(
-                url, method="GET", headers=headers, params=fields
-            )
-            data = response.json()
+        response = self.make_request(
+            url, method="GET", headers=headers, params=fields
+        ).json()
 
-            for entry in data.get("data", []):
-                data_points = entry.get("data_points", [])
-
-                if "data" not in combined_data:
-                    combined_data["data"] = {"data_points": []}
-
-                combined_data["data"]["data_points"].extend(data_points)
-
-            paging = data.get("paging", {})
-            next_url = paging.get("next")
-            url = next_url if next_url else None
+        data = response.get("data", [])
+        data_points = data[0].get("data_points", [])
+        combined_data["data"]["data_points"].extend(data_points)
 
         return combined_data
 
