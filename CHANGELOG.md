@@ -1,3 +1,8 @@
+v3.3.4
+----------
+* Reduces number of calls for catalog listings
+* Reduces calls for get template analytics
+
 v3.3.3
 ----------
 * Fixing the order of parameters for PhotoAPIRequest
