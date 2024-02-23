@@ -153,6 +153,9 @@ class DataProcessor:
         buffer.seek(0)
         return buffer
 
+    def clear_csv_buffer(buffer: io.BytesIO):
+        buffer.close()
+
     def convert_dtos_to_dicts_list(dtos: List[FacebookProductDTO]) -> List[dict]:
         dicts_list = []
         for dto in dtos:
