@@ -1,3 +1,8 @@
+v3.3.5
+----------
+* Optimizes bulk creation of vtex product data
+* Adds product status and set the product archived when out of stock
+
 v3.3.4
 ----------
 * Reduces number of calls for catalog listings
