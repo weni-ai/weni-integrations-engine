@@ -16,6 +16,7 @@ class FacebookProductDTO:
     title: str
     description: str
     availability: str
+    status: str
     condition: str
     price: str
     link: str
@@ -59,13 +60,17 @@ class DataProcessor:
             if product_details["ProductDescription"] != ""
             else product_details["SkuName"]
         )
+        availability = (
+            "in stock" if availability_details["is_available"] else "out of stock"
+        )
+        status = "Active" if availability == "in stock" else "archived"
+
         return FacebookProductDTO(
             id=sku_id,
             title=product_details["SkuName"].title(),
             description=description.title(),
-            availability="in stock"
-            if availability_details["is_available"]
-            else "out of stock",
+            availability=availability,
+            status=status,
             condition="new",
             price=list_price,
             link=product_url,
