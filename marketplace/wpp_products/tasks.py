@@ -67,7 +67,9 @@ class FacebookCatalogSyncService:
         try:
             return self.client.list_all_catalogs(self.app.config.get("wa_business_id"))
         except Exception as e:
-            logger.error(f"Error on list all catalogs for App: {str(e)}")
+            logger.error(
+                f"Error on list all catalogs for App: {self.app.uuid} {str(e)}"
+            )
             return [], []
 
     def _update_catalogs_on_flows(self, all_catalogs):
@@ -107,6 +109,7 @@ class FacebookCatalogSyncService:
 
 @celery_app.task(name="task_insert_vtex_products")
 def task_insert_vtex_products(**kwargs):
+    print("Starting first product insert")
     vtex_service = VtexService()
     flows_service = FlowsService(FlowsClient())
 
@@ -120,7 +123,7 @@ def task_insert_vtex_products(**kwargs):
             app_token=credentials.get("app_token"),
             domain=credentials.get("domain"),
         )
-
+        print(f"Starting first product insert for catalog: {str(catalog.name)}")
         products = vtex_service.first_product_insert(api_credentials, catalog)
         if products is None:
             print("There are no products to be shipped after processing the rules")
@@ -142,6 +145,7 @@ def task_insert_vtex_products(**kwargs):
 
 @celery_app.task(name="task_update_vtex_products")
 def task_update_vtex_products(**kwargs):
+    print("Starting product update")
     vtex_service = VtexService()
     flows_service = FlowsService(FlowsClient())
 
@@ -161,6 +165,7 @@ def task_update_vtex_products(**kwargs):
         for catalog in vtex_app.vtex_catalogs.all():
             if catalog.feeds.all().exists():
                 product_feed = catalog.feeds.all().first()  # The first feed created
+                print(f"Starting product update for app: {str(vtex_app.uuid)}")
                 products = vtex_service.webhook_product_insert(
                     api_credentials, catalog, webhook_data, product_feed
                 )

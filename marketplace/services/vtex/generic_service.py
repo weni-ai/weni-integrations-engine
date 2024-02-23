@@ -114,6 +114,9 @@ class VtexService:
 
         products_csv = pvt_service.data_processor.products_to_csv(products)
         product_feed = self._send_products_to_facebook(products_csv, catalog)
+        pvt_service.data_processor.clear_csv_buffer(
+            products_csv
+        )  # frees the memory of the csv file
         self.product_manager.create_or_update_products_on_database(
             products, catalog, product_feed
         )

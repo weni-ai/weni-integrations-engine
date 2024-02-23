@@ -21,6 +21,7 @@ class CalculateByWeight(Rule):
                 f"{product.title} - Aprox. {self._format_grams(weight)}, "
                 f"Preço do KG: R$ {self._format_price(price_per_kg)}"
             )
+            product.title = f"{product.title} Unidade"
 
         return True
 
