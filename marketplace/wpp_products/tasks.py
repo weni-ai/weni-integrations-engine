@@ -6,7 +6,11 @@ from marketplace.clients.facebook.client import FacebookClient
 from marketplace.wpp_products.models import Catalog
 from marketplace.clients.flows.client import FlowsClient
 from marketplace.celery import app as celery_app
-from marketplace.services.vtex.generic_service import VtexService
+from marketplace.services.vtex.generic_service import (
+    ProductUpdateService,
+    ProductInsertionService,
+    VtexServiceBase,
+)
 from marketplace.services.vtex.generic_service import APICredentials
 from marketplace.services.flows.service import FlowsService
 from marketplace.core.types import APPTYPES
@@ -110,7 +114,7 @@ class FacebookCatalogSyncService:
 @celery_app.task(name="task_insert_vtex_products")
 def task_insert_vtex_products(**kwargs):
     print("Starting first product insert")
-    vtex_service = VtexService()
+    vtex_service = ProductInsertionService()
     flows_service = FlowsService(FlowsClient())
 
     credentials = kwargs.get("credentials")
@@ -146,7 +150,7 @@ def task_insert_vtex_products(**kwargs):
 @celery_app.task(name="task_update_vtex_products")
 def task_update_vtex_products(**kwargs):
     print("Starting product update")
-    vtex_service = VtexService()
+    vtex_base_service = VtexServiceBase()
     flows_service = FlowsService(FlowsClient())
 
     app_uuid = kwargs.get("app_uuid")
@@ -154,7 +158,7 @@ def task_update_vtex_products(**kwargs):
 
     try:
         vtex_app = App.objects.get(uuid=app_uuid, configured=True, code="vtex")
-        domain, app_key, app_token = vtex_service.get_vtex_credentials_or_raise(
+        domain, app_key, app_token = vtex_base_service.get_vtex_credentials_or_raise(
             vtex_app
         )
         api_credentials = APICredentials(
@@ -166,12 +170,25 @@ def task_update_vtex_products(**kwargs):
             if catalog.feeds.all().exists():
                 product_feed = catalog.feeds.all().first()  # The first feed created
                 print(f"Starting product update for app: {str(vtex_app.uuid)}")
-                products = vtex_service.webhook_product_insert(
-                    api_credentials, catalog, webhook_data, product_feed
+
+                vtex_update_service = ProductUpdateService(
+                    api_credentials=api_credentials,
+                    catalog=catalog,
+                    webhook_data=webhook_data,
+                    product_feed=product_feed,
                 )
+                products = vtex_update_service.webhook_product_insert()
                 if products is None:
                     logger.info(
                         f"No products to process after treatment for VTEX app {app_uuid}. Task ending."
+                    )
+                    return
+
+                if products is False:
+                    logger.info(
+                        f"There is already a product in processing for the feed: "
+                        f"{product_feed.facebook_feed_id} and VTEX app {app_uuid}. "
+                        "Task ending."
                     )
                     return
 

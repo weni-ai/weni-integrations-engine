@@ -83,6 +83,9 @@ class FacebookService:
             feed_id, file, file_name, file_content_type, update_only
         )
 
+    def get_upload_status_by_feed(self, feed_id, upload_id) -> bool:
+        return self.client.get_upload_status_by_feed(feed_id, upload_id)
+
     # ================================
     # Private Methods
     # ================================
