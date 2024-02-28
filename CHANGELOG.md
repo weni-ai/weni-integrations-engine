@@ -1,3 +1,8 @@
+v3.3.6
+----------
+* Create class to send products to catalogs already created on Facebook
+* Add try-except to wpp-cloud task and check if project_uuid is not None
+
 v3.3.5
 ----------
 * Optimizes bulk creation of vtex product data
