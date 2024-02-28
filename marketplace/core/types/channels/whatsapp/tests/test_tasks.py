@@ -293,6 +293,25 @@ class SyncWhatsAppAppsTaskTestCase(TestCase):
         )
         self.assertEqual(app_template_count, app_template_after_task)
 
+    @patch("marketplace.core.types.channels.whatsapp.tasks.get_redis_connection")
+    @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
+    @patch("marketplace.core.types.channels.whatsapp.tasks.logger")
+    def test_skip_channel_with_none_project_uuid(
+        self, logger_mock, list_channel_mock: "MagicMock", mock_redis
+    ) -> None:
+        project_uuid = None
+        flow_object_uuid = str(uuid4())
+
+        list_channel_mock.return_value = self._get_mock_value(
+            project_uuid, flow_object_uuid
+        )
+
+        mock_redis.return_value = self.redis_mock
+        sync_whatsapp_apps()
+        logger_mock.info.assert_called_with(
+            f"The channel {flow_object_uuid} does not have a project_uuid."
+        )
+
 
 class SyncWhatsappCloudWabaViewTestCase(TestCase):
     def setUp(self) -> None:
