@@ -114,19 +114,25 @@ class FacebookCatalogSyncService:
 
 @celery_app.task(name="task_insert_vtex_products")
 def task_insert_vtex_products(**kwargs):
-    print("Starting first product insert")
+    print("Starting task: 'task_insert_vtex_products'")
     vtex_service = ProductInsertionService()
     flows_service = FlowsService(FlowsClient())
 
     credentials = kwargs.get("credentials")
     catalog_uuid = kwargs.get("catalog_uuid")
 
-    catalog = Catalog.objects.get(uuid=catalog_uuid)
+    if not all([credentials, catalog_uuid]):
+        logger.error(
+            "Missing required parameters [credentials, catalog_uuid] for task_insert_vtex_products"
+        )
+        return
+
     try:
+        catalog = Catalog.objects.get(uuid=catalog_uuid)
         api_credentials = APICredentials(
-            app_key=credentials.get("app_key"),
-            app_token=credentials.get("app_token"),
-            domain=credentials.get("domain"),
+            app_key=credentials["app_key"],
+            app_token=credentials["app_token"],
+            domain=credentials["domain"],
         )
         print(f"Starting first product insert for catalog: {str(catalog.name)}")
         products = vtex_service.first_product_insert(api_credentials, catalog)
@@ -134,6 +140,13 @@ def task_insert_vtex_products(**kwargs):
             print("There are no products to be shipped after processing the rules")
             return
 
+    except Exception as e:
+        logger.exception(
+            f"An error occurred during the first insertion of vtex products for catalog {catalog_uuid}, {e}"
+        )
+        return
+
+    try:
         dict_catalog = {
             "name": catalog.name,
             "facebook_catalog_id": catalog.facebook_catalog_id,
@@ -144,13 +157,17 @@ def task_insert_vtex_products(**kwargs):
         print("Products created and sent to flows successfully")
     except Exception as e:
         logger.error(
-            f"Error on insert vtex products for catalog {str(catalog.uuid)}, {e}"
+            f"Error on send vtex products to flows for catalog {catalog_uuid}, {e}"
         )
+
+    print(
+        f"First insertion into the catalog {catalog.name}-{catalog.facebook_catalog_id} was completed"
+    )
 
 
 @celery_app.task(name="task_update_vtex_products")
 def task_update_vtex_products(**kwargs):
-    print("Starting product update")
+    print("Starting task: 'task_update_vtex_products'")
     vtex_base_service = VtexServiceBase()
     flows_service = FlowsService(FlowsClient())
 
