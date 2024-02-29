@@ -260,3 +260,94 @@ class ProductUpdateService(VtexServiceBase):
             wait_time = min(wait_time * 2, 160)
 
         return False
+
+
+class CatalogProductInsertion:
+    @classmethod
+    def first_product_insert_with_catalog(cls, vtex_app: App, catalog_id: str):
+        """Inserts the first product with the given catalog."""
+        wpp_cloud_uuid = cls._get_wpp_cloud_uuid(vtex_app)
+        credentials = cls._get_credentials(vtex_app)
+        wpp_cloud = cls._get_wpp_cloud(wpp_cloud_uuid)
+
+        catalog = cls._get_or_sync_catalog(wpp_cloud, catalog_id)
+        cls._link_catalog_to_vtex_app_if_needed(catalog, vtex_app)
+
+        cls._send_insert_task(credentials, catalog)
+
+    @staticmethod
+    def _get_wpp_cloud_uuid(vtex_app):
+        """Retrieves WPP Cloud UUID from VTEX app config."""
+        wpp_cloud_uuid = vtex_app.config.get("wpp_cloud_uuid")
+        if not wpp_cloud_uuid:
+            raise ValueError(
+                "The VTEX app does not have the WPP Cloud UUID in its configuration."
+            )
+        return wpp_cloud_uuid
+
+    @staticmethod
+    def _get_credentials(vtex_app):
+        """Extracts API credentials from VTEX app config."""
+        api_credentials = vtex_app.config.get("api_credentials", {})
+        if not all(
+            key in api_credentials for key in ["app_key", "app_token", "domain"]
+        ):
+            raise ValueError("Missing one or more API credentials.")
+        return api_credentials
+
+    @staticmethod
+    def _get_wpp_cloud(wpp_cloud_uuid):
+        """Fetches the WPP Cloud app based on UUID."""
+        try:
+            return App.objects.get(uuid=wpp_cloud_uuid)
+        except App.DoesNotExist:
+            raise ValueError(
+                f"The cloud app {wpp_cloud_uuid} linked to the VTEX app does not exist."
+            )
+
+    @classmethod
+    def _get_or_sync_catalog(cls, wpp_cloud, catalog_id):
+        from marketplace.wpp_products.tasks import FacebookCatalogSyncService
+
+        """Attempts to find the catalog, syncs if not found, and tries again."""
+        catalog = wpp_cloud.catalogs.filter(facebook_catalog_id=catalog_id).first()
+        if not catalog:
+            print(
+                f"Catalog {catalog_id} not found for cloud app: {wpp_cloud.uuid}. Starting catalog synchronization."
+            )
+            sync_service = FacebookCatalogSyncService(wpp_cloud)
+            sync_service.sync_catalogs()
+            catalog = wpp_cloud.catalogs.filter(facebook_catalog_id=catalog_id).first()
+            if not catalog:
+                raise ValueError(
+                    f"Catalog {catalog_id} not found for cloud app: {wpp_cloud.uuid} after synchronization."
+                )
+        return catalog
+
+    @staticmethod
+    def _link_catalog_to_vtex_app_if_needed(catalog, vtex_app):
+        from django.contrib.auth import get_user_model
+
+        """Links the catalog to the VTEX app if not already linked."""
+        if not catalog.vtex_app:
+            User = get_user_model()
+            catalog.vtex_app = vtex_app
+            catalog.modified_by = User.objects.get_admin_user()
+            catalog.save()
+            print(
+                f"Catalog {catalog.name} successfully linked to VTEX app: {vtex_app.uuid}."
+            )
+
+    @staticmethod
+    def _send_insert_task(credentials, catalog):
+        from marketplace.celery import app as celery_app
+
+        """Sends the insert task to the task queue."""
+        celery_app.send_task(
+            name="task_insert_vtex_products",
+            kwargs={"credentials": credentials, "catalog_uuid": str(catalog.uuid)},
+            queue="product_synchronization",
+        )
+        print(
+            f"Catalog: {catalog.name} was sent successfully sent to task_insert_vtex_products"
+        )
