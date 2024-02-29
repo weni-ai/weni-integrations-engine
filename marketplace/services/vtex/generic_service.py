@@ -132,6 +132,7 @@ class ProductInsertionService(VtexServiceBase):
         return pvt_service.data_processor.convert_dtos_to_dicts_list(products)
 
     def _send_products_to_facebook(self, products_csv, catalog: Catalog):
+        print("Starting to upload the CSV file to Facebook")
         current_time = datetime.now().strftime("%Y-%m-%d_%H-%M")
         file_name = f"csv_vtex_products_{current_time}.csv"
         product_feed = self._create_product_feed(file_name, catalog)
@@ -141,6 +142,7 @@ class ProductInsertionService(VtexServiceBase):
             products_csv,
             file_name,
         )
+        print("Uploading the CSV file to Facebook completed successfully")
         return product_feed
 
     def _create_product_feed(self, name, catalog: Catalog) -> ProductFeed:
@@ -253,7 +255,7 @@ class ProductUpdateService(VtexServiceBase):
                 return True
 
             print(
-                f"Waiting {wait_time} seconds to get feed: {self.feed_id} upload status."
+                f"Waiting {wait_time} seconds to get feed: {self.feed_id} upload {upload_id} status."
             )
             time.sleep(wait_time)
             total_wait_time += wait_time
@@ -271,6 +273,7 @@ class CatalogProductInsertion:
         wpp_cloud = cls._get_wpp_cloud(wpp_cloud_uuid)
 
         catalog = cls._get_or_sync_catalog(wpp_cloud, catalog_id)
+        cls._delete_existing_feeds_ifexists(catalog)
         cls._link_catalog_to_vtex_app_if_needed(catalog, vtex_app)
 
         cls._send_insert_task(credentials, catalog)
@@ -337,6 +340,22 @@ class CatalogProductInsertion:
             print(
                 f"Catalog {catalog.name} successfully linked to VTEX app: {vtex_app.uuid}."
             )
+
+    @staticmethod
+    def _delete_existing_feeds_ifexists(catalog):
+        """Deletes existing feeds linked to the catalog and logs their IDs."""
+        feeds = catalog.feeds.all()
+        total = feeds.count()
+        if total > 0:
+            print(f"Deleting {total} feed(s) linked to catalog {catalog.name}.")
+            for feed in feeds:
+                print(f"Deleting feed with ID {feed.facebook_feed_id}.")
+                feed.delete()
+            print(
+                f"All feeds linked to catalog {catalog.name} have been successfully deleted."
+            )
+        else:
+            print(f"No feeds linked to catalog {catalog.name} to delete.")
 
     @staticmethod
     def _send_insert_task(credentials, catalog):
