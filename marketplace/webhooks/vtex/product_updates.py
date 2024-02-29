@@ -14,6 +14,16 @@ from marketplace.celery import app as celery_app
 class VtexProductUpdateWebhook(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
+    queue_manager_class = WebhookQueueManager
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._queue_manager = None
+
+    def get_queue_manager(
+        self, app_uuid, sku_id
+    ) -> WebhookQueueManager:  # pragma: no cover
+        return self.queue_manager_class(app_uuid, sku_id)
 
     def post(self, request, app_uuid):
         app = self.get_app(app_uuid)
@@ -24,7 +34,7 @@ class VtexProductUpdateWebhook(APIView):
             )
 
         sku_id = self.get_sku_id()
-        queue_manager = WebhookQueueManager(app_uuid, sku_id)
+        queue_manager = self.get_queue_manager(app_uuid, sku_id)
         if queue_manager.have_processing_product():
             queue_manager.enqueue_webhook_data(request.data)
             return Response(

@@ -253,7 +253,7 @@ class ProductUpdateService(VtexServiceBase):
                 return True
 
             print(
-                f"Waiting {wait_time} seconds to get feed: {self.feed_id} upload status."
+                f"Waiting {wait_time} seconds to get feed: {self.feed_id} upload {upload_id} status."
             )
             time.sleep(wait_time)
             total_wait_time += wait_time
@@ -271,6 +271,7 @@ class CatalogProductInsertion:
         wpp_cloud = cls._get_wpp_cloud(wpp_cloud_uuid)
 
         catalog = cls._get_or_sync_catalog(wpp_cloud, catalog_id)
+        cls._delete_existing_feeds_ifexists(catalog)
         cls._link_catalog_to_vtex_app_if_needed(catalog, vtex_app)
 
         cls._send_insert_task(credentials, catalog)
@@ -337,6 +338,22 @@ class CatalogProductInsertion:
             print(
                 f"Catalog {catalog.name} successfully linked to VTEX app: {vtex_app.uuid}."
             )
+
+    @staticmethod
+    def _delete_existing_feeds_ifexists(catalog):
+        """Deletes existing feeds linked to the catalog and logs their IDs."""
+        feeds = catalog.feeds.all()
+        total = feeds.count()
+        if total > 0:
+            print(f"Deleting {total} feed(s) linked to catalog {catalog.name}.")
+            for feed in feeds:
+                print(f"Deleting feed with ID {feed.facebook_feed_id}.")
+                feed.delete()
+            print(
+                f"All feeds linked to catalog {catalog.name} have been successfully deleted."
+            )
+        else:
+            print(f"No feeds linked to catalog {catalog.name} to delete.")
 
     @staticmethod
     def _send_insert_task(credentials, catalog):
