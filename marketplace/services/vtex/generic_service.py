@@ -3,11 +3,9 @@ Service for managing VTEX App instances within a project.
 """
 
 import time
-import uuid
 
 from datetime import datetime
 
-from django.core.cache import cache
 from django_redis import get_redis_connection
 
 from dataclasses import dataclass
@@ -194,13 +192,6 @@ class ProductUpdateService(VtexServiceBase):
         self.last_update_id = None
 
     def webhook_product_insert(self):
-        update_id = self.generate_update_id()
-        self.set_last_update_id(update_id)
-
-        can_sync = self._verify_product_sync_queue()
-        if can_sync is False:
-            return can_sync
-
         pvt_service = self.get_private_service(
             self.api_credentials.app_key, self.api_credentials.app_token
         )
@@ -211,15 +202,34 @@ class ProductUpdateService(VtexServiceBase):
             return None
 
         products_csv = pvt_service.data_processor.products_to_csv(products_dto)
+        update_successful = self._webhook_update_products_on_facebook(products_csv)
 
-        self._webhook_update_products_on_facebook(products_csv)
-        if self.is_latest_update(update_id):
-            self.product_manager.create_or_update_products_on_database(
-                products_dto, self.catalog, self.product_feed
-            )
-            return pvt_service.data_processor.convert_dtos_to_dicts_list(
-                products_dto
-            )  # TODO: Fix: when there is more than one execution this block is returning None for the task return
+        if update_successful is not True:
+            print("Not upload products on '_webhook_update_products_on_facebook'")
+            return None
+
+        self.product_manager.create_or_update_products_on_database(
+            products_dto, self.catalog, self.product_feed
+        )
+        products_list = pvt_service.data_processor.convert_dtos_to_dicts_list(
+            products_dto
+        )
+        return products_list
+
+    def _webhook_update_products_on_facebook(self, products_csv) -> bool:
+        current_time = datetime.now().strftime("%Y-%m-%d_%H-%M")
+        file_name = f"update_{current_time}_{self.product_feed.name}"
+        upload_id = self._webhook_upload_product_feed(
+            csv_file=products_csv,
+            file_name=file_name,
+        )
+        upload_complete = self._wait_for_upload_completion(upload_id=upload_id)
+        if not upload_complete:
+            print("Upload did not complete within the expected time frame.")
+            return False
+
+        print("Finish update products to facebook")
+        return True
 
     def _webhook_upload_product_feed(self, csv_file, file_name: str) -> str:
         update_only = True
@@ -230,50 +240,6 @@ class ProductUpdateService(VtexServiceBase):
             raise FileNotSendValidationError()
         return response["id"]
 
-    def _verify_product_sync_queue(self) -> bool:
-        """
-        Check for pending sync for a specific product SKU within a feed.
-
-        Returns:
-        - bool: False if another sync is pending after the current sync,
-        True if no pending items and can proceed.
-
-        Note:
-        - False means a re-sync is queued after current sync.
-        - True means no pending sync, process can continue.
-        """
-        if self.redis.get(self._get_key_uploading()):
-            key_re_sync = f"lock:re-sync-product_sku-{self.feed_id}-{self.sku_id}"
-            cache.set(key_re_sync, True)
-            return False
-
-        return True
-
-    def _webhook_update_products_on_facebook(self, products_csv) -> bool:
-        key_uploading = self._get_key_uploading()
-        key_re_sync = self._get_key_resync()
-
-        if self.redis.get(key_uploading):
-            cache.set(key_re_sync, True)
-        else:
-            with self.redis.lock(key_uploading):
-                current_time = datetime.now().strftime("%Y-%m-%d_%H-%M")
-                file_name = f"update_{current_time}_{self.product_feed.name}"
-                upload_id = self._webhook_upload_product_feed(
-                    csv_file=products_csv,
-                    file_name=file_name,
-                )
-                upload_complete = self._wait_for_upload_completion(upload_id=upload_id)
-                if not upload_complete:
-                    print("Upload did not complete within the expected time frame.")
-
-            if cache.get(key_re_sync):
-                cache.delete(key_re_sync)
-                self.webhook_product_insert()
-
-        print("Finish update products to facebook")
-        return True
-
     def _wait_for_upload_completion(self, upload_id) -> bool:
         wait_time = 5
         max_wait_time = 20 * 60
@@ -283,7 +249,6 @@ class ProductUpdateService(VtexServiceBase):
             upload_complete = self.fba_service.get_upload_status_by_feed(
                 self.feed_id, upload_id
             )
-
             if upload_complete:
                 return True
 
@@ -295,21 +260,3 @@ class ProductUpdateService(VtexServiceBase):
             wait_time = min(wait_time * 2, 160)
 
         return False
-
-    def _get_key_uploading(self) -> str:
-        return f"lock:product_sku_uploading-{self.feed_id}-{self.sku_id}"
-
-    def _get_key_resync(self) -> str:
-        return f"lock:re-sync-product_sku-{self.feed_id}-{self.sku_id}"
-
-    def generate_update_id(self):
-        """Gera um identificador único para a atualização."""
-        return str(uuid.uuid4())
-
-    def set_last_update_id(self, update_id):
-        """Define o identificador da última atualização."""
-        self.last_update_id = update_id
-
-    def is_latest_update(self, update_id):
-        """Verifica se o update_id é o mais recente."""
-        return update_id == self.last_update_id

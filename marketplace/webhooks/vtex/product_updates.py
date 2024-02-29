@@ -7,6 +7,7 @@ from marketplace.applications.models import App
 from marketplace.services.vtex.exceptions import (
     NoVTEXAppConfiguredException,
 )
+from marketplace.services.webhook.vtex.webhook_manager import WebhookQueueManager
 from marketplace.celery import app as celery_app
 
 
@@ -14,23 +15,37 @@ class VtexProductUpdateWebhook(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
     def post(self, request, app_uuid):
         app = self.get_app(app_uuid)
         if not self.can_synchronize(app):
             return Response(
-                {"error": "initial sync not completed"},
+                {"error": "Initial sync not completed"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        sku_id = self.get_sku_id()
+        queue_manager = WebhookQueueManager(app_uuid, sku_id)
+        if queue_manager.have_processing_product():
+            queue_manager.enqueue_webhook_data(request.data)
+            return Response(
+                {"message": "Webhook product update added to the processing queue"},
+                status=status.HTTP_200_OK,
+            )
+
         celery_app.send_task(
-            name="task_update_vtex_products",
-            kwargs={"webhook_data": request.data, "app_uuid": app_uuid},
+            "task_update_vtex_products",
+            kwargs={
+                "app_uuid": app_uuid,
+                "sku_id": sku_id,
+                "webhook_data": request.data,
+            },
             queue="product_synchronization",
         )
-        return Response(status=status.HTTP_200_OK)
+
+        return Response(
+            {"message": "Webhook product update process started"},
+            status=status.HTTP_200_OK,
+        )
 
     def get_app(self, app_uuid):
         try:
@@ -40,3 +55,12 @@ class VtexProductUpdateWebhook(APIView):
 
     def can_synchronize(self, app):
         return app.config.get("initial_sync_completed", False)
+
+    def get_sku_id(self):
+        sku_id = self.request.data.get("IdSku")
+        if not sku_id:
+            return Response(
+                {"error": "SKU ID not provided in the request"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return sku_id

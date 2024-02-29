@@ -70,7 +70,6 @@ class MockServiceTestCase(SetUpTestBase):
 class WebhookTestCase(MockServiceTestCase):
     def test_request_ok(self):
         response = self.request.post(self.url, self.body, app_uuid=self.app.uuid)
-        print(response.data)
         self.assertEqual(response.status_code, 200)
 
     def test_webhook_with_valid_configuration(self):
