@@ -3,7 +3,7 @@ import uuid
 from django.test import TestCase
 
 from marketplace.applications.models import App
-from marketplace.services.vtex.generic_service import VtexService, APICredentials
+from marketplace.services.vtex.generic_service import VtexServiceBase, APICredentials
 from marketplace.services.vtex.exceptions import (
     NoVTEXAppConfiguredException,
     MultipleVTEXAppsConfiguredException,
@@ -36,7 +36,7 @@ class VtexServiceTestCase(TestCase):
         self.mock_private_client = MockPrivateClient("fake_key", "fake_token")
         self.mock_private_service = MockPrivateProductsService(self.mock_private_client)
 
-        self.service = VtexService()
+        self.service = VtexServiceBase()
         self.service._pvt_service = self.mock_private_service
         self.project_uuid = uuid.uuid4()
         self.user = User.objects.create_superuser(email="user@marketplace.ai")

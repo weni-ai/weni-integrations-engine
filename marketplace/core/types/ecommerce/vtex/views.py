@@ -7,7 +7,7 @@ from marketplace.core.types.ecommerce.vtex.serializers import (
     VtexAppSerializer,
 )
 from marketplace.core.types import views
-from marketplace.services.vtex.generic_service import VtexService
+from marketplace.services.vtex.generic_service import VtexServiceBase
 from marketplace.services.vtex.generic_service import APICredentials
 from marketplace.services.flows.service import FlowsService
 from marketplace.clients.flows.client import FlowsClient
@@ -16,7 +16,7 @@ from marketplace.services.vtex.app_manager import AppVtexManager
 
 class VtexViewSet(views.BaseAppTypeViewSet):
     serializer_class = VtexAppSerializer
-    service_class = VtexService
+    service_class = VtexServiceBase
     flows_service_class = FlowsService
     flows_client = FlowsClient
 

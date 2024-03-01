@@ -84,7 +84,7 @@ class FacebookClient(FacebookAuthorization, RequestClient):
         response = self.make_request(url, method="POST", headers=headers, data=data)
         return response.json()
 
-    def get_upload_status(self, feed_id, max_attempts=10, wait_time=30):
+    def get_all_upload_status(self, feed_id, max_attempts=10, wait_time=30):
         """
         Checks the upload status using long polling.
 
@@ -246,3 +246,24 @@ class FacebookClient(FacebookAuthorization, RequestClient):
         headers = self._get_headers()
         response = self.make_request(url, method="POST", headers=headers, params=params)
         return response.json()
+
+    def get_upload_status_by_feed(self, feed_id, upload_id):
+        url = self.get_url + f"{feed_id}/uploads"
+
+        headers = self._get_headers()
+        response = self.make_request(url, method="GET", headers=headers)
+        data = response.json()
+
+        upload = next(
+            (
+                upload
+                for upload in data.get("data", [])
+                if upload.get("id") == upload_id
+            ),
+            None,
+        )
+
+        if upload:
+            return "end_time" in upload
+
+        return False
