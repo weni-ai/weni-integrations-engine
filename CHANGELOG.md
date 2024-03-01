@@ -1,3 +1,7 @@
+v3.3.7
+----------
+* Webhook product update queue
+
 v3.3.6
 ----------
 * Create class to send products to catalogs already created on Facebook
