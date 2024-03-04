@@ -274,12 +274,13 @@ class CatalogProductInsertion:
 
         catalog = cls._get_or_sync_catalog(wpp_cloud, catalog_id)
         cls._delete_existing_feeds_ifexists(catalog)
+        cls._update_app_connected_catalog_flag(wpp_cloud)
         cls._link_catalog_to_vtex_app_if_needed(catalog, vtex_app)
 
         cls._send_insert_task(credentials, catalog)
 
     @staticmethod
-    def _get_wpp_cloud_uuid(vtex_app):
+    def _get_wpp_cloud_uuid(vtex_app) -> str:
         """Retrieves WPP Cloud UUID from VTEX app config."""
         wpp_cloud_uuid = vtex_app.config.get("wpp_cloud_uuid")
         if not wpp_cloud_uuid:
@@ -289,7 +290,7 @@ class CatalogProductInsertion:
         return wpp_cloud_uuid
 
     @staticmethod
-    def _get_credentials(vtex_app):
+    def _get_credentials(vtex_app) -> dict:
         """Extracts API credentials from VTEX app config."""
         api_credentials = vtex_app.config.get("api_credentials", {})
         if not all(
@@ -299,7 +300,7 @@ class CatalogProductInsertion:
         return api_credentials
 
     @staticmethod
-    def _get_wpp_cloud(wpp_cloud_uuid):
+    def _get_wpp_cloud(wpp_cloud_uuid) -> App:
         """Fetches the WPP Cloud app based on UUID."""
         try:
             return App.objects.get(uuid=wpp_cloud_uuid)
@@ -309,7 +310,7 @@ class CatalogProductInsertion:
             )
 
     @classmethod
-    def _get_or_sync_catalog(cls, wpp_cloud, catalog_id):
+    def _get_or_sync_catalog(cls, wpp_cloud, catalog_id) -> Catalog:
         from marketplace.wpp_products.tasks import FacebookCatalogSyncService
 
         """Attempts to find the catalog, syncs if not found, and tries again."""
@@ -328,7 +329,7 @@ class CatalogProductInsertion:
         return catalog
 
     @staticmethod
-    def _link_catalog_to_vtex_app_if_needed(catalog, vtex_app):
+    def _link_catalog_to_vtex_app_if_needed(catalog, vtex_app) -> None:
         from django.contrib.auth import get_user_model
 
         """Links the catalog to the VTEX app if not already linked."""
@@ -342,7 +343,7 @@ class CatalogProductInsertion:
             )
 
     @staticmethod
-    def _delete_existing_feeds_ifexists(catalog):
+    def _delete_existing_feeds_ifexists(catalog) -> None:
         """Deletes existing feeds linked to the catalog and logs their IDs."""
         feeds = catalog.feeds.all()
         total = feeds.count()
@@ -358,7 +359,16 @@ class CatalogProductInsertion:
             print(f"No feeds linked to catalog {catalog.name} to delete.")
 
     @staticmethod
-    def _send_insert_task(credentials, catalog):
+    def _update_app_connected_catalog_flag(app) -> None:
+        """Change connected catalog status"""
+        connected_catalog = app.config.get("connected_catalog", None)
+        if connected_catalog is not True:
+            app.config["connected_catalog"] = True
+            app.save()
+            print("Changed connected_catalog to True")
+
+    @staticmethod
+    def _send_insert_task(credentials, catalog) -> None:
         from marketplace.celery import app as celery_app
 
         """Sends the insert task to the task queue."""
