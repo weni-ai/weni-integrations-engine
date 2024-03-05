@@ -6,6 +6,7 @@ import time
 
 from datetime import datetime
 
+from django.db import close_old_connections
 from django_redis import get_redis_connection
 
 from dataclasses import dataclass
@@ -120,13 +121,16 @@ class ProductInsertionService(VtexServiceBase):
             return None
 
         products_csv = pvt_service.data_processor.products_to_csv(products)
+        close_old_connections()
         product_feed = self._send_products_to_facebook(products_csv, catalog)
         pvt_service.data_processor.clear_csv_buffer(
             products_csv
         )  # frees the memory of the csv file
+        close_old_connections()
         self.product_manager.create_or_update_products_on_database(
             products, catalog, product_feed
         )
+        close_old_connections()
         self.app_manager.initial_sync_products_completed(catalog.vtex_app)
 
         return pvt_service.data_processor.convert_dtos_to_dicts_list(products)
@@ -146,6 +150,7 @@ class ProductInsertionService(VtexServiceBase):
         return product_feed
 
     def _create_product_feed(self, name, catalog: Catalog) -> ProductFeed:
+        print("Creating the product feed")
         service = self.fb_service(catalog.app)
         response = service.create_product_feed(catalog.facebook_catalog_id, name)
 
@@ -163,6 +168,7 @@ class ProductInsertionService(VtexServiceBase):
     def _upload_product_feed(
         self, app, product_feed_id, csv_file, file_name, update_only=False
     ):
+        print("Uploading the product feed to facebook")
         service = self.fb_service(app)
         response = service.upload_product_feed(
             product_feed_id, csv_file, file_name, "text/csv", update_only
@@ -234,6 +240,7 @@ class ProductUpdateService(VtexServiceBase):
         return True
 
     def _webhook_upload_product_feed(self, csv_file, file_name: str) -> str:
+        print("Uploading the product feed to facebook")
         update_only = True
         response = self.fba_service.upload_product_feed(
             self.feed_id, csv_file, file_name, "text/csv", update_only
