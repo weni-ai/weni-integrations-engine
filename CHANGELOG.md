@@ -1,3 +1,9 @@
+v3.3.8
+----------
+* Fix SSL SYSCALL error
+* Fix Add redis.lock on the task task_update_vtex_products
+* Fix Change the connected catalog status when starting the first manual product insertion
+
 v3.3.7
 ----------
 * Webhook product update queue
