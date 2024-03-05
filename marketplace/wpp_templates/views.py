@@ -30,6 +30,8 @@ from .serializers import TemplateMessageSerializer, TemplateTranslationSerialize
 from .requests import TemplateMessageRequest
 from .languages import LANGUAGES
 
+from marketplace.accounts.authorizations import FlowsOIDCAuthentication
+
 
 WHATSAPP_VERSION = settings.WHATSAPP_VERSION
 
@@ -50,6 +52,7 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
     lookup_field = "uuid"
     serializer_class = TemplateMessageSerializer
     pagination_class = CustomResultsPagination
+    authentication_classes = [FlowsOIDCAuthentication]
 
     def filter_queryset(self, queryset):
         params = self.request.query_params
