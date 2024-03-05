@@ -2,6 +2,8 @@ import logging
 
 from celery import shared_task
 
+from django.db import reset_queries, close_old_connections
+
 from marketplace.clients.facebook.client import FacebookClient
 from marketplace.services.webhook.vtex.webhook_manager import WebhookQueueManager
 from marketplace.wpp_products.models import Catalog
@@ -128,6 +130,12 @@ def task_insert_vtex_products(**kwargs):
         return
 
     try:
+        # Reset queries and close old connections for a clean state and performance.
+        # Prevents memory leak from stored queries and unstable database connections
+        # before further operations.
+        reset_queries()
+        close_old_connections()
+
         catalog = Catalog.objects.get(uuid=catalog_uuid)
         api_credentials = APICredentials(
             app_key=credentials["app_key"],
@@ -145,6 +153,8 @@ def task_insert_vtex_products(**kwargs):
             f"An error occurred during the first insertion of vtex products for catalog {catalog.name}, {e}"
         )
         return
+    finally:
+        close_old_connections()
 
     try:
         dict_catalog = {
