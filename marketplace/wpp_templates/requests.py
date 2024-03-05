@@ -45,13 +45,13 @@ class TemplateMessageRequest(object):
         params = dict(
             name=name,
             category=category,
-            components=str(components),
+            components=components,
             language=language,
             access_token=self._access_token,
         )
         response = requests.post(
             url=f"https://graph.facebook.com/{WHATSAPP_VERSION}/{waba_id}/message_templates",
-            params=params,
+            json=params,
         )
         if response.status_code != 200:
             raise FacebookApiException(response.json())

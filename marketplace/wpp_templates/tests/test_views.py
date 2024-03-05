@@ -791,3 +791,372 @@ class TemplateMessageViewSetTestCase(APIBaseTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
         self.assertEqual(len(data["results"]), 1)
+
+
+class WhatsappCloudTemplateAuthenticationUpdateTestCase(APIBaseTestCase):
+    view_class = TemplateMessageViewSet
+
+    def setUp(self):
+        self.validated_data = dict(
+            language="pt-BR",
+            body={"type": "BODY"},
+            footer={"type": "FOOTER"},
+            buttons=[
+                {
+                    "button_type": "OTP",
+                    "otp_type": "ONE_TAP",
+                    "text": "Copy Code",
+                    "autofill_text": "Autofill",
+                    "package_name": "com.example.luckyshrub",
+                    "signature_hash": "K8a%2FAINcGX7",
+                }
+            ],
+        )
+        self.body = {
+            "message_template_id": "0123456789",
+            "body": {"type": "BODY"},
+            "footer": {"type": "FOOTER"},
+            "buttons": [
+                {
+                    "button_type": "OTP",
+                    "otp_type": "ONE_TAP",
+                    "text": "Copy Code",
+                    "autofill_text": "Autofill",
+                    "package_name": "com.example.luckyshrub",
+                    "signature_hash": "K8a%2FAINcGX7",
+                }
+            ],
+            "language": "pt_BR",
+        }
+
+        self.app = App.objects.create(
+            config={
+                "waba": {"id": "432321321"},
+                "wa_waba_id": "0123456789",
+                "fb_access_token": "token",
+            },
+            project_uuid=uuid.uuid4(),
+            platform=App.PLATFORM_WENI_FLOWS,
+            code="wpp-cloud",
+            created_by=User.objects.get_admin_user(),
+        )
+
+        self.template_message = TemplateMessage.objects.create(
+            name="test_authentication",
+            app=self.app,
+            category="AUTHENTICATION",
+            created_on=datetime.now(),
+            template_type="TEXT",
+            created_by_id=User.objects.get_admin_user().id,
+        )
+
+        self.translation = TemplateTranslation.objects.create(
+            template=self.template_message,
+            status="PENDING",
+            body=self.validated_data.get("body", {}).get("text", ""),
+            footer=self.validated_data.get("footer", {}).get("text", ""),
+            language=self.validated_data.get("language"),
+            country=self.validated_data.get("country", "Brasil"),
+            variable_count=0,
+            message_template_id="0123456789",
+        )
+
+        self.url = reverse(
+            "app-template-detail",
+            kwargs={
+                "app_uuid": str(self.app.uuid),
+                "uuid": str(self.template_message.uuid),
+            },
+        )
+
+        super().setUp()
+
+    @property
+    def view(self):
+        return self.view_class.as_view({"patch": "partial_update"})
+
+    @patch("marketplace.wpp_templates.views.requests")
+    @patch(
+        "marketplace.wpp_templates.requests.TemplateMessageRequest.update_template_message"
+    )
+    def test_update_template_authentication(
+        self, mock_update_template_message, mock_requests
+    ):
+        mock_update_template_message.return_value = {"success": True}
+
+        response = self.request.patch(
+            self.url,
+            body=self.body,
+            app_uuid=str(self.app.uuid),
+            uuid=str(self.template_message.uuid),
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+
+class WhatsappCloudTemplateAuthenticationTestCase(APIBaseTestCase):
+    view_class = TemplateMessageViewSet
+
+    def setUp(self):
+        self.app = App.objects.create(
+            config={"waba": {"id": "432321321"}, "fb_access_token": "token"},
+            project_uuid=uuid.uuid4(),
+            platform=App.PLATFORM_WENI_FLOWS,
+            code="wpp",
+            created_by=User.objects.get_admin_user(),
+        )
+
+        self.template_message = TemplateMessage.objects.create(
+            name="teste",
+            app=self.app,
+            category="UTILITY",
+            created_on=datetime.now(),
+            template_type="TEXT",
+            created_by_id=User.objects.get_admin_user().id,
+        )
+        self.url = reverse(
+            "app-template-translations",
+            kwargs={"app_uuid": self.app.uuid, "uuid": self.template_message.uuid},
+        )
+
+        self.body = dict(
+            language="ja",
+            body={"text": "test", "type": "BODY"},
+            country="Brasil",
+            header={
+                "header_type": "VIDEO",
+                "example": "data:application/pdf;base64,test==",
+            },
+            footer={"type": "FOOTER", "text": "Not interested? Tap Stop promotions"},
+            buttons=[
+                {
+                    "button_type": "URL",
+                    "text": "phone-button-text",
+                    "url": "https://weni.ai",
+                    "phone_number": "84999999999",
+                    "country_code": "+55",
+                }
+            ],
+        )
+
+        super().setUp()
+
+    @property
+    def view(self):
+        return self.view_class.as_view(dict(post="translations"))
+
+    @patch("marketplace.wpp_templates.serializers.requests")
+    @patch(
+        "marketplace.core.types.channels.whatsapp_cloud.requests.PhotoAPIRequest.create_upload_session"
+    )
+    @patch(
+        "marketplace.wpp_templates.requests.TemplateMessageRequest.create_template_message"
+    )
+    def test_create_wpp_template_translation(
+        self, mock_create_template_message, mock_create_upload_session, mock_requests
+    ):
+        # create_template_message
+        mock_create_template_message.return_value = {
+            "some_key": "some_value",
+            "id": "0123456789",
+        }
+
+        # create_upload_session
+        mock_create_upload_session.return_value = MagicMock(
+            create_upload_session=lambda x: "0123456789"
+        )
+
+        # request
+        mock_post = mock_requests.post
+        mock_post.return_value.status_code = status.HTTP_200_OK
+        mock_post.return_value.json.return_value = {"h": "upload_handle"}
+
+        response = self.request.post(
+            self.url,
+            body=self.body,
+            uuid=str(self.template_message.uuid),
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+
+class WhatsappCloudTemplateAuthenticationCreateTestCase(APIBaseTestCase):
+    view_class = TemplateMessageViewSet
+
+    def setUp(self):
+        self.app = App.objects.create(
+            config={
+                "waba": {"id": "432321321"},
+                "wa_waba_id": "0123456789",
+                "fb_access_token": "token",
+            },
+            project_uuid=uuid.uuid4(),
+            platform=App.PLATFORM_WENI_FLOWS,
+            code="wpp-cloud",
+            created_by=User.objects.get_admin_user(),
+        )
+
+        self.template_message = TemplateMessage.objects.create(
+            name="test_authentication",
+            app=self.app,
+            category="AUTHENTICATION",
+            created_on=datetime.now(),
+            template_type="TEXT",
+            created_by_id=User.objects.get_admin_user().id,
+        )
+
+        self.url = reverse(
+            "app-template-translations",
+            kwargs={"app_uuid": self.app.uuid, "uuid": self.template_message.uuid},
+        )
+
+        self.body = {
+            "body": {"type": "BODY"},
+            "footer": {"type": "FOOTER"},
+            "buttons": [
+                {
+                    "button_type": "OTP",
+                    "otp_type": "ONE_TAP",
+                    "text": "Copy Code",
+                    "autofill_text": "Autofill",
+                    "package_name": "com.example.luckyshrub",
+                    "signature_hash": "K8a%2FAINcGX7",
+                }
+            ],
+            "language": "pt_BR",
+        }
+
+        super().setUp()
+
+    @property
+    def view(self):
+        return self.view_class.as_view(dict(post="translations"))
+
+    @patch("marketplace.wpp_templates.serializers.requests")
+    @patch(
+        "marketplace.wpp_templates.requests.TemplateMessageRequest.create_template_message"
+    )
+    def test_create_translation_copy_code_one_tap(
+        self, mock_create_template_message, mock_requests
+    ):
+        mock_create_template_message.return_value = {
+            "some_key": "some_value",
+            "id": "0123456789",
+        }
+
+        mock_post = mock_requests.post
+        mock_post.return_value.status_code = status.HTTP_200_OK
+
+        response = self.request.post(
+            self.url,
+            body=self.body,
+            uuid=str(self.template_message.uuid),
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    @patch("marketplace.wpp_templates.serializers.requests")
+    @patch(
+        "marketplace.wpp_templates.requests.TemplateMessageRequest.create_template_message"
+    )
+    def test_create_translation_copy_code(
+        self, mock_create_template_message, mock_requests
+    ):
+        body = {
+            "body": {"type": "BODY"},
+            "footer": {"type": "FOOTER"},
+            "buttons": [
+                {
+                    "button_type": "OTP",
+                    "otp_type": "COPY_CODE",
+                    "text": "Copy Code",
+                }
+            ],
+            "language": "pt_BR",
+        }
+        mock_create_template_message.return_value = {
+            "some_key": "some_value",
+            "id": "0123456789",
+        }
+
+        mock_post = mock_requests.post
+        mock_post.return_value.status_code = status.HTTP_200_OK
+
+        response = self.request.post(
+            self.url,
+            body=body,
+            uuid=str(self.template_message.uuid),
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    @patch("marketplace.wpp_templates.serializers.requests")
+    @patch(
+        "marketplace.wpp_templates.requests.TemplateMessageRequest.create_template_message"
+    )
+    def test_create_translation_missing_fields_for_one_tap(
+        self, mock_create_template_message, mock_requests
+    ):
+        body = {
+            "body": {"type": "BODY"},
+            "footer": {"type": "FOOTER"},
+            "buttons": [
+                {
+                    "button_type": "OTP",
+                    "otp_type": "ONE_TAP",
+                }
+            ],
+            "language": "pt_BR",
+        }
+        mock_create_template_message.return_value = {
+            "some_key": "some_value",
+            "id": "0123456789",
+        }
+        mock_post = mock_requests.post
+        mock_post.return_value.status_code = status.HTTP_400_BAD_REQUEST
+
+        with self.assertRaises(ValidationError) as context:
+            self.request.post(
+                self.url,
+                body=body,
+                uuid=str(self.template_message.uuid),
+            )
+
+        self.assertTrue(
+            "For ONE_TAP buttons, 'package_name' and 'signature_hash' are required."
+            in context.exception
+        )
+
+    @patch("marketplace.wpp_templates.serializers.requests")
+    @patch(
+        "marketplace.wpp_templates.requests.TemplateMessageRequest.create_template_message"
+    )
+    def test_create_translation_with_autofill_text(
+        self, mock_create_template_message, mock_requests
+    ):
+        body = {
+            "body": {"type": "BODY"},
+            "footer": {"type": "FOOTER"},
+            "buttons": [
+                {
+                    "button_type": "OTP",
+                    "otp_type": "ONE_TAP",
+                    "autofill_text": "Autofill Test",
+                    "package_name": "com.example.test",
+                    "signature_hash": "testHash",
+                }
+            ],
+            "language": "pt_BR",
+        }
+        mock_create_template_message.return_value = {
+            "some_key": "some_value",
+            "id": "0123456789",
+        }
+        mock_post = mock_requests.post
+        mock_post.return_value.status_code = status.HTTP_200_OK
+
+        response = self.request.post(
+            self.url,
+            body=body,
+            uuid=str(self.template_message.uuid),
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
