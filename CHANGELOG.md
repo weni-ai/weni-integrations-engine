@@ -1,3 +1,7 @@
+v3.3.9
+----------
+* Fix add logger date info to update products task
+
 v3.3.8
 ----------
 * Fix SSL SYSCALL error
