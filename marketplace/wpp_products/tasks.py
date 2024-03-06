@@ -1,5 +1,7 @@
 import logging
 
+from datetime import datetime
+
 from celery import shared_task
 
 from django.db import reset_queries, close_old_connections
@@ -197,6 +199,10 @@ def task_update_vtex_products(**kwargs):
         return
     else:
         with redis.lock(key):
+            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+            logger.info(
+                f"Processing product update for App UUID: {app_uuid}, SKU ID: {sku_id} at {current_time}"
+            )
             try:
                 vtex_app = App.objects.get(uuid=app_uuid, configured=True, code="vtex")
                 (
