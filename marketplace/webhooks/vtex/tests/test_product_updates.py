@@ -10,16 +10,15 @@ from marketplace.applications.models import App
 
 
 class MockWebhookQueueManager:
-    def __init__(self, app_uuid, sku_id, processing_product=False):
+    def __init__(self, app_uuid, processing_product=False):
         self.app_uuid = app_uuid
-        self.sku_id = sku_id
         self.processing_product = processing_product
 
-    def have_processing_product(self):
-        return self.processing_product
-
-    def enqueue_webhook_data(self, data):
+    def enqueue_webhook_data(self, sku_id, data):
         pass
+
+    def is_processing_locked(self):
+        return self.processing_product
 
 
 class SetUpTestBase(APIBaseTestCase):
@@ -99,32 +98,24 @@ class WebhookTestCase(MockServiceTestCase):
         self.app.config["initial_sync_completed"] = True
         self.app.save()
 
-        response = self.request.post(
-            self.url, {"data": "webhook_payload"}, app_uuid=self.app.uuid
-        )
+        response = self.request.post(self.url, self.body, app_uuid=self.app.uuid)
         self.assertEqual(response.status_code, 200)
 
     def test_webhook_without_initial_sync(self):
         self.app.config["initial_sync_completed"] = False
         self.app.save()
 
-        response = self.request.post(
-            self.url, {"data": "webhook_payload"}, app_uuid=self.app.uuid
-        )
+        response = self.request.post(self.url, self.body, app_uuid=self.app.uuid)
         self.assertEqual(response.status_code, 400)
 
     def test_webhook_with_app_not_found(self):
         app_uuid = uuid.uuid4()
         url = reverse("vtex-product-updates", kwargs={"app_uuid": uuid.uuid4()})
-        response = self.request.post(
-            url, {"data": "webhook_payload"}, app_uuid=app_uuid
-        )
+        response = self.request.post(url, self.body, app_uuid=app_uuid)
         self.assertEqual(response.status_code, 404)
 
     def test_webhook_with_processing_product(self):
-        mock_webhook_manager = MockWebhookQueueManager(
-            "1", "2", processing_product=True
-        )
+        mock_webhook_manager = MockWebhookQueueManager("1", processing_product=True)
 
         with patch.object(
             self.view_class, "get_queue_manager", return_value=mock_webhook_manager
