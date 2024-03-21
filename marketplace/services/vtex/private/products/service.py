@@ -30,6 +30,7 @@ Example:
         products = service.list_all_products("domain.vtex.com")
         # Use products data as needed
 """
+
 from typing import List
 
 from marketplace.services.vtex.exceptions import CredentialsValidationError
@@ -39,9 +40,9 @@ from marketplace.services.vtex.utils.data_processor import FacebookProductDTO
 
 
 class PrivateProductsService:
-    def __init__(self, client, data_processor=DataProcessor):
+    def __init__(self, client, data_processor_class=DataProcessor):
         self.client = client
-        self.data_processor = data_processor
+        self.data_processor = data_processor_class()
         # TODO: Check if it makes sense to leave the domain instantiated
         # so that the domain parameter is removed from the methods
 
