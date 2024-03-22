@@ -1,3 +1,8 @@
+v3.3.10
+----------
+* Improvements in the product creation and update process
+* Adjust rule for unit and weight
+
 v3.3.9
 ----------
 * Fix add logger date info to update products task
