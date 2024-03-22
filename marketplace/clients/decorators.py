@@ -2,7 +2,7 @@ import time
 import functools
 
 
-def retry_on_exception(max_attempts=11, start_sleep_time=1, factor=2):
+def retry_on_exception(max_attempts=10, start_sleep_time=1, factor=2):
     def decorator_retry(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
