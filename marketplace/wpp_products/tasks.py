@@ -22,6 +22,7 @@ from marketplace.core.types import APPTYPES
 from marketplace.applications.models import App
 
 from django_redis import get_redis_connection
+from django.core.cache import cache
 
 
 logger = logging.getLogger(__name__)
@@ -175,6 +176,7 @@ def task_insert_vtex_products(**kwargs):
     print(
         f"finishing creation products, task: 'task_insert_vtex_products' catalog {catalog.name}"
     )
+    print("=" * 40)
 
 
 @celery_app.task(name="task_update_vtex_products")
@@ -184,26 +186,29 @@ def task_update_vtex_products(**kwargs):
     flows_service = FlowsService(FlowsClient())
 
     app_uuid = kwargs.get("app_uuid")
-    webhook_data = kwargs.get("webhook_data")
-    sku_id = webhook_data.get("IdSku")
 
-    queue_manager = WebhookQueueManager(app_uuid, sku_id)
-    key = queue_manager.get_processing_key()
+    queue_manager = WebhookQueueManager(app_uuid)
     redis = get_redis_connection()
+    lock_key = queue_manager.get_lock_key()
 
-    if queue_manager.have_processing_product():
-        queue_manager.enqueue_webhook_data(webhook_data)
-        print(
-            f"Product '{sku_id}' is already being updated, the request has been added to the queue."
-        )
-        return
-    else:
-        with redis.lock(key):
-            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-            logger.info(
-                f"Processing product update for App UUID: {app_uuid}, SKU ID: {sku_id} at {current_time}"
-            )
-            try:
+    lock = redis.lock(lock_key)
+    if lock.acquire(blocking=False, timeout=3600):
+        processing_key = queue_manager.get_app_processing_key()
+        webhooks_in_processing = cache.get(processing_key, {})
+        try:
+            while webhooks_in_processing:
+                close_old_connections()
+
+                result = queue_manager.dequeue_webhook_data()
+                if result is None:
+                    break
+
+                sku_id, webhook_data = result
+                current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+                print(
+                    f"Processing product update for App UUID: {app_uuid}, SKU ID: {sku_id} at {current_time}"
+                )
+
                 vtex_app = App.objects.get(uuid=app_uuid, configured=True, code="vtex")
                 (
                     domain,
@@ -213,57 +218,51 @@ def task_update_vtex_products(**kwargs):
                 api_credentials = APICredentials(
                     app_key=app_key, app_token=app_token, domain=domain
                 )
-                for catalog in vtex_app.vtex_catalogs.all():
-                    if not catalog.feeds.all().exists():
-                        logger.error(
-                            f"No data feed found in the database. Vtex app: {vtex_app.uuid}"
-                        )
-                        continue
 
-                    product_feed = catalog.feeds.all().first()  # The first feed created
-                    print(f"Starting product update for app: {str(vtex_app.uuid)}")
-
-                    vtex_update_service = ProductUpdateService(
-                        api_credentials=api_credentials,
-                        catalog=catalog,
-                        webhook_data=webhook_data,
-                        product_feed=product_feed,
+                catalog = vtex_app.vtex_catalogs.first()
+                if not catalog or not catalog.feeds.first():
+                    logger.error(
+                        f"No data feed found in the database. Vtex app: {vtex_app.uuid}"
                     )
-                    products = vtex_update_service.webhook_product_insert()
-                    if products is None:
-                        print(
-                            f"No products to process after treatment for VTEX app {app_uuid}. Task ending."
-                        )
-                        continue
+                    continue
 
-                    dict_catalog = {
-                        "name": catalog.name,
-                        "facebook_catalog_id": catalog.facebook_catalog_id,
-                    }
+                product_feed = catalog.feeds.first()
+                print(f"Starting product update for app: {str(vtex_app.uuid)}")
+
+                vtex_update_service = ProductUpdateService(
+                    api_credentials, catalog, webhook_data, product_feed
+                )
+                products = vtex_update_service.webhook_product_insert()
+                if products is None:
+                    print(
+                        f"No products to process after treatment for VTEX app {app_uuid}. Task ending."
+                    )
+                    continue
+
+                dict_catalog = {
+                    "name": catalog.name,
+                    "facebook_catalog_id": catalog.facebook_catalog_id,
+                }
+                try:
                     flows_service.update_vtex_products(
                         products, str(catalog.app.flow_object_uuid), dict_catalog
                     )
                     print("Products successfully sent to flows")
+                except Exception as e:
+                    logger.error(f"Failed to send products to flows: {str(e)}")
 
-            except Exception as e:
-                logger.error(
-                    f"An error occurred during the updating Webhook vtex products for app {app_uuid}, {str(e)}"
-                )
+                # Reloads in-process webhooks to check for new items after current processing
+                webhooks_in_processing = cache.get(processing_key, {})
 
-    # Checking and processing pending updates in the queue
-    queued_webhook_data = queue_manager.dequeue_webhook_data()
-    if queued_webhook_data:
-        # Resend the task
-        celery_app.send_task(
-            "task_update_vtex_products",
-            kwargs={
-                "app_uuid": app_uuid,
-                "sku_id": sku_id,
-                "webhook_data": queued_webhook_data,
-            },
-            queue="product_synchronization",
-        )
-        print(f"Processing queued webhook data for SKU {sku_id} and app:{app_uuid}.")
+        except Exception as e:
+            logger.error(
+                f"An error occurred during the updating Webhook vtex products for app {app_uuid}, {str(e)}"
+            )
+
+        finally:
+            lock.release()
+    else:
+        print("Unable to acquire lock, another process is running.")
 
     print("Finishing update product, task: 'task_update_vtex_products'")
-    return
+    print("=" * 40)

@@ -2,12 +2,14 @@ import concurrent.futures
 import pandas as pd
 import io
 import dataclasses
-import os
-import time
+import threading
 
 from dataclasses import dataclass
 
 from typing import List
+
+from tqdm import tqdm
+from queue import Queue
 
 
 @dataclass
@@ -32,6 +34,10 @@ class VtexProductDTO:  # TODO: Implement This VtexProductDTO
 
 
 class DataProcessor:
+    def __init__(self):
+        self.max_workers = 100
+        self.progress_lock = threading.Lock()
+
     @staticmethod
     def extract_fields(
         store_domain, product_details, availability_details
@@ -80,8 +86,8 @@ class DataProcessor:
             product_details=product_details,
         )
 
-    @staticmethod
     def process_product_data(
+        self,
         skus_ids,
         active_sellers,
         service,
@@ -89,57 +95,90 @@ class DataProcessor:
         store_domain,
         rules,
         update_product=False,
-    ):
-        num_cpus = os.cpu_count()
-        all_facebook_products = []
+    ) -> List[FacebookProductDTO]:
+        self.queue = Queue()
+        self.results = []
+        self.active_sellers = active_sellers
+        self.service = service
+        self.domain = domain
+        self.store_domain = store_domain
+        self.rules = rules
+        self.update_product = update_product
+        self.invalid_products_count = 0
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=num_cpus) as executor:
-            futures = [
-                executor.submit(
-                    DataProcessor.process_single_sku,
-                    sku_id,
-                    active_sellers,
-                    service,
-                    domain,
-                    store_domain,
-                    rules,
-                    update_product,
+        # Preparing the tqdm progress bar
+        print("Initiated process of product treatment:")
+        self.progress_bar = tqdm(
+            total=len(skus_ids) * len(self.active_sellers),
+            desc="[Oks:0, Invalids:0]",
+            unit="SKU",
+            ncols=70,
+        )
+
+        # Initializing the queue with SKUs
+        for sku_id in skus_ids:
+            self.queue.put(sku_id)
+
+        # Starting the workers
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=self.max_workers
+        ) as executor:
+            futures = [executor.submit(self.worker) for _ in range(self.max_workers)]
+
+        # Waiting for all the workers to finish
+        for future in futures:
+            future.result()
+
+        self.progress_bar.close()
+
+        return self.results
+
+    def worker(self):
+        while not self.queue.empty():
+            sku_id = self.queue.get()
+            initial_invalid_count = len(self.active_sellers)
+            result = self.process_single_sku(sku_id)
+
+            with self.progress_lock:
+                if result:
+                    self.results.extend(result)
+                    valid_count = len(result)
+                    invalid_count = initial_invalid_count - valid_count
+                    self.invalid_products_count += invalid_count
+                    # Updates progress for each SKU processed, valid or not.
+                    self.progress_bar.update(valid_count + invalid_count)
+                else:
+                    self.invalid_products_count += initial_invalid_count
+                    # If no valid result was found, the entire attempt is considered invalid.
+                    self.progress_bar.update(initial_invalid_count)
+
+                self.progress_bar.set_description(
+                    f"[Oks:{len(self.results)}, Invalids:{self.invalid_products_count}]"
                 )
-                for sku_id in skus_ids
-            ]
-            time.sleep(
-                15
-            )  # TODO: Test whether by waiting this time the processes are terminated correctly
-            for future in concurrent.futures.as_completed(futures):
-                try:
-                    results = future.result()
-                    if results:
-                        all_facebook_products.extend(results)
-                        print(f"Total products extend to: {len(all_facebook_products)}")
-                except Exception as e:
-                    print(f"Exception in thread: {e}")
 
-        return all_facebook_products
-
-    @staticmethod
-    def process_single_sku(
-        sku_id, active_sellers, service, domain, store_domain, rules, update_product
-    ):
+    def process_single_sku(self, sku_id):
         facebook_products = []
-        product_details = service.get_product_details(sku_id, domain)
-        for seller_id in active_sellers:
-            availability_details = service.simulate_cart_for_seller(
-                sku_id, seller_id, domain
+        product_details = self.service.get_product_details(sku_id, self.domain)
+        is_active = product_details.get("IsActive")
+        if not is_active:
+            return facebook_products
+
+        for seller_id in self.active_sellers:
+            availability_details = self.service.simulate_cart_for_seller(
+                sku_id, seller_id, self.domain
             )
-            if update_product is False and not availability_details["is_available"]:
+            if (
+                self.update_product is False
+                and not availability_details["is_available"]
+            ):
                 continue
 
             product_dto = DataProcessor.extract_fields(
-                store_domain, product_details, availability_details
+                self.store_domain, product_details, availability_details
             )
             params = {"seller_id": seller_id}
             all_rules_applied = True
-            for rule in rules:
+            for rule in self.rules:
                 if not rule.apply(product_dto, **params):
                     all_rules_applied = False
                     break
@@ -149,6 +188,7 @@ class DataProcessor:
 
         return facebook_products
 
+    @staticmethod
     def products_to_csv(products: List[FacebookProductDTO]) -> io.BytesIO:
         print("Generating CSV file")
         product_dicts = [dataclasses.asdict(product) for product in products]
@@ -160,9 +200,11 @@ class DataProcessor:
         print("CSV file successfully generated in memory")
         return buffer
 
+    @staticmethod
     def clear_csv_buffer(buffer: io.BytesIO):
         buffer.close()
 
+    @staticmethod
     def convert_dtos_to_dicts_list(dtos: List[FacebookProductDTO]) -> List[dict]:
         print("Converting DTO's into dictionary.")
         dicts_list = []

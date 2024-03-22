@@ -47,7 +47,7 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
             return False
 
     @retry_on_exception()
-    def list_all_products_sku_ids(self, domain, page_size=1000):
+    def list_all_products_sku_ids(self, domain, page_size=100000):
         all_skus = []
         page = 1
 
