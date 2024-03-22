@@ -14,8 +14,8 @@ class CalculateByWeight(Rule):
 
             price_per_kg = 0
             if weight > 0:
-                formated_price = float(f"{product.price / 100:.2f}")
-                price_per_kg = formated_price / unit_multiplier
+                formatted_price = float(f"{product.price / 100:.2f}")
+                price_per_kg = formatted_price / unit_multiplier
 
             product.description = (
                 f"{product.title} - Aprox. {self._format_grams(weight)}, "
@@ -32,19 +32,36 @@ class CalculateByWeight(Rule):
         return product.product_details["Dimension"]["weight"]
 
     def _calculates_by_weight(self, product: FacebookProductDTO) -> bool:
+        title_endings = ["kg", "g", "ml"]
+        description_endings = ["kg", "g", "unid", "unidade", "ml"]
+
+        title_lower = product.title.lower()
+        description_lower = product.description.lower()
+
+        if any(title_lower.endswith(ending) for ending in title_endings) or any(
+            description_lower.endswith(ending) for ending in description_endings
+        ):
+            return False
+
+        if "iogurte" in (
+            category.lower()
+            for category in product.product_details["ProductCategories"].values()
+        ):
+            return False
+
         categories_to_calculate = [
             "hortifruti",
             "carnes e aves",
             "frios e laticínios",
             "padaria",
         ]
-        products_categories = {
+        product_categories = {
             k: v.lower()
             for k, v in product.product_details["ProductCategories"].items()
         }
 
         for category in categories_to_calculate:
-            if category in products_categories.values():
+            if category in product_categories.values():
                 return True
 
         return False

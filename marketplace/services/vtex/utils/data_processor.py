@@ -35,7 +35,7 @@ class VtexProductDTO:  # TODO: Implement This VtexProductDTO
 
 class DataProcessor:
     def __init__(self):
-        self.max_workers = 50
+        self.max_workers = 100
         self.progress_lock = threading.Lock()
 
     @staticmethod
