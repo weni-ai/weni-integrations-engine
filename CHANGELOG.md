@@ -2,6 +2,7 @@ v3.3.10
 ----------
 * Improvements in the product creation and update process
 * Adjust rule for unit and weight
+* Create product_first_synchronization queue
 
 v3.3.9
 ----------

@@ -382,7 +382,7 @@ class CatalogProductInsertion:
         celery_app.send_task(
             name="task_insert_vtex_products",
             kwargs={"credentials": credentials, "catalog_uuid": str(catalog.uuid)},
-            queue="product_synchronization",
+            queue="product_first_synchronization",
         )
         print(
             f"Catalog: {catalog.name} was sent successfully sent to task_insert_vtex_products"
