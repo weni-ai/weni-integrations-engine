@@ -50,14 +50,14 @@ class VtexProductUpdateWebhook(APIView):
                 )
 
             sku_id = self.get_sku_id(request)
-            queue_manager = self.get_queue_manager(app_uuid)
+            queue_manager = self.get_queue_manager(str(app_uuid))
 
             queue_manager.enqueue_webhook_data(sku_id, request.data)
 
             if not queue_manager.is_processing_locked():
                 celery_app.send_task(
                     "task_update_vtex_products",
-                    kwargs={"app_uuid": app_uuid},
+                    kwargs={"app_uuid": str(app_uuid)},
                     queue="product_synchronization",
                 )
                 message = "Webhook product update process started"

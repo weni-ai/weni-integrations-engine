@@ -110,7 +110,7 @@ class DataProcessor:
         print("Initiated process of product treatment:")
         self.progress_bar = tqdm(
             total=len(skus_ids) * len(self.active_sellers),
-            desc="Processing SKUs",
+            desc="[Oks:0, Invalids:0]",
             unit="SKU",
             ncols=70,
         )
