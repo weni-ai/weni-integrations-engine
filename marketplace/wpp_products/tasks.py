@@ -191,8 +191,8 @@ def task_update_vtex_products(**kwargs):
     redis = get_redis_connection()
     lock_key = queue_manager.get_lock_key()
 
-    lock = redis.lock(lock_key)
-    if lock.acquire(blocking=False, timeout=3600):
+    lock = redis.lock(lock_key, timeout=3600)
+    if lock.acquire(blocking=False):
         processing_key = queue_manager.get_app_processing_key()
         webhooks_in_processing = cache.get(processing_key, {})
         try:
