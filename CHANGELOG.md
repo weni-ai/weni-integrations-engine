@@ -1,3 +1,7 @@
+v3.3.11
+----------
+* Move timeout parameter
+
 v3.3.10
 ----------
 * Improvements in the product creation and update process
