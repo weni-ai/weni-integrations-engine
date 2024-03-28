@@ -84,7 +84,7 @@ class Product(BaseModel):
         ("refurbished", "refurbished"),
         ("used", "used"),
     ]
-    facebook_product_id = models.CharField(max_length=30)
+    facebook_product_id = models.CharField(max_length=100)
     # facebook required fields
     title = models.CharField(max_length=200)
     description = models.TextField(max_length=9999)
