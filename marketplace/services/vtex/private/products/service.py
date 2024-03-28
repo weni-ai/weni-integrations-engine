@@ -79,27 +79,20 @@ class PrivateProductsService:
         )  # TODO: Change to pvt_simulate_cart_for_seller
 
     def update_webhook_product_info(
-        self, domain, webhook_payload, config
+        self, domain: str, skus_ids: list, config: dict
     ) -> List[FacebookProductDTO]:
-        sku_id = webhook_payload["IdSku"]
-        price_modified = webhook_payload["PriceModified"]
-        stock_modified = webhook_payload["StockModified"]
-        other_changes = webhook_payload["HasStockKeepingUnitModified"]
-
         seller_ids = self.client.list_active_sellers(domain)
-
-        if price_modified or stock_modified or other_changes:
-            rules = self._load_rules(config.get("rules", []))
-            store_domain = config.get("store_domain")
-            updated_products_dto = self.data_processor.process_product_data(
-                [sku_id],
-                seller_ids,
-                self,
-                domain,
-                store_domain,
-                rules,
-                update_product=True,
-            )
+        rules = self._load_rules(config.get("rules", []))
+        store_domain = config.get("store_domain")
+        updated_products_dto = self.data_processor.process_product_data(
+            skus_ids,
+            seller_ids,
+            self,
+            domain,
+            store_domain,
+            rules,
+            update_product=True,
+        )
 
         return updated_products_dto
 
