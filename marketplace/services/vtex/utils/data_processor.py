@@ -110,9 +110,8 @@ class DataProcessor:
         print("Initiated process of product treatment:")
         self.progress_bar = tqdm(
             total=len(skus_ids) * len(self.active_sellers),
-            desc="[Oks:0, Invalids:0]",
-            unit="SKU",
-            ncols=70,
+            desc="[✓:0, ✗:0]",
+            ncols=0,
         )
 
         # Initializing the queue with SKUs
@@ -153,7 +152,7 @@ class DataProcessor:
                     self.progress_bar.update(initial_invalid_count)
 
                 self.progress_bar.set_description(
-                    f"[Oks:{len(self.results)}, Invalids:{self.invalid_products_count}]"
+                    f"[✓:{len(self.results)}, ✗:{self.invalid_products_count}]"
                 )
 
     def process_single_sku(self, sku_id):
