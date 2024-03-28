@@ -191,7 +191,7 @@ def task_update_vtex_products(**kwargs):
     redis = get_redis_connection()
     lock_key = queue_manager.get_lock_key()
 
-    lock = redis.lock(lock_key, timeout=3600)
+    lock = redis.lock(lock_key, timeout=7200)
     if lock.acquire(blocking=False):
         processing_key = queue_manager.get_app_processing_key()
         webhooks_in_processing = cache.get(processing_key, {})
@@ -199,16 +199,14 @@ def task_update_vtex_products(**kwargs):
             while webhooks_in_processing:
                 close_old_connections()
 
-                result = queue_manager.dequeue_webhook_data()
-                if result is None:
+                skus_ids = queue_manager.dequeue_webhook_data()
+                if skus_ids is None:
                     break
 
-                sku_id, webhook_data = result
                 current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
                 print(
-                    f"Processing product update for App UUID: {app_uuid}, SKU ID: {sku_id} at {current_time}"
+                    f"Processing product update for App UUID: {app_uuid}, SKU IDs: {skus_ids} at {current_time}"
                 )
-
                 vtex_app = App.objects.get(uuid=app_uuid, configured=True, code="vtex")
                 (
                     domain,
@@ -230,7 +228,7 @@ def task_update_vtex_products(**kwargs):
                 print(f"Starting product update for app: {str(vtex_app.uuid)}")
 
                 vtex_update_service = ProductUpdateService(
-                    api_credentials, catalog, webhook_data, product_feed
+                    api_credentials, catalog, skus_ids, product_feed
                 )
                 products = vtex_update_service.webhook_product_insert()
                 if products is None:
@@ -264,5 +262,5 @@ def task_update_vtex_products(**kwargs):
     else:
         print("Unable to acquire lock, another process is running.")
 
-    print("Finishing update product, task: 'task_update_vtex_products'")
+    print("Finishing update vtex product")
     print("=" * 40)

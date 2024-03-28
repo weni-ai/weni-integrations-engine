@@ -159,7 +159,7 @@ class DataProcessor:
         facebook_products = []
         product_details = self.service.get_product_details(sku_id, self.domain)
         is_active = product_details.get("IsActive")
-        if not is_active:
+        if not is_active and not self.update_product:
             return facebook_products
 
         for seller_id in self.active_sellers:
