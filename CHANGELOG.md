@@ -1,3 +1,9 @@
+v3.3.12
+----------
+* Change progress bar layout 
+* Update facebook_product_id
+* Update gunicorn.conf.py
+
 v3.3.11
 ----------
 * Move timeout parameter
