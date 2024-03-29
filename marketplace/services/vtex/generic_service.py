@@ -184,15 +184,14 @@ class ProductUpdateService(VtexServiceBase):
         self,
         api_credentials: APICredentials,
         catalog: Catalog,
-        webhook_data: dict,
+        skus_ids: list,
         product_feed: ProductFeed,
     ):
         super().__init__()
         self.api_credentials = api_credentials
         self.catalog = catalog
-        self.webhook_data = webhook_data
+        self.skus_ids = skus_ids
         self.product_feed = product_feed
-        self.sku_id = self.webhook_data["IdSku"]
         self.app = self.catalog.app
         self.feed_id = self.product_feed.facebook_feed_id
         self.fba_service = self.fb_service(self.app)
@@ -204,7 +203,7 @@ class ProductUpdateService(VtexServiceBase):
             self.api_credentials.app_key, self.api_credentials.app_token
         )
         products_dto = pvt_service.update_webhook_product_info(
-            self.api_credentials.domain, self.webhook_data, self.catalog.vtex_app.config
+            self.api_credentials.domain, self.skus_ids, self.catalog.vtex_app.config
         )
         if not products_dto:
             return None
