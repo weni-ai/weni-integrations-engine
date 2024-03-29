@@ -1,3 +1,7 @@
+v3.4.1
+----------
+* Adds VTEX_UPDATE_BATCH_SIZE environment variable for updating vtex products
+
 v3.4.0
 ----------
 * Batch updates vtex products and adjusts cache-keys lifetimes
