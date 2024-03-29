@@ -430,3 +430,7 @@ ALLOW_CRM_ACCESS = env.bool("ALLOW_CRM_ACCESS", default=False)
 
 if ALLOW_CRM_ACCESS:
     CRM_EMAILS_LIST = env.list("CRM_EMAILS_LIST")
+
+
+# Define how many products will be updated at a time
+VTEX_UPDATE_BATCH_SIZE = env.int("VTEX_UPDATE_BATCH_SIZE", default=500)
