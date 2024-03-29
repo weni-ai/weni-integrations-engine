@@ -1,3 +1,7 @@
+v3.4.0
+----------
+* Batch updates vtex products and adjusts cache-keys lifetimes
+
 v3.3.12
 ----------
 * Change progress bar layout 
