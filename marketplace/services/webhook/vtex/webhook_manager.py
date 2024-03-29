@@ -1,6 +1,7 @@
 import logging
 
 from django.core.cache import cache
+from django.conf import settings
 
 from django_redis import get_redis_connection
 
@@ -40,7 +41,8 @@ class WebhookQueueManager:
             webhooks_log[sku_id] = webhook
             cache.set(webhooks_key, webhooks_log)
 
-    def dequeue_webhook_data(self, batch_size=1000):
+    def dequeue_webhook_data(self):
+        batch_size = settings.VTEX_UPDATE_BATCH_SIZE
         skus_list_key = self.get_sku_list_key()
         initial_skus_in_processing = cache.get(skus_list_key) or []
 
