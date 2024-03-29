@@ -193,7 +193,7 @@ def task_update_vtex_products(**kwargs):
 
     lock = redis.lock(lock_key, timeout=7200)
     if lock.acquire(blocking=False):
-        processing_key = queue_manager.get_app_processing_key()
+        processing_key = queue_manager.get_sku_list_key()
         webhooks_in_processing = cache.get(processing_key, {})
         try:
             while webhooks_in_processing:
@@ -250,7 +250,7 @@ def task_update_vtex_products(**kwargs):
                     logger.error(f"Failed to send products to flows: {str(e)}")
 
                 # Reloads in-process webhooks to check for new items after current processing
-                webhooks_in_processing = cache.get(processing_key, {})
+                webhooks_in_processing = cache.get(processing_key, [])
 
         except Exception as e:
             logger.error(
