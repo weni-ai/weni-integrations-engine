@@ -1,3 +1,8 @@
+v3.4.3
+----------
+* Remove saving of vtex products in DB
+* Limits vtex product description to 200 characters
+
 v3.4.2
 ----------
 * Removes sending of updated products to flows
