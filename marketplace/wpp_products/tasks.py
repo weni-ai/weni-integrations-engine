@@ -183,7 +183,7 @@ def task_insert_vtex_products(**kwargs):
 def task_update_vtex_products(**kwargs):
     print("Starting task: 'task_update_vtex_products'")
     vtex_base_service = VtexServiceBase()
-    flows_service = FlowsService(FlowsClient())
+    # flows_service = FlowsService(FlowsClient())
 
     app_uuid = kwargs.get("app_uuid")
 
@@ -237,17 +237,20 @@ def task_update_vtex_products(**kwargs):
                     )
                     continue
 
-                dict_catalog = {
-                    "name": catalog.name,
-                    "facebook_catalog_id": catalog.facebook_catalog_id,
-                }
-                try:
-                    flows_service.update_vtex_products(
-                        products, str(catalog.app.flow_object_uuid), dict_catalog
-                    )
-                    print("Products successfully sent to flows")
-                except Exception as e:
-                    logger.error(f"Failed to send products to flows: {str(e)}")
+                # Temporarily removes the sending of products to flows [03-30-2024]
+
+                # dict_catalog = {
+                #     "name": catalog.name,
+                #     "facebook_catalog_id": catalog.facebook_catalog_id,
+                # }
+
+                # try:
+                #     flows_service.update_vtex_products(
+                #         products, str(catalog.app.flow_object_uuid), dict_catalog
+                #     )
+                #     print("Products successfully sent to flows")
+                # except Exception as e:
+                #     logger.error(f"Failed to send products to flows: {str(e)}")
 
                 # Reloads in-process webhooks to check for new items after current processing
                 webhooks_in_processing = cache.get(processing_key, [])
