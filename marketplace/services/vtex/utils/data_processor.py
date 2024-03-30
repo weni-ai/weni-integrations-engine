@@ -66,6 +66,11 @@ class DataProcessor:
             if product_details["ProductDescription"] != ""
             else product_details["SkuName"]
         )
+        title = product_details["SkuName"].title()
+        # Limit title and description to 200 characters for Facebook rules
+        description = description[:200]
+        title = title[:200]
+
         availability = (
             "in stock" if availability_details["is_available"] else "out of stock"
         )
@@ -73,7 +78,7 @@ class DataProcessor:
 
         return FacebookProductDTO(
             id=sku_id,
-            title=product_details["SkuName"].title(),
+            title=title.title(),
             description=description.title(),
             availability=availability,
             status=status,
