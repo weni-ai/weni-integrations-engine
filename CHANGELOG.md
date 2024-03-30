@@ -1,3 +1,7 @@
+v3.4.2
+----------
+* Removes sending of updated products to flows
+
 v3.4.1
 ----------
 * Adds VTEX_UPDATE_BATCH_SIZE environment variable for updating vtex products
