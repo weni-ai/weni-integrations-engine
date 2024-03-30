@@ -122,18 +122,19 @@ class ProductInsertionService(VtexServiceBase):
 
         products_csv = pvt_service.data_processor.products_to_csv(products)
         close_old_connections()
-        product_feed = self._send_products_to_facebook(products_csv, catalog)
+        self._send_products_to_facebook(products_csv, catalog)
         pvt_service.data_processor.clear_csv_buffer(
             products_csv
         )  # frees the memory of the csv file
-        close_old_connections()
-        self.product_manager.create_or_update_products_on_database(
-            products, catalog, product_feed
-        )
+        # Removed on 03-30-2024
+        # close_old_connections()
+        # self.product_manager.create_or_update_products_on_database(
+        #     products, catalog, product_feed
+        # )
         close_old_connections()
         self.app_manager.initial_sync_products_completed(catalog.vtex_app)
 
-        return pvt_service.data_processor.convert_dtos_to_dicts_list(products)
+        return products
 
     def _send_products_to_facebook(self, products_csv, catalog: Catalog):
         print("Starting to upload the CSV file to Facebook")
@@ -215,13 +216,14 @@ class ProductUpdateService(VtexServiceBase):
             print("Not upload products on '_webhook_update_products_on_facebook'")
             return None
 
-        self.product_manager.create_or_update_products_on_database(
-            products_dto, self.catalog, self.product_feed
-        )
-        products_list = pvt_service.data_processor.convert_dtos_to_dicts_list(
-            products_dto
-        )
-        return products_list
+        # Removed on 03-30-2024
+        # self.product_manager.create_or_update_products_on_database(
+        #     products_dto, self.catalog, self.product_feed
+        # )
+        # products_list = pvt_service.data_processor.convert_dtos_to_dicts_list(
+        #     products_dto
+        # )
+        return products_dto
 
     def _webhook_update_products_on_facebook(self, products_csv) -> bool:
         current_time = datetime.now().strftime("%Y-%m-%d_%H-%M")
