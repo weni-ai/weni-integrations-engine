@@ -1,18 +1,28 @@
 import logging
 
+from datetime import datetime
+
 from celery import shared_task
 
+from django.db import reset_queries, close_old_connections
+
 from marketplace.clients.facebook.client import FacebookClient
+from marketplace.services.webhook.vtex.webhook_manager import WebhookQueueManager
 from marketplace.wpp_products.models import Catalog
 from marketplace.clients.flows.client import FlowsClient
 from marketplace.celery import app as celery_app
-from marketplace.services.vtex.generic_service import VtexService
+from marketplace.services.vtex.generic_service import (
+    ProductUpdateService,
+    ProductInsertionService,
+    VtexServiceBase,
+)
 from marketplace.services.vtex.generic_service import APICredentials
 from marketplace.services.flows.service import FlowsService
 from marketplace.core.types import APPTYPES
 from marketplace.applications.models import App
 
 from django_redis import get_redis_connection
+from django.core.cache import cache
 
 
 logger = logging.getLogger(__name__)
@@ -75,7 +85,9 @@ class FacebookCatalogSyncService:
         try:
             return self.client.list_all_catalogs(self.app.config.get("wa_business_id"))
         except Exception as e:
-            logger.error(f"Error on list all catalogs for App: {str(e)}")
+            logger.error(
+                f"Error on list all catalogs for App: {self.app.uuid} {str(e)}"
+            )
             return [], []
 
     def _update_catalogs_on_flows(
@@ -122,25 +134,47 @@ class FacebookCatalogSyncService:
 
 @celery_app.task(name="task_insert_vtex_products")
 def task_insert_vtex_products(**kwargs):
-    vtex_service = VtexService()
+    print("Starting task: 'task_insert_vtex_products'")
+    vtex_service = ProductInsertionService()
     flows_service = FlowsService(FlowsClient())
 
     credentials = kwargs.get("credentials")
     catalog_uuid = kwargs.get("catalog_uuid")
 
-    catalog = Catalog.objects.get(uuid=catalog_uuid)
-    try:
-        api_credentials = APICredentials(
-            app_key=credentials.get("app_key"),
-            app_token=credentials.get("app_token"),
-            domain=credentials.get("domain"),
+    if not all([credentials, catalog_uuid]):
+        logger.error(
+            "Missing required parameters [credentials, catalog_uuid] for task_insert_vtex_products"
         )
+        return
 
+    try:
+        # Reset queries and close old connections for a clean state and performance.
+        # Prevents memory leak from stored queries and unstable database connections
+        # before further operations.
+        reset_queries()
+        close_old_connections()
+
+        catalog = Catalog.objects.get(uuid=catalog_uuid)
+        api_credentials = APICredentials(
+            app_key=credentials["app_key"],
+            app_token=credentials["app_token"],
+            domain=credentials["domain"],
+        )
+        print(f"Starting first product insert for catalog: {str(catalog.name)}")
         products = vtex_service.first_product_insert(api_credentials, catalog)
         if products is None:
             print("There are no products to be shipped after processing the rules")
             return
 
+    except Exception as e:
+        logger.exception(
+            f"An error occurred during the first insertion of vtex products for catalog {catalog.name}, {e}"
+        )
+        return
+    finally:
+        close_old_connections()
+
+    try:
         dict_catalog = {
             "name": catalog.name,
             "facebook_catalog_id": catalog.facebook_catalog_id,
@@ -148,52 +182,103 @@ def task_insert_vtex_products(**kwargs):
         flows_service.update_vtex_products(
             products, str(catalog.app.flow_object_uuid), dict_catalog
         )
-        print("Products created and sent to flows successfully")
+        print("Products successfully sent to flows")
     except Exception as e:
         logger.error(
-            f"Error on insert vtex products for catalog {str(catalog.uuid)}, {e}"
+            f"Error on send vtex products to flows for catalog {catalog_uuid}, {e}"
         )
+
+    print(
+        f"finishing creation products, task: 'task_insert_vtex_products' catalog {catalog.name}"
+    )
+    print("=" * 40)
 
 
 @celery_app.task(name="task_update_vtex_products")
 def task_update_vtex_products(**kwargs):
-    vtex_service = VtexService()
-    flows_service = FlowsService(FlowsClient())
+    print("Starting task: 'task_update_vtex_products'")
+    vtex_base_service = VtexServiceBase()
+    # flows_service = FlowsService(FlowsClient())
 
     app_uuid = kwargs.get("app_uuid")
-    webhook_data = kwargs.get("webhook_data")
 
-    try:
-        vtex_app = App.objects.get(uuid=app_uuid, configured=True, code="vtex")
-        domain, app_key, app_token = vtex_service.get_vtex_credentials_or_raise(
-            vtex_app
-        )
-        api_credentials = APICredentials(
-            app_key=app_key,
-            app_token=app_token,
-            domain=domain,
-        )
-        for catalog in vtex_app.vtex_catalogs.all():
-            if catalog.feeds.all().exists():
-                product_feed = catalog.feeds.all().first()  # The first feed created
-                products = vtex_service.webhook_product_insert(
-                    api_credentials, catalog, webhook_data, product_feed
+    queue_manager = WebhookQueueManager(app_uuid)
+    redis = get_redis_connection()
+    lock_key = queue_manager.get_lock_key()
+
+    lock = redis.lock(lock_key, timeout=7200)
+    if lock.acquire(blocking=False):
+        processing_key = queue_manager.get_sku_list_key()
+        webhooks_in_processing = cache.get(processing_key, {})
+        try:
+            while webhooks_in_processing:
+                close_old_connections()
+
+                skus_ids = queue_manager.dequeue_webhook_data()
+                if skus_ids is None:
+                    break
+
+                current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+                print(
+                    f"Processing product update for App UUID: {app_uuid}, SKU IDs: {skus_ids} at {current_time}"
                 )
+                vtex_app = App.objects.get(uuid=app_uuid, configured=True, code="vtex")
+                (
+                    domain,
+                    app_key,
+                    app_token,
+                ) = vtex_base_service.get_vtex_credentials_or_raise(vtex_app)
+                api_credentials = APICredentials(
+                    app_key=app_key, app_token=app_token, domain=domain
+                )
+
+                catalog = vtex_app.vtex_catalogs.first()
+                if not catalog or not catalog.feeds.first():
+                    logger.error(
+                        f"No data feed found in the database. Vtex app: {vtex_app.uuid}"
+                    )
+                    continue
+
+                product_feed = catalog.feeds.first()
+                print(f"Starting product update for app: {str(vtex_app.uuid)}")
+
+                vtex_update_service = ProductUpdateService(
+                    api_credentials, catalog, skus_ids, product_feed
+                )
+                products = vtex_update_service.webhook_product_insert()
                 if products is None:
-                    logger.info(
+                    print(
                         f"No products to process after treatment for VTEX app {app_uuid}. Task ending."
                     )
-                    return
+                    continue
 
-                dict_catalog = {
-                    "name": catalog.name,
-                    "facebook_catalog_id": catalog.facebook_catalog_id,
-                }
-                flows_service.update_vtex_products(
-                    products, str(catalog.app.flow_object_uuid), dict_catalog
-                )
-                print("Webhook Products updated and sent to flows successfully")
-    except Exception as e:
-        logger.error(
-            f"Error on updating Webhook vtex products for app {app_uuid}, {str(e)}"
-        )
+                # Temporarily removes the sending of products to flows [03-30-2024]
+
+                # dict_catalog = {
+                #     "name": catalog.name,
+                #     "facebook_catalog_id": catalog.facebook_catalog_id,
+                # }
+
+                # try:
+                #     flows_service.update_vtex_products(
+                #         products, str(catalog.app.flow_object_uuid), dict_catalog
+                #     )
+                #     print("Products successfully sent to flows")
+                # except Exception as e:
+                #     logger.error(f"Failed to send products to flows: {str(e)}")
+
+                # Reloads in-process webhooks to check for new items after current processing
+                webhooks_in_processing = cache.get(processing_key, [])
+
+        except Exception as e:
+            logger.error(
+                f"An error occurred during the updating Webhook vtex products for app {app_uuid}, {str(e)}"
+            )
+
+        finally:
+            lock.release()
+    else:
+        print("Unable to acquire lock, another process is running.")
+
+    print("Finishing update vtex product")
+    print("=" * 40)

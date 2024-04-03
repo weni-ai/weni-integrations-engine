@@ -90,7 +90,8 @@ class DestroyWhatsAppCloudTestCase(APIBaseTestCase):
     def view(self):
         return self.view_class.as_view(APIBaseTestCase.ACTION_DESTROY)
 
-    def test_destroy_app_ok(self):
+    # WhatsApp applications cannot be deleted.
+    def test_preventing_destroy_app(self):
         response = self.request.delete(self.url, uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
@@ -459,7 +460,6 @@ class CreateWhatsAppCloudTestCase(APIBaseTestCase):
         self,
         mock_get,
     ):
-
         mock_get.return_value = MagicMock(status_code=status.HTTP_400_BAD_REQUEST)
 
         response = self.request.post(self.url, body=self.payload)

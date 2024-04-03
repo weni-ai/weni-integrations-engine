@@ -97,14 +97,11 @@ class TemplateTranslationSerializer(serializers.Serializer):
                 or header.get("format") == "DOCUMENT"
                 or header.get("format") == "VIDEO"
             ):
-                photo_api_request = PhotoAPIRequest(
-                    access_token, template.app.config.get("wa_waba_id")
-                )
+                photo_api_request = PhotoAPIRequest(access_token=access_token)
                 photo = header.get("example")
                 file_type = re.search("(?<=data:)(.*)(?=;base64)", photo).group(0)
                 photo = photo.split(";base64,")[1]
                 upload_session_id = photo_api_request.create_upload_session(
-                    access_token,
                     len(base64.b64decode(photo)),
                     file_type=file_type,
                 )

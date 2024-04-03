@@ -1,3 +1,70 @@
+v3.4.3
+----------
+* Remove saving of vtex products in DB
+* Limits vtex product description to 200 characters
+
+v3.4.2
+----------
+* Removes sending of updated products to flows
+
+v3.4.1
+----------
+* Adds VTEX_UPDATE_BATCH_SIZE environment variable for updating vtex products
+
+v3.4.0
+----------
+* Batch updates vtex products and adjusts cache-keys lifetimes
+
+v3.3.12
+----------
+* Change progress bar layout 
+* Update facebook_product_id
+* Update gunicorn.conf.py
+
+v3.3.11
+----------
+* Move timeout parameter
+
+v3.3.10
+----------
+* Improvements in the product creation and update process
+* Adjust rule for unit and weight
+* Create product_first_synchronization queue
+
+v3.3.9
+----------
+* Fix add logger date info to update products task
+
+v3.3.8
+----------
+* Fix SSL SYSCALL error
+* Fix Add redis.lock on the task task_update_vtex_products
+* Fix Change the connected catalog status when starting the first manual product insertion
+
+v3.3.7
+----------
+* Webhook product update queue
+
+v3.3.6
+----------
+* Create class to send products to catalogs already created on Facebook
+* Add try-except to wpp-cloud task and check if project_uuid is not None
+
+v3.3.5
+----------
+* Optimizes bulk creation of vtex product data
+* Adds product status and set the product archived when out of stock
+
+v3.3.4
+----------
+* Reduces number of calls for catalog listings
+* Reduces calls for get template analytics
+
+v3.3.3
+----------
+* Fixing the order of parameters for PhotoAPIRequest
+* Upgrade python version from 3.8.x to 3.9.x 
+
 v3.3.2
 ----------
 * Create action to activate the analytics template on Facebook

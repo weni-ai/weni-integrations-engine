@@ -24,7 +24,7 @@ from marketplace.wpp_products.serializers import (
     TresholdSerializer,
     CatalogListSerializer,
 )
-from marketplace.services.vtex.generic_service import VtexService
+from marketplace.services.vtex.generic_service import VtexServiceBase
 from marketplace.celery import app as celery_app
 
 
@@ -62,7 +62,7 @@ class Pagination(PageNumberPagination):
 class CatalogViewSet(BaseViewSet):
     serializer_class = CatalogSerializer
     pagination_class = Pagination
-    vtex_generic_service_class = VtexService
+    vtex_base_class = VtexServiceBase
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -71,7 +71,7 @@ class CatalogViewSet(BaseViewSet):
     @property
     def vtex_service(self):  # pragma: no cover
         if not self._vtex_app_service:
-            self._vtex_app_service = self.vtex_generic_service_class()
+            self._vtex_app_service = self.vtex_base_class()
         return self._vtex_app_service
 
     def filter_queryset(self, queryset):
@@ -122,7 +122,7 @@ class CatalogViewSet(BaseViewSet):
         celery_app.send_task(
             name="task_insert_vtex_products",
             kwargs={"credentials": credentials, "catalog_uuid": str(catalog.uuid)},
-            queue="product_synchronization",
+            queue="product_first_synchronization",
         )
 
         return Response(CatalogSerializer(catalog).data, status=status.HTTP_201_CREATED)

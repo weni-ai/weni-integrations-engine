@@ -66,6 +66,12 @@ class ProductFeed(BaseModel):
     facebook_feed_id = models.CharField(max_length=30, unique=True)
     name = models.CharField(max_length=100)
     catalog = models.ForeignKey(Catalog, on_delete=models.CASCADE, related_name="feeds")
+    created_by = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.PROTECT,
+        blank=True,
+        null=True,
+    )
 
     def __str__(self):
         return self.name
@@ -78,7 +84,7 @@ class Product(BaseModel):
         ("refurbished", "refurbished"),
         ("used", "used"),
     ]
-    facebook_product_id = models.CharField(max_length=30)
+    facebook_product_id = models.CharField(max_length=100)
     # facebook required fields
     title = models.CharField(max_length=200)
     description = models.TextField(max_length=9999)

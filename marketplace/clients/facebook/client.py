@@ -86,7 +86,7 @@ class FacebookClient(FacebookAuthorization, RequestClient):
         response = self.make_request(url, method="POST", headers=headers, data=data)
         return response.json()
 
-    def get_upload_status(self, feed_id, max_attempts=10, wait_time=30):
+    def get_all_upload_status(self, feed_id, max_attempts=10, wait_time=30):
         """
         Checks the upload status using long polling.
 
@@ -143,20 +143,15 @@ class FacebookClient(FacebookAuthorization, RequestClient):
         headers = self._get_headers()
         all_catalog_ids = []
         all_catalogs = []
-        request = None
-        response_data = None
-        initial_url = url
+        params = dict(limit=999)
 
-        while url:
-            response = self.make_request(url, method="GET", headers=headers)
-            catalog_data = response.json().get("data", [])
-
-            for item in catalog_data:
-
-                all_catalog_ids.append(item["id"])
-                all_catalogs.append(item)
-
-            url = response.json().get("paging", {}).get("next")
+        response = self.make_request(
+            url, method="GET", headers=headers, params=params
+        ).json()
+        catalog_data = response.get("data", [])
+        for item in catalog_data:
+            all_catalog_ids.append(item["id"])
+            all_catalogs.append(item)
 
             request, response_data = self.request_http_log(response)
 
@@ -259,25 +254,15 @@ class FacebookClient(FacebookAuthorization, RequestClient):
     def get_template_analytics(self, waba_id, fields):
         url = self.BASE_URL + f"{waba_id}/template_analytics"
         headers = self._get_headers()
-        combined_data = {}
+        combined_data = {"data": {"data_points": []}}
 
-        while url:
-            response = self.make_request(
-                url, method="GET", headers=headers, params=fields
-            )
-            data = response.json()
+        response = self.make_request(
+            url, method="GET", headers=headers, params=fields
+        ).json()
 
-            for entry in data.get("data", []):
-                data_points = entry.get("data_points", [])
-
-                if "data" not in combined_data:
-                    combined_data["data"] = {"data_points": []}
-
-                combined_data["data"]["data_points"].extend(data_points)
-
-            paging = data.get("paging", {})
-            next_url = paging.get("next")
-            url = next_url if next_url else None
+        data = response.get("data", [])
+        data_points = data[0].get("data_points", [])
+        combined_data["data"]["data_points"].extend(data_points)
 
         return combined_data
 
@@ -287,3 +272,24 @@ class FacebookClient(FacebookAuthorization, RequestClient):
         headers = self._get_headers()
         response = self.make_request(url, method="POST", headers=headers, params=params)
         return response.json()
+
+    def get_upload_status_by_feed(self, feed_id, upload_id):
+        url = self.get_url + f"{feed_id}/uploads"
+
+        headers = self._get_headers()
+        response = self.make_request(url, method="GET", headers=headers)
+        data = response.json()
+
+        upload = next(
+            (
+                upload
+                for upload in data.get("data", [])
+                if upload.get("id") == upload_id
+            ),
+            None,
+        )
+
+        if upload:
+            return "end_time" in upload
+
+        return False

@@ -40,6 +40,11 @@ def sync_whatsapp_apps():
             for channel in channels:
                 channel_config = channel.get("config")
 
+                if channel.get("project_uuid") is None:
+                    uuid = channel.get("uuid")
+                    logger.info(f"The channel {uuid} does not have a project_uuid.")
+                    continue
+
                 if channel.get("uuid") is None:
                     logger.info("Skipping channel with None UUID.")
                     continue
