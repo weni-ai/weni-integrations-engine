@@ -1,3 +1,9 @@
+v3.4.4
+----------
+* Facebook webhook
+* Changes in the treatment process and add product validations
+* Remove webhook log info and Add info to log update task
+
 v3.4.3
 ----------
 * Remove saving of vtex products in DB
