@@ -1,5 +1,6 @@
-from celery import shared_task
 import logging
+
+from celery import shared_task
 
 from sentry_sdk import capture_exception
 
@@ -15,6 +16,8 @@ from marketplace.wpp_templates.models import (
     TemplateButton,
 )
 from marketplace.clients.flows.client import FlowsClient
+
+from .utils import WebhookEventProcessor
 
 
 logger = logging.getLogger(__name__)
@@ -161,3 +164,22 @@ def delete_unexistent_translations(app, templates):
                 f"An error occurred 'on delete_unexistent_translations()': {e}"
             )
             continue
+
+
+@shared_task(track_started=True, name="update_templates_by_webhook")
+def update_templates_by_webhook(**kwargs):  # pragma: no cover
+    allowed_event_types = [
+        "message_template_status_update",
+    ]
+    webhook_data = kwargs.get("webhook_data")
+    for entry in webhook_data.get("entry", []):
+        whatsapp_business_account_id = entry.get("id")
+        for change in entry.get("changes", []):
+            field = change.get("field")
+            value = change.get("value")
+            if field in allowed_event_types:
+                WebhookEventProcessor.process_event(
+                    whatsapp_business_account_id, value, field
+                )
+            else:
+                logger.info(f"Event: {field}, not mapped to usage")
