@@ -241,9 +241,11 @@ class DataProcessor:
             "brand",
             "sale_price",
         ]
-
         for field in required_fields:
             if not getattr(product_dto, field, None):
+                print(
+                    f"Product {product_dto.id} without the field: {field}, ignoring the product."
+                )
                 return False
 
         return True
