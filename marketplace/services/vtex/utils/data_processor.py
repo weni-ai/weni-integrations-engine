@@ -180,6 +180,9 @@ class DataProcessor:
             product_dto = DataProcessor.extract_fields(
                 self.store_domain, product_details, availability_details
             )
+            if not self._validate_product_dto(product_dto):
+                continue
+
             params = {"seller_id": seller_id}
             all_rules_applied = True
             for rule in self.rules:
@@ -219,3 +222,30 @@ class DataProcessor:
 
         print("Products successfully converted to dictionary.")
         return dicts_list
+
+    def _validate_product_dto(self, product_dto: FacebookProductDTO) -> bool:
+        """
+        Verifies that all required fields in the FacebookProductDTO are filled in.
+        Returns True if the product is valid, False otherwise.
+        """
+        required_fields = [
+            "id",
+            "title",
+            "description",
+            "availability",
+            "status",
+            "condition",
+            "price",
+            "link",
+            "image_link",
+            "brand",
+            "sale_price",
+        ]
+        for field in required_fields:
+            if not getattr(product_dto, field, None):
+                print(
+                    f"Product {product_dto.id} without the field: {field}, ignoring the product."
+                )
+                return False
+
+        return True

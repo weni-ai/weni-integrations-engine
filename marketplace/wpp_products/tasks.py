@@ -17,7 +17,6 @@ from marketplace.services.vtex.generic_service import (
     VtexServiceBase,
 )
 from marketplace.services.vtex.generic_service import APICredentials
-from marketplace.services.flows.service import FlowsService
 from marketplace.core.types import APPTYPES
 from marketplace.applications.models import App
 
@@ -121,7 +120,7 @@ class FacebookCatalogSyncService:
 def task_insert_vtex_products(**kwargs):
     print("Starting task: 'task_insert_vtex_products'")
     vtex_service = ProductInsertionService()
-    flows_service = FlowsService(FlowsClient())
+    # flows_service = FlowsService(FlowsClient())
 
     credentials = kwargs.get("credentials")
     catalog_uuid = kwargs.get("catalog_uuid")
@@ -159,19 +158,20 @@ def task_insert_vtex_products(**kwargs):
     finally:
         close_old_connections()
 
-    try:
-        dict_catalog = {
-            "name": catalog.name,
-            "facebook_catalog_id": catalog.facebook_catalog_id,
-        }
-        flows_service.update_vtex_products(
-            products, str(catalog.app.flow_object_uuid), dict_catalog
-        )
-        print("Products successfully sent to flows")
-    except Exception as e:
-        logger.error(
-            f"Error on send vtex products to flows for catalog {catalog_uuid}, {e}"
-        )
+    # Temporarily removes the sending of products to flows [04-02-2024]
+    # try:
+    #     dict_catalog = {
+    #         "name": catalog.name,
+    #         "facebook_catalog_id": catalog.facebook_catalog_id,
+    #     }
+    #     flows_service.update_vtex_products(
+    #         products, str(catalog.app.flow_object_uuid), dict_catalog
+    #     )
+    #     print("Products successfully sent to flows")
+    # except Exception as e:
+    #     logger.error(
+    #         f"Error on send vtex products to flows for catalog {catalog_uuid}, {e}"
+    #     )
 
     print(
         f"finishing creation products, task: 'task_insert_vtex_products' catalog {catalog.name}"
@@ -194,13 +194,16 @@ def task_update_vtex_products(**kwargs):
     lock = redis.lock(lock_key, timeout=7200)
     if lock.acquire(blocking=False):
         processing_key = queue_manager.get_sku_list_key()
-        webhooks_in_processing = cache.get(processing_key, {})
         try:
-            while webhooks_in_processing:
-                close_old_connections()
+            while True:
+                webhooks_in_processing = cache.get(processing_key, [])
+                if not webhooks_in_processing:
+                    print("There are no products to deal with in cache.")
+                    break
 
                 skus_ids = queue_manager.dequeue_webhook_data()
-                if skus_ids is None:
+                if not skus_ids:
+                    print("There are no products in dequeue process.")
                     break
 
                 current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
@@ -252,8 +255,7 @@ def task_update_vtex_products(**kwargs):
                 # except Exception as e:
                 #     logger.error(f"Failed to send products to flows: {str(e)}")
 
-                # Reloads in-process webhooks to check for new items after current processing
-                webhooks_in_processing = cache.get(processing_key, [])
+                close_old_connections()
 
         except Exception as e:
             logger.error(
@@ -265,5 +267,5 @@ def task_update_vtex_products(**kwargs):
     else:
         print("Unable to acquire lock, another process is running.")
 
-    print("Finishing update vtex product")
+    print(f"Finishing update vtex product to App: {app_uuid}")
     print("=" * 40)

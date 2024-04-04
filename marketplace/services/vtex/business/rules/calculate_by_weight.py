@@ -14,7 +14,7 @@ class CalculateByWeight(Rule):
 
             price_per_kg = 0
             if weight > 0:
-                formatted_price = float(f"{product.price / 100:.2f}")
+                formatted_price = float(f"{product.sale_price / 100:.2f}")
                 price_per_kg = formatted_price / unit_multiplier
 
             product.description = (
