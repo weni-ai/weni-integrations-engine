@@ -1,3 +1,7 @@
+v3.4.5
+----------
+* Check that the price and availability fields are filled in correctly
+
 v3.4.4
 ----------
 * Facebook webhook
