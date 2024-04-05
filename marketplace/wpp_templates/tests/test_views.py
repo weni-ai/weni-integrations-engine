@@ -1,4 +1,5 @@
 """ Tests for the wpp_templates module """
+
 import uuid
 import textwrap
 
@@ -571,10 +572,20 @@ class WhatsappTemplateUpdateTestCase(APIBaseTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
+    @patch("requests.post")
     @patch(
         "marketplace.core.types.channels.whatsapp_cloud.requests.PhotoAPIRequest.create_upload_session"
     )
-    def test_update_template_translation_error(self, mock_update_template_message):
+    def test_update_template_translation_error(
+        self, mock_create_upload_session, mock_requests_post
+    ):
+        mock_create_upload_session.return_value = "fake_session_id"
+
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.json.return_value = {"error": "some_error"}
+        mock_requests_post.return_value = mock_response
+
         with self.assertRaises(FacebookApiException):
             self.request.patch(
                 self.url,
@@ -582,6 +593,9 @@ class WhatsappTemplateUpdateTestCase(APIBaseTestCase):
                 app_uuid=str(self.app.uuid),
                 uuid=str(self.template_message.uuid),
             )
+
+        mock_create_upload_session.assert_called_once()
+        mock_requests_post.assert_called_once()
 
     def test_update_wpp_template_without_token(self):
         self.app.config = {"waba": {"id": "432321321"}}
