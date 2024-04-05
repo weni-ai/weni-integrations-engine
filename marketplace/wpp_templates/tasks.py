@@ -42,7 +42,12 @@ def refresh_whatsapp_templates_from_facebook():
             access_token = APPTYPES.get("wpp-cloud").get_access_token(app)
 
         template_message_request = TemplateMessageRequest(access_token=access_token)
-        templates = template_message_request.list_template_messages(waba_id)
+        (
+            templates,
+            request,
+            response_data,
+            url,
+        ) = template_message_request.list_template_messages(waba_id)
 
         if templates.get("error"):
             logger.error(
@@ -52,7 +57,9 @@ def refresh_whatsapp_templates_from_facebook():
 
         templates = templates.get("data", [])
         try:
-            flows_client.update_facebook_templates(str(app.flow_object_uuid), templates)
+            flows_client.update_facebook_templates(
+                str(app.flow_object_uuid), templates, request, response_data, url
+            )
         except Exception as error:
             logger.error(
                 f"An error occurred when sending facebook templates to flows: "

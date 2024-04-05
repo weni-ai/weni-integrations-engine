@@ -64,10 +64,18 @@ class FacebookCatalogSyncService:
                 local_catalog_ids = set(
                     self.app.catalogs.values_list("facebook_catalog_id", flat=True)
                 )
-                all_catalogs_id, all_catalogs = self._list_all_catalogs()
+                (
+                    all_catalogs_id,
+                    all_catalogs,
+                    all_requests,
+                    all_responses,
+                    all_urls,
+                ) = self._list_all_catalogs()
 
                 if all_catalogs_id:
-                    self._update_catalogs_on_flows(all_catalogs)
+                    self._update_catalogs_on_flows(
+                        all_catalogs, all_requests, all_responses, all_urls
+                    )
                     self._sync_local_catalogs(all_catalogs_id, local_catalog_ids)
             except Exception as e:
                 logger.error(f"Error during sync process for App {self.app.name}: {e}")
@@ -81,10 +89,17 @@ class FacebookCatalogSyncService:
             )
             return [], []
 
-    def _update_catalogs_on_flows(self, all_catalogs):
+    def _update_catalogs_on_flows(
+        self, all_catalogs, all_requests, all_responses, all_urls
+    ):
         try:
+            print("EPAA")
             self.flows_client.update_catalogs(
-                str(self.app.flow_object_uuid), all_catalogs
+                str(self.app.flow_object_uuid),
+                all_catalogs,
+                all_requests,
+                all_responses,
+                all_urls,
             )
         except Exception as e:
             logger.error(
