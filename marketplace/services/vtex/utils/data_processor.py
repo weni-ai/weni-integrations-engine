@@ -235,12 +235,19 @@ class DataProcessor:
             "availability",
             "status",
             "condition",
-            "price",
             "link",
             "image_link",
             "brand",
-            "sale_price",
         ]
+
+        if (
+            product_dto.availability == "in stock" and not product_dto.price
+        ):  # None or 0
+            print(
+                f"Product {product_dto.id} in stock without a valid price, ignoring the product."
+            )
+            return False
+
         for field in required_fields:
             if not getattr(product_dto, field, None):
                 print(
