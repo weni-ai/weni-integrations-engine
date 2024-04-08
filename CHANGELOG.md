@@ -1,3 +1,8 @@
+v3.4.6
+----------
+* Updates template per app and ignores apps with errors in waba
+* Fix test_update_template_translation_error test case
+
 v3.4.5
 ----------
 * Check that the price and availability fields are filled in correctly
