@@ -24,25 +24,34 @@ logger = logging.getLogger(__name__)
 @shared_task(track_started=True, name="refresh_whatsapp_templates_from_facebook")
 def refresh_whatsapp_templates_from_facebook():
     for app in App.objects.filter(code__in=["wpp", "wpp-cloud"]):
-        if not (app.config.get("wa_waba_id") or app.config.get("waba")):
-            continue
+        try:
+            if not (app.config.get("wa_waba_id") or app.config.get("waba")):
+                continue
 
-        if "ignores_meta_sync" in app.config:
-            logger.info(
-                f"Skipping sync for app {app.uuid} based on previous error: {app.config['ignores_meta_sync']}"
-            )
-            continue
+            if "ignores_meta_sync" in app.config:
+                logger.info(
+                    f"Skipping sync for app {app.uuid} based on previous error: {app.config['ignores_meta_sync']}"
+                )
+                continue
 
-        service = FacebookTemplateSyncService(app)
-        service.sync_templates()
+            service = FacebookTemplateSyncService(app)
+            service.sync_templates()
+
+        except Exception as e:
+            logger.error(f"Error processing app {app.uuid}: {str(e)}")
 
 
 class FacebookTemplateSyncService:
     def __init__(self, app):
         self.app = app
-        self.client = TemplateMessageRequest(
-            access_token=app.apptype.get_access_token(app)
-        )
+        try:
+            self.client = TemplateMessageRequest(
+                access_token=app.apptype.get_access_token(app)
+            )
+        except ValueError as e:
+            logger.error(f"Access token error for app {app.uuid}: {str(e)}")
+            raise
+
         self.flows_client = FlowsClient()
 
     def sync_templates(self):
@@ -148,6 +157,8 @@ class FacebookTemplateSyncService:
             except Exception as error:
                 capture_exception(error)
                 continue
+
+        print(f"Completed template update for app {str(self.app.uuid)}")
 
 
 def delete_unexistent_translations(app, templates):
