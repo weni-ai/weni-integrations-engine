@@ -9,7 +9,7 @@ from django.conf import settings
 WHATSAPP_VERSION = settings.WHATSAPP_VERSION
 
 
-class TemplateMessageRequest(object):
+class TemplateMessageRequest(object):  # TODO: Move methods to clients.facebook.client
     def __init__(self, access_token: str) -> None:
         self._access_token = access_token
 
@@ -38,25 +38,6 @@ class TemplateMessageRequest(object):
             params=params,
         )
         return response.json().get("message_template_namespace")
-
-    def create_template_message(
-        self, waba_id: str, name: str, category: str, components: list, language: str
-    ) -> dict:
-        params = dict(
-            name=name,
-            category=category,
-            components=str(components),
-            language=language,
-            access_token=self._access_token,
-        )
-        response = requests.post(
-            url=f"https://graph.facebook.com/{WHATSAPP_VERSION}/{waba_id}/message_templates",
-            params=params,
-        )
-        if response.status_code != 200:
-            raise FacebookApiException(response.json())
-
-        return response.json()
 
     def update_template_message(
         self, message_template_id: str, name: str, components: str

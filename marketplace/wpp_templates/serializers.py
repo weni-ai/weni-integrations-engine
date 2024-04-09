@@ -12,12 +12,14 @@ from rest_framework import serializers
 from marketplace.applications.models import App
 
 from .models import TemplateMessage, TemplateTranslation, TemplateButton, TemplateHeader
-from .requests import TemplateMessageRequest
+
 from marketplace.core.types.channels.whatsapp_cloud.requests import PhotoAPIRequest
 from marketplace.core.types.channels.whatsapp_base.exceptions import (
     FacebookApiException,
 )
-from marketplace.core.types import APPTYPES
+
+from marketplace.clients.facebook.client import FacebookClient
+
 
 WHATSAPP_VERSION = settings.WHATSAPP_VERSION
 
@@ -72,17 +74,9 @@ class TemplateTranslationSerializer(serializers.Serializer):
     def create(self, validated_data: dict) -> None:
         template = TemplateMessage.objects.get(uuid=validated_data.get("template_uuid"))
 
-        if template.app.code == "wpp":
-            access_token = template.app.config.get("fb_access_token", None)
+        access_token = template.app.apptype.get_access_token(template.app)
+        fba_client = FacebookClient(access_token)
 
-            if access_token is None:
-                raise ValidationError(
-                    f"This app: {template.app.uuid} does not have fb_access_token in config"
-                )
-        else:
-            access_token = APPTYPES.get("wpp-cloud").get_access_token(template.app)
-
-        template_message_request = TemplateMessageRequest(access_token=access_token)
         components = [validated_data.get("body", {})]
         header = validated_data.get("header")
 
@@ -158,7 +152,8 @@ class TemplateTranslationSerializer(serializers.Serializer):
             if template.app.config.get("wa_waba_id")
             else template.app.config.get("waba").get("id")
         )
-        new_template = template_message_request.create_template_message(
+
+        new_template = fba_client.create_template_message(
             waba_id=waba_id,
             name=template.name,
             category=template.category,

@@ -267,3 +267,19 @@ class FacebookClient(FacebookAuthorization, RequestClient):
             return "end_time" in upload
 
         return False
+
+    def create_template_message(
+        self, waba_id: str, name: str, category: str, components: list, language: str
+    ) -> dict:
+        params = dict(
+            name=name,
+            category=category,
+            components=str(components),
+            language=language,
+        )
+        url = self.get_url + f"{waba_id}/message_templates"
+        response = self.make_request(
+            url, method="POST", params=params, headers=self._get_headers()
+        )
+
+        return response.json()

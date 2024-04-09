@@ -9,8 +9,9 @@ from ..whatsapp_base.interfaces import ProfileHandlerInterface
 from ..whatsapp_base.exceptions import FacebookApiException
 
 
-class CloudProfileRequest(ProfileHandlerInterface):
-    # TODO: Validate response status
+class CloudProfileRequest(
+    ProfileHandlerInterface
+):  # TODO: Move methods to clients.facebook.client
     _endpoint = "/whatsapp_business_profile"
     _fields = dict(
         fields="about,address,description,email,profile_picture_url,websites,vertical"
@@ -59,7 +60,7 @@ class CloudProfileRequest(ProfileHandlerInterface):
         ...
 
 
-class PhoneNumbersRequest(object):
+class PhoneNumbersRequest(object):  # TODO: Move methods to clients.facebook.client
     def __init__(self, access_token: str) -> None:
         self._access_token = access_token
 
@@ -94,7 +95,7 @@ class PhoneNumbersRequest(object):
         return response.json()
 
 
-class PhotoAPIRequest(object):
+class PhotoAPIRequest(object):  # TODO: Move methods to clients.facebook.client
     def __init__(self, access_token: str) -> None:
         self._access_token = access_token
 
