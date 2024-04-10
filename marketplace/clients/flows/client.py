@@ -1,4 +1,5 @@
 """Client for connection with flows"""
+
 from django.conf import settings
 
 from marketplace.clients.base import RequestClient
@@ -112,6 +113,23 @@ class FlowsClient(RequestClient):
         response = self.make_request(
             url,
             method="PATCH",
+            headers=self.authentication_instance.headers,
+            json=data,
+        )
+        return response
+
+    def update_facebook_templates_webhook(
+        self, flow_object_uuid, webhook, template_data, template_name
+    ):
+        data = {
+            "template_name": template_name,
+            "webhook": webhook,
+            "template_data": template_data,
+        }
+        url = f"{self.base_url}/template/{flow_object_uuid}/template-sync/"
+        response = self.make_request(
+            url,
+            method="POST",
             headers=self.authentication_instance.headers,
             json=data,
         )
