@@ -19,3 +19,10 @@ class FlowsService:
             )
 
         return True
+
+    def update_facebook_templates_webhook(
+        self, flow_object_uuid, webhook, template_data, template_name
+    ):
+        return self.client.update_facebook_templates_webhook(
+            flow_object_uuid, webhook, template_data, template_name
+        )

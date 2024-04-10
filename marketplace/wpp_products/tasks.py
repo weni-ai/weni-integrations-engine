@@ -267,5 +267,5 @@ def task_update_vtex_products(**kwargs):
     else:
         print("Unable to acquire lock, another process is running.")
 
-    print("Finishing update vtex product")
+    print(f"Finishing update vtex product to App: {app_uuid}")
     print("=" * 40)
