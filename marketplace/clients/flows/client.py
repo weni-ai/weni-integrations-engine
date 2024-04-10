@@ -136,4 +136,6 @@ class FlowsClient(RequestClient):
         print("resposta:")
         print(response)
         print(type(response))
+        a = response.json()
+        print(response.json(), a)
         return response
