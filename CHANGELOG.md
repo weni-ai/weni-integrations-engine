@@ -1,3 +1,8 @@
+v3.5.0
+----------
+* Sends webhook and template data to flows
+* Fix test_update_template_translation_error test case
+
 v3.4.6
 ----------
 * Updates template per app and ignores apps with errors in waba
