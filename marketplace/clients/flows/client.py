@@ -133,4 +133,7 @@ class FlowsClient(RequestClient):
             headers=self.authentication_instance.headers,
             json=data,
         )
-        return response.json()
+        print("resposta:")
+        print(response)
+        print(type(response))
+        return response
