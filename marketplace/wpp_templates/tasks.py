@@ -208,7 +208,7 @@ def update_templates_by_webhook(**kwargs):  # pragma: no cover
             value = change.get("value")
             if field in allowed_event_types:
                 WebhookEventProcessor.process_event(
-                    whatsapp_business_account_id, value, field
+                    whatsapp_business_account_id, value, field, webhook_data
                 )
             else:
                 logger.info(f"Event: {field}, not mapped to usage")
