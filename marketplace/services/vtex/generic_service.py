@@ -226,6 +226,8 @@ class ProductUpdateService(VtexServiceBase):
         return products_dto
 
     def _webhook_update_products_on_facebook(self, products_csv) -> bool:
+        self._checks_uploads_in_progress()
+
         current_time = datetime.now().strftime("%Y-%m-%d_%H-%M")
         file_name = f"update_{current_time}_{self.product_feed.name}"
         upload_id = self._webhook_upload_product_feed(
@@ -270,6 +272,10 @@ class ProductUpdateService(VtexServiceBase):
             wait_time = min(wait_time * 2, 160)
 
         return False
+
+    def _checks_uploads_in_progress(self):
+        self.fba_service.get_upload_status_by_feed(self.feed_id)
+        # TODO : Se tiver pending_uploads chamar metodo para aguardar
 
 
 class CatalogProductInsertion:

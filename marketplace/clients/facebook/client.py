@@ -267,3 +267,21 @@ class FacebookClient(FacebookAuthorization, RequestClient):
             return "end_time" in upload
 
         return False
+
+    def get_uploads_in_progress_by_feed(self, feed_id):
+        url = self.get_url + f"{feed_id}/uploads"
+
+        headers = self._get_headers()
+        response = self.make_request(url, method="GET", headers=headers)
+        data = response.json()
+        upload = next(
+            (
+                upload
+                for upload in data.get("data", [])
+                if upload.get("end_time") is None
+            ),
+            None,
+        )
+        if upload:
+            if "end_time" not in upload:
+                return upload.get("id")
