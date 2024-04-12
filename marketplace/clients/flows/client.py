@@ -64,8 +64,15 @@ class FlowsClient(RequestClient):
         )
         return True
 
-    def update_catalogs(self, flow_object_uuid, catalogs_data):
-        data = {"data": catalogs_data}
+    def update_catalogs(
+        self, flow_object_uuid, catalogs_data, requests_data, response_data, urls_data
+    ):
+        data = {
+            "data": catalogs_data,
+            "requests": requests_data,
+            "responses": response_data,
+            "urls": urls_data,
+        }
         url = f"{self.base_url}/catalogs/{flow_object_uuid}/update-catalog/"
 
         response = self.make_request(
@@ -106,8 +113,15 @@ class FlowsClient(RequestClient):
         )
         return response
 
-    def update_facebook_templates(self, flow_object_uuid, fba_templates):
-        data = {"data": fba_templates}
+    def update_facebook_templates(
+        self, flow_object_uuid, fba_templates, request, response_data, url_request
+    ):
+        data = {
+            "data": fba_templates,
+            "request": request,
+            "response": response_data,
+            "url": url_request,
+        }
         url = f"{self.base_url}/template/{flow_object_uuid}/"
 
         response = self.make_request(

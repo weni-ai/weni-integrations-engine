@@ -61,7 +61,13 @@ class FacebookTemplateSyncService:
             else self.app.config.get("wa_waba_id")
         )
 
-        templates = self.client.list_template_messages(waba_id)
+        template_message_request = TemplateMessageRequest(access_token=access_token)
+        (
+            templates,
+            request,
+            response_data,
+            url,
+        ) = template_message_request.list_template_messages(waba_id)
 
         if templates.get("error"):
             template_error = templates["error"]
@@ -73,8 +79,8 @@ class FacebookTemplateSyncService:
 
         templates = templates.get("data", [])
         try:
-            self.flows_client.update_facebook_templates(
-                str(self.app.flow_object_uuid), templates
+            flows_client.update_facebook_templates(
+                str(app.flow_object_uuid), templates, request, response_data, url
             )
         except Exception as error:
             logger.error(
