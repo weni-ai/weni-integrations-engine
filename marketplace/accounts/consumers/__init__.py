@@ -1,0 +1,1 @@
+from .update_permissions import UpdatePermissionConsumer
