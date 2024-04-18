@@ -226,7 +226,11 @@ class ProductUpdateService(VtexServiceBase):
         return products_dto
 
     def _webhook_update_products_on_facebook(self, products_csv) -> bool:
-        self._checks_uploads_in_progress()
+        upload_id_in_process = self._uploads_in_progress()
+
+        if upload_id_in_process:
+            print("There is already a feed upload in progress, waiting for completion.")
+            self._wait_for_upload_completion(upload_id_in_process)
 
         current_time = datetime.now().strftime("%Y-%m-%d_%H-%M")
         file_name = f"update_{current_time}_{self.product_feed.name}"
@@ -256,6 +260,7 @@ class ProductUpdateService(VtexServiceBase):
         wait_time = 5
         max_wait_time = 20 * 60
         total_wait_time = 0
+        attempt = 1
 
         while total_wait_time < max_wait_time:
             upload_complete = self.fba_service.get_upload_status_by_feed(
@@ -265,17 +270,22 @@ class ProductUpdateService(VtexServiceBase):
                 return True
 
             print(
-                f"Waiting {wait_time} seconds to get feed: {self.feed_id} upload {upload_id} status."
+                f"Attempt {attempt}: Waiting {wait_time} seconds "
+                f"to get feed: {self.feed_id} upload {upload_id} status."
             )
             time.sleep(wait_time)
             total_wait_time += wait_time
             wait_time = min(wait_time * 2, 160)
+            attempt += 1
 
         return False
 
-    def _checks_uploads_in_progress(self):
-        self.fba_service.get_upload_status_by_feed(self.feed_id)
-        # TODO : Se tiver pending_uploads chamar metodo para aguardar
+    def _uploads_in_progress(self):
+        upload_id = self.fba_service.get_in_process_uploads_by_feed(self.feed_id)
+        if upload_id:
+            return upload_id
+
+        return False
 
 
 class CatalogProductInsertion:
