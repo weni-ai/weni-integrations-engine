@@ -1,3 +1,8 @@
+v3.6.0
+----------
+* Permission update consumer
+* Check if there is a feed upload in progress before uploading a new
+
 v3.5.0
 ----------
 * Sends webhook and template data to flows
