@@ -86,6 +86,9 @@ class FacebookService:
     def get_upload_status_by_feed(self, feed_id, upload_id) -> bool:
         return self.client.get_upload_status_by_feed(feed_id, upload_id)
 
+    def get_in_process_uploads_by_feed(self, feed_id) -> str:
+        return self.client.get_uploads_in_progress_by_feed(feed_id)
+
     # ================================
     # Private Methods
     # ================================
