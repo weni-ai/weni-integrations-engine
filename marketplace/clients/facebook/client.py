@@ -4,6 +4,8 @@ import json
 from django.conf import settings
 
 from marketplace.clients.base import RequestClient
+from marketplace.clients.decorators import retry_on_exception
+
 
 WHATSAPP_VERSION = settings.WHATSAPP_VERSION
 
@@ -43,6 +45,7 @@ class FacebookClient(FacebookAuthorization, RequestClient):
 
         return response.json().get("success")
 
+    @retry_on_exception()
     def create_product_feed(self, product_catalog_id, name):
         url = self.get_url + f"{product_catalog_id}/product_feeds"
 
@@ -52,6 +55,7 @@ class FacebookClient(FacebookAuthorization, RequestClient):
 
         return response.json()
 
+    @retry_on_exception()
     def upload_product_feed(
         self, feed_id, file, file_name, file_content_type, update_only=False
     ):

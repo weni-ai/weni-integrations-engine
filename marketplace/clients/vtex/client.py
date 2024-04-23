@@ -18,6 +18,7 @@ class VtexAuthorization(RequestClient):
 
 
 class VtexCommonClient(RequestClient):
+    @retry_on_exception()
     def check_domain(self, domain):
         try:
             url = f"https://{domain}/api/catalog_system/pub/products/search/"
@@ -35,6 +36,7 @@ class VtexPublicClient(VtexCommonClient):
 
 
 class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
+    @retry_on_exception()
     def is_valid_credentials(self, domain):
         try:
             url = (
