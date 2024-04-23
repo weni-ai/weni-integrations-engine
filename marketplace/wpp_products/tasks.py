@@ -7,6 +7,7 @@ from celery import shared_task
 from django.db import reset_queries, close_old_connections
 
 from marketplace.clients.facebook.client import FacebookClient
+from marketplace.services.vtex.exceptions import NoVTEXAppConfiguredException
 from marketplace.services.webhook.vtex.webhook_manager import WebhookQueueManager
 from marketplace.wpp_products.models import Catalog
 from marketplace.clients.flows.client import FlowsClient
@@ -21,7 +22,6 @@ from marketplace.core.types import APPTYPES
 from marketplace.applications.models import App
 
 from django_redis import get_redis_connection
-from django.core.cache import cache
 
 
 logger = logging.getLogger(__name__)
@@ -186,21 +186,20 @@ def task_update_vtex_products(**kwargs):
     # flows_service = FlowsService(FlowsClient())
 
     app_uuid = kwargs.get("app_uuid")
+    seller_id = kwargs.get("seller_id")
 
     queue_manager = WebhookQueueManager(app_uuid)
     redis = get_redis_connection()
-    lock_key = queue_manager.get_lock_key()
+
+    if seller_id:
+        lock_key = queue_manager.get_lock_key()
+    else:
+        lock_key = queue_manager.get_lock_seller_key()
 
     lock = redis.lock(lock_key, timeout=7200)
     if lock.acquire(blocking=False):
-        processing_key = queue_manager.get_sku_list_key()
         try:
             while True:
-                webhooks_in_processing = cache.get(processing_key, [])
-                if not webhooks_in_processing:
-                    print("There are no products to deal with in cache.")
-                    break
-
                 skus_ids = queue_manager.dequeue_webhook_data()
                 if not skus_ids:
                     print("There are no products in dequeue process.")
@@ -231,7 +230,7 @@ def task_update_vtex_products(**kwargs):
                 print(f"Starting product update for app: {str(vtex_app.uuid)}")
 
                 vtex_update_service = ProductUpdateService(
-                    api_credentials, catalog, skus_ids, product_feed
+                    api_credentials, catalog, skus_ids, product_feed, seller_id
                 )
                 products = vtex_update_service.webhook_product_insert()
                 if products is None:
@@ -269,3 +268,40 @@ def task_update_vtex_products(**kwargs):
 
     print(f"Finishing update vtex product to App: {app_uuid}")
     print("=" * 40)
+
+
+@celery_app.task(name="task_send_vtex_webhook")
+def task_send_vtex_webhook(**kwargs):
+    app_uuid = kwargs.get("app_uuid")
+    seller_id = kwargs.get("seller_id")
+    webhook = kwargs.get("webhook")
+
+    try:
+        app = App.objects.get(uuid=app_uuid, configured=True, code="vtex")
+    except App.DoesNotExist:
+        raise NoVTEXAppConfiguredException()
+
+    can_synchronize = app.config.get("initial_sync_completed", False)
+    if not can_synchronize:
+        print(f"Initial sync not completed. App:{str(app.uuid)}")
+        return
+
+    sku_id = webhook.get("IdSku")
+    if not sku_id:
+        raise ValueError(f"SKU ID not provided in the request. App:{str(app.uuid)}")
+
+    queue_manager = WebhookQueueManager(app_uuid)
+    queue_manager.enqueue_webhook_data(sku_id, seller_id)
+
+    if not queue_manager.is_processing_locked(seller_id):
+        celery_app.send_task(
+            "task_update_vtex_products",
+            kwargs={"app_uuid": str(app_uuid), "seller_id": seller_id},
+            queue="product_synchronization",
+        )
+        message = "Webhook product update starting the queue"
+
+    else:
+        message = "Webhook product update added to the processing queue"
+
+    print(message)

@@ -4,6 +4,7 @@ import json
 from django.conf import settings
 
 from marketplace.clients.base import RequestClient
+from marketplace.clients.decorators import retry_on_exception
 
 WHATSAPP_VERSION = settings.WHATSAPP_VERSION
 
@@ -52,6 +53,7 @@ class FacebookClient(FacebookAuthorization, RequestClient):
 
         return response.json()
 
+    @retry_on_exception()
     def upload_product_feed(
         self, feed_id, file, file_name, file_content_type, update_only=False
     ):
@@ -247,6 +249,7 @@ class FacebookClient(FacebookAuthorization, RequestClient):
         response = self.make_request(url, method="POST", headers=headers, params=params)
         return response.json()
 
+    @retry_on_exception()
     def get_upload_status_by_feed(self, feed_id, upload_id):
         url = self.get_url + f"{feed_id}/uploads"
 
@@ -268,6 +271,7 @@ class FacebookClient(FacebookAuthorization, RequestClient):
 
         return False
 
+    @retry_on_exception()
     def get_uploads_in_progress_by_feed(self, feed_id):
         url = self.get_url + f"{feed_id}/uploads"
 
