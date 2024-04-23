@@ -1,3 +1,7 @@
+v3.6.1
+----------
+* Add vtex webhook log and add retry in facebook methods
+
 v3.6.0
 ----------
 * Permission update consumer
