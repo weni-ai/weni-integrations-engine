@@ -105,3 +105,26 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
                 "price": 0,
                 "list_price": 0,
             }
+
+    @retry_on_exception()
+    def list_all_active_products(self, domain):
+        all_skus = []
+        step = 250  # Max pag
+        current_from = 1
+
+        while True:
+            current_to = current_from + step - 1
+            url = f"https://{domain}/api/catalog_system/pvt/products/GetProductAndSkuIds?_from={current_from}&_to={current_to}&status=1"
+            headers = self._get_headers()
+            response = self.make_request(url, method="GET", headers=headers)
+
+            data = response.json().get("data", {})
+            if not data:
+                break
+
+            for skus in data.values():
+                all_skus.extend(skus)
+
+            current_from += step
+
+        return all_skus
