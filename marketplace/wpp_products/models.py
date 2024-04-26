@@ -117,3 +117,21 @@ class Product(BaseModel):
                 name="unique_facebook_product_id_per_catalog",
             )
         ]
+
+
+class ProductValidation(models.Model):
+    catalog = models.ForeignKey(
+        Catalog, on_delete=models.CASCADE, related_name="product_validations"
+    )
+    sku_id = models.IntegerField()
+    is_valid = models.BooleanField(default=True)
+    classification = models.CharField(max_length=100)
+    description = models.CharField(max_length=200, null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Product Validation"
+        verbose_name_plural = "Product Validations"
+        unique_together = ("catalog", "sku_id")
+
+    def __str__(self):
+        return f"{self.catalog.name} - {self.sku_id} - {'Valid' if self.is_valid else 'Invalid'}"

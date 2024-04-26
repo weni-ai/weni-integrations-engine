@@ -434,3 +434,7 @@ if ALLOW_CRM_ACCESS:
 
 # Define how many products will be updated at a time
 VTEX_UPDATE_BATCH_SIZE = env.int("VTEX_UPDATE_BATCH_SIZE", default=500)
+
+# Zeroshot URL and ACCESS TOKEN
+ZEROSHOT_URL = env("ZEROSHOT_URL")
+ZEROSHOT_ACCESS_TOKEN = env("ZEROSHOT_ACCESS_TOKEN")

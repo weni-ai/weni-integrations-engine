@@ -60,13 +60,14 @@ class PrivateProductsService:
         self.check_is_valid_domain(domain)
         return self.client.is_valid_credentials(domain)
 
-    def list_all_products(self, domain, config) -> List[FacebookProductDTO]:
+    def list_all_products(self, domain, catalog) -> List[FacebookProductDTO]:
+        config = catalog.vtex_app.config
         active_sellers = self.client.list_active_sellers(domain)
         skus_ids = self.client.list_all_products_sku_ids(domain)
         rules = self._load_rules(config.get("rules", []))
         store_domain = config.get("store_domain")
         products_dto = self.data_processor.process_product_data(
-            skus_ids, active_sellers, self, domain, store_domain, rules
+            skus_ids, active_sellers, self, domain, store_domain, rules, catalog
         )
         return products_dto
 
@@ -79,8 +80,9 @@ class PrivateProductsService:
         )  # TODO: Change to pvt_simulate_cart_for_seller
 
     def update_webhook_product_info(
-        self, domain: str, skus_ids: list, config: dict
+        self, domain: str, skus_ids: list, catalog
     ) -> List[FacebookProductDTO]:
+        config = catalog.vtex_app.config
         seller_ids = self.client.list_active_sellers(domain)
         rules = self._load_rules(config.get("rules", []))
         store_domain = config.get("store_domain")
@@ -91,6 +93,7 @@ class PrivateProductsService:
             domain,
             store_domain,
             rules,
+            catalog,
             update_product=True,
         )
 

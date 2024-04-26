@@ -11,6 +11,8 @@ from typing import List
 from tqdm import tqdm
 from queue import Queue
 
+from marketplace.services.vtex.utils.sku_validator import SKUValidator
+
 
 @dataclass
 class FacebookProductDTO:
@@ -99,6 +101,7 @@ class DataProcessor:
         domain,
         store_domain,
         rules,
+        catalog,
         update_product=False,
     ) -> List[FacebookProductDTO]:
         self.queue = Queue()
@@ -110,6 +113,8 @@ class DataProcessor:
         self.rules = rules
         self.update_product = update_product
         self.invalid_products_count = 0
+        self.catalog = catalog
+        self.sku_validator = SKUValidator(service, domain)
 
         # Preparing the tqdm progress bar
         print("Initiated process of product treatment:")
@@ -162,7 +167,12 @@ class DataProcessor:
 
     def process_single_sku(self, sku_id):
         facebook_products = []
-        product_details = self.service.get_product_details(sku_id, self.domain)
+        product_details = self.sku_validator.validate_product_details(
+            sku_id, self.catalog
+        )
+        if not product_details:
+            return facebook_products
+
         is_active = product_details.get("IsActive")
         if not is_active and not self.update_product:
             return facebook_products

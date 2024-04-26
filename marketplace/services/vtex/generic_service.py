@@ -114,9 +114,7 @@ class ProductInsertionService(VtexServiceBase):
         pvt_service = self.get_private_service(
             credentials.app_key, credentials.app_token
         )
-        products = pvt_service.list_all_products(
-            credentials.domain, catalog.vtex_app.config
-        )
+        products = pvt_service.list_all_products(credentials.domain, catalog)
         if not products:
             return None
 
@@ -204,7 +202,7 @@ class ProductUpdateService(VtexServiceBase):
             self.api_credentials.app_key, self.api_credentials.app_token
         )
         products_dto = pvt_service.update_webhook_product_info(
-            self.api_credentials.domain, self.skus_ids, self.catalog.vtex_app.config
+            self.api_credentials.domain, self.skus_ids, self.catalog
         )
         if not products_dto:
             return None
