@@ -3,6 +3,8 @@ from .currency_pt_br import CurrencyBRL
 from .calculate_by_weight import CalculateByWeight
 from .exclude_alcoholic_drinks import ExcludeAlcoholicDrinks
 from .unifies_id_with_seller import UnifiesIdWithSeller
+from .calculate_by_weight_co import CalculateByWeightCO
+from .currency_co import CurrencyCOP
 
 
 RULE_MAPPINGS = {
@@ -10,4 +12,6 @@ RULE_MAPPINGS = {
     "calculate_by_weight": CalculateByWeight,
     "exclude_alcoholic_drinks": ExcludeAlcoholicDrinks,
     "unifies_id_with_seller": UnifiesIdWithSeller,
+    "calculate_by_weight_co": CalculateByWeightCO,
+    "currency_co": CurrencyCOP,
 }
