@@ -69,11 +69,30 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
 
     @retry_on_exception()
     def list_active_sellers(self, domain):
-        url = f"https://{domain}/api/seller-register/pvt/sellers"
-        headers = self._get_headers()
-        response = self.make_request(url, method="GET", headers=headers)
-        sellers_data = response.json()
-        return [seller["id"] for seller in sellers_data["items"] if seller["isActive"]]
+        from_index = 0
+        batch_size = 100
+        total_sellers = float("inf")
+        active_sellers = []
+
+        while from_index < total_sellers:
+            url = f"https://{domain}/api/seller-register/pvt/sellers?from={from_index}&to={from_index + batch_size}"
+            headers = self._get_headers()
+            response = self.make_request(url, method="GET", headers=headers)
+            sellers_data = response.json()
+
+            if total_sellers == float("inf"):
+                total_sellers = sellers_data["paging"]["total"]
+
+            active_sellers.extend(
+                [
+                    seller["id"]
+                    for seller in sellers_data["items"]
+                    if seller.get("isActive", False)
+                ]
+            )
+            from_index += batch_size
+
+        return active_sellers
 
     @retry_on_exception()
     def get_product_details(self, sku_id, domain):
