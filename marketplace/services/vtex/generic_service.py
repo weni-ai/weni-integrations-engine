@@ -187,6 +187,7 @@ class ProductUpdateService(VtexServiceBase):
         catalog: Catalog,
         skus_ids: list,
         product_feed: ProductFeed,
+        webhook: dict,
     ):
         super().__init__()
         self.api_credentials = api_credentials
@@ -198,31 +199,31 @@ class ProductUpdateService(VtexServiceBase):
         self.fba_service = self.fb_service(self.app)
         self.redis = get_redis_connection()
         self.last_update_id = None
+        self.webhook = webhook
 
     def webhook_product_insert(self):
         pvt_service = self.get_private_service(
             self.api_credentials.app_key, self.api_credentials.app_token
         )
+        seller_ids = self._get_sellers_ids(pvt_service)
+
         products_dto = pvt_service.update_webhook_product_info(
-            self.api_credentials.domain, self.skus_ids, self.catalog.vtex_app.config
+            self.api_credentials.domain,
+            self.skus_ids,
+            seller_ids,
+            self.catalog.vtex_app.config,
         )
         if not products_dto:
             return None
 
-        products_csv = pvt_service.data_processor.products_to_csv(products_dto)
-        update_successful = self._webhook_update_products_on_facebook(products_csv)
+        all_success = self.product_manager.save_csv_product_data(
+            products_dto, self.catalog, self.product_feed, pvt_service.data_processor
+        )
+        if not all_success:
+            raise Exception(
+                f"Error on save csv on database. Catalog:{self.catalog.facebook_catalog_id}"
+            )
 
-        if update_successful is not True:
-            print("Not upload products on '_webhook_update_products_on_facebook'")
-            return None
-
-        # Removed on 03-30-2024
-        # self.product_manager.create_or_update_products_on_database(
-        #     products_dto, self.catalog, self.product_feed
-        # )
-        # products_list = pvt_service.data_processor.convert_dtos_to_dicts_list(
-        #     products_dto
-        # )
         return products_dto
 
     def _webhook_update_products_on_facebook(self, products_csv) -> bool:
@@ -286,6 +287,41 @@ class ProductUpdateService(VtexServiceBase):
             return upload_id
 
         return False
+
+    def _get_sellers_ids(self, service):
+        seller_id = extract_sellers_ids(self.webhook)
+        if seller_id:
+            return [seller_id]
+        else:
+            all_active_sellers = service.list_all_actives_sellers(
+                self.api_credentials.domain
+            )
+            print("Seller not found, return all actives sellers")
+            return all_active_sellers
+
+        """
+        temporarily commented, awaiting response from support
+        waiting for a response if it is necessary to check if the webhook seller is active
+        """
+        # all_active_sellers = service.list_all_actives_sellers(self.api_credentials.domain)
+        # if seller_id not in all_active_sellers:
+        #     return all_active_sellers
+        # else:
+        #     return [seller_id]
+
+
+def extract_sellers_ids(webhook):
+    seller_an = webhook.get("An")
+    seller_chain = webhook.get("SellerChain")
+
+    if seller_an and not seller_chain:
+        seller_id = seller_an
+    elif seller_chain and seller_an:
+        seller_id = seller_chain
+    elif seller_an and not seller_chain:
+        seller_id = None
+
+    return seller_id
 
 
 class CatalogProductInsertion:

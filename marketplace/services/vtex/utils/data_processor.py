@@ -208,6 +208,14 @@ class DataProcessor:
         return buffer
 
     @staticmethod
+    def product_to_csv_line(product: FacebookProductDTO) -> str:
+        product_dict = dataclasses.asdict(product)
+        df = pd.DataFrame([product_dict])
+        df = df.drop(columns=["product_details"])
+        csv_line = df.to_csv(index=False, header=False, encoding="utf-8").strip()
+        return csv_line
+
+    @staticmethod
     def clear_csv_buffer(buffer: io.BytesIO):
         buffer.close()
 

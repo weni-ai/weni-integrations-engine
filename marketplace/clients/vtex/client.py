@@ -1,5 +1,6 @@
 from marketplace.clients.base import RequestClient
 from marketplace.clients.decorators import retry_on_exception
+from marketplace.clients.vtex.decorator import rate_limit_and_retry_on_exception
 
 
 class VtexAuthorization(RequestClient):
@@ -36,6 +37,13 @@ class VtexPublicClient(VtexCommonClient):
 
 
 class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
+    # API throttling, expects the domain to be the last parameter
+    def get_domain_from_args(self, *args, **kwargs):
+        domain = kwargs.get("domain")
+        if domain is None and args:
+            domain = args[-1]
+        return domain
+
     @retry_on_exception()
     def is_valid_credentials(self, domain):
         try:
@@ -94,7 +102,8 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
 
         return active_sellers
 
-    @retry_on_exception()
+    # API throttling, params:(second, minute, domain)
+    @rate_limit_and_retry_on_exception(10, 40, get_domain_from_args)
     def get_product_details(self, sku_id, domain):
         url = (
             f"https://{domain}/api/catalog_system/pvt/sku/stockkeepingunitbyid/{sku_id}"
@@ -103,7 +112,8 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
         response = self.make_request(url, method="GET", headers=headers)
         return response.json()
 
-    @retry_on_exception()
+    # API throttling, params:(second, minute, domain)
+    @rate_limit_and_retry_on_exception(10, 40, get_domain_from_args)
     def pub_simulate_cart_for_seller(self, sku_id, seller_id, domain):
         cart_simulation_url = f"https://{domain}/api/checkout/pub/orderForms/simulation"
         payload = {"items": [{"id": sku_id, "quantity": 1, "seller": seller_id}]}

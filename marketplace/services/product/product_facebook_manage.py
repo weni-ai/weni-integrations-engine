@@ -3,8 +3,11 @@ from typing import List
 from django.contrib.auth import get_user_model
 from django.db import transaction
 
-from marketplace.services.vtex.utils.data_processor import FacebookProductDTO
-from marketplace.wpp_products.models import Product
+from marketplace.wpp_products.models import Product, UploadProduct, Catalog, ProductFeed
+from marketplace.services.vtex.utils.data_processor import (
+    DataProcessor,
+    FacebookProductDTO,
+)
 
 
 User = get_user_model()
@@ -97,3 +100,36 @@ class ProductFacebookManager:
                 )
 
         return True
+
+    def save_csv_product_data(
+        self,
+        products_dto: List[FacebookProductDTO],
+        catalog: Catalog,
+        product_feed: ProductFeed,
+        data_processor: DataProcessor,
+    ):
+        all_success = True
+        for product in products_dto:
+            facebook_product_id = product.id
+            product_csv = data_processor.product_to_csv_line(product)
+
+            try:
+                product, created = UploadProduct.objects.update_or_create(
+                    facebook_product_id=facebook_product_id,
+                    catalog=catalog,
+                    feed=product_feed,
+                    defaults={
+                        "data": product_csv,
+                        "status": "pending",
+                    },
+                )
+                action = "created" if created else "updated"
+                print(
+                    f"Product {action} successfully in the database: Catalog ID {catalog.facebook_catalog_id}, "
+                    f"Feed ID {product_feed.facebook_feed_id}, Product Facebook ID {facebook_product_id}"
+                )
+            except Exception as e:
+                print(f"Failed to save or update product: {str(e)}")
+                all_success = False
+
+        return all_success
