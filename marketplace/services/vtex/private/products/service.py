@@ -31,7 +31,7 @@ Example:
         # Use products data as needed
 """
 
-from typing import List
+from typing import List, Optional
 
 from marketplace.services.vtex.exceptions import CredentialsValidationError
 from marketplace.services.vtex.utils.data_processor import DataProcessor
@@ -60,13 +60,26 @@ class PrivateProductsService:
         self.check_is_valid_domain(domain)
         return self.client.is_valid_credentials(domain)
 
-    def list_all_products(self, domain, config) -> List[FacebookProductDTO]:
-        active_sellers = self.client.list_active_sellers(domain)
+    def list_all_products(
+        self, domain: str, config: dict, sellers: Optional[List[str]] = None
+    ) -> List[FacebookProductDTO]:
+        active_sellers = set(self.client.list_active_sellers(domain))
+        if sellers is not None:
+            valid_sellers = [seller for seller in sellers if seller in active_sellers]
+            invalid_sellers = set(sellers) - active_sellers
+            if invalid_sellers:
+                print(
+                    f"Warning: Sellers IDs {invalid_sellers} are not active and will be ignored."
+                )
+            sellers_ids = valid_sellers
+        else:
+            sellers_ids = list(active_sellers)
+
         skus_ids = self.client.list_all_products_sku_ids(domain)
         rules = self._load_rules(config.get("rules", []))
         store_domain = config.get("store_domain")
         products_dto = self.data_processor.process_product_data(
-            skus_ids, active_sellers, self, domain, store_domain, rules
+            skus_ids, sellers_ids, self, domain, store_domain, rules
         )
         return products_dto
 
