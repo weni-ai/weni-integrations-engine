@@ -124,6 +124,7 @@ def task_insert_vtex_products(**kwargs):
 
     credentials = kwargs.get("credentials")
     catalog_uuid = kwargs.get("catalog_uuid")
+    sellers = kwargs.get("sellers")
 
     if not all([credentials, catalog_uuid]):
         logger.error(
@@ -145,7 +146,7 @@ def task_insert_vtex_products(**kwargs):
             domain=credentials["domain"],
         )
         print(f"Starting first product insert for catalog: {str(catalog.name)}")
-        products = vtex_service.first_product_insert(api_credentials, catalog)
+        products = vtex_service.first_product_insert(api_credentials, catalog, sellers)
         if products is None:
             print("There are no products to be shipped after processing the rules")
             return
