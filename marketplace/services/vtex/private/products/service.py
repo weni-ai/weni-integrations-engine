@@ -75,7 +75,7 @@ class PrivateProductsService:
         else:
             sellers_ids = list(active_sellers)
 
-        skus_ids = self.client.list_all_products_sku_ids(domain)
+        skus_ids = self.client.list_all_active_products(domain)
         rules = self._load_rules(config.get("rules", []))
         store_domain = config.get("store_domain")
         products_dto = self.data_processor.process_product_data(
