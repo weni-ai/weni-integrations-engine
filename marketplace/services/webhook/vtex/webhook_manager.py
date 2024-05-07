@@ -26,22 +26,12 @@ class WebhookQueueManager:
         return f"vtex:processing-lock:{self.app_uuid}"
 
     def enqueue_webhook_data(self, sku_id, webhook):
-        webhooks_key = self.get_webhooks_key()
         skus_list_key = self.get_sku_list_key()
 
         skus_in_processing = cache.get(skus_list_key) or []
         if sku_id not in skus_in_processing:
             skus_in_processing.append(sku_id)
             cache.set(skus_list_key, skus_in_processing, timeout=7200)
-
-        # Update webhooks log
-        webhooks_log = cache.get(webhooks_key) or {}
-        if not webhooks_log:
-            # Sets the log lifetime to 24 hours if it is the first entry
-            cache.set(webhooks_key, {sku_id: webhook}, timeout=86400)
-        else:
-            webhooks_log[sku_id] = webhook
-            cache.set(webhooks_key, webhooks_log)
 
     def dequeue_webhook_data(self):
         batch_size = settings.VTEX_UPDATE_BATCH_SIZE

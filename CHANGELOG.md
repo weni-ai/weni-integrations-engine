@@ -1,3 +1,7 @@
+v3.6.2
+----------
+* Remove vtex webhook log
+
 v3.6.1
 ----------
 * Add vtex webhook log and add retry in facebook methods
