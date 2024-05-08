@@ -6,6 +6,8 @@ import time
 
 from datetime import datetime
 
+from typing import Optional, List
+
 from django.db import close_old_connections
 from django_redis import get_redis_connection
 
@@ -110,12 +112,17 @@ class VtexServiceBase:
 
 
 class ProductInsertionService(VtexServiceBase):
-    def first_product_insert(self, credentials: APICredentials, catalog: Catalog):
+    def first_product_insert(
+        self,
+        credentials: APICredentials,
+        catalog: Catalog,
+        sellers: Optional[List[str]] = None,
+    ):
         pvt_service = self.get_private_service(
             credentials.app_key, credentials.app_token
         )
         products = pvt_service.list_all_products(
-            credentials.domain, catalog.vtex_app.config
+            credentials.domain, catalog.vtex_app.config, sellers
         )
         if not products:
             return None
@@ -326,7 +333,9 @@ def extract_sellers_ids(webhook):
 
 class CatalogProductInsertion:
     @classmethod
-    def first_product_insert_with_catalog(cls, vtex_app: App, catalog_id: str):
+    def first_product_insert_with_catalog(
+        cls, vtex_app: App, catalog_id: str, sellers: Optional[List[str]] = None
+    ):
         """Inserts the first product with the given catalog."""
         wpp_cloud_uuid = cls._get_wpp_cloud_uuid(vtex_app)
         credentials = cls._get_credentials(vtex_app)
@@ -337,7 +346,7 @@ class CatalogProductInsertion:
         cls._update_app_connected_catalog_flag(wpp_cloud)
         cls._link_catalog_to_vtex_app_if_needed(catalog, vtex_app)
 
-        cls._send_insert_task(credentials, catalog)
+        cls._send_insert_task(credentials, catalog, sellers)
 
     @staticmethod
     def _get_wpp_cloud_uuid(vtex_app) -> str:
@@ -428,13 +437,19 @@ class CatalogProductInsertion:
             print("Changed connected_catalog to True")
 
     @staticmethod
-    def _send_insert_task(credentials, catalog) -> None:
+    def _send_insert_task(
+        credentials, catalog, sellers: Optional[List[str]] = None
+    ) -> None:
         from marketplace.celery import app as celery_app
 
         """Sends the insert task to the task queue."""
         celery_app.send_task(
             name="task_insert_vtex_products",
-            kwargs={"credentials": credentials, "catalog_uuid": str(catalog.uuid)},
+            kwargs={
+                "credentials": credentials,
+                "catalog_uuid": str(catalog.uuid),
+                "sellers": sellers,
+            },
             queue="product_first_synchronization",
         )
         print(

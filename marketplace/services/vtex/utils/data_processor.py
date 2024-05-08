@@ -11,6 +11,8 @@ from typing import List
 from tqdm import tqdm
 from queue import Queue
 
+from marketplace.clients.exceptions import CustomAPIException
+
 
 @dataclass
 class FacebookProductDTO:
@@ -162,7 +164,14 @@ class DataProcessor:
 
     def process_single_sku(self, sku_id):
         facebook_products = []
-        product_details = self.service.get_product_details(sku_id, self.domain)
+
+        try:
+            product_details = self.service.get_product_details(sku_id, self.domain)
+        except CustomAPIException as e:
+            if e.status_code == 404:
+                print(f"SKU {sku_id} not found. Skipping...")
+            return []
+
         is_active = product_details.get("IsActive")
         if not is_active and not self.update_product:
             return facebook_products

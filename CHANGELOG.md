@@ -1,3 +1,11 @@
+v3.6.3
+----------
+* Ignore 404 error when fetching vtex product details
+* Round up prices for weight-calculated products
+* First sync vtex products for specific sellers
+* Vtex rules for colombia
+* Add method to list only active skus IDs
+
 v3.6.2
 ----------
 * Remove vtex webhook log
