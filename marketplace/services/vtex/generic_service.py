@@ -299,36 +299,25 @@ class ProductUpdateService(VtexServiceBase):
         seller_id = extract_sellers_ids(self.webhook)
         if seller_id:
             return [seller_id]
-        else:
-            all_active_sellers = service.list_all_actives_sellers(
-                self.api_credentials.domain
-            )
-            print("Seller not found, return all actives sellers")
-            return all_active_sellers
 
-        """
-        temporarily commented, awaiting response from support
-        waiting for a response if it is necessary to check if the webhook seller is active
-        """
-        # all_active_sellers = service.list_all_actives_sellers(self.api_credentials.domain)
-        # if seller_id not in all_active_sellers:
-        #     return all_active_sellers
-        # else:
-        #     return [seller_id]
+        all_active_sellers = service.list_all_actives_sellers(
+            self.api_credentials.domain
+        )
+        print("Seller not found, return all actives sellers")
+        return all_active_sellers
 
 
 def extract_sellers_ids(webhook):
     seller_an = webhook.get("An")
     seller_chain = webhook.get("SellerChain")
 
-    if seller_an and not seller_chain:
-        seller_id = seller_an
-    elif seller_chain and seller_an:
-        seller_id = seller_chain
-    elif seller_an and not seller_chain:
-        seller_id = None
+    if seller_chain and seller_an:
+        return seller_chain
 
-    return seller_id
+    if seller_an and not seller_chain:
+        return seller_an
+
+    return None
 
 
 class CatalogProductInsertion:
