@@ -145,7 +145,9 @@ class ProductFacebookManager:
 
         # Step 1: Delete existing products for the catalog
         deleted_count, _ = UploadProduct.objects.filter(catalog=catalog).delete()
-        print(f"Deleted {deleted_count} existing products for catalog {catalog.id}")
+        print(
+            f"Deleted {deleted_count} existing products for catalog {catalog.facebook_catalog_id}"
+        )
 
         # Step 2: Prepare data for bulk create
         products_to_create = []

@@ -1,7 +1,8 @@
 import functools
 import time
 import requests
-from redis import Redis
+
+from django_redis import get_redis_connection
 
 
 class RateLimiter:
@@ -83,7 +84,7 @@ def rate_limit_and_retry_on_exception(
     """
 
     def decorator(func):
-        redis_connection = Redis(host="localhost", port=6379, db=0)
+        redis_connection = get_redis_connection()
         seconds_limiter = RateLimiter("per_sec", calls_per_second, 1, redis_connection)
         minute_limiter = RateLimiter("per_min", calls_per_minute, 60, redis_connection)
 

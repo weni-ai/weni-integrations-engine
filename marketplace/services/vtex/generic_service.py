@@ -135,13 +135,13 @@ class ProductInsertionService(VtexServiceBase):
         # TODO: --END: This block needs to be removed--
 
         # TODO: --BEGIN: This block will replace the block above--
-        all_success = self.product_manager.save_first_csv_product_data(
-            products, catalog, pvt_service.data_processor
-        )
-        if not all_success:
-            raise Exception(
-                f"Error on save first csv on database. Catalog:{self.catalog.facebook_catalog_id}"
-            )
+        # all_success = self.product_manager.save_first_csv_product_data(
+        #     products, catalog, product_feed,pvt_service.data_processor
+        # )
+        # if not all_success:
+        #     raise Exception(
+        #         f"Error on save first csv on database. Catalog:{self.catalog.facebook_catalog_id}"
+        #     )
         # TODO --END: This block will replace the block above-
         close_old_connections()
         self.app_manager.initial_sync_products_completed(catalog.vtex_app)
