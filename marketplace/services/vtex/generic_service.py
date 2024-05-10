@@ -2,14 +2,11 @@
 Service for managing VTEX App instances within a project.
 """
 
-import time
-
 from datetime import datetime
 
 from typing import Optional, List
 
 from django.db import close_old_connections
-from django_redis import get_redis_connection
 
 from dataclasses import dataclass
 
@@ -31,7 +28,7 @@ from marketplace.services.product.product_facebook_manage import ProductFacebook
 from marketplace.services.vtex.exceptions import (
     UnexpectedFacebookApiResponseValidationError,
 )
-from marketplace.services.vtex.exceptions import FileNotSendValidationError
+from marketplace.services.facebook.exceptions import FileNotSendValidationError
 from marketplace.services.vtex.app_manager import AppVtexManager
 
 
@@ -127,22 +124,31 @@ class ProductInsertionService(VtexServiceBase):
         if not products:
             return None
 
+        close_old_connections()
+        # TODO: --BEGIN: This block needs to be removed--
         products_csv = pvt_service.data_processor.products_to_csv(products)
         close_old_connections()
         self._send_products_to_facebook(products_csv, catalog)
         pvt_service.data_processor.clear_csv_buffer(
             products_csv
         )  # frees the memory of the csv file
-        # Removed on 03-30-2024
-        # close_old_connections()
-        # self.product_manager.create_or_update_products_on_database(
-        #     products, catalog, product_feed
-        # )
+        # TODO: --END: This block needs to be removed--
+
+        # TODO: --BEGIN: This block will replace the block above--
+        all_success = self.product_manager.save_first_csv_product_data(
+            products, catalog, pvt_service.data_processor
+        )
+        if not all_success:
+            raise Exception(
+                f"Error on save first csv on database. Catalog:{self.catalog.facebook_catalog_id}"
+            )
+        # TODO --END: This block will replace the block above-
         close_old_connections()
         self.app_manager.initial_sync_products_completed(catalog.vtex_app)
 
         return products
 
+    # TODO: This method needs to be removed after replacement--
     def _send_products_to_facebook(self, products_csv, catalog: Catalog):
         print("Starting to upload the CSV file to Facebook")
         current_time = datetime.now().strftime("%Y-%m-%d_%H-%M")
@@ -157,6 +163,7 @@ class ProductInsertionService(VtexServiceBase):
         print("Uploading the CSV file to Facebook completed successfully")
         return product_feed
 
+    # TODO: This method needs to be removed after replacement--
     def _create_product_feed(self, name, catalog: Catalog) -> ProductFeed:
         print("Creating the product feed")
         service = self.fb_service(catalog.app)
@@ -173,6 +180,7 @@ class ProductInsertionService(VtexServiceBase):
         )
         return product_feed
 
+    # TODO: This method needs to be removed after replacement--
     def _upload_product_feed(
         self, app, product_feed_id, csv_file, file_name, update_only=False
     ):
@@ -202,10 +210,6 @@ class ProductUpdateService(VtexServiceBase):
         self.skus_ids = skus_ids
         self.product_feed = product_feed
         self.app = self.catalog.app
-        self.feed_id = self.product_feed.facebook_feed_id
-        self.fba_service = self.fb_service(self.app)
-        self.redis = get_redis_connection()
-        self.last_update_id = None
         self.webhook = webhook
 
     def webhook_product_insert(self):
@@ -232,68 +236,6 @@ class ProductUpdateService(VtexServiceBase):
             )
 
         return products_dto
-
-    def _webhook_update_products_on_facebook(self, products_csv) -> bool:
-        upload_id_in_process = self._uploads_in_progress()
-
-        if upload_id_in_process:
-            print("There is already a feed upload in progress, waiting for completion.")
-            self._wait_for_upload_completion(upload_id_in_process)
-
-        current_time = datetime.now().strftime("%Y-%m-%d_%H-%M")
-        file_name = f"update_{current_time}_{self.product_feed.name}"
-        upload_id = self._webhook_upload_product_feed(
-            csv_file=products_csv,
-            file_name=file_name,
-        )
-        upload_complete = self._wait_for_upload_completion(upload_id=upload_id)
-        if not upload_complete:
-            print("Upload did not complete within the expected time frame.")
-            return False
-
-        print("Finish update products to facebook")
-        return True
-
-    def _webhook_upload_product_feed(self, csv_file, file_name: str) -> str:
-        print("Uploading the product feed to facebook")
-        update_only = True
-        response = self.fba_service.upload_product_feed(
-            self.feed_id, csv_file, file_name, "text/csv", update_only
-        )
-        if "id" not in response:
-            raise FileNotSendValidationError()
-        return response["id"]
-
-    def _wait_for_upload_completion(self, upload_id) -> bool:
-        wait_time = 5
-        max_wait_time = 20 * 60
-        total_wait_time = 0
-        attempt = 1
-
-        while total_wait_time < max_wait_time:
-            upload_complete = self.fba_service.get_upload_status_by_feed(
-                self.feed_id, upload_id
-            )
-            if upload_complete:
-                return True
-
-            print(
-                f"Attempt {attempt}: Waiting {wait_time} seconds "
-                f"to get feed: {self.feed_id} upload {upload_id} status."
-            )
-            time.sleep(wait_time)
-            total_wait_time += wait_time
-            wait_time = min(wait_time * 2, 160)
-            attempt += 1
-
-        return False
-
-    def _uploads_in_progress(self):
-        upload_id = self.fba_service.get_in_process_uploads_by_feed(self.feed_id)
-        if upload_id:
-            return upload_id
-
-        return False
 
     def _get_sellers_ids(self, service):
         seller_id = extract_sellers_ids(self.webhook)

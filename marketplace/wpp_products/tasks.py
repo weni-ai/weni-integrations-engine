@@ -23,6 +23,8 @@ from marketplace.applications.models import App
 
 from django_redis import get_redis_connection
 
+from marketplace.wpp_products.utils import ProductUploader
+
 
 logger = logging.getLogger(__name__)
 
@@ -222,8 +224,24 @@ def task_update_vtex_products(**kwargs):
     duration = (end_time - start_time).total_seconds()
     minutes, seconds = divmod(duration, 60)
 
-    logger.info(f"Finishing update vtex product to SKU:{sku_id} App: {app_uuid}")
+    logger.info(
+        f"Finishing process update vtex product to SKU:{sku_id} App: {app_uuid}"
+    )
     logger.info(f"Task completed in {int(minutes)} minutes and {int(seconds)} seconds.")
+
+    redis_client = get_redis_connection()
+    lock_key = f"upload_lock:{app_uuid}"
+    # Check for existing upload lock for the vtex app
+    if not redis_client.exists(lock_key):
+        print(f"No active upload task for App: {app_uuid}, starting upload.")
+        celery_app.send_task(
+            "task_upload_vtex_products",
+            kwargs={"app_vtex_uuid": app_uuid},
+            queue="product_synchronization",  # TODO: switch to 'vtex-product-upload' queue
+        )
+    else:
+        print(f"An upload task is already in progress for App: {app_uuid}.")
+
     print("=" * 40)
 
 
@@ -257,3 +275,36 @@ def task_forward_vtex_webhook(**kwargs):
         kwargs={"app_uuid": str(app_uuid), "webhook": webhook},
         queue=celery_queue,
     )
+
+
+@celery_app.task(name="task_upload_vtex_products")
+def task_upload_vtex_products(**kwargs):
+    app_vtex_uuid = kwargs.get("app_vtex_uuid")
+    app_vtex = App.objects.get(uuid=app_vtex_uuid)
+    redis_client = get_redis_connection()
+    lock_key = f"upload_lock:{app_vtex_uuid}"
+    lock_expiration_time = 7200  # 2 hours
+
+    # Attempt to acquire the lock
+    if redis_client.set(lock_key, "locked", nx=True, ex=lock_expiration_time):
+        try:
+            catalogs = app_vtex.vtex_catalogs.all()
+            if not catalogs.exists():
+                print("No catalogs found.")
+                return
+
+            for catalog in catalogs:
+                if catalog.feeds.first():
+                    print(f"Processing upload for catalog: {catalog.name}")
+                    uploader = ProductUploader(catalog=catalog)
+                    uploader.process_and_upload(
+                        redis_client, lock_key, lock_expiration_time
+                    )
+
+        finally:
+            # Release the lock
+            redis_client.delete(lock_key)
+    else:
+        print(f"Upload task for App: {app_vtex_uuid} is already in progress.")
+
+    print(f"Processing upload for App: {app_vtex_uuid}")

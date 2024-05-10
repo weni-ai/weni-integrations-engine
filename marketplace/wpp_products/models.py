@@ -141,11 +141,13 @@ class UploadProduct(models.Model):
         blank=True,
     )
     status = models.CharField(max_length=20, default="pending", choices=STATUS_CHOICES)
+    modified_on = models.DateTimeField(auto_now=True)
 
     class Meta:
         indexes = [
             models.Index(fields=["catalog", "feed", "status"]),
             models.Index(fields=["facebook_product_id"]),
+            models.Index(fields=["modified_on"]),
         ]
         constraints = [
             models.UniqueConstraint(
