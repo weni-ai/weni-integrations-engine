@@ -1,3 +1,5 @@
+import requests
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -34,6 +36,9 @@ class VtexProductUpdateWebhook(APIView):
     def can_synchronize(self, app):
         return app.config.get("initial_sync_completed", False)
 
+    def to_staging(self, app):
+        return app.config.get("redirects_to_staging", False)
+
     def get_sku_id(self, request):
         sku_id = request.data.get("IdSku")
         if not sku_id:
@@ -48,6 +53,12 @@ class VtexProductUpdateWebhook(APIView):
                     {"error": "Initial sync not completed"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
+            # TODO: Remove redirect
+            if self.to_staging(app):
+                staging_url = "https://integrations-engine.stg.cloud.weni.ai"
+                url = f"{staging_url}/api/v1/webhook/vtex/{app_uuid}/products-update/api/notification/"
+                requests.post(url=url, data=request.data)
+                return Response({"message": "Redirected"}, status=status.HTTP_200_OK)
 
             sku_id = self.get_sku_id(request)
             queue_manager = self.get_queue_manager(str(app_uuid))
