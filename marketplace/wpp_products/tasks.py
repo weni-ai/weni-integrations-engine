@@ -9,7 +9,7 @@ from django.db import reset_queries, close_old_connections
 from marketplace.clients.facebook.client import FacebookClient
 from marketplace.services.vtex.exceptions import NoVTEXAppConfiguredException
 
-from marketplace.wpp_products.models import Catalog
+from marketplace.wpp_products.models import Catalog, WebhookLog
 from marketplace.clients.flows.client import FlowsClient
 from marketplace.celery import app as celery_app
 from marketplace.services.vtex.generic_service import (
@@ -237,7 +237,7 @@ def task_update_vtex_products(**kwargs):
         celery_app.send_task(
             "task_upload_vtex_products",
             kwargs={"app_vtex_uuid": app_uuid},
-            queue="product_synchronization",  # TODO: switch to 'vtex-product-upload' queue
+            queue="vtex-product-upload",
         )
     else:
         print(f"An upload task is already in progress for App: {app_uuid}.")
@@ -267,6 +267,10 @@ def task_forward_vtex_webhook(**kwargs):
         return
 
     sku_id = webhook.get("IdSku")
+
+    # Webhook Log
+    WebhookLog.objects.create(sku_id=sku_id, data=webhook, vtex_app=app)
+
     if not sku_id:
         raise ValueError(f"SKU ID not provided in the request. App:{str(app.uuid)}")
 

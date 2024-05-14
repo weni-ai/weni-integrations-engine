@@ -155,3 +155,17 @@ class UploadProduct(models.Model):
                 name="unique_upload_facebook_product_id_per_catalog",
             )
         ]
+
+
+class WebhookLog(models.Model):
+    sku_id = models.IntegerField()
+    data = JSONField()
+    created_on = models.DateTimeField(auto_now=True)
+    vtex_app = models.ForeignKey(
+        App,
+        on_delete=models.CASCADE,
+        related_name="vtex_webhook_logs",
+        blank=True,
+        null=True,
+        limit_choices_to={"code": "vtex"},
+    )
