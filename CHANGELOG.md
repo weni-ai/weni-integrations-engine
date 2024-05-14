@@ -1,3 +1,7 @@
+v3.6.4
+----------
+* Temporarily enable redirection of vtex updates
+
 v3.6.3
 ----------
 * Ignore 404 error when fetching vtex product details
