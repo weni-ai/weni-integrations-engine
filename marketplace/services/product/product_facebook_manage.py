@@ -133,3 +133,49 @@ class ProductFacebookManager:
                 all_success = False
 
         return all_success
+
+    def save_first_csv_product_data(
+        self,
+        products_dto: List[FacebookProductDTO],
+        catalog: Catalog,
+        product_feed: ProductFeed,
+        data_processor: DataProcessor,
+    ):
+        print("Starting the initial data insertion process in UploadProduct")
+
+        # Step 1: Delete existing products for the catalog
+        deleted_count, _ = UploadProduct.objects.filter(catalog=catalog).delete()
+        print(
+            f"Deleted {deleted_count} existing products for catalog {catalog.facebook_catalog_id}"
+        )
+
+        # Step 2: Prepare data for bulk create
+        products_to_create = []
+        batch_size = 30000  # Define the batch size for bulk creation
+
+        for dto in products_dto:
+            product_csv = data_processor.product_to_csv_line(dto)
+            new_product = UploadProduct(
+                facebook_product_id=dto.id,
+                data=product_csv,
+                catalog=catalog,
+                feed=product_feed,
+                status="pending",
+            )
+            products_to_create.append(new_product)
+
+            # Bulk create in batches
+            if len(products_to_create) >= batch_size:
+                UploadProduct.objects.bulk_create(
+                    products_to_create, batch_size=batch_size
+                )
+                print(f"Bulk created {len(products_to_create)} products.")
+                products_to_create.clear()  # Clear the list after bulk creation
+
+        # If remaining products, create
+        if products_to_create:
+            UploadProduct.objects.bulk_create(products_to_create, batch_size=batch_size)
+            print(f"Bulk created {len(products_to_create)} remaining products.")
+
+        print("Initial data insertion process completed successfully.")
+        return True
