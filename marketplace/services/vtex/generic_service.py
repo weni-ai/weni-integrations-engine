@@ -6,6 +6,8 @@ import time
 
 from datetime import datetime
 
+from typing import Optional, List
+
 from django.db import close_old_connections
 from django_redis import get_redis_connection
 
@@ -110,12 +112,17 @@ class VtexServiceBase:
 
 
 class ProductInsertionService(VtexServiceBase):
-    def first_product_insert(self, credentials: APICredentials, catalog: Catalog):
+    def first_product_insert(
+        self,
+        credentials: APICredentials,
+        catalog: Catalog,
+        sellers: Optional[List[str]] = None,
+    ):
         pvt_service = self.get_private_service(
             credentials.app_key, credentials.app_token
         )
         products = pvt_service.list_all_products(
-            credentials.domain, catalog.vtex_app.config
+            credentials.domain, catalog.vtex_app.config, sellers
         )
         if not products:
             return None
@@ -226,6 +233,12 @@ class ProductUpdateService(VtexServiceBase):
         return products_dto
 
     def _webhook_update_products_on_facebook(self, products_csv) -> bool:
+        upload_id_in_process = self._uploads_in_progress()
+
+        if upload_id_in_process:
+            print("There is already a feed upload in progress, waiting for completion.")
+            self._wait_for_upload_completion(upload_id_in_process)
+
         current_time = datetime.now().strftime("%Y-%m-%d_%H-%M")
         file_name = f"update_{current_time}_{self.product_feed.name}"
         upload_id = self._webhook_upload_product_feed(
@@ -254,6 +267,7 @@ class ProductUpdateService(VtexServiceBase):
         wait_time = 5
         max_wait_time = 20 * 60
         total_wait_time = 0
+        attempt = 1
 
         while total_wait_time < max_wait_time:
             upload_complete = self.fba_service.get_upload_status_by_feed(
@@ -263,18 +277,29 @@ class ProductUpdateService(VtexServiceBase):
                 return True
 
             print(
-                f"Waiting {wait_time} seconds to get feed: {self.feed_id} upload {upload_id} status."
+                f"Attempt {attempt}: Waiting {wait_time} seconds "
+                f"to get feed: {self.feed_id} upload {upload_id} status."
             )
             time.sleep(wait_time)
             total_wait_time += wait_time
             wait_time = min(wait_time * 2, 160)
+            attempt += 1
+
+        return False
+
+    def _uploads_in_progress(self):
+        upload_id = self.fba_service.get_in_process_uploads_by_feed(self.feed_id)
+        if upload_id:
+            return upload_id
 
         return False
 
 
 class CatalogProductInsertion:
     @classmethod
-    def first_product_insert_with_catalog(cls, vtex_app: App, catalog_id: str):
+    def first_product_insert_with_catalog(
+        cls, vtex_app: App, catalog_id: str, sellers: Optional[List[str]] = None
+    ):
         """Inserts the first product with the given catalog."""
         wpp_cloud_uuid = cls._get_wpp_cloud_uuid(vtex_app)
         credentials = cls._get_credentials(vtex_app)
@@ -285,7 +310,7 @@ class CatalogProductInsertion:
         cls._update_app_connected_catalog_flag(wpp_cloud)
         cls._link_catalog_to_vtex_app_if_needed(catalog, vtex_app)
 
-        cls._send_insert_task(credentials, catalog)
+        cls._send_insert_task(credentials, catalog, sellers)
 
     @staticmethod
     def _get_wpp_cloud_uuid(vtex_app) -> str:
@@ -376,13 +401,19 @@ class CatalogProductInsertion:
             print("Changed connected_catalog to True")
 
     @staticmethod
-    def _send_insert_task(credentials, catalog) -> None:
+    def _send_insert_task(
+        credentials, catalog, sellers: Optional[List[str]] = None
+    ) -> None:
         from marketplace.celery import app as celery_app
 
         """Sends the insert task to the task queue."""
         celery_app.send_task(
             name="task_insert_vtex_products",
-            kwargs={"credentials": credentials, "catalog_uuid": str(catalog.uuid)},
+            kwargs={
+                "credentials": credentials,
+                "catalog_uuid": str(catalog.uuid),
+                "sellers": sellers,
+            },
             queue="product_first_synchronization",
         )
         print(

@@ -18,6 +18,7 @@ class VtexAuthorization(RequestClient):
 
 
 class VtexCommonClient(RequestClient):
+    @retry_on_exception()
     def check_domain(self, domain):
         try:
             url = f"https://{domain}/api/catalog_system/pub/products/search/"
@@ -35,6 +36,7 @@ class VtexPublicClient(VtexCommonClient):
 
 
 class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
+    @retry_on_exception()
     def is_valid_credentials(self, domain):
         try:
             url = (
@@ -103,3 +105,28 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
                 "price": 0,
                 "list_price": 0,
             }
+
+    @retry_on_exception()
+    def list_all_active_products(self, domain):
+        unique_skus = set()
+        step = 250
+        current_from = 1
+
+        while True:
+            current_to = current_from + step - 1
+            url = (
+                f"https://{domain}/api/catalog_system/pvt/products/"
+                f"GetProductAndSkuIds?_from={current_from}&_to={current_to}&status=1"
+            )
+            headers = self._get_headers()
+            response = self.make_request(url, method="GET", headers=headers)
+
+            data = response.json().get("data", {})
+            if not data:
+                break
+
+            for _, skus in data.items():
+                unique_skus.update(skus)
+            current_from += step
+
+        return list(unique_skus)

@@ -6,6 +6,8 @@ from requests_toolbelt.utils import dump
 from django.conf import settings
 
 from marketplace.clients.base import RequestClient
+from marketplace.clients.decorators import retry_on_exception
+
 
 WHATSAPP_VERSION = settings.WHATSAPP_VERSION
 
@@ -45,6 +47,7 @@ class FacebookClient(FacebookAuthorization, RequestClient):
 
         return response.json().get("success")
 
+    @retry_on_exception()
     def create_product_feed(self, product_catalog_id, name):
         url = self.get_url + f"{product_catalog_id}/product_feeds"
 
@@ -54,6 +57,7 @@ class FacebookClient(FacebookAuthorization, RequestClient):
 
         return response.json()
 
+    @retry_on_exception()
     def upload_product_feed(
         self, feed_id, file, file_name, file_content_type, update_only=False
     ):
@@ -293,3 +297,21 @@ class FacebookClient(FacebookAuthorization, RequestClient):
             return "end_time" in upload
 
         return False
+
+    def get_uploads_in_progress_by_feed(self, feed_id):
+        url = self.get_url + f"{feed_id}/uploads"
+
+        headers = self._get_headers()
+        response = self.make_request(url, method="GET", headers=headers)
+        data = response.json()
+        upload = next(
+            (
+                upload
+                for upload in data.get("data", [])
+                if upload.get("end_time") is None
+            ),
+            None,
+        )
+        if upload:
+            if "end_time" not in upload:
+                return upload.get("id")

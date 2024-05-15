@@ -1,3 +1,24 @@
+v3.6.3
+----------
+* Ignore 404 error when fetching vtex product details
+* Round up prices for weight-calculated products
+* First sync vtex products for specific sellers
+* Vtex rules for colombia
+* Add method to list only active skus IDs
+
+v3.6.2
+----------
+* Remove vtex webhook log
+
+v3.6.1
+----------
+* Add vtex webhook log and add retry in facebook methods
+
+v3.6.0
+----------
+* Permission update consumer
+* Check if there is a feed upload in progress before uploading a new
+
 v3.5.0
 ----------
 * Sends webhook and template data to flows

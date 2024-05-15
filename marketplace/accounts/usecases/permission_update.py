@@ -60,7 +60,7 @@ def update_permission(
     project = Project.objects.get(uuid=project_uuid)
     user, _ = get_or_create_user_by_email(user_email)
 
-    if action == "create" or action == "update":  # OK - Verificar no shell
+    if action == "create" or action == "update":
         update_user_permission(role, project, user)
 
     if action == "delete":
