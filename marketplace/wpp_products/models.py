@@ -169,3 +169,22 @@ class WebhookLog(models.Model):
         null=True,
         limit_choices_to={"code": "vtex"},
     )
+
+
+class ProductUploadLog(models.Model):
+    sku_id = models.IntegerField()
+    created_on = models.DateTimeField(auto_now=True)
+    vtex_app = models.ForeignKey(
+        App,
+        on_delete=models.CASCADE,
+        related_name="vtex_product_upload_logs",
+        blank=True,
+        null=True,
+        limit_choices_to={"code": "vtex"},
+    )
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["sku_id"]),
+            models.Index(fields=["created_on"]),
+        ]

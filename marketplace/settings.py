@@ -11,14 +11,19 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 
 import os
-from pathlib import Path
-from datetime import timedelta
 import urllib
-
 import environ
 import sentry_sdk
+
+from pathlib import Path
+
+from datetime import timedelta
+
 from sentry_sdk.integrations.django import DjangoIntegration
+
 from corsheaders.defaults import default_headers
+
+from celery.schedules import crontab
 
 
 # Build paths inside the project like this: BASE_DIR / "subdir".
@@ -384,6 +389,10 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": timedelta(
             seconds=env.int("SYNC_FACEBOOK_CATALOGS_TIME", default=5400)
         ),
+    },
+    "task-cleanup-vtex-logs-and-uploads": {
+        "task": "task_cleanup_vtex_logs_and_uploads",
+        "schedule": crontab(minute=0, hour=0),
     },
 }
 
