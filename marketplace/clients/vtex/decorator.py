@@ -1,6 +1,5 @@
 import functools
 import time
-import requests
 
 from django_redis import get_redis_connection
 
@@ -101,24 +100,26 @@ def rate_limit_and_retry_on_exception(
                     seconds_limiter.check(domain)
                     minute_limiter.check(domain)
                     return func(*args, **kwargs)
-                except requests.exceptions.Timeout as e:
-                    last_exception = e
-                    if attempts >= 2:
-                        print(f"Timeout error: {str(e)}. Retrying...")
-                except requests.exceptions.HTTPError as e:
-                    last_exception = e
-                    if attempts >= 2:
-                        if e.response.status_code == 429:
-                            print(f"Too many requests: {str(e)}. Retrying...")
-                        elif e.response.status_code == 500:
-                            print(f"A 500 error occurred: {str(e)}. Retrying...")
-                        else:
-                            raise
                 except Exception as e:
                     last_exception = e
-                    if hasattr(e, "status_code") and e.status_code == 404:
+                    status_code = e.status_code if hasattr(e, "status_code") else None
+                    if not status_code:
+                        raise
+
+                    if status_code == 404:
                         print(f"Not Found: {str(e)}. Not retrying this.")
                         raise
+                    elif status_code == 500:
+                        print(f"A 500 error occurred: {str(e)}. Retrying...")
+                        raise
+
+                    if attempts >= 2:
+                        if status_code == 429:
+                            print(f"Too many requests: {str(e)}. Retrying...")
+                        elif status_code == 408:
+                            print(f"Timeout error: {str(e)}. Retrying...")
+                        else:
+                            raise
 
                 print(
                     f"Retrying... Attempt {attempts + 1} after {sleep_time} seconds, in {func.__name__}:"
