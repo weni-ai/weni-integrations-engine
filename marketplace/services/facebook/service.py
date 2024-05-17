@@ -152,7 +152,7 @@ class FacebookService:
             )
             time.sleep(wait_time)
             total_wait_time += wait_time
-            wait_time = min(wait_time * 2, 160)
+            wait_time = min(wait_time * 2, 20)
             attempt += 1
 
         return False

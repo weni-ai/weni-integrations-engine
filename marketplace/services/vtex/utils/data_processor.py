@@ -177,9 +177,17 @@ class DataProcessor:
             return facebook_products
 
         for seller_id in self.active_sellers:
-            availability_details = self.service.simulate_cart_for_seller(
-                sku_id, seller_id, self.domain
-            )
+            try:
+                availability_details = self.service.simulate_cart_for_seller(
+                    sku_id, seller_id, self.domain
+                )
+            except CustomAPIException as e:
+                if e.status_code == 500:
+                    print(
+                        f"An error {e.status_code} occurred when simulating cart. SKU {sku_id}, Seller {seller_id}."
+                        "Skipping..."
+                    )
+                continue
             if (
                 self.update_product is False
                 and not availability_details["is_available"]

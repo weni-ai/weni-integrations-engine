@@ -7,9 +7,13 @@ from celery import shared_task
 from django.db import reset_queries, close_old_connections
 
 from marketplace.clients.facebook.client import FacebookClient
-from marketplace.services.vtex.exceptions import NoVTEXAppConfiguredException
 
-from marketplace.wpp_products.models import Catalog, WebhookLog
+from marketplace.wpp_products.models import (
+    Catalog,
+    ProductUploadLog,
+    UploadProduct,
+    WebhookLog,
+)
 from marketplace.clients.flows.client import FlowsClient
 from marketplace.celery import app as celery_app
 from marketplace.services.vtex.generic_service import (
@@ -214,6 +218,8 @@ def task_update_vtex_products(**kwargs):
             return
 
         close_old_connections()
+        # Webhook Log
+        WebhookLog.objects.create(sku_id=sku_id, data=webhook, vtex_app=vtex_app)
 
     except Exception as e:
         logger.error(
@@ -253,23 +259,18 @@ def task_forward_vtex_webhook(**kwargs):
     try:
         app = App.objects.get(uuid=app_uuid, configured=True, code="vtex")
     except App.DoesNotExist:
-        raise NoVTEXAppConfiguredException()
+        logger.info(f"No VTEX App configured with the provided UUID: {app_uuid}")
+        return
 
     can_synchronize = app.config.get("initial_sync_completed", False)
 
-    celery_queue = "product_synchronization"
-
-    if app.config.get("celery_queue_name", None):
-        celery_queue = app.config["celery_queue_name"]
+    celery_queue = app.config.get("celery_queue_name", "product_synchronization")
 
     if not can_synchronize:
         print(f"Initial sync not completed. App:{str(app.uuid)}")
         return
 
     sku_id = webhook.get("IdSku")
-
-    # Webhook Log
-    WebhookLog.objects.create(sku_id=sku_id, data=webhook, vtex_app=app)
 
     if not sku_id:
         raise ValueError(f"SKU ID not provided in the request. App:{str(app.uuid)}")
@@ -312,3 +313,15 @@ def task_upload_vtex_products(**kwargs):
         print(f"Upload task for App: {app_vtex_uuid} is already in progress.")
 
     print(f"Processing upload for App: {app_vtex_uuid}")
+
+
+@celery_app.task(name="task_cleanup_vtex_logs_and_uploads")
+def task_cleanup_vtex_logs_and_uploads():
+    # Delete all records from the ProductUploadLog and WebhookLog tables
+    ProductUploadLog.objects.all().delete()
+    WebhookLog.objects.all().delete()
+
+    # Delete all UploadProduct records with "success" status
+    UploadProduct.objects.filter(status="success").delete()
+
+    print("Logs and successful uploads have been cleaned up.")
