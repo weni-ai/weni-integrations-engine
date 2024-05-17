@@ -105,7 +105,7 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
 
     # API throttling
     @rate_limit_and_retry_on_exception(
-        get_domain_from_args, calls_per_period=400, period=60
+        get_domain_from_args, calls_per_period=800, period=60
     )
     def get_product_details(self, sku_id, domain):
         url = (
@@ -117,7 +117,7 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
 
     # API throttling
     @rate_limit_and_retry_on_exception(
-        get_domain_from_args, calls_per_period=400, period=60
+        get_domain_from_args, calls_per_period=800, period=60
     )
     def pub_simulate_cart_for_seller(self, sku_id, seller_id, domain):
         cart_simulation_url = f"https://{domain}/api/checkout/pub/orderForms/simulation"
