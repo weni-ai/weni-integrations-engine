@@ -8,20 +8,17 @@ class RateLimiter:
     """
     A class for implementing rate limiting using Redis.
 
-    This class provides a mechanism to limit the rate of operations
-    performed by an identifier (e.g., a user or API key)
-    within a specified period. It uses a Redis backend to track
-    the count of operations performed and ensures that the
-    operation does not exceed the defined thresholds.
+    This class limits the rate of operations performed by an identifier
+    (e.g., a user or API key) within a specified period. It uses a Redis
+    backend to track the count of operations and ensures the rate limit
+    is not exceeded.
 
     Attributes:
-        key_prefix (str): A prefix for Redis keys to avoid naming conflicts.
-        calls (int): Maximum number of allowed operations within the defined period.
-        period (int): The duration (in seconds) for which the rate limit applies.
-        redis (Redis): An instance of a Redis connection to be used
-        for storing and managing rate data.
-        current_count (dict): A dictionary to store the current
-        count of operations for monitoring and debugging.
+        key_prefix (str): Prefix for Redis keys to avoid naming conflicts.
+        calls (int): Maximum allowed operations within the period.
+        period (int): Duration (in seconds) for the rate limit period.
+        redis (Redis): Redis connection instance for rate data storage.
+        current_count (dict): Tracks current count of operations for monitoring.
     """
 
     def __init__(self, key_prefix, calls, period, redis_connection):
@@ -35,6 +32,9 @@ class RateLimiter:
         return f"{self.key_prefix}:{identifier}"
 
     def check(self, identifier):
+        """
+        Check and enforce the rate limit for the given identifier.
+        """
         key = self._get_key(identifier)
         current_count = self.redis.incr(key)
 
@@ -54,18 +54,18 @@ class RateLimiter:
 
 def rate_limit_and_retry_on_exception(domain_key_func, calls_per_period, period):
     """
-    Decorates a function to enforce rate limiting and retries.
+    Decorator to enforce rate limiting and retries.
 
-    Applies rate limits per second and per minute based on the provided limits. Handles retries
-    with exponential backoff for network or HTTP errors.
+    Applies rate limits and handles retries with exponential backoff
+    for network or HTTP errors.
 
-    Parameters:
-        calls_per_second (int): Maximum allowed function calls per second.
-        calls_per_minute (int): Maximum allowed function calls per minute.
-        domain_key_func (callable): Function to extract a domain identifier for rate limiting.
+    Args:
+        domain_key_func (callable): Function to extract domain identifier.
+        calls_per_period (int): Max allowed function calls per period.
+        period (int): Time period (in seconds) for rate limiting.
 
     Returns:
-        Decorated function with applied rate limiting and error handling for retries.
+        callable: Decorated function with rate limiting and retries.
     """
 
     def decorator(func):
