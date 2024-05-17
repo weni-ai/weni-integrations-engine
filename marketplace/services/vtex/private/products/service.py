@@ -92,9 +92,8 @@ class PrivateProductsService:
         )  # TODO: Change to pvt_simulate_cart_for_seller
 
     def update_webhook_product_info(
-        self, domain: str, skus_ids: list, config: dict
+        self, domain: str, skus_ids: list, seller_ids: list, config: dict
     ) -> List[FacebookProductDTO]:
-        seller_ids = self.client.list_active_sellers(domain)
         rules = self._load_rules(config.get("rules", []))
         store_domain = config.get("store_domain")
         updated_products_dto = self.data_processor.process_product_data(

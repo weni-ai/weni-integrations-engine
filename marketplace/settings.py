@@ -11,14 +11,19 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 
 import os
-from pathlib import Path
-from datetime import timedelta
 import urllib
-
 import environ
 import sentry_sdk
+
+from pathlib import Path
+
+from datetime import timedelta
+
 from sentry_sdk.integrations.django import DjangoIntegration
+
 from corsheaders.defaults import default_headers
+
+from celery.schedules import crontab
 
 
 # Build paths inside the project like this: BASE_DIR / "subdir".
@@ -385,6 +390,10 @@ CELERY_BEAT_SCHEDULE = {
             seconds=env.int("SYNC_FACEBOOK_CATALOGS_TIME", default=5400)
         ),
     },
+    "task-cleanup-vtex-logs-and-uploads": {
+        "task": "task_cleanup_vtex_logs_and_uploads",
+        "schedule": crontab(minute=0, hour=0),
+    },
 }
 
 
@@ -434,3 +443,7 @@ if ALLOW_CRM_ACCESS:
 
 # Define how many products will be updated at a time
 VTEX_UPDATE_BATCH_SIZE = env.int("VTEX_UPDATE_BATCH_SIZE", default=500)
+
+# Define how many requests can be made in a period
+VTEX_PERIOD = env.int("VTEX_PERIOD", default=60)
+VTEX_CALLS_PER_PERIOD = env.int("VTEX_CALLS_PER_PERIOD", default=1500)

@@ -177,9 +177,17 @@ class DataProcessor:
             return facebook_products
 
         for seller_id in self.active_sellers:
-            availability_details = self.service.simulate_cart_for_seller(
-                sku_id, seller_id, self.domain
-            )
+            try:
+                availability_details = self.service.simulate_cart_for_seller(
+                    sku_id, seller_id, self.domain
+                )
+            except CustomAPIException as e:
+                if e.status_code == 500:
+                    print(
+                        f"An error {e.status_code} occurred when simulating cart. SKU {sku_id}, Seller {seller_id}."
+                        "Skipping..."
+                    )
+                continue
             if (
                 self.update_product is False
                 and not availability_details["is_available"]
@@ -215,6 +223,14 @@ class DataProcessor:
         buffer.seek(0)
         print("CSV file successfully generated in memory")
         return buffer
+
+    @staticmethod
+    def product_to_csv_line(product: FacebookProductDTO) -> str:
+        product_dict = dataclasses.asdict(product)
+        df = pd.DataFrame([product_dict])
+        df = df.drop(columns=["product_details"])
+        csv_line = df.to_csv(index=False, header=False, encoding="utf-8").strip()
+        return csv_line
 
     @staticmethod
     def clear_csv_buffer(buffer: io.BytesIO):
