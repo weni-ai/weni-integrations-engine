@@ -443,3 +443,7 @@ if ALLOW_CRM_ACCESS:
 
 # Define how many products will be updated at a time
 VTEX_UPDATE_BATCH_SIZE = env.int("VTEX_UPDATE_BATCH_SIZE", default=500)
+
+# Define how many requests can be made in a period
+VTEX_PERIOD = env.int("VTEX_PERIOD", default=60)
+VTEX_CALLS_PER_PERIOD = env.int("VTEX_CALLS_PER_PERIOD", default=1500)
