@@ -36,37 +36,23 @@ class RateLimiter:
 
     def check(self, identifier):
         key = self._get_key(identifier)
-        current_time = int(time.time())
-        pipeline = self.redis.pipeline()
-        pipeline.zremrangebyscore(key, 0, current_time - self.period)
-        pipeline.zcard(key)
-        pipeline.zadd(key, {current_time: current_time})
-        pipeline.expire(key, self.period)
-        _, current_count, _, _ = pipeline.execute()
+        current_count = self.redis.incr(key)
 
-        self.current_count = {key: current_count}
+        if current_count == 1:
+            # Set the TTL for the key if this is the first increment
+            self.redis.expire(key, self.period)
+
+        self.current_count[key] = current_count
+
         if current_count > self.calls:
-            sleep_duration = self._calculate_sleep_time(
-                current_count, self.calls, self.period
-            )
             print(
-                f"Rate limit [{current_count}/{self.calls}] exceeded for key {key}. "
-                f"Sleeping for {sleep_duration} seconds."
+                f"Rate limit [{current_count}/{self.calls}] was reached, in {self.period} seconds, "
+                f"for key {key}. Waiting for 20 seconds."
             )
-            time.sleep(sleep_duration)
-
-    def _calculate_sleep_time(self, current_count, calls, period):
-        if current_count > calls:
-            if period == 1:
-                return 2
-            elif period == 60:
-                return 20
-        return 0
+            time.sleep(20)
 
 
-def rate_limit_and_retry_on_exception(
-    calls_per_second, calls_per_minute, domain_key_func
-):
+def rate_limit_and_retry_on_exception(domain_key_func, calls_per_period, period):
     """
     Decorates a function to enforce rate limiting and retries.
 
@@ -84,8 +70,9 @@ def rate_limit_and_retry_on_exception(
 
     def decorator(func):
         redis_connection = get_redis_connection()
-        seconds_limiter = RateLimiter("per_sec", calls_per_second, 1, redis_connection)
-        minute_limiter = RateLimiter("per_min", calls_per_minute, 60, redis_connection)
+        rate_limiter = RateLimiter(
+            "rate_limit", calls_per_period, period, redis_connection
+        )
 
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -97,8 +84,7 @@ def rate_limit_and_retry_on_exception(
 
             while attempts < max_attempts:
                 try:
-                    seconds_limiter.check(domain)
-                    minute_limiter.check(domain)
+                    rate_limiter.check(domain)
                     return func(*args, **kwargs)
                 except Exception as e:
                     last_exception = e
