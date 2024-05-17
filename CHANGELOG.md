@@ -1,3 +1,12 @@
+v3.7.0
+----------
+* Processes vtex update webhooks asynchronously and saves them on DB
+* Create task to upload products from db to fba-meta
+* Saves uploads sent to Facebook and creates a task to clear logs 
+* Fix: limits requests on vtex per minute
+* Fix: list paginated sellers
+* Remove url redirection from view
+
 v3.6.4
 ----------
 * Temporarily enable redirection of vtex updates
