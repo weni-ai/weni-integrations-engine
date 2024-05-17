@@ -1,6 +1,11 @@
 import time
+import logging
+
 from marketplace.services.facebook.exceptions import FileNotSendValidationError
 from marketplace.wpp_products.models import Catalog
+
+
+logger = logging.getLogger(__name__)
 
 
 class FacebookService:
@@ -137,7 +142,7 @@ class FacebookService:
 
     def _wait_for_upload_completion(self, feed_id, upload_id):
         wait_time = 5
-        max_wait_time = 20 * 60
+        max_wait_time = 15 * 60
         total_wait_time = 0
         attempt = 1
 
@@ -155,4 +160,8 @@ class FacebookService:
             wait_time = min(wait_time * 2, 20)
             attempt += 1
 
+        logger.error(
+            f"Exceeded max wait time for upload completion. "
+            f"Feed ID: {feed_id}, Upload ID: {upload_id}"
+        )
         return False

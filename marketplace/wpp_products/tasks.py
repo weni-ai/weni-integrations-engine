@@ -288,7 +288,7 @@ def task_upload_vtex_products(**kwargs):
     app_vtex = App.objects.get(uuid=app_vtex_uuid)
     redis_client = get_redis_connection()
     lock_key = f"upload_lock:{app_vtex_uuid}"
-    lock_expiration_time = 7200  # 2 hours
+    lock_expiration_time = 15 * 60  # 15 minutes
 
     # Attempt to acquire the lock
     if redis_client.set(lock_key, "locked", nx=True, ex=lock_expiration_time):

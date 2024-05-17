@@ -8,20 +8,17 @@ class RateLimiter:
     """
     A class for implementing rate limiting using Redis.
 
-    This class provides a mechanism to limit the rate of operations
-    performed by an identifier (e.g., a user or API key)
-    within a specified period. It uses a Redis backend to track
-    the count of operations performed and ensures that the
-    operation does not exceed the defined thresholds.
+    This class limits the rate of operations performed by an identifier
+    (e.g., a user or API key) within a specified period. It uses a Redis
+    backend to track the count of operations and ensures the rate limit
+    is not exceeded.
 
     Attributes:
-        key_prefix (str): A prefix for Redis keys to avoid naming conflicts.
-        calls (int): Maximum number of allowed operations within the defined period.
-        period (int): The duration (in seconds) for which the rate limit applies.
-        redis (Redis): An instance of a Redis connection to be used
-        for storing and managing rate data.
-        current_count (dict): A dictionary to store the current
-        count of operations for monitoring and debugging.
+        key_prefix (str): Prefix for Redis keys to avoid naming conflicts.
+        calls (int): Maximum allowed operations within the period.
+        period (int): Duration (in seconds) for the rate limit period.
+        redis (Redis): Redis connection instance for rate data storage.
+        current_count (dict): Tracks current count of operations for monitoring.
     """
 
     def __init__(self, key_prefix, calls, period, redis_connection):
@@ -35,57 +32,47 @@ class RateLimiter:
         return f"{self.key_prefix}:{identifier}"
 
     def check(self, identifier):
+        """
+        Check and enforce the rate limit for the given identifier.
+        """
         key = self._get_key(identifier)
-        current_time = int(time.time())
-        pipeline = self.redis.pipeline()
-        pipeline.zremrangebyscore(key, 0, current_time - self.period)
-        pipeline.zcard(key)
-        pipeline.zadd(key, {current_time: current_time})
-        pipeline.expire(key, self.period)
-        _, current_count, _, _ = pipeline.execute()
+        current_count = self.redis.incr(key)
 
-        self.current_count = {key: current_count}
+        if current_count == 1:
+            # Set the TTL for the key if this is the first increment
+            self.redis.expire(key, self.period)
+
+        self.current_count[key] = current_count
+
         if current_count > self.calls:
-            sleep_duration = self._calculate_sleep_time(
-                current_count, self.calls, self.period
-            )
             print(
-                f"Rate limit [{current_count}/{self.calls}] exceeded for key {key}. "
-                f"Sleeping for {sleep_duration} seconds."
+                f"Rate limit [{current_count}/{self.calls}] was reached, in {self.period} seconds, "
+                f"for key {key}. Waiting for 20 seconds."
             )
-            time.sleep(sleep_duration)
-
-    def _calculate_sleep_time(self, current_count, calls, period):
-        if current_count > calls:
-            if period == 1:
-                return 2
-            elif period == 60:
-                return 20
-        return 0
+            time.sleep(20)
 
 
-def rate_limit_and_retry_on_exception(
-    calls_per_second, calls_per_minute, domain_key_func
-):
+def rate_limit_and_retry_on_exception(domain_key_func, calls_per_period, period):
     """
-    Decorates a function to enforce rate limiting and retries.
+    Decorator to enforce rate limiting and retries.
 
-    Applies rate limits per second and per minute based on the provided limits. Handles retries
-    with exponential backoff for network or HTTP errors.
+    Applies rate limits and handles retries with exponential backoff
+    for network or HTTP errors.
 
-    Parameters:
-        calls_per_second (int): Maximum allowed function calls per second.
-        calls_per_minute (int): Maximum allowed function calls per minute.
-        domain_key_func (callable): Function to extract a domain identifier for rate limiting.
+    Args:
+        domain_key_func (callable): Function to extract domain identifier.
+        calls_per_period (int): Max allowed function calls per period.
+        period (int): Time period (in seconds) for rate limiting.
 
     Returns:
-        Decorated function with applied rate limiting and error handling for retries.
+        callable: Decorated function with rate limiting and retries.
     """
 
     def decorator(func):
         redis_connection = get_redis_connection()
-        seconds_limiter = RateLimiter("per_sec", calls_per_second, 1, redis_connection)
-        minute_limiter = RateLimiter("per_min", calls_per_minute, 60, redis_connection)
+        rate_limiter = RateLimiter(
+            "rate_limit", calls_per_period, period, redis_connection
+        )
 
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -97,8 +84,7 @@ def rate_limit_and_retry_on_exception(
 
             while attempts < max_attempts:
                 try:
-                    seconds_limiter.check(domain)
-                    minute_limiter.check(domain)
+                    rate_limiter.check(domain)
                     return func(*args, **kwargs)
                 except Exception as e:
                     last_exception = e

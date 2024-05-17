@@ -1,3 +1,7 @@
+import time
+
+from django.conf import settings
+
 from marketplace.clients.base import RequestClient
 from marketplace.clients.decorators import retry_on_exception
 from marketplace.clients.vtex.decorator import rate_limit_and_retry_on_exception
@@ -37,6 +41,9 @@ class VtexPublicClient(VtexCommonClient):
 
 
 class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
+    VTEX_CALLS_PER_PERIOD = settings.VTEX_CALLS_PER_PERIOD
+    VTEX_PERIOD = settings.VTEX_PERIOD
+
     # API throttling, expects the domain to be the last parameter
     def get_domain_from_args(self, *args, **kwargs):
         domain = kwargs.get("domain")
@@ -102,8 +109,10 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
 
         return active_sellers
 
-    # API throttling, params:(second, minute, domain)
-    @rate_limit_and_retry_on_exception(10, 40, get_domain_from_args)
+    # API throttling
+    @rate_limit_and_retry_on_exception(
+        get_domain_from_args, calls_per_period=VTEX_CALLS_PER_PERIOD, period=VTEX_PERIOD
+    )
     def get_product_details(self, sku_id, domain):
         url = (
             f"https://{domain}/api/catalog_system/pvt/sku/stockkeepingunitbyid/{sku_id}"
@@ -112,12 +121,15 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
         response = self.make_request(url, method="GET", headers=headers)
         return response.json()
 
-    # API throttling, params:(second, minute, domain)
-    @rate_limit_and_retry_on_exception(10, 40, get_domain_from_args)
+    # API throttling
+    @rate_limit_and_retry_on_exception(
+        get_domain_from_args, calls_per_period=VTEX_CALLS_PER_PERIOD, period=VTEX_PERIOD
+    )
     def pub_simulate_cart_for_seller(self, sku_id, seller_id, domain):
         cart_simulation_url = f"https://{domain}/api/checkout/pub/orderForms/simulation"
         payload = {"items": [{"id": sku_id, "quantity": 1, "seller": seller_id}]}
 
+        time.sleep(1)  # The best performance needed this 'sleep'
         response = self.make_request(cart_simulation_url, method="POST", json=payload)
         simulation_data = response.json()
 
