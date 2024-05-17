@@ -1,5 +1,7 @@
 from marketplace.clients.base import RequestClient
 from marketplace.clients.decorators import retry_on_exception
+from marketplace.clients.vtex.decorator import rate_limit_and_retry_on_exception
+import time
 
 
 class VtexAuthorization(RequestClient):
@@ -36,6 +38,13 @@ class VtexPublicClient(VtexCommonClient):
 
 
 class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
+    # API throttling, expects the domain to be the last parameter
+    def get_domain_from_args(self, *args, **kwargs):
+        domain = kwargs.get("domain")
+        if domain is None and args:
+            domain = args[-1]
+        return domain
+
     @retry_on_exception()
     def is_valid_credentials(self, domain):
         try:
@@ -69,13 +78,35 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
 
     @retry_on_exception()
     def list_active_sellers(self, domain):
-        url = f"https://{domain}/api/seller-register/pvt/sellers"
-        headers = self._get_headers()
-        response = self.make_request(url, method="GET", headers=headers)
-        sellers_data = response.json()
-        return [seller["id"] for seller in sellers_data["items"] if seller["isActive"]]
+        from_index = 0
+        batch_size = 100
+        total_sellers = float("inf")
+        active_sellers = []
 
-    @retry_on_exception()
+        while from_index < total_sellers:
+            url = f"https://{domain}/api/seller-register/pvt/sellers?from={from_index}&to={from_index + batch_size}"
+            headers = self._get_headers()
+            response = self.make_request(url, method="GET", headers=headers)
+            sellers_data = response.json()
+
+            if total_sellers == float("inf"):
+                total_sellers = sellers_data["paging"]["total"]
+
+            active_sellers.extend(
+                [
+                    seller["id"]
+                    for seller in sellers_data["items"]
+                    if seller.get("isActive", False)
+                ]
+            )
+            from_index += batch_size
+
+        return active_sellers
+
+    # API throttling
+    @rate_limit_and_retry_on_exception(
+        get_domain_from_args, calls_per_period=800, period=60
+    )
     def get_product_details(self, sku_id, domain):
         url = (
             f"https://{domain}/api/catalog_system/pvt/sku/stockkeepingunitbyid/{sku_id}"
@@ -84,11 +115,15 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
         response = self.make_request(url, method="GET", headers=headers)
         return response.json()
 
-    @retry_on_exception()
+    # API throttling
+    @rate_limit_and_retry_on_exception(
+        get_domain_from_args, calls_per_period=800, period=60
+    )
     def pub_simulate_cart_for_seller(self, sku_id, seller_id, domain):
         cart_simulation_url = f"https://{domain}/api/checkout/pub/orderForms/simulation"
         payload = {"items": [{"id": sku_id, "quantity": 1, "seller": seller_id}]}
 
+        time.sleep(1)  # The best performance needed this 'sleep'
         response = self.make_request(cart_simulation_url, method="POST", json=payload)
         simulation_data = response.json()
 
