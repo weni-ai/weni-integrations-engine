@@ -279,6 +279,7 @@ def task_forward_vtex_webhook(**kwargs):
         "task_update_vtex_products",
         kwargs={"app_uuid": str(app_uuid), "webhook": webhook},
         queue=celery_queue,
+        ignore_result=True,
     )
 
 
@@ -325,3 +326,30 @@ def task_cleanup_vtex_logs_and_uploads():
     UploadProduct.objects.filter(status="success").delete()
 
     print("Logs and successful uploads have been cleaned up.")
+
+
+def send_sync(app_uuid: str, webhook: dict):
+    try:
+        app = App.objects.get(uuid=app_uuid, configured=True, code="vtex")
+    except App.DoesNotExist:
+        logger.info(f"No VTEX App configured with the provided UUID: {app_uuid}")
+        return
+
+    can_synchronize = app.config.get("initial_sync_completed", False)
+
+    if not can_synchronize:
+        print(f"Initial sync not completed. App:{str(app.uuid)}")
+        return
+
+    celery_queue = app.config.get("celery_queue_name", "product_synchronization")
+    sku_id = webhook.get("IdSku")
+
+    if not sku_id:
+        raise ValueError(f"SKU ID not provided in the request. App:{str(app.uuid)}")
+
+    celery_app.send_task(
+        "task_update_vtex_products",
+        kwargs={"app_uuid": str(app_uuid), "webhook": webhook},
+        queue=celery_queue,
+        ignore_result=True,
+    )
