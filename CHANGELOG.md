@@ -1,3 +1,7 @@
+v3.7.1
+----------
+* Hotfix: Set CELERY_RESULT_BACKEND with None
+
 v3.7.0
 ----------
 * Processes vtex update webhooks asynchronously and saves them on DB
