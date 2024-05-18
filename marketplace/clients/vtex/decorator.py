@@ -50,6 +50,8 @@ class RateLimiter:
                 f"for key {key}. Waiting for 20 seconds."
             )
             time.sleep(20)
+            # force reset the counter key after sleeping
+            self.redis.delete(key)
 
 
 def rate_limit_and_retry_on_exception(domain_key_func, calls_per_period, period):
