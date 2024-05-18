@@ -1,3 +1,7 @@
+v3.7.2
+----------
+* Check the view if it can synchronize and add ignore results to tasks
+
 v3.7.1
 ----------
 * Hotfix: Set CELERY_RESULT_BACKEND with None
