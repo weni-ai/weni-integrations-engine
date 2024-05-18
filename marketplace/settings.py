@@ -257,7 +257,7 @@ REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379")
 # Celery
 
 CELERY_BROKER_URL = env.str("CELERY_BROKER_URL", default=REDIS_URL)
-CELERY_RESULT_BACKEND = env.str("CELERY_RESULT_BACKEND", default=REDIS_URL)
+CELERY_RESULT_BACKEND = None
 CELERY_ACCEPT_CONTENT = ["application/json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
