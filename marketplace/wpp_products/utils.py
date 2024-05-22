@@ -118,7 +118,10 @@ class ProductUploadManager:
         if include_header:
             csv_lines.append(header)
 
-        csv_lines.extend([product.data for product in products])
+        for product in products:
+            csv_line = escape_quotes(product.data)
+            csv_lines.append(csv_line)
+
         csv_content = "\n".join(csv_lines)
 
         buffer = io.BytesIO()
@@ -168,3 +171,9 @@ class ProductBatchFetcher(ProductUploadManager):
 
         products_ids = list(products.values_list("facebook_product_id", flat=True))
         return products, products_ids
+
+
+def escape_quotes(text):
+    """Replaces quotes with a empty space in the provided text."""
+    text = text.replace('"', "").replace("'", " ")
+    return text
