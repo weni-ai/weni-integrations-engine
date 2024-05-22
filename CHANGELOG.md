@@ -1,3 +1,7 @@
+v3.7.3
+----------
+* Hotfix: Remove quotation marks and HTML tags from the title and description of vtex products
+
 v3.7.2
 ----------
 * Check the view if it can synchronize and add ignore results to tasks
