@@ -7,10 +7,12 @@ from datetime import datetime
 from django.db.models import QuerySet
 
 from marketplace.clients.facebook.client import FacebookClient
+from marketplace.clients.rapidpro.client import RapidproClient
 from marketplace.wpp_products.models import Catalog, ProductUploadLog, UploadProduct
 from marketplace.services.facebook.service import (
     FacebookService,
 )
+from marketplace.services.rapidpro.service import RapidproService
 
 
 class ProductUploader:
@@ -29,6 +31,7 @@ class ProductUploader:
             if catalog.feeds.first().facebook_feed_id
             else None
         )
+        self.rapidpro_service = RapidproService(RapidproClient())
 
     def initialize_fb_service(self) -> FacebookService:  # pragma: no cover
         app = self.catalog.app  # Wpp-cloud App
@@ -56,7 +59,9 @@ class ProductUploader:
                 redis_client.expire(lock_key, lock_expiration_time)
 
         except Exception as e:
-            print(f"Error on 'process_and_upload': {e}")
+            print(
+                f"Error on 'process_and_upload': {str(self.catalog.vtex_app.uuid)}. error: {e}"
+            )
             self.product_manager.mark_products_as_error(products_ids)
 
     def send_to_meta(self, csv_content: io.BytesIO) -> bool:
@@ -86,7 +91,17 @@ class ProductUploader:
             print("Finished updating products to Facebook")
             return True
         except Exception as e:
-            print(f"Error sending data to Meta: {e}")
+            print(
+                f"Error sending data to Meta: App: {str(self.catalog.vtex_app.uuid)}. error: {e}"
+            )
+            try:
+                self.rapidpro_service.create_notification(
+                    catalog=self.catalog,
+                    incident_name=f"Error sending data to Meta to {self.catalog.name}",
+                    exception=e,
+                )
+            except Exception as error:
+                print(f"Error on send notification error to rapidpro: {error}")
             return False
 
     def log_sent_products(self, product_ids: List[str]):
