@@ -10,6 +10,7 @@ omit =
     marketplace/connect/*
     marketplace/wpp_templates/requests.py
     marketplace/clients/*
+    marketplace/interfaces/*
     *urls.py*
 
 [report]
