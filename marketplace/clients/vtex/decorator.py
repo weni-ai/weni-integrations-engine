@@ -92,6 +92,7 @@ def rate_limit_and_retry_on_exception(domain_key_func, calls_per_period, period)
                     last_exception = e
                     status_code = e.status_code if hasattr(e, "status_code") else None
                     if not status_code:
+                        print(f"Unexpected error: {str(e)}")
                         raise
 
                     if status_code == 404:
@@ -107,6 +108,7 @@ def rate_limit_and_retry_on_exception(domain_key_func, calls_per_period, period)
                         elif status_code == 408:
                             print(f"Timeout error: {str(e)}. Retrying...")
                         else:
+                            print(f"Unexpected error: {str(e)}. status: {status_code}")
                             raise
 
                 print(
