@@ -1,3 +1,7 @@
+v3.7.4
+----------
+* Hotfix: Create alert to notify upload errors
+
 v3.7.3
 ----------
 * Hotfix: Remove quotation marks and HTML tags from the title and description of vtex products
