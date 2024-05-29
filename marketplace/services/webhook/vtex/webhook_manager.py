@@ -5,6 +5,8 @@ from django.conf import settings
 
 from django_redis import get_redis_connection
 
+from marketplace.applications.models import App
+
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +15,9 @@ class WebhookQueueManager:
     def __init__(self, app_uuid):
         self.app_uuid = app_uuid
         self.redis_client = get_redis_connection()
+
+    def get_webhooks_key(self):
+        return f"vtex:product-uploading:{self.app_uuid}"
 
     def get_sku_list_key(self):
         return f"vtex:skus-list:{self.app_uuid}"
@@ -65,3 +70,23 @@ class WebhookQueueManager:
 
     def is_processing_locked(self):
         return bool(self.redis_client.get(self.get_lock_key()))
+
+
+class WebhookMultQueueManager:
+    def __init__(self):
+        self.redis_client = get_redis_connection()
+
+    def reset_in_processing_keys(self):
+        apps = App.objects.filter(code="vtex", config__initial_sync_completed=True)
+        for app in apps:
+            key = f"vtex:processing-lock:{str(app.uuid)}"
+            if self.redis_client.get(key):
+                self.redis_client.delete(key)
+                print(f"{key} has deleted.")
+
+    def list_in_processing_keys(self):
+        apps = App.objects.filter(code="vtex", config__initial_sync_completed=True)
+        for app in apps:
+            key = f"vtex:processing-lock:{str(app.uuid)}"
+            if self.redis_client.get(key):
+                print(f"{key}")

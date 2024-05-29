@@ -29,9 +29,8 @@ class RequestClient:
             params=params,
             files=files,
         )
-        if response.status_code >= 500:
-            raise CustomAPIException(status_code=response.status_code)
-        elif response.status_code >= 400:
+        if response.status_code >= 400:
+            detail = ""
             try:
                 detail = response.json()
             except ValueError:

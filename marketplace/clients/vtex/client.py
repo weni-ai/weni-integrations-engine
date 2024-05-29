@@ -1,5 +1,10 @@
+import time
+
+from django.conf import settings
+
 from marketplace.clients.base import RequestClient
 from marketplace.clients.decorators import retry_on_exception
+from marketplace.clients.vtex.decorator import rate_limit_and_retry_on_exception
 
 
 class VtexAuthorization(RequestClient):
@@ -18,6 +23,7 @@ class VtexAuthorization(RequestClient):
 
 
 class VtexCommonClient(RequestClient):
+    @retry_on_exception()
     def check_domain(self, domain):
         try:
             url = f"https://{domain}/api/catalog_system/pub/products/search/"
@@ -35,6 +41,17 @@ class VtexPublicClient(VtexCommonClient):
 
 
 class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
+    VTEX_CALLS_PER_PERIOD = settings.VTEX_CALLS_PER_PERIOD
+    VTEX_PERIOD = settings.VTEX_PERIOD
+
+    # API throttling, expects the domain to be the last parameter
+    def get_domain_from_args(self, *args, **kwargs):
+        domain = kwargs.get("domain")
+        if domain is None and args:
+            domain = args[-1]
+        return domain
+
+    @retry_on_exception()
     def is_valid_credentials(self, domain):
         try:
             url = (
@@ -67,13 +84,35 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
 
     @retry_on_exception()
     def list_active_sellers(self, domain):
-        url = f"https://{domain}/api/seller-register/pvt/sellers"
-        headers = self._get_headers()
-        response = self.make_request(url, method="GET", headers=headers)
-        sellers_data = response.json()
-        return [seller["id"] for seller in sellers_data["items"] if seller["isActive"]]
+        from_index = 0
+        batch_size = 100
+        total_sellers = float("inf")
+        active_sellers = []
 
-    @retry_on_exception()
+        while from_index < total_sellers:
+            url = f"https://{domain}/api/seller-register/pvt/sellers?from={from_index}&to={from_index + batch_size}"
+            headers = self._get_headers()
+            response = self.make_request(url, method="GET", headers=headers)
+            sellers_data = response.json()
+
+            if total_sellers == float("inf"):
+                total_sellers = sellers_data["paging"]["total"]
+
+            active_sellers.extend(
+                [
+                    seller["id"]
+                    for seller in sellers_data["items"]
+                    if seller.get("isActive", False)
+                ]
+            )
+            from_index += batch_size
+
+        return active_sellers
+
+    # API throttling
+    @rate_limit_and_retry_on_exception(
+        get_domain_from_args, calls_per_period=VTEX_CALLS_PER_PERIOD, period=VTEX_PERIOD
+    )
     def get_product_details(self, sku_id, domain):
         url = (
             f"https://{domain}/api/catalog_system/pvt/sku/stockkeepingunitbyid/{sku_id}"
@@ -82,11 +121,15 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
         response = self.make_request(url, method="GET", headers=headers)
         return response.json()
 
-    @retry_on_exception()
+    # API throttling
+    @rate_limit_and_retry_on_exception(
+        get_domain_from_args, calls_per_period=VTEX_CALLS_PER_PERIOD, period=VTEX_PERIOD
+    )
     def pub_simulate_cart_for_seller(self, sku_id, seller_id, domain):
         cart_simulation_url = f"https://{domain}/api/checkout/pub/orderForms/simulation"
         payload = {"items": [{"id": sku_id, "quantity": 1, "seller": seller_id}]}
 
+        time.sleep(1)  # The best performance needed this 'sleep'
         response = self.make_request(cart_simulation_url, method="POST", json=payload)
         simulation_data = response.json()
 
@@ -103,3 +146,28 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
                 "price": 0,
                 "list_price": 0,
             }
+
+    @retry_on_exception()
+    def list_all_active_products(self, domain):
+        unique_skus = set()
+        step = 250
+        current_from = 1
+
+        while True:
+            current_to = current_from + step - 1
+            url = (
+                f"https://{domain}/api/catalog_system/pvt/products/"
+                f"GetProductAndSkuIds?_from={current_from}&_to={current_to}&status=1"
+            )
+            headers = self._get_headers()
+            response = self.make_request(url, method="GET", headers=headers)
+
+            data = response.json().get("data", {})
+            if not data:
+                break
+
+            for _, skus in data.items():
+                unique_skus.update(skus)
+            current_from += step
+
+        return list(unique_skus)
