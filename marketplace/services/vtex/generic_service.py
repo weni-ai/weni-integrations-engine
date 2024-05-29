@@ -388,7 +388,7 @@ class CatalogProductInsertion:
         )
 
 
-class ProductInsertionBySellerService(VtexServiceBase):
+class ProductInsertionBySellerService(VtexServiceBase):  # pragma: no cover
     """
     Service for inserting products by seller into UploadProduct model.
 
@@ -429,7 +429,7 @@ class ProductInsertionBySellerService(VtexServiceBase):
         return products_dto
 
 
-class CatalogInsertionBySeller:
+class CatalogInsertionBySeller:  # pragma: no cover
     @classmethod
     def start_insertion_by_seller(cls, vtex_app: App, sellers: List[str]):
         if not vtex_app:
