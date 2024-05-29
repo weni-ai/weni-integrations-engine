@@ -20,6 +20,7 @@ from marketplace.services.vtex.generic_service import (
     ProductUpdateService,
     ProductInsertionService,
     VtexServiceBase,
+    ProductInsertionBySellerService,
 )
 from marketplace.services.vtex.generic_service import APICredentials
 from marketplace.core.types import APPTYPES
@@ -353,3 +354,58 @@ def send_sync(app_uuid: str, webhook: dict):
         queue=celery_queue,
         ignore_result=True,
     )
+
+
+@celery_app.task(name="task_insert_vtex_products_by_sellers")
+def task_insert_vtex_products_by_sellers(**kwargs):
+    print("Starting insertion products by seller")
+    vtex_service = ProductInsertionBySellerService()
+
+    credentials = kwargs.get("credentials")
+    catalog_uuid = kwargs.get("catalog_uuid")
+    sellers = kwargs.get("sellers")
+
+    if not sellers:
+        logger.error(
+            "Missing required parameters [seller] for task_insert_vtex_products_by_sellers"
+        )
+        return
+
+    if not all([credentials, catalog_uuid]):
+        logger.error(
+            "Missing required parameters [credentials, catalog_uuid] for task_insert_vtex_products"
+        )
+        return
+
+    try:
+        # Reset queries and close old connections for a clean state and performance.
+        # Prevents memory leak from stored queries and unstable database connections
+        reset_queries()
+        close_old_connections()
+
+        catalog = Catalog.objects.get(uuid=catalog_uuid)
+        api_credentials = APICredentials(
+            app_key=credentials["app_key"],
+            app_token=credentials["app_token"],
+            domain=credentials["domain"],
+        )
+        print(
+            f"Starting 'insertion_products_by_seller' for catalog: {str(catalog.name)}"
+        )
+        products = vtex_service.insertion_products_by_seller(
+            api_credentials, catalog, sellers
+        )
+        if products is None:
+            print("There are no products to be shipped after processing the rules.")
+            return
+
+    except Exception as e:
+        logger.exception(
+            f"An error occurred during the 'insertion_products_by_seller' for catalog {catalog.name}, {e}"
+        )
+        return
+    finally:
+        close_old_connections()
+
+    print(f"finishing 'insertion_products_by_seller'catalog {catalog.name}")
+    print("=" * 40)
