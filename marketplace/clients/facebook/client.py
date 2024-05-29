@@ -5,13 +5,14 @@ from django.conf import settings
 
 from marketplace.clients.base import RequestClient
 from marketplace.clients.decorators import retry_on_exception
-
-
-WHATSAPP_VERSION = settings.WHATSAPP_VERSION
+from marketplace.interfaces.facebook.interfaces import (
+    ProfileHandlerInterface,
+    BusinessProfileHandlerInterface,
+)
 
 
 class FacebookAuthorization:
-    BASE_URL = f"https://graph.facebook.com/{WHATSAPP_VERSION}/"
+    BASE_URL = f"{settings.WHATSAPP_API_URL}/"
 
     def __init__(self, access_token):
         self.access_token = access_token
@@ -24,8 +25,7 @@ class FacebookAuthorization:
         return self.BASE_URL
 
 
-class FacebookClient(FacebookAuthorization, RequestClient):
-    # Product Catalog
+class CatalogsRequests(FacebookAuthorization, RequestClient):
     def create_catalog(self, business_id, name, category="commerce"):
         url = self.get_url + f"{business_id}/owned_product_catalogs"
         data = {"name": name}
@@ -228,29 +228,6 @@ class FacebookClient(FacebookAuthorization, RequestClient):
         response = self.make_request(url, method="GET", headers=headers)
         return response.json()
 
-    # Whatsapp Templates
-    def get_template_analytics(self, waba_id, fields):
-        url = self.BASE_URL + f"{waba_id}/template_analytics"
-        headers = self._get_headers()
-        combined_data = {"data": {"data_points": []}}
-
-        response = self.make_request(
-            url, method="GET", headers=headers, params=fields
-        ).json()
-
-        data = response.get("data", [])
-        data_points = data[0].get("data_points", [])
-        combined_data["data"]["data_points"].extend(data_points)
-
-        return combined_data
-
-    def enable_template_insights(self, waba_id):
-        url = self.BASE_URL + f"{waba_id}"
-        params = {"is_enabled_for_insights": "true"}
-        headers = self._get_headers()
-        response = self.make_request(url, method="POST", headers=headers, params=params)
-        return response.json()
-
     def get_upload_status_by_feed(self, feed_id, upload_id):
         url = self.get_url + f"{feed_id}/uploads"
 
@@ -290,6 +267,8 @@ class FacebookClient(FacebookAuthorization, RequestClient):
             if "end_time" not in upload:
                 return upload.get("id")
 
+
+class TemplatesRequests(FacebookAuthorization, RequestClient):
     def create_template_message(
         self, waba_id: str, name: str, category: str, components: list, language: str
     ) -> dict:
@@ -305,3 +284,177 @@ class FacebookClient(FacebookAuthorization, RequestClient):
         )
 
         return response.json()
+
+    def get_template_analytics(self, waba_id, fields):
+        url = self.BASE_URL + f"{waba_id}/template_analytics"
+        headers = self._get_headers()
+        combined_data = {"data": {"data_points": []}}
+
+        response = self.make_request(
+            url, method="GET", headers=headers, params=fields
+        ).json()
+
+        data = response.get("data", [])
+        data_points = data[0].get("data_points", [])
+        combined_data["data"]["data_points"].extend(data_points)
+
+        return combined_data
+
+    def enable_template_insights(self, waba_id):
+        url = self.BASE_URL + f"{waba_id}"
+        params = {"is_enabled_for_insights": "true"}
+        headers = self._get_headers()
+        response = self.make_request(url, method="POST", headers=headers, params=params)
+        return response.json()
+
+
+class CloudProfileRequests(
+    FacebookAuthorization, RequestClient, ProfileHandlerInterface
+):
+    _endpoint = "/whatsapp_business_profile"
+    _fields = dict(
+        fields="about,address,description,email,profile_picture_url,websites,vertical"
+    )
+
+    def __init__(self, phone_number_id: "str") -> None:
+        self._phone_number_id = phone_number_id
+
+    @property
+    def _url(self) -> str:
+        return settings.WHATSAPP_API_URL + f"/{self._phone_number_id}" + self._endpoint
+
+    @property
+    def _headers(self) -> dict:
+        return {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.access_token}",
+        }
+
+    def get_profile(self):
+        response = self.make_request(
+            method="GET", url=self._url, params=self._fields, headers=self._headers
+        )
+        content = response.json().get("data", [{}])[0]
+
+        return dict(
+            status=content.get("about"),
+            email=content.get("email"),
+            websites=content.get("websites"),
+            address=content.get("address"),
+            photo_url=content.get("profile_picture_url"),
+            business=dict(
+                description=content.get("description"), vertical=content.get("vertical")
+            ),
+        )
+
+    def set_profile(self, **kwargs) -> None:
+        # TODO: Validate photo change
+        data = dict(messaging_product="whatsapp")
+        data.update(kwargs)
+
+        response = self.make_request(
+            method="POST", url=self._url, json=data, headers=self._headers
+        )
+        return response.json()
+
+    def delete_profile_photo(self):  # pragma: no cover
+        ...
+
+
+class PhoneNumbersRequests(FacebookAuthorization, RequestClient, object):
+    @property
+    def _headers(self) -> dict:
+        return {"Authorization": f"Bearer {self.access_token}"}
+
+    def _get_url(self, endpoint: str) -> str:
+        return f"{settings.WHATSAPP_API_URL}/{endpoint}"
+
+    def get_phone_numbers(self, waba_id: str) -> list:
+        url = self._get_url(f"{waba_id}/phone_numbers")
+        response = self._retry_request(
+            method="GET", url=url, headers=self._headers, max_retries=6
+        )
+        return response.json().get("data", [])
+
+    def _retry_request(self, method: str, url: str, headers: dict, max_retries: int):
+        attempt = 0
+        while attempt <= max_retries:
+            try:
+                response = self.make_request(method=method, url=url, headers=headers)
+                if response.status_code == 200:
+                    return response
+            except Exception as e:
+                print(f"Request failed: {e}, endpoint: [{method}]:{url}")
+
+            wait_time = 2**attempt
+            print(f"Retrying in {wait_time} seconds...")
+            time.sleep(wait_time)
+            attempt += 1
+
+    def get_phone_number(self, phone_number_id: str):
+        url = self._get_url(phone_number_id)
+        response = self.make_request(method="GET", url=url, headers=self._headers)
+        return response.json()
+
+
+class PhotoAPIRequests(FacebookAuthorization, RequestClient, object):
+    def _endpoint_url(self, endpoint: str) -> str:
+        return f"{self.get_url()}/{endpoint}"
+
+    def create_upload_session(self, file_length: int, file_type: str) -> str:
+        url = self._endpoint_url(
+            f"app/uploads?access_token={self.access_token}&file_length={file_length}&file_type={file_type}"
+        )
+        response = self.make_request(
+            method="POST", url=url, headers=self._get_headers()
+        )
+        return response.json().get("id", "")
+
+    def upload_photo(
+        self, upload_session_id: str, photo: str, is_uploading: bool = False
+    ) -> str:
+        url = self._endpoint_url(upload_session_id)
+
+        headers = {
+            "Content-Type": photo.content_type,
+            "Authorization": f"OAuth {self.access_token}",
+        }
+
+        if not is_uploading:
+            headers["file_offset"] = "0"
+
+        response = self.make_request(
+            method="POST", url=url, headers=headers, data=photo.file.getvalue()
+        )
+        return response.json().get("h", "")
+
+    def set_photo(self, photo, phone_number_id):
+        url = self._endpoint_url(f"{phone_number_id}/whatsapp_business_profile")
+
+        upload_session_id = self.create_upload_session(
+            len(photo.file.getvalue()), file_type=photo.content_type
+        )
+
+        upload_handle = self.upload_photo(upload_session_id, photo)
+
+        payload = {
+            "messaging_product": "whatsapp",
+            "profile_picture_handle": upload_handle,
+        }
+
+        response = self.make_request(
+            method="POST", url=url, headers=self._get_headers(), json=payload
+        )
+        return response
+
+
+class FacebookClient(
+    CatalogsRequests,
+    TemplatesRequests,
+    CloudProfileRequests,
+    PhoneNumbersRequests,
+    PhotoAPIRequests,
+):
+    def __init__(self, access_token):
+        # Initialize FacebookAuthorization with access_token
+        FacebookAuthorization.__init__(self, access_token)

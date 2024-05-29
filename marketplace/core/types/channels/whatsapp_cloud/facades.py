@@ -1,5 +1,4 @@
-from .requests import CloudProfileRequest, PhotoAPIRequest
-
+from marketplace.clients.facebook.client import FacebookClient
 
 class CloudProfileFacade(object):  # TODO: Interface
     # TODO: Put vertical rule in respective serializer
@@ -25,6 +24,7 @@ class CloudProfileFacade(object):  # TODO: Interface
     }
 
     def __init__(self, access_token: str, phone_number_id: "str") -> None:
+        self.fba_client = FacebookClient(access_token)
         self._profile_api = CloudProfileRequest(access_token, phone_number_id)
         self._photo_api = PhotoAPIRequest(access_token)
         self._phone_number_id = phone_number_id
@@ -64,8 +64,11 @@ class CloudProfileFacade(object):  # TODO: Interface
 class CloudProfileContactFacade(object):  # TODO: Interface
     def __init__(self, access_token: str, phone_number_id: "str") -> None:
         self._profile_api = CloudProfileRequest(access_token, phone_number_id)
+        self.fba_client = FacebookClient(access_token)
+        self.phone_number_id = phone_number_id
 
     def get_profile(self):
+        self.
         return self._profile_api.get_profile()
 
     def set_profile(self, data: dict):
