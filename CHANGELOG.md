@@ -1,3 +1,9 @@
+v3.7.5
+----------
+* Separate categories by seller
+* Add new category in alcoholic drinks categories
+* Insert vtex products by sellers
+
 v3.7.4
 ----------
 * Hotfix: Create alert to notify upload errors
