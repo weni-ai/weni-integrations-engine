@@ -1,3 +1,7 @@
+v3.7.6
+----------
+* Fixing update products by sellers
+
 v3.7.5
 ----------
 * Separate categories by seller
