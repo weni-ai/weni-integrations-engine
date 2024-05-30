@@ -1,7 +1,11 @@
 import functools
 import time
+import logging
 
 from django_redis import get_redis_connection
+
+
+logger = logging.getLogger(__name__)
 
 
 class RateLimiter:
@@ -92,24 +96,26 @@ def rate_limit_and_retry_on_exception(domain_key_func, calls_per_period, period)
                     last_exception = e
                     status_code = e.status_code if hasattr(e, "status_code") else None
                     if not status_code:
-                        print(f"Unexpected error: {str(e)}")
-                        raise
+                        print(f"Unexpected error: [{str(e)}]")
+                        logger.error(e)
 
                     if status_code == 404:
-                        print(f"Not Found: {str(e)}. Not retrying this.")
+                        print(f"Not Found: [{str(e)}]. Not retrying this.")
                         raise
                     elif status_code == 500:
-                        print(f"A 500 error occurred: {str(e)}. Retrying...")
+                        print(f"A 500 error occurred: [{str(e)}]. Retrying...")
                         raise
 
                     if attempts >= 2:
                         if status_code == 429:
-                            print(f"Too many requests: {str(e)}. Retrying...")
+                            print(f"Too many requests: [{str(e)}]. Retrying...")
                         elif status_code == 408:
-                            print(f"Timeout error: {str(e)}. Retrying...")
+                            print(f"Timeout error: [{str(e)}]. Retrying...")
                         else:
-                            print(f"Unexpected error: {str(e)}. status: {status_code}")
-                            raise
+                            print(
+                                f"Unexpected error: [{str(e)}]. status: {status_code}. Retrying..."
+                            )
+                            logger.error(e)
 
                 print(
                     f"Retrying... Attempt {attempts + 1} after {sleep_time} seconds, in {func.__name__}:"
@@ -124,7 +130,7 @@ def rate_limit_and_retry_on_exception(domain_key_func, calls_per_period, period)
             )
 
             print(message)
-            raise Exception(message)
+            logger.error(message)
 
         return wrapper
 

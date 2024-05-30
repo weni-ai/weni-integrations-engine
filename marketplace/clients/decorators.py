@@ -1,5 +1,9 @@
 import time
 import functools
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 def retry_on_exception(max_attempts=8, start_sleep_time=1, factor=2):
@@ -15,8 +19,8 @@ def retry_on_exception(max_attempts=8, start_sleep_time=1, factor=2):
                     last_exception = e
                     status_code = e.status_code if hasattr(e, "status_code") else None
                     if not status_code:
-                        print(f"Unexpected error: {str(e)}.")
-                        raise
+                        print(f"Unexpected error: [{str(e)}]")
+                        logger.error(e)
 
                     if status_code == 404:
                         print(f"Not Found: {str(e)}. Not retrying this.")
@@ -31,8 +35,10 @@ def retry_on_exception(max_attempts=8, start_sleep_time=1, factor=2):
                         elif status_code == 408:
                             print(f"Timeout error: {str(e)}. Retrying...")
                         else:
-                            print(f"Unexpected error: {str(e)}. status: {status_code}")
-                            raise
+                            print(
+                                f"Unexpected error: [{str(e)}]. status: {status_code}"
+                            )
+                            logger.error(e)
 
                 if attempts >= 5:
                     print(
@@ -49,7 +55,7 @@ def retry_on_exception(max_attempts=8, start_sleep_time=1, factor=2):
             )
 
             print(message)
-            raise Exception(message)
+            logger.error(message)
 
         return wrapper
 
