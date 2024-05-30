@@ -413,13 +413,15 @@ class ProductInsertionBySellerService(VtexServiceBase):  # pragma: no cover
             credentials.app_key, credentials.app_token
         )
         products_dto = pvt_service.list_all_products(
-            credentials.domain, catalog.vtex_app.config, sellers
+            credentials.domain, catalog.vtex_app.config, sellers, update_product=True
         )
+        print(f"'list_all_products' returned {len(products_dto)}")
         if not products_dto:
             return None
 
         close_old_connections()
-        all_success = self.product_manager.save_csv_product_data(
+        print("starting bulk save process in database")
+        all_success = self.product_manager.bulk_save_csv_product_data(
             products_dto, catalog, catalog.feeds.first(), pvt_service.data_processor
         )
         if not all_success:
@@ -447,7 +449,7 @@ class CatalogInsertionBySeller:  # pragma: no cover
 
         cls._validate_sync_status(vtex_app)
         cls._validate_catalog_feed(catalog)
-        cls._validate_connected_catalog_flag(wpp_cloud)
+        cls._validate_connected_catalog_flag(vtex_app)
 
         cls._send_task(credentials, catalog, sellers)
 
@@ -514,9 +516,9 @@ class CatalogInsertionBySeller:  # pragma: no cover
         return catalog
 
     @staticmethod
-    def _validate_connected_catalog_flag(app) -> None:
+    def _validate_connected_catalog_flag(vtex_app) -> None:
         """Connected catalog status"""
-        connected_catalog = app.config.get("connected_catalog", None)
+        connected_catalog = vtex_app.config.get("connected_catalog", None)
         if connected_catalog is not True:
             raise ValueError(
                 f"Change connected_catalog to True. actual is:{connected_catalog}"
