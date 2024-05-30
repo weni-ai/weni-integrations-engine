@@ -114,7 +114,7 @@ class ProductFacebookManager:
             product_csv = data_processor.product_to_csv_line(product)
 
             try:
-                product, created = UploadProduct.objects.update_or_create(
+                product, _ = UploadProduct.objects.update_or_create(
                     facebook_product_id=facebook_product_id,
                     catalog=catalog,
                     feed=product_feed,
@@ -123,15 +123,14 @@ class ProductFacebookManager:
                         "status": "pending",
                     },
                 )
-                action = "created" if created else "updated"
-                print(
-                    f"Product {action} successfully in the database: Catalog ID {catalog.facebook_catalog_id}, "
-                    f"Feed ID {product_feed.facebook_feed_id}, Product Facebook ID {facebook_product_id}"
-                )
             except Exception as e:
                 print(f"Failed to save or update product: {str(e)}")
                 all_success = False
-
+        print(
+            f"All {len(products_dto)} products were saved successfully in the database:"
+            f"Catalog ID {catalog.facebook_catalog_id}, "
+            f"Feed ID {product_feed.facebook_feed_id}, Product Facebook ID {facebook_product_id}"
+        )
         return all_success
 
     def save_first_csv_product_data(
