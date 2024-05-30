@@ -418,6 +418,7 @@ class ProductInsertionBySellerService(VtexServiceBase):  # pragma: no cover
         if not products_dto:
             return None
 
+        close_old_connections()
         all_success = self.product_manager.save_csv_product_data(
             products_dto, catalog, catalog.feeds.first(), pvt_service.data_processor
         )
