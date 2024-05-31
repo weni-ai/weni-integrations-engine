@@ -51,6 +51,7 @@ class ConfigSerializer(serializers.Serializer):
     customCss = serializers.CharField(required=False)
     timeBetweenMessages = serializers.IntegerField(default=1)
     tooltipMessage = serializers.CharField(required=False)
+    showAttachmentsButton = serializers.BooleanField(default=True)
 
     def to_internal_value(self, data):
         self.app = self.parent.instance
