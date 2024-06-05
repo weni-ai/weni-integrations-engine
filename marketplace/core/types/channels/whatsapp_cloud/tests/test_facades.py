@@ -1,137 +1,146 @@
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
+from marketplace.clients.facebook.client import FacebookClient
+from marketplace.services.facebook.service import PhotoAPIService, CloudProfileService
 from marketplace.core.types.channels.whatsapp_cloud.facades import (
     CloudProfileContactFacade,
     CloudProfileFacade,
 )
-from marketplace.core.types.channels.whatsapp_cloud.requests import CloudProfileRequest
+
+
+class MockPhotoAPIRequests:
+    def __init__(self):
+        self.set_photo = Mock()
+
+    def create_upload_session(self, file_length: int, file_type: str) -> str:
+        return "mock_upload_session_id"
+
+    def upload_photo(
+        self, upload_session_id: str, photo: str, is_uploading: bool = False
+    ) -> str:
+        return "mock_upload_handle"
+
+    def get_url(self) -> str:
+        return "http://mock.url"
 
 
 class CloudProfileFacadeTestCase(TestCase):
-    @patch(
-        "marketplace.core.types.channels.whatsapp_cloud.facades.CloudProfileRequest",
-        autospec=True,
-    )
-    def test_init(self, profile_api_mock):
-        access_token = "fake_access_token"
-        phone_number_id = "fake_phone_number_id"
+    def setUp(self):
+        self.access_token = "fake_access_token"
+        self.phone_number_id = "fake_phone_number_id"
 
-        instance = CloudProfileFacade(access_token, phone_number_id)
+        self.mock_facebook_client = Mock(spec=FacebookClient)
+        self.mock_profile_service = Mock(spec=CloudProfileService)
+        self.mock_photo_api_requests = MockPhotoAPIRequests()
 
-        self.assertEqual(instance._profile_api, profile_api_mock.return_value)
+        with patch(
+            "marketplace.clients.facebook.client.FacebookClient",
+            return_value=self.mock_facebook_client,
+        ):
+            with patch.object(
+                FacebookClient,
+                "get_profile_requests",
+                return_value=self.mock_profile_service,
+            ):
+                self.facade = CloudProfileFacade(
+                    self.access_token, self.phone_number_id
+                )
 
-        profile_api_mock.assert_called_once_with(access_token, phone_number_id)
+        self.mock_photo_service = PhotoAPIService(client=self.mock_photo_api_requests)
+        self.facade._photo_api = self.mock_photo_service
+        self.facade._profile_api = self.mock_profile_service
 
+    def test_get_profile(self):
+        self.mock_profile_service.get_profile.return_value = {
+            "business": {"vertical": "AUTO"}
+        }
+        expected_profile = {"business": {"vertical": "Automotive"}}
 
-class CloudProfileContactFacadeTest(TestCase):
-    @patch("marketplace.core.types.channels.whatsapp_cloud.facades.CloudProfileRequest")
-    def test_init(self, profile_api_mock):
-        access_token = "fake_access_token"
-        phone_number_id = "fake_phone_number_id"
+        profile = self.facade.get_profile()
+        self.assertEqual(profile, expected_profile)
+        self.mock_profile_service.get_profile.assert_called_once()
 
-        instance = CloudProfileContactFacade(access_token, phone_number_id)
+    def test_set_profile_with_photo(self):
+        photo = Mock()
+        photo.file.getvalue.return_value = b"photo_data"
+        photo.content_type = "image/jpeg"
+        status = "new status"
+        business = {"vertical": "Automotive"}
 
-        self.assertEqual(instance._profile_api, profile_api_mock.return_value)
+        self.facade.set_profile(photo=photo, status=status, business=business)
 
-        profile_api_mock.assert_called_once_with(access_token, phone_number_id)
+        self.mock_photo_api_requests.set_photo.assert_called_once_with(
+            photo, self.phone_number_id
+        )
+        self.mock_profile_service.set_profile.assert_called_once_with(
+            about=status, vertical="AUTO"
+        )
 
-    @patch("marketplace.core.types.channels.whatsapp_cloud.facades.CloudProfileRequest")
-    def test_get_profile(self, mock_profile_api):
-        access_token = "fake_access_token"
-        phone_number_id = "fake_phone_number_id"
-        facade = CloudProfileContactFacade(access_token, phone_number_id)
-
-        facade.get_profile()
-        mock_profile_api.return_value.get_profile.assert_called_once()
-
-    @patch("marketplace.core.types.channels.whatsapp_cloud.facades.CloudProfileRequest")
-    def test_set_profile(self, mock_profile_api):
-        access_token = "fake_access_token"
-        phone_number_id = "fake_phone_number_id"
-        facade = CloudProfileContactFacade(access_token, phone_number_id)
-
-        data = {"about": "New Status"}
-        facade.set_profile(data)
-        mock_profile_api.return_value.set_profile.assert_called_once_with(**data)
-
-
-class CloudProfileRequestTest(TestCase):
-    @patch(
-        "marketplace.core.types.channels.whatsapp_cloud.requests.ProfileHandlerInterface"
-    )
-    def test_init(self, profile_handler_interface_mock):
-        access_token = "fake_access_token"
-        phone_number_id = "fake_phone_number_id"
-
-        instance = CloudProfileRequest(access_token, phone_number_id)
-
-        self.assertEqual(instance._access_token, access_token)
-        self.assertEqual(instance._phone_number_id, phone_number_id)
-
-
-class CloudProfileGetProfile(TestCase):
-    @patch("marketplace.core.types.channels.whatsapp_cloud.facades.PhotoAPIRequest")
-    @patch("marketplace.core.types.channels.whatsapp_cloud.facades.CloudProfileRequest")
-    def test_get_profile(self, mock_profile_api, mock_photo_api):
-        access_token = "fake_access_token"
-        phone_number_id = "fake_phone_number_id"
-        facade = CloudProfileFacade(access_token, phone_number_id)
-
-        mock_profile_api.return_value.get_profile.return_value = {
-            "business": {"vertical": "HEALTH"}
+    def test_set_profile_with_business_fields(self):
+        photo = None
+        status = "new status"
+        business = {
+            "vertical": "Automotive",
+            "email": "test@example.com",
+            "phone": "1234567890",
         }
 
-        profile = facade.get_profile()
+        self.facade.set_profile(photo=photo, status=status, business=business)
 
-        self.assertEqual(profile["business"]["vertical"], "Medical and Health")
-        mock_profile_api.return_value.get_profile.assert_called_once()
+        expected_data = {
+            "about": status,
+            "vertical": "AUTO",
+            "email": "test@example.com",
+            "phone": "1234567890",
+        }
 
-    @patch("marketplace.core.types.channels.whatsapp_cloud.facades.PhotoAPIRequest")
-    @patch("marketplace.core.types.channels.whatsapp_cloud.facades.CloudProfileRequest")
-    def test_set_profile_with_non_vertical_business_key(
-        self, mock_profile_api, mock_photo_api
-    ):
-        access_token = "fake_access_token"
-        phone_number_id = "fake_phone_number_id"
-        facade = CloudProfileFacade(access_token, phone_number_id)
-        business = {"description": "A test business description"}
-        facade.set_profile(business=business)
-        mock_profile_api.return_value.set_profile.assert_called_once_with(
-            description="A test business description"
-        )
+        self.mock_profile_service.set_profile.assert_called_once_with(**expected_data)
+
+    def test_delete_profile_photo(self):
+        self.facade.delete_profile_photo()
+        self.mock_profile_service.delete_profile_photo.assert_called_once()
 
 
-class CloudProfileSetProfile(TestCase):
-    @patch("marketplace.core.types.channels.whatsapp_cloud.facades.PhotoAPIRequest")
-    @patch("marketplace.core.types.channels.whatsapp_cloud.facades.CloudProfileRequest")
-    def test_set_profile(self, mock_profile_api, mock_photo_api):
-        access_token = "fake_access_token"
-        phone_number_id = "fake_phone_number_id"
-        facade = CloudProfileFacade(access_token, phone_number_id)
+class CloudProfileContactFacadeTestCase(TestCase):
+    def setUp(self):
+        self.access_token = "fake_access_token"
+        self.phone_number_id = "fake_phone_number_id"
 
-        photo = "photo_data"
-        status = "New Status"
-        business = {"vertical": "Education"}
+        self.mock_facebook_client = Mock(spec=FacebookClient)
+        self.mock_profile_service = Mock(spec=CloudProfileService)
 
-        facade.set_profile(photo=photo, status=status, business=business)
+        with patch(
+            "marketplace.clients.facebook.client.FacebookClient",
+            return_value=self.mock_facebook_client,
+        ):
+            with patch.object(
+                FacebookClient,
+                "get_profile_requests",
+                return_value=self.mock_profile_service,
+            ):
+                self.facade = CloudProfileContactFacade(
+                    self.access_token, self.phone_number_id
+                )
 
-        mock_photo_api.return_value.set_photo.assert_called_once_with(
-            photo, phone_number_id
-        )
-        mock_profile_api.return_value.set_profile.assert_called_once_with(
-            about=status, vertical="EDU"
-        )
+        # Ensure get_url property is mockable
+        self.mock_profile_service.client = Mock()
+        self.mock_profile_service.client.get_url = Mock(return_value="http://fake.url")
 
+    def test_get_profile(self):
+        expected_profile = {"key": "value"}
+        self.mock_profile_service.get_profile.return_value = expected_profile
 
-class CloudProfileDeleteProfile(TestCase):
-    @patch("marketplace.core.types.channels.whatsapp_cloud.facades.CloudProfileRequest")
-    def test_delete_profile_photo(self, mock_profile_api):
-        access_token = "fake_access_token"
-        phone_number_id = "fake_phone_number_id"
-        facade = CloudProfileFacade(access_token, phone_number_id)
+        profile = self.facade.get_profile()
+        self.assertEqual(profile, expected_profile)
+        self.mock_profile_service.get_profile.assert_called_once()
 
-        try:
-            facade.delete_profile_photo()
-        except Exception as e:
-            self.fail(f"delete_profile_photo raised an exception: {e}")
+    def test_set_profile(self):
+        data = {"key": "value"}
+
+        self.facade.set_profile(data)
+        self.mock_profile_service.set_profile.assert_called_once_with(**data)
+
+    def test_delete_profile_photo(self):
+        self.facade.delete_profile_photo()
+        self.mock_profile_service.delete_profile_photo.assert_called_once()

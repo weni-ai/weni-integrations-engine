@@ -134,3 +134,21 @@ class FlowsClient(RequestClient):
             json=data,
         )
         return response
+
+    def create_wac_channel(
+        self, user: str, project_uuid: str, phone_number_id: str, config: dict
+    ) -> dict:
+        url = f"{self.base_url}/api/v2/internals/channel/create_wac/"
+        payload = {
+            "user": user,
+            "org": str(project_uuid),
+            "config": config,
+            "phone_number_id": phone_number_id,
+        }
+        response = self.make_request(
+            method="POST",
+            url=url,
+            json=payload,
+            headers=self.authentication_instance.headers,
+        )
+        return response.json()

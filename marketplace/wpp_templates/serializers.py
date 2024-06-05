@@ -1,24 +1,25 @@
-import requests
 import re
 import base64
+
+from typing import List, Any
+
 from datetime import datetime
 
 from django.core.exceptions import ValidationError
-
 from django.contrib.auth import get_user_model
 from django.conf import settings
+
 from rest_framework import serializers
 
 from marketplace.applications.models import App
-
-from .models import TemplateMessage, TemplateTranslation, TemplateButton, TemplateHeader
-
-from marketplace.core.types.channels.whatsapp_cloud.requests import PhotoAPIRequest
-from marketplace.core.types.channels.whatsapp_base.exceptions import (
-    FacebookApiException,
+from marketplace.wpp_templates.models import (
+    TemplateMessage,
+    TemplateTranslation,
+    TemplateButton,
+    TemplateHeader,
 )
-
 from marketplace.clients.facebook.client import FacebookClient
+from marketplace.services.facebook.service import TemplateService, PhotoAPIService
 
 
 WHATSAPP_VERSION = settings.WHATSAPP_VERSION
@@ -65,7 +66,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
             data["header"] = instance.headers.first().to_dict()
         return data
 
-    def append_to_components(self, components: list() = [], component=None):
+    def append_to_components(self, components: List[Any], component=None):
         if component:
             components.append(dict(component))
 
@@ -75,7 +76,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
         template = TemplateMessage.objects.get(uuid=validated_data.get("template_uuid"))
 
         access_token = template.app.apptype.get_access_token(template.app)
-        fba_client = FacebookClient(access_token)
+        template_service = TemplateService(client=FacebookClient(access_token))
 
         components = [validated_data.get("body", {})]
         header = validated_data.get("header")
@@ -91,7 +92,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
                 or header.get("format") == "DOCUMENT"
                 or header.get("format") == "VIDEO"
             ):
-                photo_api_request = PhotoAPIRequest(access_token=access_token)
+                photo_api_request = PhotoAPIService(client=FacebookClient(access_token))
                 photo = header.get("example")
                 file_type = re.search("(?<=data:)(.*)(?=;base64)", photo).group(0)
                 photo = photo.split(";base64,")[1]
@@ -99,23 +100,12 @@ class TemplateTranslationSerializer(serializers.Serializer):
                     len(base64.b64decode(photo)),
                     file_type=file_type,
                 )
-
-                url = (
-                    f"https://graph.facebook.com/{WHATSAPP_VERSION}/{upload_session_id}"
+                dict_response = photo_api_request.upload_session(
+                    upload_session_id=upload_session_id,
+                    file_type=file_type,
+                    data=base64.b64decode(photo),
                 )
-                headers = {
-                    "Content-Type": file_type,
-                    "Authorization": f"OAuth {access_token}",
-                }
-                headers["file_offset"] = "0"
-                response = requests.post(
-                    url, headers=headers, data=base64.b64decode(photo)
-                )
-
-                if response.status_code != 200:
-                    raise FacebookApiException(response.json())
-
-                upload_handle = response.json().get("h", "")
+                upload_handle = dict_response.get("h", "")
                 header.pop("example")
                 header["example"] = dict(header_handle=upload_handle)
 
@@ -153,7 +143,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
             else template.app.config.get("waba").get("id")
         )
 
-        new_template = fba_client.create_template_message(
+        new_template = template_service.create_template_message(
             waba_id=waba_id,
             name=template.name,
             category=template.category,
@@ -163,7 +153,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
 
         translation = TemplateTranslation.objects.create(
             template=template,
-            status="PENDING",
+            status=new_template.get("status", "PENDING"),
             body=validated_data.get("body", {}).get("text", ""),
             footer=validated_data.get("footer", {}).get("text", ""),
             language=validated_data.get("language"),
