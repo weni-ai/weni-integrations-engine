@@ -451,6 +451,7 @@ class CreateWhatsAppCloudTestCase(APIBaseTestCase):
             "marketplace.core.types.channels.whatsapp_cloud.views.FlowsService",
             new=Mock(return_value=self.mock_flows_service),
         )
+        patcher_celery = patch("marketplace.celery.app.send_task", new=Mock())
 
         patcher_biz_meta.start()
         self.addCleanup(patcher_biz_meta.stop)
@@ -460,6 +461,9 @@ class CreateWhatsAppCloudTestCase(APIBaseTestCase):
 
         patcher_flows.start()
         self.addCleanup(patcher_flows.stop)
+
+        patcher_celery.start()
+        self.addCleanup(patcher_celery.stop)
 
     @property
     def view(self):
