@@ -35,7 +35,9 @@ class RequestClient:
         )
         if response.status_code >= 400:
             detail = ""
-            logger.error(f"Error on request url {url}", exc_info=1)
+            logger.error(
+                f"Error on request url {url}", exc_info=1, extra=dict(response=response)
+            )
             try:
                 detail = response.json()
             except ValueError:
