@@ -25,7 +25,7 @@ class FacebookAuthorization:
 
 class CatalogsRequests(FacebookAuthorization, RequestClient):
     def create_catalog(self, business_id, name, category="commerce"):
-        url = self.get_url + f"{business_id}/owned_product_catalogs"
+        url = f"{self.get_url}/{business_id}/owned_product_catalogs"
         data = {"name": name}
         if category:
             data["vertical"] = category
@@ -36,7 +36,7 @@ class CatalogsRequests(FacebookAuthorization, RequestClient):
         return response.json()
 
     def destroy_catalog(self, catalog_id):
-        url = self.get_url + f"{catalog_id}"
+        url = f"{self.get_url}/{catalog_id}"
 
         headers = self._get_headers()
         response = self.make_request(url, method="DELETE", headers=headers)
@@ -45,7 +45,7 @@ class CatalogsRequests(FacebookAuthorization, RequestClient):
 
     @retry_on_exception()
     def create_product_feed(self, product_catalog_id, name):
-        url = self.get_url + f"{product_catalog_id}/product_feeds"
+        url = f"{self.get_url}/{product_catalog_id}/product_feeds"
 
         data = {"name": name}
         headers = self._get_headers()
@@ -57,7 +57,7 @@ class CatalogsRequests(FacebookAuthorization, RequestClient):
     def upload_product_feed(
         self, feed_id, file, file_name, file_content_type, update_only=False
     ):
-        url = self.get_url + f"{feed_id}/uploads"
+        url = f"{self.get_url}/{feed_id}/uploads"
 
         headers = self._get_headers()
         files = {
@@ -76,7 +76,7 @@ class CatalogsRequests(FacebookAuthorization, RequestClient):
     def create_product_feed_by_url(
         self, product_catalog_id, name, feed_url, file_type, interval, hour
     ):  # TODO: adjust this method
-        url = self.get_url + f"{product_catalog_id}/product_feeds"
+        url = f"{self.get_url}/{product_catalog_id}/product_feeds"
 
         schedule = {"interval": interval, "url": feed_url, "hour": str(hour)}
 
@@ -98,7 +98,7 @@ class CatalogsRequests(FacebookAuthorization, RequestClient):
         Returns:
             bool or str: True if 'end_time' is found, otherwise a formatted error message.
         """
-        url = self.get_url + f"{feed_id}/uploads"
+        url = f"{self.get_url}/{feed_id}/uploads"
         headers = self._get_headers()
 
         attempts = 0
@@ -119,7 +119,7 @@ class CatalogsRequests(FacebookAuthorization, RequestClient):
         )
 
     def list_products_by_feed(self, feed_id):
-        url = self.get_url + f"{feed_id}/products"
+        url = f"{self.get_url}/{feed_id}/products"
 
         headers = self._get_headers()
         response = self.make_request(url, method="GET", headers=headers)
@@ -127,7 +127,7 @@ class CatalogsRequests(FacebookAuthorization, RequestClient):
         return response.json()
 
     def list_all_products_by_feed(self, feed_id):
-        url = self.get_url + f"{feed_id}/products"
+        url = f"{self.get_url}/{feed_id}/products"
         headers = self._get_headers()
         all_products = []
 
@@ -139,7 +139,7 @@ class CatalogsRequests(FacebookAuthorization, RequestClient):
         return all_products
 
     def list_all_catalogs(self, wa_business_id):
-        url = self.get_url + f"{wa_business_id}/owned_product_catalogs"
+        url = f"{self.get_url}/{wa_business_id}/owned_product_catalogs"
         headers = self._get_headers()
         all_catalog_ids = []
         all_catalogs = []
@@ -156,7 +156,7 @@ class CatalogsRequests(FacebookAuthorization, RequestClient):
         return all_catalog_ids, all_catalogs
 
     def destroy_feed(self, feed_id):
-        url = self.get_url + f"{feed_id}"
+        url = f"{self.get_url}/{feed_id}"
 
         headers = self._get_headers()
         response = self.make_request(url, method="DELETE", headers=headers)
@@ -164,27 +164,27 @@ class CatalogsRequests(FacebookAuthorization, RequestClient):
         return response.json().get("success")
 
     def get_connected_catalog(self, waba_id):
-        url = self.get_url + f"{waba_id}/product_catalogs"
+        url = f"{self.get_url}/{waba_id}/product_catalogs"
         headers = self._get_headers()
         response = self.make_request(url, method="GET", headers=headers)
         return response.json()
 
     def enable_catalog(self, waba_id, catalog_id):
-        url = self.get_url + f"{waba_id}/product_catalogs"
+        url = f"{self.get_url}/{waba_id}/product_catalogs"
         data = {"catalog_id": catalog_id}
         headers = self._get_headers()
         response = self.make_request(url, method="POST", headers=headers, data=data)
         return response.json()
 
     def disable_catalog(self, waba_id, catalog_id):
-        url = self.get_url + f"{waba_id}/product_catalogs"
+        url = f"{self.get_url}/{waba_id}/product_catalogs"
         data = {"catalog_id": catalog_id, "method": "delete"}
         headers = self._get_headers()
         response = self.make_request(url, method="POST", headers=headers, data=data)
         return response.json()
 
     def get_catalog_details(self, catalog_id):
-        url = self.get_url + f"{catalog_id}"
+        url = f"{self.get_url}/{catalog_id}"
         params = {"fields": "name,vertical"}
         headers = self._get_headers()
         response = self.make_request(url, method="GET", headers=headers, params=params)
@@ -192,7 +192,7 @@ class CatalogsRequests(FacebookAuthorization, RequestClient):
         return response.json()
 
     def _update_commerce_settings(self, wa_phone_number_id, **settings):
-        url = self.BASE_URL + f"{wa_phone_number_id}/whatsapp_commerce_settings"
+        url = f"{self.get_url}/{wa_phone_number_id}/whatsapp_commerce_settings"
         headers = self._get_headers()
         response = self.make_request(url, method="POST", headers=headers, data=settings)
         return response.json()
@@ -220,14 +220,14 @@ class CatalogsRequests(FacebookAuthorization, RequestClient):
         Or:
             "data": []
         """
-        url = self.BASE_URL + f"{wa_phone_number_id}/whatsapp_commerce_settings"
+        url = f"{self.get_url}/{wa_phone_number_id}/whatsapp_commerce_settings"
 
         headers = self._get_headers()
         response = self.make_request(url, method="GET", headers=headers)
         return response.json()
 
     def get_upload_status_by_feed(self, feed_id, upload_id):
-        url = self.get_url + f"{feed_id}/uploads"
+        url = f"{self.get_url}/{feed_id}/uploads"
 
         headers = self._get_headers()
         response = self.make_request(url, method="GET", headers=headers)
@@ -248,7 +248,7 @@ class CatalogsRequests(FacebookAuthorization, RequestClient):
         return False
 
     def get_uploads_in_progress_by_feed(self, feed_id):
-        url = self.get_url + f"{feed_id}/uploads"
+        url = f"{self.get_url}/{feed_id}/uploads"
 
         headers = self._get_headers()
         response = self.make_request(url, method="GET", headers=headers)
@@ -276,7 +276,7 @@ class TemplatesRequests(FacebookAuthorization, RequestClient):
             components=str(components),
             language=language,
         )
-        url = self.get_url + f"{waba_id}/message_templates"
+        url = f"{self.get_url}/{waba_id}/message_templates"
         response = self.make_request(
             url, method="POST", params=params, headers=self._get_headers()
         )
@@ -284,7 +284,7 @@ class TemplatesRequests(FacebookAuthorization, RequestClient):
         return response.json()
 
     def get_template_analytics(self, waba_id, fields):
-        url = self.BASE_URL + f"{waba_id}/template_analytics"
+        url = f"{self.get_url}/{waba_id}/template_analytics"
         headers = self._get_headers()
         combined_data = {"data": {"data_points": []}}
 
@@ -299,14 +299,14 @@ class TemplatesRequests(FacebookAuthorization, RequestClient):
         return combined_data
 
     def enable_template_insights(self, waba_id) -> dict:
-        url = self.BASE_URL + f"{waba_id}"
+        url = f"{self.get_url}/{waba_id}"
         params = {"is_enabled_for_insights": "true"}
         headers = self._get_headers()
         response = self.make_request(url, method="POST", headers=headers, params=params)
         return response.json()
 
     def list_template_messages(self, waba_id: str) -> dict:
-        url = self.BASE_URL + f"{waba_id}/message_templates"
+        url = f"{self.get_url}/{waba_id}/message_templates"
         params = dict(
             limit=9999,
             access_token=self.access_token,
@@ -317,7 +317,7 @@ class TemplatesRequests(FacebookAuthorization, RequestClient):
         return response.json()
 
     def get_template_namespace(self, waba_id: str) -> str:
-        url = self.BASE_URL + f"{waba_id}/message_templates"
+        url = f"{self.get_url}/{waba_id}/message_templates"
         params = dict(
             fields="message_template_namespace",
             access_token=self.access_token,
@@ -330,7 +330,7 @@ class TemplatesRequests(FacebookAuthorization, RequestClient):
     def update_template_message(
         self, message_template_id: str, name: str, components: str
     ) -> dict:
-        url = self.BASE_URL + f"{message_template_id}"
+        url = f"{self.get_url}/{message_template_id}"
         params = dict(
             name=name, components=str(components)
         )  # TODO: test without token in params
@@ -342,7 +342,7 @@ class TemplatesRequests(FacebookAuthorization, RequestClient):
     def delete_template_message(
         self, waba_id: str, name: str
     ) -> dict:  # TODO: check what response is returned
-        url = self.BASE_URL + f"{waba_id}/message_templates"
+        url = f"{self.get_url}/{waba_id}/message_templates"
         params = dict(name=name, access_token=self.access_token)
         response = self.make_request(
             url, method="DELETE", headers=self._get_headers(), params=params
@@ -424,17 +424,16 @@ class PhoneNumbersRequests(FacebookAuthorization, RequestClient):
     ) -> requests.Response:
         attempt = 0
         while attempt <= max_retries:
-            try:
-                response = self.make_request(method=method, url=url, headers=headers)
-                if response.status_code == 200:
-                    return response
-            except Exception as e:  # TODO: add logger error
-                print(f"Request failed: {e}, endpoint: [{method}]:{url}")
+            response = self.make_request(method=method, url=url, headers=headers)
+            if response.status_code == 200:
+                return response
 
             wait_time = 2**attempt
             print(f"Retrying in {wait_time} seconds...")
             time.sleep(wait_time)
             attempt += 1
+
+        raise Exception(f"Max retries reached for request : {url}, headers: {headers}")
 
     def get_phone_number(self, phone_number_id: str) -> dict:
         url = self._get_url(phone_number_id)
