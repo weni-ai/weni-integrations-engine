@@ -1,6 +1,10 @@
 import requests
+import logging
 
 from marketplace.clients.exceptions import CustomAPIException
+
+
+logger = logging.getLogger(__name__)
 
 
 class RequestClient:
@@ -31,6 +35,7 @@ class RequestClient:
         )
         if response.status_code >= 400:
             detail = ""
+            logger.error(f"Error on request url: {url}")
             try:
                 detail = response.json()
             except ValueError:

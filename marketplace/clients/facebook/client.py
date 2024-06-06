@@ -10,7 +10,7 @@ from marketplace.interfaces.facebook.interfaces import ProfileHandlerInterface
 
 
 class FacebookAuthorization:
-    BASE_URL = f"{settings.WHATSAPP_API_URL}/"
+    BASE_URL = f"{settings.WHATSAPP_API_URL}"
 
     def __init__(self, access_token):
         self.access_token = access_token
@@ -444,7 +444,7 @@ class PhoneNumbersRequests(FacebookAuthorization, RequestClient):
 
 class PhotoAPIRequests(FacebookAuthorization, RequestClient):
     def _endpoint_url(self, endpoint: str) -> str:
-        return f"{self.get_url()}/{endpoint}"
+        return f"{self.get_url}/{endpoint}"
 
     def create_upload_session(self, file_length: int, file_type: str) -> str:
         url = self._endpoint_url(
