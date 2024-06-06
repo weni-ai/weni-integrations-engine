@@ -118,8 +118,8 @@ class UpdateWhatsAppCloudWebHookTestCase(APIBaseTestCase):
     def view(self):
         return self.view_class.as_view({"patch": "update_webhook"})
 
-    @patch("marketplace.flows.client.FlowsClient.detail_channel")
-    @patch("marketplace.flows.client.FlowsClient.update_config")
+    @patch("marketplace.clients.flows.client.FlowsClient.detail_channel")
+    @patch("marketplace.clients.flows.client.FlowsClient.update_config")
     def test_update_webhook_success(self, mock_flows_client, mock_detail):
         mock = MagicMock()
         mock.raise_for_status.return_value = None
@@ -182,7 +182,7 @@ class WhatsAppCloudReportSentMessagesTestCase(APIBaseTestCase):
     def view(self):
         return self.view_class.as_view({"get": "report_sent_messages"})
 
-    @patch("marketplace.flows.client.FlowsClient.get_sent_messagers")
+    @patch("marketplace.clients.flows.client.FlowsClient.get_sent_messagers")
     def test_report_sent_messages_success(self, mock_flows_client):
         mock_flows_client.return_value.status_code = status.HTTP_200_OK
 

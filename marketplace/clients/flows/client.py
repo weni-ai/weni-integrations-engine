@@ -152,3 +152,21 @@ class FlowsClient(RequestClient):
             headers=self.authentication_instance.headers,
         )
         return response.json()
+
+    def get_sent_messagers(
+        self, project_uuid: str, start_date: str, end_date: str, user: str
+    ):
+        url = f"{self.base_url}/api/v2/internals/template-messages/"
+        params = {
+            "project_uuid": project_uuid,
+            "start_date": start_date,
+            "end_date": end_date,
+            "user": user,
+        }
+        response = self.make_request(
+            url,
+            method="GET",
+            headers=self.authentication_instance.headers,
+            params=params,
+        )
+        return response

@@ -412,10 +412,17 @@ class WhatsappTemplateTranslationsTestCase(APIBaseTestCase):
                 "upload_session",
                 side_effect=Exception("Upload session failed"),
             ):
-                with self.assertRaises(Exception):
-                    self.request.post(
-                        self.url, body=self.body, uuid=str(self.template_message.uuid)
-                    )
+                with patch.object(
+                    PhotoAPIService,
+                    "create_upload_session",
+                    side_effect=Exception("Create upload session failed"),
+                ):
+                    with self.assertRaises(Exception):
+                        self.request.post(
+                            self.url,
+                            body=self.body,
+                            uuid=str(self.template_message.uuid),
+                        )
 
     def test_wpp_template_translation_without_token(self):
         self.app.code = "wpp"

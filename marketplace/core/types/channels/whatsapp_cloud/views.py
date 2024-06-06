@@ -14,7 +14,7 @@ from django.utils.crypto import get_random_string
 from marketplace.core.types import views
 from marketplace.applications.models import App
 from marketplace.celery import app as celery_app
-from marketplace.flows.client import FlowsClient
+from marketplace.clients.flows.client import FlowsClient
 from marketplace.accounts.permissions import ProjectManagePermission, IsCRMUser
 from marketplace.clients.facebook.client import FacebookClient
 from marketplace.services.facebook.service import (
