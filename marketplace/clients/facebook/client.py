@@ -308,7 +308,7 @@ class TemplatesRequests(FacebookAuthorization, RequestClient):
     def list_template_messages(self, waba_id: str) -> dict:
         url = self.BASE_URL + f"{waba_id}/message_templates"
         params = dict(
-            limit=999,
+            limit=9999,
             access_token=self.access_token,
         )
         response = self.make_request(

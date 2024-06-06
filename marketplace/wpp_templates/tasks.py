@@ -5,7 +5,6 @@ from celery import shared_task
 from sentry_sdk import capture_exception
 
 from .models import TemplateMessage
-from .requests import TemplateMessageRequest
 
 from marketplace.applications.models import App
 from marketplace.wpp_templates.models import (
@@ -14,6 +13,8 @@ from marketplace.wpp_templates.models import (
     TemplateButton,
 )
 from marketplace.clients.flows.client import FlowsClient
+from marketplace.clients.facebook.client import FacebookClient
+from marketplace.services.facebook.service import TemplateService
 
 from .utils import WebhookEventProcessor, handle_error_and_update_config
 
@@ -45,9 +46,8 @@ class FacebookTemplateSyncService:
     def __init__(self, app):
         self.app = app
         try:
-            self.client = TemplateMessageRequest(
-                access_token=app.apptype.get_access_token(app)
-            )
+            access_token = app.apptype.get_access_token(app)
+            self.template_service = TemplateService(client=FacebookClient(access_token))
         except ValueError as e:
             logger.error(f"Access token error for app {app.uuid}: {str(e)}")
             raise
@@ -61,7 +61,7 @@ class FacebookTemplateSyncService:
             else self.app.config.get("wa_waba_id")
         )
 
-        templates = self.client.list_template_messages(waba_id)
+        templates = self.template_service.list_template_messages(waba_id)
 
         if templates.get("error"):
             template_error = templates["error"]
