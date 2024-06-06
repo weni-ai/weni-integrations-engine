@@ -567,6 +567,7 @@ class FacebookClient(
     CloudProfileRequests,
     PhoneNumbersRequests,
     PhotoAPIRequests,
+    BusinessMetaRequests,
 ):
     def __init__(self, access_token):
         # Initialize FacebookAuthorization with access_token
