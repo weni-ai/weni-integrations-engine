@@ -1,6 +1,5 @@
 from marketplace.clients.facebook.client import FacebookClient
 from marketplace.services.facebook.service import PhotoAPIService, CloudProfileService
-
 from marketplace.interfaces.facebook.interfaces import CloudProfileRequestsInterface
 
 
