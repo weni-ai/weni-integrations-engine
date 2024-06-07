@@ -1,3 +1,7 @@
+v3.7.7
+----------
+* Add logger to upload vtex products
+
 v3.7.6
 ----------
 * Fixing update products by sellers
