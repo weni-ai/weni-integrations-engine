@@ -1,3 +1,7 @@
+v3.7.8
+----------
+* Add logger to base request client
+
 v3.7.7
 ----------
 * Add logger to upload vtex products
