@@ -1,4 +1,5 @@
 import io
+import logging
 
 from typing import List
 
@@ -13,6 +14,9 @@ from marketplace.services.facebook.service import (
     FacebookService,
 )
 from marketplace.services.rapidpro.service import RapidproService
+
+
+logger = logging.getLogger(__name__)
 
 
 class ProductUploader:
@@ -67,6 +71,7 @@ class ProductUploader:
     def send_to_meta(self, csv_content: io.BytesIO) -> bool:
         """Sends the CSV content to Meta and returns the upload status."""
         try:
+            upload_id = None  # Inicialize upload_id
             upload_id_in_process = self.fb_service.uploads_in_progress(self.feed_id)
             if upload_id_in_process:
                 print(
@@ -81,11 +86,25 @@ class ProductUploader:
             upload_id = self.fb_service.update_product_feed(
                 self.feed_id, csv_content, file_name
             )
+            if upload_id is None:
+                self._generate_file_upload_log(
+                    csv_content=csv_content,
+                    exception=ValueError("Feed upload was not complete."),
+                    upload_id=upload_id,
+                )
+                return False
+
             upload_complete = self.fb_service._wait_for_upload_completion(
                 self.feed_id, upload_id
             )
-            if not upload_complete:
-                print("Upload did not complete within the expected time frame.")
+            if upload_complete is False:
+                self._generate_file_upload_log(
+                    csv_content=csv_content,
+                    exception=TimeoutError(
+                        "Upload did not complete within the expected time frame."
+                    ),
+                    upload_id=upload_id,
+                )
                 return False
 
             print("Finished updating products to Facebook")
@@ -93,6 +112,9 @@ class ProductUploader:
         except Exception as e:
             print(
                 f"Error sending data to Meta: App: {str(self.catalog.vtex_app.uuid)}. error: {e}"
+            )
+            self._generate_file_upload_log(
+                csv_content=csv_content, exception=e, upload_id=upload_id
             )
             try:
                 self.rapidpro_service.create_notification(
@@ -122,6 +144,15 @@ class ProductUploader:
             return int(sku_part)
         else:
             raise ValueError(f"Invalid SKU ID, error: {sku_part} is not a number")
+
+    def _generate_file_upload_log(self, csv_content, exception, upload_id=None):
+        data = dict(
+            catalog=self.catalog.name,
+            vtex_app=str(self.catalog.vtex_app.uuid),
+            feed_id=self.feed_id,
+            upload_id=upload_id,
+        )
+        generate_log_with_file(csv_content=csv_content, data=data, exception=exception)
 
 
 class ProductUploadManager:
@@ -192,3 +223,17 @@ def escape_quotes(text):
     """Replaces quotes with a empty space in the provided text."""
     text = text.replace('"', "").replace("'", " ")
     return text
+
+
+def generate_log_with_file(csv_content: io.BytesIO, data, exception: Exception):
+    """Generates a detailed log entry with the file content for debugging."""
+    file_content = csv_content.getvalue().decode("utf-8")
+
+    # Log the error with details
+    data["csv_content"] = file_content
+    logger.error(
+        f"Error during Meta upload: {exception}",
+        exc_info=True,
+        stack_info=True,
+        extra=data,
+    )
