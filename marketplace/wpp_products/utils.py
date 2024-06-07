@@ -7,6 +7,8 @@ from datetime import datetime
 
 from django.db.models import QuerySet
 
+from sentry_sdk import configure_scope
+
 from marketplace.clients.facebook.client import FacebookClient
 from marketplace.clients.rapidpro.client import RapidproClient
 from marketplace.wpp_products.models import Catalog, ProductUploadLog, UploadProduct
@@ -70,8 +72,9 @@ class ProductUploader:
 
     def send_to_meta(self, csv_content: io.BytesIO) -> bool:
         """Sends the CSV content to Meta and returns the upload status."""
+        upload_id = None  # Inicialize upload_id
+        file_name = "DefaultFile.csv"
         try:
-            upload_id = None  # Inicialize upload_id
             upload_id_in_process = self.fb_service.uploads_in_progress(self.feed_id)
             if upload_id_in_process:
                 print(
@@ -90,6 +93,7 @@ class ProductUploader:
                 self._generate_file_upload_log(
                     csv_content=csv_content,
                     exception=ValueError("Feed upload was not complete."),
+                    file_name=file_name,
                     upload_id=upload_id,
                 )
                 return False
@@ -103,18 +107,23 @@ class ProductUploader:
                     exception=TimeoutError(
                         "Upload did not complete within the expected time frame."
                     ),
+                    file_name=file_name,
                     upload_id=upload_id,
                 )
                 return False
 
             print("Finished updating products to Facebook")
+            print("-" * 40)
             return True
         except Exception as e:
             print(
                 f"Error sending data to Meta: App: {str(self.catalog.vtex_app.uuid)}. error: {e}"
             )
             self._generate_file_upload_log(
-                csv_content=csv_content, exception=e, upload_id=upload_id
+                csv_content=csv_content,
+                exception=e,
+                file_name=file_name,
+                upload_id=upload_id,
             )
             try:
                 self.rapidpro_service.create_notification(
@@ -145,11 +154,14 @@ class ProductUploader:
         else:
             raise ValueError(f"Invalid SKU ID, error: {sku_part} is not a number")
 
-    def _generate_file_upload_log(self, csv_content, exception, upload_id=None):
+    def _generate_file_upload_log(
+        self, csv_content, exception, file_name, upload_id=None
+    ):
         data = dict(
             catalog=self.catalog.name,
             vtex_app=str(self.catalog.vtex_app.uuid),
             feed_id=self.feed_id,
+            file_name=file_name,
             upload_id=upload_id,
         )
         generate_log_with_file(csv_content=csv_content, data=data, exception=exception)
@@ -227,13 +239,16 @@ def escape_quotes(text):
 
 def generate_log_with_file(csv_content: io.BytesIO, data, exception: Exception):
     """Generates a detailed log entry with the file content for debugging."""
-    file_content = csv_content.getvalue().decode("utf-8")
-
-    # Log the error with details
-    data["csv_content"] = file_content
-    logger.error(
-        f"Error during Meta upload: {exception}",
-        exc_info=True,
-        stack_info=True,
-        extra=data,
-    )
+    with configure_scope() as scope:
+        scope.add_attachment(
+            bytes=csv_content.getvalue(),
+            filename=data.get("file_name", "upload.csv"),
+            content_type="text/csv",
+        )
+        # Log the error with details
+        logger.error(
+            f"Error on upload feed to Meta: {exception}",
+            exc_info=True,
+            stack_info=True,
+            extra=data,
+        )
