@@ -65,8 +65,10 @@ class ProductUploader:
                 redis_client.expire(lock_key, lock_expiration_time)
 
         except Exception as e:
-            print(
-                f"Error on 'process_and_upload': {str(self.catalog.vtex_app.uuid)}. error: {e}"
+            logger.error(
+                f"Error on 'process_and_upload' {str(self.catalog.vtex_app.uuid)}: {e}",
+                exc_info=True,
+                stack_info=True,
             )
             self.product_manager.mark_products_as_error(products_ids)
 
