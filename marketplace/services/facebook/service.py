@@ -4,7 +4,6 @@ import requests
 
 from typing import List, Dict, Any
 
-from marketplace.services.facebook.exceptions import FileNotSendValidationError
 from marketplace.wpp_products.models import Catalog
 from marketplace.interfaces.facebook.interfaces import (
     TemplatesRequestsInterface,
@@ -111,7 +110,7 @@ class FacebookService:
             feed_id, csv_file, file_name, "text/csv", update_only=True
         )
         if "id" not in response:
-            raise FileNotSendValidationError()
+            return None
         return response["id"]
 
     def uploads_in_progress(self, feed_id):

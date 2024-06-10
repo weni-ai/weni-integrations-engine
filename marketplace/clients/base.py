@@ -22,17 +22,33 @@ class RequestClient:
             raise ValueError(
                 "Cannot use both 'data' and 'json' arguments simultaneously."
             )
+        try:
+            response = requests.request(
+                method=method,
+                url=url,
+                headers=headers,
+                json=json,
+                data=data,
+                timeout=60,
+                params=params,
+                files=files,
+            )
+        except Exception as e:
+            self._log_request_exception(
+                exception=e,
+                url=url,
+                method=method,
+                headers=headers,
+                json=json,
+                data=data,
+                params=params,
+                files=files,
+            )
+            raise CustomAPIException(
+                detail=f"Base request error: {str(e)}",
+                status_code=getattr(e.response, "status_code", None),
+            ) from e
 
-        response = requests.request(
-            method=method,
-            url=url,
-            headers=headers,
-            json=json,
-            data=data,
-            timeout=60,
-            params=params,
-            files=files,
-        )
         if response.status_code >= 400:
             detail = ""
             self._generate_log(
@@ -64,9 +80,47 @@ class RequestClient:
         }
         logger.error(
             f"Error on request url {url}",
-            exc_info=1,
+            exc_info=True,
+            stack_info=True,
             extra={
                 "request_details": request_details,
                 "response_details": response_details,
+            },
+        )
+
+    def _log_request_exception(
+        self, exception, url, method, headers, json, data, params, files
+    ):
+        request_details = {
+            "method": method,
+            "url": url,
+            "headers": headers,
+            "json": json,
+            "data": data,
+            "params": params,
+            "files": files,
+        }
+        exception_details = {
+            "type": type(exception).__name__,
+            "message": str(exception),
+            "args": exception.args,
+        }
+        # Check if the exception has a response attribute (specific to requests exceptions)
+        if hasattr(exception, "response") and exception.response is not None:
+            exception_details.update(
+                {
+                    "response_status_code": exception.response.status_code,
+                    "response_headers": dict(exception.response.headers),
+                    "response_body": exception.response.text,
+                }
+            )
+
+        logger.error(
+            f"Request exception for URL {url}",
+            exc_info=True,
+            stack_info=True,
+            extra={
+                "request_details": request_details,
+                "exception_details": exception_details,
             },
         )

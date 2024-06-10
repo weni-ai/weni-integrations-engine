@@ -16,7 +16,6 @@ from marketplace.services.facebook.service import (
     CloudProfileService,
     BusinessMetaService,
 )
-from marketplace.services.facebook.exceptions import FileNotSendValidationError
 
 
 User = get_user_model()
@@ -295,11 +294,6 @@ class TestFacebookService(TestCase):
     def test_update_product_feed(self):
         response = self.service.update_product_feed("feed_id", "csv_file", "file_name")
         self.assertEqual(response, "upload_id")
-
-    def test_update_product_feed_failure(self):
-        with patch.object(self.mock_client, "upload_product_feed", return_value={}):
-            with self.assertRaises(FileNotSendValidationError):
-                self.service.update_product_feed("feed_id", "csv_file", "file_name")
 
     def test_uploads_in_progress(self):
         upload_id = self.service.uploads_in_progress("feed_id")

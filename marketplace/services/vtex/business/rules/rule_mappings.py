@@ -6,6 +6,7 @@ from .unifies_id_with_seller import UnifiesIdWithSeller
 from .calculate_by_weight_co import CalculateByWeightCO
 from .currency_co import CurrencyCOP
 from .round_up_calculate_by_weight import RoundUpCalculateByWeight
+from .categories_by_seller_gbarbosa import CategoriesBySeller
 
 
 RULE_MAPPINGS = {
@@ -16,4 +17,5 @@ RULE_MAPPINGS = {
     "calculate_by_weight_co": CalculateByWeightCO,
     "currency_co": CurrencyCOP,
     "round_up_calculate_by_weight": RoundUpCalculateByWeight,
+    "categories_by_seller_gbarbosa": CategoriesBySeller,
 }

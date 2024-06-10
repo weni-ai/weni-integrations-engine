@@ -1,3 +1,21 @@
+v3.7.8
+----------
+* Add logger to base request client
+
+v3.7.7
+----------
+* Add logger to upload vtex products
+
+v3.7.6
+----------
+* Fixing update products by sellers
+
+v3.7.5
+----------
+* Separate categories by seller
+* Add new category in alcoholic drinks categories
+* Insert vtex products by sellers
+
 v3.7.4
 ----------
 * Hotfix: Create alert to notify upload errors

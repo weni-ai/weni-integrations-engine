@@ -190,6 +190,10 @@ class DataProcessor:
         except CustomAPIException as e:
             if e.status_code == 404:
                 print(f"SKU {sku_id} not found. Skipping...")
+            elif e.status_code == 500:
+                print(f"SKU {sku_id} returned status: {e.status_code}. Skipping...")
+
+            print(f"An error {e} ocurred on get_product_details. Sku:{sku_id}")
             return []
 
         is_active = product_details.get("IsActive")
