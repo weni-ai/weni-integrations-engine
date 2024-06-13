@@ -112,6 +112,9 @@ class PrivateProductsService:
 
         return updated_products_dto
 
+    def get_product_specification(self, product_id, domain):
+        return self.client.get_product_specification(product_id, domain)
+
     # ================================
     # Private Methods
     # ================================

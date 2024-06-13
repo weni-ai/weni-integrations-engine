@@ -44,15 +44,18 @@ class DataProcessor:
     @staticmethod
     def clean_text(text: str) -> str:
         """Cleans up text by removing HTML tags, replacing quotes with empty space,
-        replacing commas with semicolons, and normalizing whitespace."""
+        replacing commas with semicolons, and normalizing whitespace but keeping new lines.
+        """
         # Remove HTML tags
         text = re.sub(r"<[^>]*>", "", text)
         # Replace double and single quotes with empty space
         text = text.replace('"', "").replace("'", " ")
         # Replace commas with semicolons
         text = text.replace(",", ";")
-        # Normalize new lines and carriage returns to space and remove excessive whitespace
-        text = re.sub(r"\s+", " ", text.strip())
+        # Normalize new lines and carriage returns to a single newline
+        text = re.sub(r"\r\n|\r|\n", "\n", text)
+        # Remove excessive whitespace but keep new lines
+        text = re.sub(r"[ \t]+", " ", text.strip())
         # Remove bullet points
         text = text.replace("•", "")
         return text
@@ -224,7 +227,11 @@ class DataProcessor:
             if not self._validate_product_dto(product_dto):
                 continue
 
-            params = {"seller_id": seller_id}
+            params = {
+                "seller_id": seller_id,
+                "service": self.service,
+                "domain": self.domain,
+            }
             all_rules_applied = True
             for rule in self.rules:
                 if not rule.apply(product_dto, **params):
