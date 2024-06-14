@@ -6,7 +6,13 @@ from django.conf import settings
 
 from marketplace.clients.base import RequestClient
 from marketplace.clients.decorators import retry_on_exception
-from marketplace.interfaces.facebook.interfaces import ProfileHandlerInterface
+from marketplace.interfaces.facebook.interfaces import (
+    BusinessMetaRequestsInterface,
+    CloudProfileRequestsInterface,
+    PhoneNumbersRequestsInterface,
+    PhotoAPIRequestsInterface,
+    TemplatesRequestsInterface,
+)
 
 
 class FacebookAuthorization:
@@ -266,7 +272,9 @@ class CatalogsRequests(FacebookAuthorization, RequestClient):
                 return upload.get("id")
 
 
-class TemplatesRequests(FacebookAuthorization, RequestClient):
+class TemplatesRequests(
+    FacebookAuthorization, RequestClient, TemplatesRequestsInterface
+):
     def create_template_message(
         self, waba_id: str, name: str, category: str, components: list, language: str
     ) -> dict:
@@ -351,7 +359,7 @@ class TemplatesRequests(FacebookAuthorization, RequestClient):
 
 
 class CloudProfileRequests(
-    FacebookAuthorization, RequestClient, ProfileHandlerInterface
+    FacebookAuthorization, RequestClient, CloudProfileRequestsInterface
 ):
     _endpoint = "/whatsapp_business_profile"
     _fields = dict(
@@ -400,11 +408,13 @@ class CloudProfileRequests(
         )
         return response.json()
 
-    def delete_profile_photo(self):  # pragma: no cover
+    def delete_profile_photo(self):
         ...
 
 
-class PhoneNumbersRequests(FacebookAuthorization, RequestClient):
+class PhoneNumbersRequests(
+    FacebookAuthorization, RequestClient, PhoneNumbersRequestsInterface
+):
     @property
     def _headers(self) -> dict:
         return {"Authorization": f"Bearer {self.access_token}"}
@@ -441,7 +451,7 @@ class PhoneNumbersRequests(FacebookAuthorization, RequestClient):
         return response.json()
 
 
-class PhotoAPIRequests(FacebookAuthorization, RequestClient):
+class PhotoAPIRequests(FacebookAuthorization, RequestClient, PhotoAPIRequestsInterface):
     def _endpoint_url(self, endpoint: str) -> str:
         return f"{self.get_url}/{endpoint}"
 
@@ -504,7 +514,9 @@ class PhotoAPIRequests(FacebookAuthorization, RequestClient):
         return response.json()
 
 
-class BusinessMetaRequests(FacebookAuthorization, RequestClient):
+class BusinessMetaRequests(
+    FacebookAuthorization, RequestClient, BusinessMetaRequestsInterface
+):
     def exchange_auth_code_to_token(self, auth_code: str) -> dict:
         url = f"{self.get_url}/oauth/access_token"
         params = dict(

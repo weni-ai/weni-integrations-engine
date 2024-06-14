@@ -17,7 +17,7 @@ from marketplace.interfaces.facebook.interfaces import (
 logger = logging.getLogger(__name__)
 
 
-class FacebookService:
+class FacebookService:  # TODO: Change the name to CatalogService
     def __init__(self, client):
         self.client = client
 
