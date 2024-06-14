@@ -12,6 +12,7 @@ from marketplace.interfaces.facebook.interfaces import (
     PhoneNumbersRequestsInterface,
     PhotoAPIRequestsInterface,
     TemplatesRequestsInterface,
+    CatalogsRequestsInterface,
 )
 
 
@@ -29,7 +30,7 @@ class FacebookAuthorization:
         return self.BASE_URL
 
 
-class CatalogsRequests(FacebookAuthorization, RequestClient):
+class CatalogsRequests(FacebookAuthorization, RequestClient, CatalogsRequestsInterface):
     def create_catalog(self, business_id, name, category="commerce"):
         url = f"{self.get_url}/{business_id}/owned_product_catalogs"
         data = {"name": name}

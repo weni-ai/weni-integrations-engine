@@ -11,6 +11,7 @@ from marketplace.interfaces.facebook.interfaces import (
     PhoneNumbersRequestsInterface,
     CloudProfileRequestsInterface,
     BusinessMetaRequestsInterface,
+    CatalogsRequestsInterface,
 )
 
 
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class FacebookService:  # TODO: Change the name to CatalogService
-    def __init__(self, client):
+    def __init__(self, client: CatalogsRequestsInterface):
         self.client = client
 
     # ================================
