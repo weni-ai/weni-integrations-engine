@@ -190,14 +190,8 @@ def task_update_vtex_products(**kwargs):
             f"'An':{seller_an}, 'SellerChain': {seller_chain}."
         )
         vtex_app = App.objects.get(uuid=app_uuid, configured=True, code="vtex")
-        (
-            domain,
-            app_key,
-            app_token,
-        ) = vtex_base_service.get_vtex_credentials_or_raise(vtex_app)
-        api_credentials = APICredentials(
-            app_key=app_key, app_token=app_token, domain=domain
-        )
+
+        api_credentials = vtex_base_service.get_vtex_credentials_or_raise(vtex_app)
 
         catalog = vtex_app.vtex_catalogs.first()
         if not catalog or not catalog.feeds.first():

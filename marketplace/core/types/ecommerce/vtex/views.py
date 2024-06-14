@@ -5,6 +5,7 @@ from rest_framework.decorators import action
 from marketplace.core.types.ecommerce.vtex.serializers import (
     VtexSerializer,
     VtexAppSerializer,
+    VtexSyncSellerSerializer,
 )
 from marketplace.core.types import views
 from marketplace.services.vtex.generic_service import VtexServiceBase
@@ -92,3 +93,25 @@ class VtexViewSet(views.BaseAppTypeViewSet):
     def get_app_uuid(self, request, *args, **kwargs):
         uuid = self.app_manager.get_vtex_app_uuid()
         return Response(data={"uuid": uuid}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["POST"], url_path="sync-vtex-sellers")
+    def sync_sellers(self, request, *args, **kwargs):
+        serializer = VtexSyncSellerSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        validated_data = serializer.validated_data
+
+        sellers_id = validated_data.get("sellers")
+        app = self.get_object()
+        success = self.service.synchronized_sellers(app=app, sellers_id=sellers_id)
+        if not success:
+            return Response(
+                data={"message": "failure to start synchronization"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["GET"], url_path="active-vtex-sellers")
+    def active_sellers(self, request, *args, **kwargs):
+        response = self.service.active_sellers(self.get_object())
+        return Response(data=response, status=status.HTTP_200_OK)
