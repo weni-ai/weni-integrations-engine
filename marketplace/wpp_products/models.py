@@ -1,7 +1,9 @@
 from django.db import models
+from django.core.exceptions import ValidationError
+from django.db.models import JSONField
+
 from marketplace.core.models import BaseModel
 from marketplace.applications.models import App
-from django.core.exceptions import ValidationError
 
 
 class VerticalChoices(models.TextChoices):
@@ -119,6 +121,75 @@ class Product(BaseModel):
         ]
 
 
+class UploadProduct(models.Model):
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("processing", "Processing"),
+        ("success", "Success"),
+        ("error", "Error"),
+    ]
+    facebook_product_id = models.CharField(max_length=100)
+    data = JSONField()
+    catalog = models.ForeignKey(
+        Catalog, on_delete=models.PROTECT, related_name="upload_catalog"
+    )
+    feed = models.ForeignKey(
+        ProductFeed,
+        on_delete=models.PROTECT,
+        related_name="upload_feed",
+        null=True,
+        blank=True,
+    )
+    status = models.CharField(max_length=20, default="pending", choices=STATUS_CHOICES)
+    modified_on = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["catalog", "feed", "status"]),
+            models.Index(fields=["facebook_product_id"]),
+            models.Index(fields=["modified_on"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facebook_product_id", "catalog"],
+                name="unique_upload_facebook_product_id_per_catalog",
+            )
+        ]
+
+
+class WebhookLog(models.Model):
+    sku_id = models.IntegerField()
+    data = JSONField()
+    created_on = models.DateTimeField(auto_now=True)
+    vtex_app = models.ForeignKey(
+        App,
+        on_delete=models.CASCADE,
+        related_name="vtex_webhook_logs",
+        blank=True,
+        null=True,
+        limit_choices_to={"code": "vtex"},
+    )
+
+
+class ProductUploadLog(models.Model):
+    sku_id = models.IntegerField()
+    created_on = models.DateTimeField(auto_now=True)
+    vtex_app = models.ForeignKey(
+        App,
+        on_delete=models.CASCADE,
+        related_name="vtex_product_upload_logs",
+        blank=True,
+        null=True,
+        limit_choices_to={"code": "vtex"},
+    )
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["sku_id"]),
+            models.Index(fields=["created_on"]),
+        ]
+
+
 class ProductValidation(models.Model):
     catalog = models.ForeignKey(
         Catalog, on_delete=models.CASCADE, related_name="product_validations"
@@ -126,12 +197,18 @@ class ProductValidation(models.Model):
     sku_id = models.IntegerField()
     is_valid = models.BooleanField(default=True)
     classification = models.CharField(max_length=100)
-    description = models.CharField(max_length=200, null=True, blank=True)
+    description = models.CharField(max_length=9999, null=True, blank=True)
+    modified_on = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = "Product Validation"
         verbose_name_plural = "Product Validations"
         unique_together = ("catalog", "sku_id")
+
+        indexes = [
+            models.Index(fields=["catalog"]),
+            models.Index(fields=["sku_id"]),
+        ]
 
     def __str__(self):
         return f"{self.catalog.name} - {self.sku_id} - {'Valid' if self.is_valid else 'Invalid'}"

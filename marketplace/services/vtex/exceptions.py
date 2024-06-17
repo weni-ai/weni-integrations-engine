@@ -20,12 +20,6 @@ class CredentialsValidationError(APIException):
     default_code = "invalid_credentials"
 
 
-class FileNotSendValidationError(APIException):
-    status_code = status.HTTP_400_BAD_REQUEST
-    default_detail = "The file couldn't be sent. Please try again."
-    default_code = "file_not_be_sent"
-
-
 class UnexpectedFacebookApiResponseValidationError(APIException):
     status_code = status.HTTP_400_BAD_REQUEST
     default_detail = "Unexpected response from Facebook API."

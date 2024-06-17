@@ -38,7 +38,7 @@ class SKUValidator:
         if description:
             product_description = f"{name}. {description}"
 
-        product_description = product_description[:200]
+        product_description = product_description[:9999]
         # Code related to AI validation temporarily inactive
         # Would normally be called:
         # is_valid, classification = self.validate_with_ai(product_description)
