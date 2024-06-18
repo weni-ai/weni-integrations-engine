@@ -19,6 +19,9 @@ class SKUValidator:
         )
         if is_valid is not None:
             if not is_valid:
+                print(
+                    f"SKU:{sku_id} is invalid in the database for catalog: {catalog.name}"
+                )
                 return None
             return self.service.get_product_details(sku_id, self.domain)
 
