@@ -120,7 +120,7 @@ class ProductInsertionService(VtexServiceBase):
         )
 
         products = pvt_service.list_all_products(
-            credentials.domain, catalog.vtex_app.config, sellers, catalog
+            domain=credentials.domain, catalog=catalog, sellers=sellers
         )
         if not products:
             return None
@@ -220,11 +220,10 @@ class ProductUpdateService(VtexServiceBase):
         seller_ids = self._get_sellers_ids(pvt_service)
 
         products_dto = pvt_service.update_webhook_product_info(
-            self.api_credentials.domain,
-            self.skus_ids,
-            seller_ids,
-            self.catalog.vtex_app.config,
-            self.catalog,
+            domain=self.api_credentials.domain,
+            skus_ids=self.skus_ids,
+            seller_ids=seller_ids,
+            catalog=self.catalog,
         )
         if not products_dto:
             return None

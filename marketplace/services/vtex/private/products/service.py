@@ -64,11 +64,11 @@ class PrivateProductsService:
     def list_all_products(
         self,
         domain: str,
-        config: dict,
         catalog: Catalog,
         sellers: Optional[List[str]] = None,
         update_product=False,
     ) -> List[FacebookProductDTO]:
+        config = catalog.vtex_app.config
         active_sellers = set(self.client.list_active_sellers(domain))
         if sellers is not None:
             valid_sellers = [seller for seller in sellers if seller in active_sellers]
