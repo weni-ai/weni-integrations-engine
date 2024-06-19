@@ -7,11 +7,18 @@ from datetime import datetime
 
 from django.db.models import QuerySet
 
+from django_redis import get_redis_connection
+
 from sentry_sdk import configure_scope
 
 from marketplace.clients.facebook.client import FacebookClient
 from marketplace.clients.rapidpro.client import RapidproClient
-from marketplace.wpp_products.models import Catalog, ProductUploadLog, UploadProduct
+from marketplace.wpp_products.models import (
+    Catalog,
+    ProductUploadLog,
+    ProductValidation,
+    UploadProduct,
+)
 from marketplace.services.facebook.service import (
     FacebookService,
 )
@@ -141,20 +148,12 @@ class ProductUploader:
         """Logs the successfully sent products to the log table."""
         for product_id in product_ids:
             # Extract SKU ID from "sku_id#seller_id"
-            sku_id = self.extract_sku_id(product_id)
+            sku_id = extract_sku_id(product_id)
             ProductUploadLog.objects.create(
                 sku_id=sku_id, vtex_app=self.catalog.vtex_app
             )
 
         print(f"Logged {len(product_ids)} products as sent.")
-
-    def extract_sku_id(self, product_id: str) -> int:
-        """Extract sku_id from facebook_product_id."""
-        sku_part = product_id.split("#")[0]
-        if sku_part.isdigit():
-            return int(sku_part)
-        else:
-            raise ValueError(f"Invalid SKU ID, error: {sku_part} is not a number")
 
     def _generate_file_upload_log(
         self, csv_content, exception, file_name, upload_id=None
@@ -239,6 +238,15 @@ def escape_quotes(text):
     return text
 
 
+def extract_sku_id(product_id: str) -> int:
+    """Extract sku_id from facebook_product_id."""
+    sku_part = product_id.split("#")[0]
+    if sku_part.isdigit():
+        return int(sku_part)
+    else:
+        raise ValueError(f"Invalid SKU ID, error: {sku_part} is not a number")
+
+
 def generate_log_with_file(csv_content: io.BytesIO, data, exception: Exception):
     """Generates a detailed log entry with the file content for debugging."""
     with configure_scope() as scope:
@@ -254,3 +262,118 @@ def generate_log_with_file(csv_content: io.BytesIO, data, exception: Exception):
             stack_info=True,
             extra=data,
         )
+
+
+class ProductSyncMetaPolices:
+    SYNC_META_POLICES_LOCK_KEY = "sync-meta-polices-lock"
+
+    def __init__(self, catalog):
+        self.catalog = catalog
+        self.app = catalog.app
+        self.client = FacebookClient(self.app.apptype.get_access_token(self.app))
+        self.redis = get_redis_connection()
+
+    def sync_products_polices(self):
+        if self.redis.get(self.SYNC_META_POLICES_LOCK_KEY):
+            print("The catalogs are already syncing products polices by another task!")
+            return
+
+        with self.redis.lock(self.SYNC_META_POLICES_LOCK_KEY):
+            wa_business_id = self.app.config.get("wa_business_id")
+            wa_waba_id = self.app.config.get("wa_waba_id")
+
+            if not (wa_business_id and wa_waba_id):
+                print(f"Business ID or WABA ID missing for app: {self.app.uuid}")
+                return
+            # TODO: check why the retry on exception is not triggering
+            all_products = self._list_unapproved_products()
+            try:
+                if all_products:
+                    self._sync_local_products(all_products)
+            except Exception as e:
+                logger.error(f"Error during sync process for App {self.app.name}: {e}")
+
+    def _list_unapproved_products(self):
+        return self.client.list_unapproved_products(self.catalog.facebook_catalog_id)
+
+    def _sync_local_products(self, all_products):
+        products_to_delete = []
+        products_invalid = []
+        for product in all_products:
+            formated_product = self._product_data_info(product)
+            try:
+                rejection_reason = formated_product.get("rejection_reason")
+
+                if rejection_reason:
+                    products_to_delete.append(
+                        {
+                            "method": "DELETE",
+                            "retailer_id": formated_product["retailer_id"],
+                        }
+                    )
+                    products_invalid.append(formated_product)
+
+            except Exception as e:
+                logger.error(
+                    f"Error creating catalog {self.catalog.facebook_catalog_id} for App: {str(e)}"
+                )
+
+        if products_to_delete:
+            self._delete_products_in_batch(products_to_delete)
+            self._save_invalid_products(products_invalid)
+
+        print(
+            f"Success in synchronizing product polices for catalog: {self.catalog.name}"
+        )
+
+    def _delete_products_in_batch(self, products_to_delete):
+        # TODO: It is still necessary to test the limit of deletes at a time
+        url = self.client.get_url + f"{self.catalog.facebook_catalog_id}/batch"
+        headers = self.client._get_headers()
+        payload = {
+            "access_token": self.client.access_token,
+            "requests": products_to_delete,
+        }
+        response = self.client.make_request(
+            url, method="POST", headers=headers, json=payload
+        )
+        if response.status_code != 200:
+            raise Exception(f"Failed to delete products: {response.text}")
+        return response.json()
+
+    def _save_invalid_products(self, products_invalid):
+        for product in products_invalid:
+            sku_id = product.get("sku_id")
+            catalog = self.catalog
+
+            is_valid = (
+                ProductValidation.objects.filter(sku_id=sku_id, catalog=catalog)
+                .values_list("is_valid", flat=True)
+                .first()
+            )
+            if is_valid is not None:
+                if not is_valid:
+                    print(
+                        f"SKU:{sku_id} is invalid in the database for catalog: {catalog.name}"
+                    )
+                    continue
+
+            rejection_reason = product.get("rejection_reason")
+            reason_str = f"{rejection_reason} - sync-tsk"
+            ProductValidation.objects.create(
+                catalog=catalog,
+                sku_id=sku_id,
+                is_valid=False,
+                classification=reason_str,
+                description=f"Product rejected due to: {reason_str}",
+            )
+
+    def _product_data_info(self, product: dict):
+        retailer_id = product.get("retailer_id")
+        formated_product = dict(
+            id=product.get("id"),
+            rejection_reason=product.get("review_rejection_reasons"),
+            retailer_id=retailer_id,
+            sku_id=extract_sku_id(retailer_id),
+        )
+        return formated_product

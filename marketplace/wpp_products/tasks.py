@@ -5,11 +5,13 @@ from datetime import datetime
 from celery import shared_task
 
 from django.db import reset_queries, close_old_connections
+from django.db.models import Exists, OuterRef
 
 from marketplace.clients.facebook.client import FacebookClient
 
 from marketplace.wpp_products.models import (
     Catalog,
+    ProductFeed,
     ProductUploadLog,
     UploadProduct,
     WebhookLog,
@@ -28,7 +30,7 @@ from marketplace.applications.models import App
 
 from django_redis import get_redis_connection
 
-from marketplace.wpp_products.utils import ProductUploader
+from marketplace.wpp_products.utils import ProductSyncMetaPolices, ProductUploader
 
 
 logger = logging.getLogger(__name__)
@@ -408,4 +410,27 @@ def task_insert_vtex_products_by_sellers(**kwargs):
         close_old_connections()
 
     print(f"finishing 'insertion_products_by_seller'catalog {catalog.name}")
+    print("=" * 40)
+
+
+@celery_app.task(name="task_sync_product_policies")
+def task_sync_product_policies():
+    print("Starting synchronization of product policies")
+
+    try:
+        # Filter catalogs that have an associated ProductFeed
+        catalogs_with_feeds = Catalog.objects.annotate(
+            has_feed=Exists(ProductFeed.objects.filter(catalog=OuterRef("pk")))
+        ).filter(has_feed=True)
+        for catalog in catalogs_with_feeds:
+            product_sync_service = ProductSyncMetaPolices(catalog)
+            product_sync_service.sync_products_polices()
+
+    except Exception as e:
+        logger.exception(
+            f"An error occurred during the 'task_sync_product_policies'. error: {e}"
+        )
+        return
+
+    print("finishing 'task_sync_product_policies'")
     print("=" * 40)
