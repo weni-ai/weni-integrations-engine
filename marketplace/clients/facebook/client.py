@@ -289,3 +289,33 @@ class FacebookClient(FacebookAuthorization, RequestClient):
         if upload:
             if "end_time" not in upload:
                 return upload.get("id")
+
+    # TODO: check how not to receive the quantity reduction error
+    @retry_on_exception()
+    def list_unapproved_products(self, wa_catalog_id):
+        wa_catalog_id = 1879523445838264
+        url = self.get_url + f"{wa_catalog_id}/products"
+        headers = self._get_headers()
+        fields = (
+            "id,name,availability,review_status,review_rejection_reasons,retailer_id"
+        )
+        all_products = []
+
+        # Make a request with limit=1 to get the total_count
+        params = dict(
+            limit=5000,
+            error_type="PRODUCT_NOT_APPROVED",
+            summary=True,
+            fields=fields,
+            bulk_pagination=True,
+        )
+
+        while url:
+            response = self.make_request(
+                url, method="GET", headers=headers, params=params
+            ).json()
+            all_products.extend(response.get("data", []))
+            url = response.get("paging", {}).get("next")
+            params = None
+
+        return all_products
