@@ -48,7 +48,7 @@ def update_user_permission(role: int, project: str, user: User):  # pragma: no c
 
 def delete_permisison(role, project, user):  # pragma: no cover
     project_authorization = ProjectAuthorization.objects.get(
-        user=user, project_uuid=project.uuid, role=role
+        user=user, project_uuid=project, role=role
     )
 
     project_authorization.delete()
