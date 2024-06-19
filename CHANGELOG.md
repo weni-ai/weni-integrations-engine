@@ -1,3 +1,50 @@
+v3.7.8
+----------
+* Add logger to base request client
+
+v3.7.7
+----------
+* Add logger to upload vtex products
+
+v3.7.6
+----------
+* Fixing update products by sellers
+
+v3.7.5
+----------
+* Separate categories by seller
+* Add new category in alcoholic drinks categories
+* Insert vtex products by sellers
+
+v3.7.4
+----------
+* Hotfix: Create alert to notify upload errors
+
+v3.7.3
+----------
+* Hotfix: Remove quotation marks and HTML tags from the title and description of vtex products
+
+v3.7.2
+----------
+* Check the view if it can synchronize and add ignore results to tasks
+
+v3.7.1
+----------
+* Hotfix: Set CELERY_RESULT_BACKEND with None
+
+v3.7.0
+----------
+* Processes vtex update webhooks asynchronously and saves them on DB
+* Create task to upload products from db to fba-meta
+* Saves uploads sent to Facebook and creates a task to clear logs 
+* Fix: limits requests on vtex per minute
+* Fix: list paginated sellers
+* Remove url redirection from view
+
+v3.6.4
+----------
+* Temporarily enable redirection of vtex updates
+
 v3.6.3
 ----------
 * Ignore 404 error when fetching vtex product details

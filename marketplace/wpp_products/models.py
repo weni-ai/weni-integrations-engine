@@ -1,7 +1,9 @@
 from django.db import models
+from django.core.exceptions import ValidationError
+from django.db.models import JSONField
+
 from marketplace.core.models import BaseModel
 from marketplace.applications.models import App
-from django.core.exceptions import ValidationError
 
 
 class VerticalChoices(models.TextChoices):
@@ -116,4 +118,73 @@ class Product(BaseModel):
                 fields=["facebook_product_id", "catalog"],
                 name="unique_facebook_product_id_per_catalog",
             )
+        ]
+
+
+class UploadProduct(models.Model):
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("processing", "Processing"),
+        ("success", "Success"),
+        ("error", "Error"),
+    ]
+    facebook_product_id = models.CharField(max_length=100)
+    data = JSONField()
+    catalog = models.ForeignKey(
+        Catalog, on_delete=models.PROTECT, related_name="upload_catalog"
+    )
+    feed = models.ForeignKey(
+        ProductFeed,
+        on_delete=models.PROTECT,
+        related_name="upload_feed",
+        null=True,
+        blank=True,
+    )
+    status = models.CharField(max_length=20, default="pending", choices=STATUS_CHOICES)
+    modified_on = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["catalog", "feed", "status"]),
+            models.Index(fields=["facebook_product_id"]),
+            models.Index(fields=["modified_on"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["facebook_product_id", "catalog"],
+                name="unique_upload_facebook_product_id_per_catalog",
+            )
+        ]
+
+
+class WebhookLog(models.Model):
+    sku_id = models.IntegerField()
+    data = JSONField()
+    created_on = models.DateTimeField(auto_now=True)
+    vtex_app = models.ForeignKey(
+        App,
+        on_delete=models.CASCADE,
+        related_name="vtex_webhook_logs",
+        blank=True,
+        null=True,
+        limit_choices_to={"code": "vtex"},
+    )
+
+
+class ProductUploadLog(models.Model):
+    sku_id = models.IntegerField()
+    created_on = models.DateTimeField(auto_now=True)
+    vtex_app = models.ForeignKey(
+        App,
+        on_delete=models.CASCADE,
+        related_name="vtex_product_upload_logs",
+        blank=True,
+        null=True,
+        limit_choices_to={"code": "vtex"},
+    )
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["sku_id"]),
+            models.Index(fields=["created_on"]),
         ]
