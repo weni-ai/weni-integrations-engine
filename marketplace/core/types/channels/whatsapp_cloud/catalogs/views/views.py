@@ -8,7 +8,7 @@ from rest_framework import status
 from marketplace.services.facebook.service import (
     FacebookService,
 )
-from marketplace.core.types.channels.whatsapp_cloud.services.flows import (
+from marketplace.services.flows.service import (
     FlowsService,
 )
 from marketplace.wpp_products.models import Catalog
