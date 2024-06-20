@@ -1,3 +1,9 @@
+v3.7.9
+----------
+* Add environment variables to meta sync tasks
+* Add retry for failed uploads
+* Remove project validation in update permission
+
 v3.7.8
 ----------
 * Add logger to base request client
