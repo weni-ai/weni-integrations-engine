@@ -51,7 +51,6 @@ class MockFlowsClient:
     def create_wac_channel(self, user, project_uuid, phone_number_id, config):
         return {"uuid": str(uuid.uuid4())}
 
-    # Adicionando os métodos ausentes
     def update_vtex_integration_status(self, project_uuid, user_email, action):
         return "Mocked Result"
 
