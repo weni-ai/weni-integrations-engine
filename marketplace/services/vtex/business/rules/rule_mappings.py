@@ -7,6 +7,8 @@ from .calculate_by_weight_co import CalculateByWeightCO
 from .currency_co import CurrencyCOP
 from .round_up_calculate_by_weight import RoundUpCalculateByWeight
 from .categories_by_seller_gbarbosa import CategoriesBySeller
+from .use_extra_imgs import UseExtraImgs
+from .use_rich_description import UseRichDescription
 
 
 RULE_MAPPINGS = {
@@ -18,4 +20,6 @@ RULE_MAPPINGS = {
     "currency_co": CurrencyCOP,
     "round_up_calculate_by_weight": RoundUpCalculateByWeight,
     "categories_by_seller_gbarbosa": CategoriesBySeller,
+    "use_extra_imgs": UseExtraImgs,
+    "use_rich_description": UseRichDescription,
 }

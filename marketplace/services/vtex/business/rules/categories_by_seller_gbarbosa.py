@@ -15,15 +15,18 @@ class CategoriesBySeller(Rule):
             if seller_id != "gbarbosab101":
                 return False
 
-            # current_description = product.description
             specifications = self._product_specification(product, service, domain)
+
             combined_description = f"{product.description}\n{specifications}"
+            combined_rich_text_description = (
+                f"{self._product_description(product)}\n{specifications}"
+            )
 
             # Ensure the combined description does not exceed 9999 characters
-            if len(combined_description) > 9999:
-                combined_description = combined_description[:9999]
-
-            product.description = combined_description
+            product.description = self._truncate_text(combined_description, 9999)
+            product.rich_text_description = self._truncate_text(
+                combined_rich_text_description, 9999
+            )
 
         # If the product is not an appliance, it can be added by any seller
         return True
@@ -55,3 +58,18 @@ class CategoriesBySeller(Rule):
 
         specification_text += "\n ".join(specification_parts) + "."
         return specification_text
+
+    def _product_description(self, product: FacebookProductDTO) -> str:
+        description = (
+            product.product_details["ProductDescription"]
+            if product.product_details["ProductDescription"] != ""
+            else product.product_details["SkuName"]
+        )
+        return description
+
+    @staticmethod
+    def _truncate_text(text: str, max_length: int) -> str:
+        """Truncates text to the maximum specified length."""
+        if len(text) > max_length:
+            return text[:max_length]
+        return text
