@@ -1,3 +1,7 @@
+v3.8.1
+----------
+* Set template status with pending on create
+
 v3.8.0
 ----------
 * Move methods to facebook client to display errors to user
