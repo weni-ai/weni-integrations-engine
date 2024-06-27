@@ -1,10 +1,12 @@
 import logging
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from celery import shared_task
 
 from django.db import reset_queries, close_old_connections
+
+from django.utils import timezone
 
 from marketplace.clients.facebook.client import FacebookClient
 
@@ -319,6 +321,19 @@ def task_cleanup_vtex_logs_and_uploads():
 
     # Delete all UploadProduct records with "success" status
     UploadProduct.objects.filter(status="success").delete()
+
+    # Update status to "pending" for all UploadProduct records with "error" status
+    error_queryset = UploadProduct.objects.filter(status="error")
+    if error_queryset.exists():
+        error_queryset.update(status="pending")
+
+    # Update status to "pending" for records that have been "processing" for more than 20 minutes
+    time_threshold = timezone.now() - timedelta(minutes=20)
+    in_processing = UploadProduct.objects.filter(
+        status="processing", modified_on__lt=time_threshold
+    )
+    if in_processing.exists():
+        in_processing.update(status="pending")
 
     print("Logs and successful uploads have been cleaned up.")
 

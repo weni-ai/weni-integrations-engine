@@ -1,3 +1,19 @@
+v3.8.1
+----------
+* Set template status with pending on create
+
+v3.8.0
+----------
+* Move methods to facebook client to display errors to user
+* Refactoring communication classes with Facebook
+* Change the limit parameter and change old facebook client
+
+v3.7.9
+----------
+* Add environment variables to meta sync tasks
+* Add retry for failed uploads
+* Remove project validation in update permission
+
 v3.7.8
 ----------
 * Add logger to base request client
