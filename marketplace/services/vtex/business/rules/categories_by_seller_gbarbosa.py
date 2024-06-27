@@ -47,14 +47,15 @@ class CategoriesBySeller(Rule):
         self, product: FacebookProductDTO, service, domain
     ) -> str:
         product_id = product.product_details.get("ProductId")
-        specification_text = "<b>Características:</b><br>"
+        specification_text = "<br><br><b>Características:</b><br><br>"
         specifications = service.get_product_specification(product_id, domain)
 
         specification_parts = []
         for specification in specifications:
             name = specification.get("Name")
             value = ", ".join(specification.get("Value", []))
-            specification_parts.append(f"<b>{name}</b> - {value}")
+            if value:
+                specification_parts.append(f"<b>{name}</b> : {value}")
 
         specification_text += "<br>".join(specification_parts) + "."
         return specification_text
