@@ -1,5 +1,6 @@
 import re
 import base64
+import logging
 
 from typing import List, Any
 
@@ -12,15 +13,20 @@ from django.conf import settings
 from rest_framework import serializers
 
 from marketplace.applications.models import App
+from marketplace.services.flows.service import FlowsService
 from marketplace.wpp_templates.models import (
     TemplateMessage,
     TemplateTranslation,
     TemplateButton,
     TemplateHeader,
 )
+from marketplace.clients.flows.client import FlowsClient
 from marketplace.clients.facebook.client import FacebookClient
 from marketplace.services.facebook.service import TemplateService, PhotoAPIService
+from marketplace.wpp_templates.utils import extract_template_data
 
+
+logger = logging.getLogger(__name__)
 
 WHATSAPP_VERSION = settings.WHATSAPP_VERSION
 
@@ -171,6 +177,25 @@ class TemplateTranslationSerializer(serializers.Serializer):
             if hh.get("example"):
                 hh.pop("example")
             TemplateHeader.objects.create(translation=translation, **hh)
+
+        if translation:
+            try:
+                # Send template to flows
+                flows_service = FlowsService(FlowsClient())
+                template_data = extract_template_data(translation)
+                flows_service.create_facebook_template(
+                    flow_object_uuid=str(translation.template.app.flow_object_uuid),
+                    template_data=template_data,
+                    template_name=translation.template.name,
+                )
+                logger.info(f"A new template {template.name} has sent to flows.")
+            except Exception as e:
+                logger.error(
+                    f"Fail to sends a new template to flows: {template.name}, translation: {translation.language},"
+                    f"translation ID: {translation.message_template_id}. Error: {e}",
+                    exc_info=True,
+                    stack_info=True,
+                )
 
         return translation
 
