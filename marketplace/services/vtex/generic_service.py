@@ -116,14 +116,12 @@ class VtexServiceBase:
             domain=domain,
         )
 
-    def active_sellers(self, app) -> dict:
+    def active_sellers(self, app) -> List:
         credentials = self.get_vtex_credentials_or_raise(app)
         pvt_service = self.get_private_service(
-            app_key=credentials.app_key,
-            app_token=credentials.app_token,
-            domain=credentials.domain,
+            app_key=credentials.app_key, app_token=credentials.app_token
         )
-        return pvt_service.list_active_sellers()
+        return pvt_service.list_active_sellers(credentials.domain)
 
     def synchronized_sellers(self, app: App, sellers_id: List):
         try:
