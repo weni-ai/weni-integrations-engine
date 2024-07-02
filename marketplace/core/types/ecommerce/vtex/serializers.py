@@ -52,3 +52,14 @@ class VtexAppSerializer(AppTypeBaseSerializer):
             api_credentials["app_token"] = "***"
 
         return config
+
+
+class VtexSyncSellerSerializer(serializers.Serializer):
+    sellers = serializers.ListField(required=True)
+
+    def validate_sellers(self, value):
+        if len(value) > 5:
+            raise serializers.ValidationError(
+                "The list of sellers exceeds the limit of 5 items."
+            )
+        return value
