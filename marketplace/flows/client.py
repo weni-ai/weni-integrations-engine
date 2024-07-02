@@ -1,4 +1,5 @@
 """Client for connection with flows"""
+
 import requests
 
 from django.conf import settings
@@ -6,7 +7,7 @@ from django.conf import settings
 from rest_framework.exceptions import APIException
 
 
-class FlowsClient:
+class FlowsClient:  # TODO: Migrate all methods to marketplace.clients.flows.client
     def __init__(self):
         self.base_url = settings.FLOWS_REST_ENDPOINT
         self.authentication_instance = InternalAuthentication()

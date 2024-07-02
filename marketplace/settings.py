@@ -360,19 +360,25 @@ CELERY_BEAT_SCHEDULE = {
     },
     "sync-whatsapp-wabas": {
         "task": "sync_whatsapp_wabas",
-        "schedule": timedelta(hours=5),
+        "schedule": timedelta(hours=env.int("SYNC_WHATSAPP_WABAS_TIME", default=7)),
     },
     "sync-whatsapp-cloud-wabas": {
         "task": "sync_whatsapp_cloud_wabas",
-        "schedule": timedelta(hours=5),
+        "schedule": timedelta(
+            hours=env.int("SYNC_WHATSAPP_CLOUD_WABAS_TIME", default=4)
+        ),
     },
     "sync-whatsapp-phone-numbers": {
         "task": "sync_whatsapp_phone_numbers",
-        "schedule": timedelta(hours=5),
+        "schedule": timedelta(
+            hours=env.int("SYNC_WHATSAPP_PHONE_NUMBERS_TIME", default=6)
+        ),
     },
     "sync-whatsapp-cloud-phone-numbers": {
         "task": "sync_whatsapp_cloud_phone_numbers",
-        "schedule": timedelta(hours=5),
+        "schedule": timedelta(
+            hours=env.int("SYNC_WHATSAPP_CLOUD_PHONE_NUMBERS_TIME", default=5)
+        ),
     },
     "refresh-whatsapp-templates-from-facebook": {
         "task": "refresh_whatsapp_templates_from_facebook",
