@@ -60,10 +60,20 @@ class PrivateProductsService:
         self.check_is_valid_domain(domain)
         return self.client.is_valid_credentials(domain)
 
+    def list_active_sellers(self, domain):
+        return self.client.list_active_sellers(domain)
+
+    def list_all_active_products(self, domain):
+        return self.client.list_all_active_products(domain)
+
     def list_all_products(
-        self, domain: str, config: dict, sellers: Optional[List[str]] = None
+        self,
+        domain: str,
+        config: dict,
+        sellers: Optional[List[str]] = None,
+        update_product=False,
     ) -> List[FacebookProductDTO]:
-        active_sellers = set(self.client.list_active_sellers(domain))
+        active_sellers = set(self.list_active_sellers(domain))
         if sellers is not None:
             valid_sellers = [seller for seller in sellers if seller in active_sellers]
             invalid_sellers = set(sellers) - active_sellers
@@ -75,11 +85,11 @@ class PrivateProductsService:
         else:
             sellers_ids = list(active_sellers)
 
-        skus_ids = self.client.list_all_active_products(domain)
+        skus_ids = self.list_all_active_products(domain)
         rules = self._load_rules(config.get("rules", []))
         store_domain = config.get("store_domain")
         products_dto = self.data_processor.process_product_data(
-            skus_ids, sellers_ids, self, domain, store_domain, rules
+            skus_ids, sellers_ids, self, domain, store_domain, rules, update_product
         )
         return products_dto
 
@@ -107,6 +117,9 @@ class PrivateProductsService:
         )
 
         return updated_products_dto
+
+    def get_product_specification(self, product_id, domain):
+        return self.client.get_product_specification(product_id, domain)
 
     # ================================
     # Private Methods

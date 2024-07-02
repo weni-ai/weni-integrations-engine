@@ -1,10 +1,12 @@
 import logging
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from celery import shared_task
 
 from django.db import reset_queries, close_old_connections
+
+from django.utils import timezone
 
 from marketplace.clients.facebook.client import FacebookClient
 
@@ -20,6 +22,7 @@ from marketplace.services.vtex.generic_service import (
     ProductUpdateService,
     ProductInsertionService,
     VtexServiceBase,
+    ProductInsertionBySellerService,
 )
 from marketplace.services.vtex.generic_service import APICredentials
 from marketplace.core.types import APPTYPES
@@ -189,14 +192,8 @@ def task_update_vtex_products(**kwargs):
             f"'An':{seller_an}, 'SellerChain': {seller_chain}."
         )
         vtex_app = App.objects.get(uuid=app_uuid, configured=True, code="vtex")
-        (
-            domain,
-            app_key,
-            app_token,
-        ) = vtex_base_service.get_vtex_credentials_or_raise(vtex_app)
-        api_credentials = APICredentials(
-            app_key=app_key, app_token=app_token, domain=domain
-        )
+
+        api_credentials = vtex_base_service.get_vtex_credentials_or_raise(vtex_app)
 
         catalog = vtex_app.vtex_catalogs.first()
         if not catalog or not catalog.feeds.first():
@@ -279,6 +276,7 @@ def task_forward_vtex_webhook(**kwargs):
         "task_update_vtex_products",
         kwargs={"app_uuid": str(app_uuid), "webhook": webhook},
         queue=celery_queue,
+        ignore_result=True,
     )
 
 
@@ -324,4 +322,99 @@ def task_cleanup_vtex_logs_and_uploads():
     # Delete all UploadProduct records with "success" status
     UploadProduct.objects.filter(status="success").delete()
 
+    # Update status to "pending" for all UploadProduct records with "error" status
+    error_queryset = UploadProduct.objects.filter(status="error")
+    if error_queryset.exists():
+        error_queryset.update(status="pending")
+
+    # Update status to "pending" for records that have been "processing" for more than 20 minutes
+    time_threshold = timezone.now() - timedelta(minutes=20)
+    in_processing = UploadProduct.objects.filter(
+        status="processing", modified_on__lt=time_threshold
+    )
+    if in_processing.exists():
+        in_processing.update(status="pending")
+
     print("Logs and successful uploads have been cleaned up.")
+
+
+def send_sync(app_uuid: str, webhook: dict):
+    try:
+        app = App.objects.get(uuid=app_uuid, configured=True, code="vtex")
+    except App.DoesNotExist:
+        logger.info(f"No VTEX App configured with the provided UUID: {app_uuid}")
+        return
+
+    can_synchronize = app.config.get("initial_sync_completed", False)
+
+    if not can_synchronize:
+        print(f"Initial sync not completed. App:{str(app.uuid)}")
+        return
+
+    celery_queue = app.config.get("celery_queue_name", "product_synchronization")
+    sku_id = webhook.get("IdSku")
+
+    if not sku_id:
+        raise ValueError(f"SKU ID not provided in the request. App:{str(app.uuid)}")
+
+    celery_app.send_task(
+        "task_update_vtex_products",
+        kwargs={"app_uuid": str(app_uuid), "webhook": webhook},
+        queue=celery_queue,
+        ignore_result=True,
+    )
+
+
+@celery_app.task(name="task_insert_vtex_products_by_sellers")
+def task_insert_vtex_products_by_sellers(**kwargs):
+    print("Starting insertion products by seller")
+    vtex_service = ProductInsertionBySellerService()
+
+    credentials = kwargs.get("credentials")
+    catalog_uuid = kwargs.get("catalog_uuid")
+    sellers = kwargs.get("sellers")
+
+    if not sellers:
+        logger.error(
+            "Missing required parameters [seller] for task_insert_vtex_products_by_sellers"
+        )
+        return
+
+    if not all([credentials, catalog_uuid]):
+        logger.error(
+            "Missing required parameters [credentials, catalog_uuid] for task_insert_vtex_products"
+        )
+        return
+
+    try:
+        # Reset queries and close old connections for a clean state and performance.
+        # Prevents memory leak from stored queries and unstable database connections
+        reset_queries()
+        close_old_connections()
+
+        catalog = Catalog.objects.get(uuid=catalog_uuid)
+        api_credentials = APICredentials(
+            app_key=credentials["app_key"],
+            app_token=credentials["app_token"],
+            domain=credentials["domain"],
+        )
+        print(
+            f"Starting 'insertion_products_by_seller' for catalog: {str(catalog.name)}"
+        )
+        products = vtex_service.insertion_products_by_seller(
+            api_credentials, catalog, sellers
+        )
+        if products is None:
+            print("There are no products to be shipped after processing the rules.")
+            return
+
+    except Exception as e:
+        logger.exception(
+            f"An error occurred during the 'insertion_products_by_seller' for catalog {catalog.name}, {e}"
+        )
+        return
+    finally:
+        close_old_connections()
+
+    print(f"finishing 'insertion_products_by_seller'catalog {catalog.name}")
+    print("=" * 40)

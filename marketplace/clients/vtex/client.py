@@ -171,3 +171,13 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
             current_from += step
 
         return list(unique_skus)
+
+    # API throttling
+    @rate_limit_and_retry_on_exception(
+        get_domain_from_args, calls_per_period=VTEX_CALLS_PER_PERIOD, period=VTEX_PERIOD
+    )
+    def get_product_specification(self, product_id, domain):
+        url = f"https://{domain}/api/catalog_system/pvt/products/{product_id}/specification"
+        headers = self._get_headers()
+        response = self.make_request(url, method="GET", headers=headers)
+        return response.json()

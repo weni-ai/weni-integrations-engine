@@ -1,27 +1,28 @@
 import functools
 import time
+import logging
 
 from django_redis import get_redis_connection
+
+
+logger = logging.getLogger(__name__)
 
 
 class RateLimiter:
     """
     A class for implementing rate limiting using Redis.
 
-    This class provides a mechanism to limit the rate of operations
-    performed by an identifier (e.g., a user or API key)
-    within a specified period. It uses a Redis backend to track
-    the count of operations performed and ensures that the
-    operation does not exceed the defined thresholds.
+    This class limits the rate of operations performed by an identifier
+    (e.g., a user or API key) within a specified period. It uses a Redis
+    backend to track the count of operations and ensures the rate limit
+    is not exceeded.
 
     Attributes:
-        key_prefix (str): A prefix for Redis keys to avoid naming conflicts.
-        calls (int): Maximum number of allowed operations within the defined period.
-        period (int): The duration (in seconds) for which the rate limit applies.
-        redis (Redis): An instance of a Redis connection to be used
-        for storing and managing rate data.
-        current_count (dict): A dictionary to store the current
-        count of operations for monitoring and debugging.
+        key_prefix (str): Prefix for Redis keys to avoid naming conflicts.
+        calls (int): Maximum allowed operations within the period.
+        period (int): Duration (in seconds) for the rate limit period.
+        redis (Redis): Redis connection instance for rate data storage.
+        current_count (dict): Tracks current count of operations for monitoring.
     """
 
     def __init__(self, key_prefix, calls, period, redis_connection):
@@ -35,6 +36,9 @@ class RateLimiter:
         return f"{self.key_prefix}:{identifier}"
 
     def check(self, identifier):
+        """
+        Check and enforce the rate limit for the given identifier.
+        """
         key = self._get_key(identifier)
         current_count = self.redis.incr(key)
 
@@ -50,22 +54,24 @@ class RateLimiter:
                 f"for key {key}. Waiting for 20 seconds."
             )
             time.sleep(20)
+            # force reset the counter key after sleeping
+            self.redis.delete(key)
 
 
 def rate_limit_and_retry_on_exception(domain_key_func, calls_per_period, period):
     """
-    Decorates a function to enforce rate limiting and retries.
+    Decorator to enforce rate limiting and retries.
 
-    Applies rate limits per second and per minute based on the provided limits. Handles retries
-    with exponential backoff for network or HTTP errors.
+    Applies rate limits and handles retries with exponential backoff
+    for network or HTTP errors.
 
-    Parameters:
-        calls_per_second (int): Maximum allowed function calls per second.
-        calls_per_minute (int): Maximum allowed function calls per minute.
-        domain_key_func (callable): Function to extract a domain identifier for rate limiting.
+    Args:
+        domain_key_func (callable): Function to extract domain identifier.
+        calls_per_period (int): Max allowed function calls per period.
+        period (int): Time period (in seconds) for rate limiting.
 
     Returns:
-        Decorated function with applied rate limiting and error handling for retries.
+        callable: Decorated function with rate limiting and retries.
     """
 
     def decorator(func):
@@ -90,22 +96,26 @@ def rate_limit_and_retry_on_exception(domain_key_func, calls_per_period, period)
                     last_exception = e
                     status_code = e.status_code if hasattr(e, "status_code") else None
                     if not status_code:
-                        raise
+                        print(f"Unexpected error: [{str(e)}]")
+                        logger.error(e)
 
                     if status_code == 404:
-                        print(f"Not Found: {str(e)}. Not retrying this.")
+                        print(f"Not Found: [{str(e)}]. Not retrying this.")
                         raise
                     elif status_code == 500:
-                        print(f"A 500 error occurred: {str(e)}. Retrying...")
+                        print(f"A 500 error occurred: [{str(e)}]. Retrying...")
                         raise
 
                     if attempts >= 2:
                         if status_code == 429:
-                            print(f"Too many requests: {str(e)}. Retrying...")
+                            print(f"Too many requests: [{str(e)}]. Retrying...")
                         elif status_code == 408:
-                            print(f"Timeout error: {str(e)}. Retrying...")
+                            print(f"Timeout error: [{str(e)}]. Retrying...")
                         else:
-                            raise
+                            print(
+                                f"Unexpected error: [{str(e)}]. status: {status_code}. Retrying..."
+                            )
+                            logger.error(e)
 
                 print(
                     f"Retrying... Attempt {attempts + 1} after {sleep_time} seconds, in {func.__name__}:"
@@ -120,7 +130,7 @@ def rate_limit_and_retry_on_exception(domain_key_func, calls_per_period, period)
             )
 
             print(message)
-            raise Exception(message)
+            logger.error(message)
 
         return wrapper
 

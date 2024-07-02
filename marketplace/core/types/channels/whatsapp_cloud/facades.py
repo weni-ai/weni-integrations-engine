@@ -1,7 +1,9 @@
-from .requests import CloudProfileRequest, PhotoAPIRequest
+from marketplace.clients.facebook.client import FacebookClient
+from marketplace.services.facebook.service import PhotoAPIService, CloudProfileService
+from marketplace.interfaces.facebook.interfaces import CloudProfileRequestsInterface
 
 
-class CloudProfileFacade(object):  # TODO: Interface
+class CloudProfileFacade(CloudProfileRequestsInterface):
     # TODO: Put vertical rule in respective serializer
 
     VERTICAl_MAP = {
@@ -25,8 +27,11 @@ class CloudProfileFacade(object):  # TODO: Interface
     }
 
     def __init__(self, access_token: str, phone_number_id: "str") -> None:
-        self._profile_api = CloudProfileRequest(access_token, phone_number_id)
-        self._photo_api = PhotoAPIRequest(access_token)
+        self.facebook_client = FacebookClient(access_token)
+        self._profile_api = CloudProfileService(
+            client=self.facebook_client.get_profile_requests(phone_number_id)
+        )
+        self._photo_api = PhotoAPIService(client=self.facebook_client)
         self._phone_number_id = phone_number_id
 
     def get_profile(self):
@@ -57,16 +62,22 @@ class CloudProfileFacade(object):  # TODO: Interface
 
         self._profile_api.set_profile(**data)
 
-    def delete_profile_photo(self):
-        pass
+    def delete_profile_photo(self) -> None:
+        return self._profile_api.delete_profile_photo()
 
 
-class CloudProfileContactFacade(object):  # TODO: Interface
+class CloudProfileContactFacade(CloudProfileRequestsInterface):
     def __init__(self, access_token: str, phone_number_id: "str") -> None:
-        self._profile_api = CloudProfileRequest(access_token, phone_number_id)
+        self.facebook_client = FacebookClient(access_token)
+        self._profile_api = CloudProfileService(
+            client=self.facebook_client.get_profile_requests(phone_number_id)
+        )
 
     def get_profile(self):
         return self._profile_api.get_profile()
 
     def set_profile(self, data: dict):
         self._profile_api.set_profile(**data)
+
+    def delete_profile_photo(self) -> None:
+        return self._profile_api.delete_profile_photo()

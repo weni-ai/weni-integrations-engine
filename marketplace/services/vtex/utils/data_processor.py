@@ -3,6 +3,7 @@ import pandas as pd
 import io
 import dataclasses
 import threading
+import re
 
 from dataclasses import dataclass
 
@@ -41,6 +42,25 @@ class DataProcessor:
         self.progress_lock = threading.Lock()
 
     @staticmethod
+    def clean_text(text: str) -> str:
+        """Cleans up text by removing HTML tags, replacing quotes with empty space,
+        replacing commas with semicolons, and normalizing whitespace but keeping new lines.
+        """
+        # Remove HTML tags
+        text = re.sub(r"<[^>]*>", "", text)
+        # Replace double and single quotes with empty space
+        text = text.replace('"', "").replace("'", " ")
+        # Replace commas with semicolons
+        text = text.replace(",", ";")
+        # Normalize new lines and carriage returns to a single newline
+        text = re.sub(r"\r\n|\r|\n", "\n", text)
+        # Remove excessive whitespace but keep new lines
+        text = re.sub(r"[ \t]+", " ", text.strip())
+        # Remove bullet points
+        text = text.replace("•", "")
+        return text
+
+    @staticmethod
     def extract_fields(
         store_domain, product_details, availability_details
     ) -> FacebookProductDTO:
@@ -69,9 +89,12 @@ class DataProcessor:
             else product_details["SkuName"]
         )
         title = product_details["SkuName"].title()
-        # Limit title and description to 200 characters for Facebook rules
-        description = description[:200]
-        title = title[:200]
+        # Applies the .title() before clearing the text
+        title = title[:200].title()
+        description = description[:9999].title()
+        # Clean title and description
+        title = DataProcessor.clean_text(title)
+        description = DataProcessor.clean_text(description)
 
         availability = (
             "in stock" if availability_details["is_available"] else "out of stock"
@@ -80,8 +103,8 @@ class DataProcessor:
 
         return FacebookProductDTO(
             id=sku_id,
-            title=title.title(),
-            description=description.title(),
+            title=title,
+            description=description,
             availability=availability,
             status=status,
             condition="new",
@@ -170,6 +193,10 @@ class DataProcessor:
         except CustomAPIException as e:
             if e.status_code == 404:
                 print(f"SKU {sku_id} not found. Skipping...")
+            elif e.status_code == 500:
+                print(f"SKU {sku_id} returned status: {e.status_code}. Skipping...")
+
+            print(f"An error {e} ocurred on get_product_details. Sku:{sku_id}")
             return []
 
         is_active = product_details.get("IsActive")
@@ -200,7 +227,11 @@ class DataProcessor:
             if not self._validate_product_dto(product_dto):
                 continue
 
-            params = {"seller_id": seller_id}
+            params = {
+                "seller_id": seller_id,
+                "service": self.service,
+                "domain": self.domain,
+            }
             all_rules_applied = True
             for rule in self.rules:
                 if not rule.apply(product_dto, **params):

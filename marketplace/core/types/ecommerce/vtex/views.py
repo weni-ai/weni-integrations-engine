@@ -5,6 +5,7 @@ from rest_framework.decorators import action
 from marketplace.core.types.ecommerce.vtex.serializers import (
     VtexSerializer,
     VtexAppSerializer,
+    VtexSyncSellerSerializer,
 )
 from marketplace.core.types import views
 from marketplace.services.vtex.generic_service import VtexServiceBase
@@ -19,26 +20,31 @@ class VtexViewSet(views.BaseAppTypeViewSet):
     service_class = VtexServiceBase
     flows_service_class = FlowsService
     flows_client = FlowsClient
+    app_manager_class = AppVtexManager
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._service = None
         self._flows_service = None
-        self.app_manager = AppVtexManager()
+        self._app_manager = None
 
     @property
     def service(self):  # pragma: no cover
         if not self._service:
             self._service = self.service_class()
-
         return self._service
 
     @property
     def flows_service(self):  # pragma: no cover
         if not self._flows_service:
             self._flows_service = self.flows_service_class(self.flows_client())
-
         return self._flows_service
+
+    @property
+    def app_manager(self):  # pragma: no cover
+        if not self._app_manager:
+            self._app_manager = self.app_manager_class()
+        return self._app_manager
 
     def perform_create(self, serializer):
         serializer.save(code=self.type_class.code, uuid=serializer.initial_data["uuid"])
@@ -92,3 +98,25 @@ class VtexViewSet(views.BaseAppTypeViewSet):
     def get_app_uuid(self, request, *args, **kwargs):
         uuid = self.app_manager.get_vtex_app_uuid()
         return Response(data={"uuid": uuid}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["POST"], url_path="sync-vtex-sellers")
+    def sync_sellers(self, request, uuid=None, *args, **kwargs):
+        serializer = VtexSyncSellerSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        validated_data = serializer.validated_data
+
+        sellers_id = validated_data.get("sellers")
+        app = self.get_object()
+        success = self.service.synchronized_sellers(app=app, sellers_id=sellers_id)
+        if not success:
+            return Response(
+                data={"message": "failure to start synchronization"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["GET"], url_path="active-vtex-sellers")
+    def active_sellers(self, request, uuid=None, *args, **kwargs):
+        response = self.service.active_sellers(self.get_object())
+        return Response(data=response, status=status.HTTP_200_OK)

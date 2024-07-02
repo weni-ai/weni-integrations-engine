@@ -257,7 +257,7 @@ REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379")
 # Celery
 
 CELERY_BROKER_URL = env.str("CELERY_BROKER_URL", default=REDIS_URL)
-CELERY_RESULT_BACKEND = env.str("CELERY_RESULT_BACKEND", default=REDIS_URL)
+CELERY_RESULT_BACKEND = None
 CELERY_ACCEPT_CONTENT = ["application/json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
@@ -360,19 +360,25 @@ CELERY_BEAT_SCHEDULE = {
     },
     "sync-whatsapp-wabas": {
         "task": "sync_whatsapp_wabas",
-        "schedule": timedelta(hours=5),
+        "schedule": timedelta(hours=env.int("SYNC_WHATSAPP_WABAS_TIME", default=7)),
     },
     "sync-whatsapp-cloud-wabas": {
         "task": "sync_whatsapp_cloud_wabas",
-        "schedule": timedelta(hours=5),
+        "schedule": timedelta(
+            hours=env.int("SYNC_WHATSAPP_CLOUD_WABAS_TIME", default=4)
+        ),
     },
     "sync-whatsapp-phone-numbers": {
         "task": "sync_whatsapp_phone_numbers",
-        "schedule": timedelta(hours=5),
+        "schedule": timedelta(
+            hours=env.int("SYNC_WHATSAPP_PHONE_NUMBERS_TIME", default=6)
+        ),
     },
     "sync-whatsapp-cloud-phone-numbers": {
         "task": "sync_whatsapp_cloud_phone_numbers",
-        "schedule": timedelta(hours=5),
+        "schedule": timedelta(
+            hours=env.int("SYNC_WHATSAPP_CLOUD_PHONE_NUMBERS_TIME", default=5)
+        ),
     },
     "refresh-whatsapp-templates-from-facebook": {
         "task": "refresh_whatsapp_templates_from_facebook",
@@ -447,3 +453,9 @@ VTEX_UPDATE_BATCH_SIZE = env.int("VTEX_UPDATE_BATCH_SIZE", default=500)
 # Define how many requests can be made in a period
 VTEX_PERIOD = env.int("VTEX_PERIOD", default=60)
 VTEX_CALLS_PER_PERIOD = env.int("VTEX_CALLS_PER_PERIOD", default=1500)
+
+# Rapidpro
+RAPIDPRO_URL = env.str("RAPIDPRO_URL", "")
+RAPIDPRO_API_TOKEN = env.str("RAPIDPRO_API_TOKEN", "")
+RAPIDPRO_FLOW_GROUP_UUID = env.str("RAPIDPRO_FLOW_GROUP_UUID", "")
+RAPIDPRO_FLOW_UUID = env.str("RAPIDPRO_FLOW_UUID", "")

@@ -1,4 +1,5 @@
 import io
+import logging
 
 from typing import List
 
@@ -6,11 +7,18 @@ from datetime import datetime
 
 from django.db.models import QuerySet
 
+from sentry_sdk import configure_scope
+
 from marketplace.clients.facebook.client import FacebookClient
+from marketplace.clients.rapidpro.client import RapidproClient
 from marketplace.wpp_products.models import Catalog, ProductUploadLog, UploadProduct
 from marketplace.services.facebook.service import (
     FacebookService,
 )
+from marketplace.services.rapidpro.service import RapidproService
+
+
+logger = logging.getLogger(__name__)
 
 
 class ProductUploader:
@@ -29,6 +37,7 @@ class ProductUploader:
             if catalog.feeds.first().facebook_feed_id
             else None
         )
+        self.rapidpro_service = RapidproService(RapidproClient())
 
     def initialize_fb_service(self) -> FacebookService:  # pragma: no cover
         app = self.catalog.app  # Wpp-cloud App
@@ -56,11 +65,17 @@ class ProductUploader:
                 redis_client.expire(lock_key, lock_expiration_time)
 
         except Exception as e:
-            print(f"Error on 'process_and_upload': {e}")
+            logger.error(
+                f"Error on 'process_and_upload' {str(self.catalog.vtex_app.uuid)}: {e}",
+                exc_info=True,
+                stack_info=True,
+            )
             self.product_manager.mark_products_as_error(products_ids)
 
     def send_to_meta(self, csv_content: io.BytesIO) -> bool:
         """Sends the CSV content to Meta and returns the upload status."""
+        upload_id = None  # Inicialize upload_id
+        file_name = "DefaultFile.csv"
         try:
             upload_id_in_process = self.fb_service.uploads_in_progress(self.feed_id)
             if upload_id_in_process:
@@ -76,17 +91,50 @@ class ProductUploader:
             upload_id = self.fb_service.update_product_feed(
                 self.feed_id, csv_content, file_name
             )
+            if upload_id is None:
+                self._generate_file_upload_log(
+                    csv_content=csv_content,
+                    exception=ValueError("Feed upload was not complete."),
+                    file_name=file_name,
+                    upload_id=upload_id,
+                )
+                return False
+
             upload_complete = self.fb_service._wait_for_upload_completion(
                 self.feed_id, upload_id
             )
-            if not upload_complete:
-                print("Upload did not complete within the expected time frame.")
+            if upload_complete is False:
+                self._generate_file_upload_log(
+                    csv_content=csv_content,
+                    exception=TimeoutError(
+                        "Upload did not complete within the expected time frame."
+                    ),
+                    file_name=file_name,
+                    upload_id=upload_id,
+                )
                 return False
 
             print("Finished updating products to Facebook")
+            print("-" * 40)
             return True
         except Exception as e:
-            print(f"Error sending data to Meta: {e}")
+            print(
+                f"Error sending data to Meta: App: {str(self.catalog.vtex_app.uuid)}. error: {e}"
+            )
+            self._generate_file_upload_log(
+                csv_content=csv_content,
+                exception=e,
+                file_name=file_name,
+                upload_id=upload_id,
+            )
+            try:
+                self.rapidpro_service.create_notification(
+                    catalog=self.catalog,
+                    incident_name=f"Error sending data to Meta to {self.catalog.name}",
+                    exception=e,
+                )
+            except Exception as error:
+                print(f"Error on send notification error to rapidpro: {error}")
             return False
 
     def log_sent_products(self, product_ids: List[str]):
@@ -108,6 +156,18 @@ class ProductUploader:
         else:
             raise ValueError(f"Invalid SKU ID, error: {sku_part} is not a number")
 
+    def _generate_file_upload_log(
+        self, csv_content, exception, file_name, upload_id=None
+    ):
+        data = dict(
+            catalog=self.catalog.name,
+            vtex_app=str(self.catalog.vtex_app.uuid),
+            feed_id=self.feed_id,
+            file_name=file_name,
+            upload_id=upload_id,
+        )
+        generate_log_with_file(csv_content=csv_content, data=data, exception=exception)
+
 
 class ProductUploadManager:
     def convert_to_csv(self, products: QuerySet, include_header=True) -> io.BytesIO:
@@ -118,7 +178,10 @@ class ProductUploadManager:
         if include_header:
             csv_lines.append(header)
 
-        csv_lines.extend([product.data for product in products])
+        for product in products:
+            csv_line = escape_quotes(product.data)
+            csv_lines.append(csv_line)
+
         csv_content = "\n".join(csv_lines)
 
         buffer = io.BytesIO()
@@ -168,3 +231,26 @@ class ProductBatchFetcher(ProductUploadManager):
 
         products_ids = list(products.values_list("facebook_product_id", flat=True))
         return products, products_ids
+
+
+def escape_quotes(text):
+    """Replaces quotes with a empty space in the provided text."""
+    text = text.replace('"', "").replace("'", " ")
+    return text
+
+
+def generate_log_with_file(csv_content: io.BytesIO, data, exception: Exception):
+    """Generates a detailed log entry with the file content for debugging."""
+    with configure_scope() as scope:
+        scope.add_attachment(
+            bytes=csv_content.getvalue(),
+            filename=data.get("file_name", "upload.csv"),
+            content_type="text/csv",
+        )
+        # Log the error with details
+        logger.error(
+            f"Error on upload feed to Meta: {exception}",
+            exc_info=True,
+            stack_info=True,
+            extra=data,
+        )

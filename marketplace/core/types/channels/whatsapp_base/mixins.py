@@ -9,7 +9,10 @@ from rest_framework.exceptions import ValidationError
 
 if TYPE_CHECKING:
     from rest_framework.request import Request
-    from .interfaces import ProfileHandlerInterface, BusinessProfileHandlerInterface
+    from marketplace.interfaces.facebook.interfaces import (
+        ProfileHandlerInterface,
+        BusinessProfileHandlerInterface,
+    )
 
 from marketplace.accounts.permissions import ProjectViewPermission, IsCRMUser
 from .requests.facebook import FacebookConversationAPI
