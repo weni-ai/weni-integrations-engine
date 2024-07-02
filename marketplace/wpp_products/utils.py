@@ -1,7 +1,7 @@
 import io
 import logging
 
-from typing import List
+from typing import List, Dict, Any
 
 from datetime import datetime
 
@@ -267,15 +267,17 @@ def generate_log_with_file(csv_content: io.BytesIO, data, exception: Exception):
 class ProductSyncMetaPolices:
     SYNC_META_POLICES_LOCK_KEY = "sync-meta-polices-lock"
 
-    def __init__(self, catalog):
+    def __init__(self, catalog: Any) -> None:
         self.catalog = catalog
         self.app = catalog.app
         self.client = FacebookClient(self.app.apptype.get_access_token(self.app))
         self.redis = get_redis_connection()
 
-    def sync_products_polices(self):
+    def sync_products_polices(self) -> None:
         if self.redis.get(self.SYNC_META_POLICES_LOCK_KEY):
-            print("The catalogs are already syncing products polices by another task!")
+            logger.info(
+                "The catalogs are already syncing products polices by another task!"
+            )
             return
 
         with self.redis.lock(self.SYNC_META_POLICES_LOCK_KEY):
@@ -283,32 +285,39 @@ class ProductSyncMetaPolices:
             wa_waba_id = self.app.config.get("wa_waba_id")
 
             if not (wa_business_id and wa_waba_id):
-                print(f"Business ID or WABA ID missing for app: {self.app.uuid}")
+                logger.warning(
+                    f"Business ID or WABA ID missing for app: {self.app.uuid}"
+                )
                 return
-            # TODO: check why the retry on exception is not triggering
+
             all_products = self._list_unapproved_products()
             try:
                 if all_products:
                     self._sync_local_products(all_products)
             except Exception as e:
-                logger.error(f"Error during sync process for App {self.app.name}: {e}")
+                logger.error(
+                    f"Error during sync process for App {self.app.name}: {e}",
+                    exc_info=True,
+                    stack_info=True,
+                )
+            finally:
+                self.redis.delete(self.SYNC_META_POLICES_LOCK_KEY)
 
-    def _list_unapproved_products(self):
+    def _list_unapproved_products(self) -> List[Dict[str, Any]]:
         return self.client.list_unapproved_products(self.catalog.facebook_catalog_id)
 
-    def _sync_local_products(self, all_products):
+    def _sync_local_products(self, all_products: List[Dict[str, Any]]) -> None:
         products_to_delete = []
         products_invalid = []
         for product in all_products:
             formated_product = self._product_data_info(product)
             try:
-                rejection_reason = formated_product.get("rejection_reason")
-
-                if rejection_reason:
+                retailer_id = formated_product["retailer_id"]
+                if retailer_id:
                     products_to_delete.append(
                         {
                             "method": "DELETE",
-                            "retailer_id": formated_product["retailer_id"],
+                            "retailer_id": retailer_id,
                         }
                     )
                     products_invalid.append(formated_product)
@@ -322,26 +331,19 @@ class ProductSyncMetaPolices:
             self._delete_products_in_batch(products_to_delete)
             self._save_invalid_products(products_invalid)
 
-        print(
+        logger.info(
             f"Success in synchronizing product polices for catalog: {self.catalog.name}"
         )
 
-    def _delete_products_in_batch(self, products_to_delete):
-        # TODO: It is still necessary to test the limit of deletes at a time
-        url = self.client.get_url + f"{self.catalog.facebook_catalog_id}/batch"
-        headers = self.client._get_headers()
-        payload = {
-            "access_token": self.client.access_token,
-            "requests": products_to_delete,
-        }
-        response = self.client.make_request(
-            url, method="POST", headers=headers, json=payload
+    def _delete_products_in_batch(
+        self, products_to_delete: List[Dict[str, Any]]
+    ) -> None:
+        self.client.delete_products_in_batch(
+            catalog_id=self.catalog.facebook_catalog_id,
+            products_to_delete=products_to_delete,
         )
-        if response.status_code != 200:
-            raise Exception(f"Failed to delete products: {response.text}")
-        return response.json()
 
-    def _save_invalid_products(self, products_invalid):
+    def _save_invalid_products(self, products_invalid: List[Dict[str, Any]]) -> None:
         for product in products_invalid:
             sku_id = product.get("sku_id")
             catalog = self.catalog
@@ -351,12 +353,11 @@ class ProductSyncMetaPolices:
                 .values_list("is_valid", flat=True)
                 .first()
             )
-            if is_valid is not None:
-                if not is_valid:
-                    print(
-                        f"SKU:{sku_id} is invalid in the database for catalog: {catalog.name}"
-                    )
-                    continue
+            if is_valid is not None and not is_valid:
+                logger.info(
+                    f"SKU:{sku_id} is already invalid in the database for catalog: {catalog.name}"
+                )
+                continue
 
             rejection_reason = product.get("rejection_reason")
             reason_str = f"{rejection_reason} - sync-tsk"
@@ -368,12 +369,12 @@ class ProductSyncMetaPolices:
                 description=f"Product rejected due to: {reason_str}",
             )
 
-    def _product_data_info(self, product: dict):
+    def _product_data_info(self, product: Dict[str, Any]) -> Dict[str, Any]:
         retailer_id = product.get("retailer_id")
-        formated_product = dict(
-            id=product.get("id"),
-            rejection_reason=product.get("review_rejection_reasons"),
-            retailer_id=retailer_id,
-            sku_id=extract_sku_id(retailer_id),
-        )
+        formated_product = {
+            "id": product.get("id"),
+            "rejection_reason": product.get("review_rejection_reasons"),
+            "retailer_id": retailer_id,
+            "sku_id": extract_sku_id(retailer_id),
+        }
         return formated_product

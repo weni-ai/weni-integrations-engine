@@ -272,6 +272,43 @@ class CatalogsRequests(FacebookAuthorization, RequestClient, CatalogsRequestsInt
             if "end_time" not in upload:
                 return upload.get("id")
 
+    def list_unapproved_products(self, catalog_id):
+        url = f"{self.get_url}/{catalog_id}/products"
+        headers = self._get_headers()
+        fields = (
+            "id,name,availability,review_status,review_rejection_reasons,retailer_id"
+        )
+        all_products = []
+
+        params = dict(
+            limit=2000,
+            error_type="PRODUCT_NOT_APPROVED",
+            summary=True,
+            fields=fields,
+            bulk_pagination=True,
+        )
+
+        while url:
+            response = self.make_request(
+                url, method="GET", headers=headers, params=params
+            ).json()
+            all_products.extend(response.get("data", []))
+            url = response.get("paging", {}).get("next")
+            params = None
+            time.sleep(1)
+
+        return all_products
+
+    def delete_products_in_batch(self, catalog_id, products_to_delete):
+        url = f"{self.get_url}/{catalog_id}/batch"
+        headers = self._get_headers()
+        payload = {
+            "access_token": self.access_token,
+            "requests": products_to_delete,
+        }
+        response = self.make_request(url, method="POST", headers=headers, json=payload)
+        return response.json()
+
 
 class TemplatesRequests(
     FacebookAuthorization, RequestClient, TemplatesRequestsInterface
