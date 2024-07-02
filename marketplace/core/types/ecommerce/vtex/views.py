@@ -13,6 +13,7 @@ from marketplace.services.vtex.generic_service import APICredentials
 from marketplace.services.flows.service import FlowsService
 from marketplace.clients.flows.client import FlowsClient
 from marketplace.services.vtex.app_manager import AppVtexManager
+from marketplace.wpp_products.utils import SellerSyncUtils
 
 
 class VtexViewSet(views.BaseAppTypeViewSet):
@@ -120,3 +121,24 @@ class VtexViewSet(views.BaseAppTypeViewSet):
     def active_sellers(self, request, uuid=None, *args, **kwargs):
         response = self.service.active_sellers(self.get_object())
         return Response(data=response, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["GET"], url_path="check-sync-sellers")
+    def check_sync_status(self, request, uuid=None, *args, **kwargs):
+        app = self.get_object()
+        vtex_app_uuid = str(app.uuid)
+        lock_key = f"sync-sellers:{vtex_app_uuid}"
+        lock_data = SellerSyncUtils.get_lock_data(lock_key)
+
+        if lock_data:
+            return Response(
+                data={
+                    "message": "A synchronization is already in progress",
+                    "data": lock_data,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        return Response(
+            data={"message": "No synchronization in progress"},
+            status=status.HTTP_200_OK,
+        )
