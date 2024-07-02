@@ -409,8 +409,10 @@ def task_insert_vtex_products_by_sellers(**kwargs):
             )
 
     except Exception as e:
-        logger.exception(
-            f"An error occurred during the 'insertion_products_by_seller' for catalog {catalog.name}, {e}"
+        logger.error(
+            f"An error occurred during the 'insertion_products_by_seller' for catalog {catalog.name}, {e}",
+            exc_info=True,
+            stack_info=True,
         )
     finally:
         if lock_key:
