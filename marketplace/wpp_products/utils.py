@@ -91,7 +91,7 @@ class ProductUploader:
                 )
 
             current_time = datetime.now().strftime("%Y-%m-%d_%H-%M")
-            file_name = f"update_{current_time}_{self.catalog.name}"
+            file_name = f"update_{current_time}_{self.catalog.facebook_catalog_id}"
             upload_id = self.fb_service.update_product_feed(
                 self.feed_id, csv_content, file_name
             )
