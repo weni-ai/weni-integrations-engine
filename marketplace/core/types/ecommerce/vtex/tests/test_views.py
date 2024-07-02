@@ -15,6 +15,7 @@ from marketplace.core.types.ecommerce.vtex.views import VtexViewSet
 from marketplace.core.types.ecommerce.vtex.type import VtexType
 from marketplace.clients.flows.client import FlowsClient
 from marketplace.services.vtex.app_manager import AppVtexManager
+from marketplace.wpp_products.utils import SellerSyncUtils
 
 
 apptype = VtexType()
@@ -332,3 +333,46 @@ class ActiveSellersTestCase(SetUpService):
         response = self.request.get(self.url, uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, response_data)
+
+
+class VtexViewSetTestCase(APIBaseTestCase):
+    view_class = VtexViewSet
+
+    def setUp(self):
+        super().setUp()
+        self.project_uuid = str(uuid.uuid4())
+        self.app = App.objects.create(
+            code="vtex",
+            created_by=self.user,
+            project_uuid=self.project_uuid,
+            platform=App.PLATFORM_VTEX,
+        )
+        self.url = reverse("vtex-app-check-sync-status", kwargs={"uuid": self.app.uuid})
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.project_uuid, role=ProjectAuthorization.ROLE_CONTRIBUTOR
+        )
+
+    @property
+    def view(self):
+        return self.view_class.as_view({"get": "check_sync_status"})
+
+    @patch.object(SellerSyncUtils, "get_lock_data")
+    def test_check_sync_status_in_progress(self, mock_get_lock_data):
+        mock_get_lock_data.return_value = {"start_time": "2023-06-27T12:00:00Z"}
+
+        response = self.request.get(self.url, uuid=self.app.uuid)
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(
+            response.data["message"], "A synchronization is already in progress"
+        )
+        self.assertIn("data", response.data)
+
+    @patch.object(SellerSyncUtils, "get_lock_data")
+    def test_check_sync_status_not_in_progress(self, mock_get_lock_data):
+        mock_get_lock_data.return_value = None
+
+        response = self.request.get(self.url, uuid=self.app.uuid)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["message"], "No synchronization in progress")
