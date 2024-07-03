@@ -1,9 +1,10 @@
 import io
 import logging
+import json
 
 from typing import List, Dict, Any
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from django.db.models import QuerySet
 
@@ -23,6 +24,7 @@ from marketplace.services.facebook.service import (
     FacebookService,
 )
 from marketplace.services.rapidpro.service import RapidproService
+from marketplace.celery import app as celery_app
 
 
 logger = logging.getLogger(__name__)
@@ -94,7 +96,7 @@ class ProductUploader:
                 )
 
             current_time = datetime.now().strftime("%Y-%m-%d_%H-%M")
-            file_name = f"update_{current_time}_{self.catalog.name}"
+            file_name = f"update_{current_time}_{self.catalog.facebook_catalog_id}"
             upload_id = self.fb_service.update_product_feed(
                 self.feed_id, csv_content, file_name
             )
@@ -378,3 +380,52 @@ class ProductSyncMetaPolices:
             "sku_id": extract_sku_id(retailer_id),
         }
         return formated_product
+
+
+class SellerSyncUtils:
+    @staticmethod
+    def create_lock(app_uuid, sellers, expiration_time=86_400):
+        redis_client = get_redis_connection()
+        lock_key = f"sync-sellers:{app_uuid}"
+        lock_value = json.dumps(
+            {
+                "app_uuid": app_uuid,
+                "sellers": sellers,
+                "start_time": datetime.now(timezone.utc).isoformat(),
+            }
+        )
+
+        if redis_client.set(lock_key, lock_value, nx=True, ex=expiration_time):
+            return lock_key
+        else:
+            return None
+
+    @staticmethod
+    def release_lock(lock_key):
+        redis_client = get_redis_connection()
+        redis_client.delete(lock_key)
+
+    @staticmethod
+    def get_lock_data(lock_key):
+        redis_client = get_redis_connection()
+        lock_value = redis_client.get(lock_key)
+        if lock_value:
+            return json.loads(lock_value)
+        else:
+            return None
+
+
+class UploadManager:
+    @staticmethod
+    def check_and_start_upload(app_uuid):
+        redis_client = get_redis_connection()
+        lock_upload_key = f"upload_lock:{app_uuid}"
+        if not redis_client.exists(lock_upload_key):
+            print(f"No active upload task for App: {app_uuid}, starting upload.")
+            celery_app.send_task(
+                "task_upload_vtex_products",
+                kwargs={"app_vtex_uuid": app_uuid},
+                queue="vtex-product-upload",
+            )
+        else:
+            print(f"An upload task is already in progress for App: {app_uuid}.")
