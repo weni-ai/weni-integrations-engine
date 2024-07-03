@@ -400,6 +400,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "task_cleanup_vtex_logs_and_uploads",
         "schedule": crontab(minute=0, hour=0),
     },
+    "task-sync-product-policies": {
+        "task": "task_sync_product_policies",
+        "schedule": crontab(minute=0, hour=0),
+    },
 }
 
 
