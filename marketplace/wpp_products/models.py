@@ -79,7 +79,7 @@ class ProductFeed(BaseModel):
         return self.name
 
 
-class Product(BaseModel):
+class Product(BaseModel):  # Model currently unused
     AVAILABILITY_CHOICES = [("in stock", "in stock"), ("out of stock", "out of stock")]
     CONDITION_CHOICES = [
         ("new", "new"),
@@ -97,10 +97,6 @@ class Product(BaseModel):
     image_link = models.URLField()
     brand = models.CharField(max_length=100)
     sale_price = models.CharField(max_length=50)  # Example: "9.99 USD"
-    # optional fields
-    rich_text_description = models.TextField(max_length=9999, blank=True)
-    additional_image_link = models.TextField(max_length=2000, blank=True)
-
     catalog = models.ForeignKey(
         Catalog, on_delete=models.CASCADE, related_name="products"
     )
