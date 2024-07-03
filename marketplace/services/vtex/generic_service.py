@@ -309,7 +309,7 @@ class CatalogProductInsertion:
 
         catalog = cls._get_or_sync_catalog(wpp_cloud, catalog_id)
         cls._delete_existing_feeds_ifexists(catalog)
-        cls._update_app_connected_catalog_flag(wpp_cloud)
+        cls._update_app_connected_catalog_flag(vtex_app)
         cls._link_catalog_to_vtex_app_if_needed(catalog, vtex_app)
 
         cls._send_insert_task(credentials, catalog, sellers)
@@ -394,7 +394,7 @@ class CatalogProductInsertion:
             print(f"No feeds linked to catalog {catalog.name} to delete.")
 
     @staticmethod
-    def _update_app_connected_catalog_flag(app) -> None:
+    def _update_app_connected_catalog_flag(app) -> None:  # Vtex app
         """Change connected catalog status"""
         connected_catalog = app.config.get("connected_catalog", None)
         if connected_catalog is not True:
