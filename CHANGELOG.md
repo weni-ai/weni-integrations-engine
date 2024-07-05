@@ -1,3 +1,11 @@
+v3.8.2
+----------
+* Add extra images field, rich description field and new rules gbarbosa
+* Change connected catalog app type
+* Add tags html to product specification
+* Synchronize specific sellers
+* Remove WebhookQueueManager class
+
 v3.8.1
 ----------
 * Set template status with pending on create
