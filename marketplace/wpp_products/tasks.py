@@ -416,9 +416,8 @@ def task_insert_vtex_products_by_sellers(**kwargs):
         )
     finally:
         if lock_key:
+            print(f"Release sync-sellers lock_key: {lock_key}")
             SellerSyncUtils.release_lock(vtex_app_uuid)
-
-        close_old_connections()
 
     print(f"finishing 'insertion_products_by_seller'catalog {catalog.name}")
     print("=" * 40)

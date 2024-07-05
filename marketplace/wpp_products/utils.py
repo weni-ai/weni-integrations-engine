@@ -279,8 +279,9 @@ class SellerSyncUtils:
             return None
 
     @staticmethod
-    def release_lock(lock_key):
+    def release_lock(app_uuid):
         redis_client = get_redis_connection()
+        lock_key = f"sync-sellers:{app_uuid}"
         redis_client.delete(lock_key)
 
     @staticmethod
