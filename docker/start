@@ -3,6 +3,11 @@
 export GUNICORN_APP=${GUNICORN_APP:-"marketplace.wsgi"}
 export GUNICORN_CONF=${GUNICORN_CONF:-"${PROJECT_PATH}/gunicorn.conf.py"}
 
+export CELERY_APP=${CELERY_APP:-"marketplace"}
+export LOG_LEVEL=${LOG_LEVEL:-"INFO"}
+export CELERY_BEAT_DATABASE_FILE=${CELERY_BEAT_DATABASE_FILE:-'/tmp/celery_beat_database'}
+# export HEALTHCHECK_TIMEOUT=${HEALTHCHECK_TIMEOUT:-"10"}
+
 do_gosu(){
     user="$1"
     shift 1
@@ -33,8 +38,69 @@ do_gosu(){
 
 if [[ "start" == "$1" ]]; then
     echo "Running collectstatic"
-    do_gosu "${APP_USER}:${APP_GROUP}" python manage.py collectstatic --noinput
+    do_gosu "${PROJECT_USER}:${PROJECT_GROUP}" python manage.py collectstatic --noinput
     echo "Starting server"
-    do_gosu "${APP_USER}:${APP_GROUP}" exec gunicorn "${GUNICORN_APP}" -c "${GUNICORN_CONF}"   
+    do_gosu "${PROJECT_USER}:${PROJECT_GROUP}" exec gunicorn "${GUNICORN_APP}" -\
+      --name="${APPLICATION_NAME}" \
+      --chdir="${PROJECT_PATH}" \
+      --bind=0.0.0.0:8000 \
+      -c "${GUNICORN_CONF}"   
 fi
+elif [[ "celery-worker" == "$1" ]]; then
+    celery_queue="celery"
+    if [ "${2}" ] ; then
+        celery_queue="${2}"
+    fi
+    do_gosu "${PROJECT_USER}:${PROJECT_GROUP}" exec celery \
+        -A "${CELERY_APP}" --workdir="${PROJECT_PATH}" worker \
+        -Q "${celery_queue}" \
+        -O fair \
+        -l "${LOG_LEVEL}" \
+        --autoscale=12,1
+elif [[ "celery-worker-vtex" == "$1" ]]; then
+    celery_queue="celery"
+    if [ "${2}" ] ; then
+        celery_queue="${2}"
+    fi
+    do_gosu "${PROJECT_USER}:${PROJECT_GROUP}" exec celery \
+        -A "${CELERY_APP}" --workdir="${PROJECT_PATH}" worker \
+        -Q "${celery_queue}" \
+        -O fair \
+        -l "${LOG_LEVEL}" \
+        --autoscale=4,1
+elif [[ "product-first-synchronization" == "$1" ]]; then
+    do_gosu "${PROJECT_USER}:${PROJECT_GROUP}" exec celery \
+        -A "${CELERY_APP}" --workdir="${PROJECT_PATH}" worker \
+        -Q product_first_synchronization \
+        -O fair \
+        -l "${LOG_LEVEL}" \
+        --autoscale=1,1
+elif [[ "product-synchronization" == "$1" ]]; then
+    do_gosu "${PROJECT_USER}:${PROJECT_GROUP}" exec celery \
+        -A "${CELERY_APP}" --workdir="${PROJECT_PATH}" worker \
+        -Q product_synchronization \
+        -O fair \
+        -l "${LOG_LEVEL}"
+elif [[ "celery-beat" == "$1" ]]; then
+    do_gosu "${PROJECT_USER}:${PROJECT_GROUP}" exec celery \
+        -A "${CELERY_APP}" --workdir="${PROJECT_PATH}" beat \
+        -l "${LOG_LEVEL}" \
+        -s "${CELERY_BEAT_DATABASE_FILE}"
+elif [[ "eda-consumer" == "$1" ]]; then
+    echo "Running eda-consumer"
+    do_gosu "${PROJECT_USER}:${PROJECT_GROUP}" python manage.py edaconsume
+elif [[ "healthcheck-celery-worker" == "$1" ]]; then
+    celery_queue="celery"
+    if [ "${2}" ] ; then
+        celery_queue="${2}"
+    fi
+    HEALTHCHECK_OUT=$(
+        do_gosu "${PROJECT_USER}:${PROJECT_GROUP}" celery -A "${CELERY_APP}" \
+            inspect ping \
+            -d "${celery_queue}@${HOSTNAME}" \
+            --timeout "${HEALTHCHECK_TIMEOUT}" 2>&1
+    )
+    echo "${HEALTHCHECK_OUT}"
+    grep -F -qs "${celery_queue}@${HOSTNAME}: OK" <<< "${HEALTHCHECK_OUT}" || exit 1
+    exit 0
 exec "$@"
