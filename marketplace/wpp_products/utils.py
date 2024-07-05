@@ -12,8 +12,11 @@ from django_redis import get_redis_connection
 
 from sentry_sdk import configure_scope
 
+from dataclasses import fields
+
 from marketplace.clients.facebook.client import FacebookClient
 from marketplace.clients.rapidpro.client import RapidproClient
+from marketplace.services.vtex.utils.data_processor import FacebookProductDTO
 from marketplace.wpp_products.models import Catalog, ProductUploadLog, UploadProduct
 from marketplace.services.facebook.service import (
     FacebookService,
@@ -176,14 +179,20 @@ class ProductUploader:
 class ProductUploadManager:
     def convert_to_csv(self, products: QuerySet, include_header=True) -> io.BytesIO:
         """Converts products to CSV format in a buffer, optionally including header."""
-        header = "id,title,description,availability,status,condition,price,link,image_link,brand,sale_price"
+
+        # Generate header dynamically from the FacebookProductDTO dataclass
+        header = ",".join(
+            field.name
+            for field in fields(FacebookProductDTO)
+            if field.name != "product_details"
+        )
         csv_lines = []
 
         if include_header:
             csv_lines.append(header)
 
         for product in products:
-            csv_line = escape_quotes(product.data)
+            csv_line = product.data
             csv_lines.append(csv_line)
 
         csv_content = "\n".join(csv_lines)
@@ -235,12 +244,6 @@ class ProductBatchFetcher(ProductUploadManager):
 
         products_ids = list(products.values_list("facebook_product_id", flat=True))
         return products, products_ids
-
-
-def escape_quotes(text):
-    """Replaces quotes with a empty space in the provided text."""
-    text = text.replace('"', "").replace("'", " ")
-    return text
 
 
 def generate_log_with_file(csv_content: io.BytesIO, data, exception: Exception):
