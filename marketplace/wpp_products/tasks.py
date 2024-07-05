@@ -30,7 +30,11 @@ from marketplace.applications.models import App
 
 from django_redis import get_redis_connection
 
-from marketplace.wpp_products.utils import ProductUploader
+from marketplace.wpp_products.utils import (
+    ProductUploader,
+    SellerSyncUtils,
+    UploadManager,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -192,14 +196,8 @@ def task_update_vtex_products(**kwargs):
             f"'An':{seller_an}, 'SellerChain': {seller_chain}."
         )
         vtex_app = App.objects.get(uuid=app_uuid, configured=True, code="vtex")
-        (
-            domain,
-            app_key,
-            app_token,
-        ) = vtex_base_service.get_vtex_credentials_or_raise(vtex_app)
-        api_credentials = APICredentials(
-            app_key=app_key, app_token=app_token, domain=domain
-        )
+
+        api_credentials = vtex_base_service.get_vtex_credentials_or_raise(vtex_app)
 
         catalog = vtex_app.vtex_catalogs.first()
         if not catalog or not catalog.feeds.first():
@@ -238,19 +236,8 @@ def task_update_vtex_products(**kwargs):
     )
     logger.info(f"Task completed in {int(minutes)} minutes and {int(seconds)} seconds.")
 
-    redis_client = get_redis_connection()
-    lock_key = f"upload_lock:{app_uuid}"
-    # Check for existing upload lock for the vtex app
-    if not redis_client.exists(lock_key):
-        print(f"No active upload task for App: {app_uuid}, starting upload.")
-        celery_app.send_task(
-            "task_upload_vtex_products",
-            kwargs={"app_vtex_uuid": app_uuid},
-            queue="vtex-product-upload",
-        )
-    else:
-        print(f"An upload task is already in progress for App: {app_uuid}.")
-
+    # Check and start upload task
+    UploadManager.check_and_start_upload(app_uuid)
     print("=" * 40)
 
 
@@ -382,7 +369,7 @@ def task_insert_vtex_products_by_sellers(**kwargs):
 
     if not sellers:
         logger.error(
-            "Missing required parameters [seller] for task_insert_vtex_products_by_sellers"
+            "Missing required parameters [sellers] for task_insert_vtex_products_by_sellers"
         )
         return
 
@@ -393,34 +380,44 @@ def task_insert_vtex_products_by_sellers(**kwargs):
         return
 
     try:
-        # Reset queries and close old connections for a clean state and performance.
-        # Prevents memory leak from stored queries and unstable database connections
-        reset_queries()
-        close_old_connections()
-
         catalog = Catalog.objects.get(uuid=catalog_uuid)
         api_credentials = APICredentials(
             app_key=credentials["app_key"],
             app_token=credentials["app_token"],
             domain=credentials["domain"],
         )
-        print(
-            f"Starting 'insertion_products_by_seller' for catalog: {str(catalog.name)}"
-        )
-        products = vtex_service.insertion_products_by_seller(
-            api_credentials, catalog, sellers
-        )
-        if products is None:
-            print("There are no products to be shipped after processing the rules.")
-            return
+        print(f"Starting sync by sellers for catalog: {str(catalog.name)}")
+
+        lock_key = None
+        vtex_app_uuid = str(catalog.vtex_app.uuid)
+        lock_key = SellerSyncUtils.create_lock(vtex_app_uuid, sellers)
+
+        if lock_key:
+            products = vtex_service.insertion_products_by_seller(
+                api_credentials, catalog, sellers
+            )
+            if products is None:
+                print("There are no products to be shipped after processing the rules.")
+                return
+
+            # Check and start upload task
+            UploadManager.check_and_start_upload(vtex_app_uuid)
+
+        else:
+            print(
+                f"An upload is already being processed for this client: {vtex_app_uuid}"
+            )
 
     except Exception as e:
-        logger.exception(
-            f"An error occurred during the 'insertion_products_by_seller' for catalog {catalog.name}, {e}"
+        logger.error(
+            f"An error occurred during the 'insertion_products_by_seller' for catalog {catalog.name}, {e}",
+            exc_info=True,
+            stack_info=True,
         )
-        return
     finally:
-        close_old_connections()
+        if lock_key:
+            print(f"Release sync-sellers lock_key: {lock_key}")
+            SellerSyncUtils.release_lock(vtex_app_uuid)
 
     print(f"finishing 'insertion_products_by_seller'catalog {catalog.name}")
     print("=" * 40)
