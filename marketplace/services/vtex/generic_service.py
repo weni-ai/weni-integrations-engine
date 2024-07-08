@@ -2,6 +2,8 @@
 Service for managing VTEX App instances within a project.
 """
 
+import logging
+
 from datetime import datetime
 
 from typing import Optional, List
@@ -30,6 +32,9 @@ from marketplace.services.vtex.exceptions import (
 )
 from marketplace.services.facebook.exceptions import FileNotSendValidationError
 from marketplace.services.vtex.app_manager import AppVtexManager
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -98,14 +103,43 @@ class VtexServiceBase:
         app.save()
         return app
 
-    def get_vtex_credentials_or_raise(self, app):
+    def get_vtex_credentials_or_raise(self, app: App) -> APICredentials:
         domain = app.config["api_credentials"]["domain"]
         app_key = app.config["api_credentials"]["app_key"]
         app_token = app.config["api_credentials"]["app_token"]
         if not domain or not app_key or not app_token:
             raise CredentialsValidationError()
 
-        return domain, app_key, app_token
+        return APICredentials(
+            app_key=app_key,
+            app_token=app_token,
+            domain=domain,
+        )
+
+    def active_sellers(self, app) -> List:
+        credentials = self.get_vtex_credentials_or_raise(app)
+        pvt_service = self.get_private_service(
+            app_key=credentials.app_key, app_token=credentials.app_token
+        )
+        return pvt_service.list_active_sellers(credentials.domain)
+
+    def synchronized_sellers(self, app: App, sellers_id: List):
+        try:
+            sync_service = CatalogInsertionBySeller()
+            sync_service.start_insertion_by_seller(vtex_app=app, sellers=sellers_id)
+        except Exception as e:
+            logger.error(
+                f"Error on synchronized_sellers: {str(e)}",
+                exc_info=True,
+                stack_info=True,
+                extra={
+                    "App": str(app.uuid),
+                    "Sellers": sellers_id,
+                },
+            )
+            return False
+
+        return True
 
 
 class ProductInsertionService(VtexServiceBase):
@@ -275,7 +309,7 @@ class CatalogProductInsertion:
 
         catalog = cls._get_or_sync_catalog(wpp_cloud, catalog_id)
         cls._delete_existing_feeds_ifexists(catalog)
-        cls._update_app_connected_catalog_flag(wpp_cloud)
+        cls._update_app_connected_catalog_flag(vtex_app)
         cls._link_catalog_to_vtex_app_if_needed(catalog, vtex_app)
 
         cls._send_insert_task(credentials, catalog, sellers)
@@ -360,7 +394,7 @@ class CatalogProductInsertion:
             print(f"No feeds linked to catalog {catalog.name} to delete.")
 
     @staticmethod
-    def _update_app_connected_catalog_flag(app) -> None:
+    def _update_app_connected_catalog_flag(app) -> None:  # Vtex app
         """Change connected catalog status"""
         connected_catalog = app.config.get("connected_catalog", None)
         if connected_catalog is not True:

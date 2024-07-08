@@ -1,13 +1,14 @@
 import concurrent.futures
+import csv
 import pandas as pd
 import io
 import dataclasses
 import threading
 import re
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
-from typing import List
+from typing import List, Optional
 
 from tqdm import tqdm
 from queue import Queue
@@ -30,6 +31,8 @@ class FacebookProductDTO:
     brand: str
     sale_price: str
     product_details: dict  # TODO: Implement ProductDetailsDTO
+    additional_image_link: Optional[str] = ""
+    rich_text_description: Optional[str] = ""
 
 
 @dataclass
@@ -51,8 +54,6 @@ class DataProcessor:
         text = re.sub(r"<[^>]*>", "", text)
         # Replace double and single quotes with empty space
         text = text.replace('"', "").replace("'", " ")
-        # Replace commas with semicolons
-        text = text.replace(",", ";")
         # Normalize new lines and carriage returns to a single newline
         text = re.sub(r"\r\n|\r|\n", "\n", text)
         # Remove excessive whitespace but keep new lines
@@ -266,10 +267,23 @@ class DataProcessor:
 
     @staticmethod
     def product_to_csv_line(product: FacebookProductDTO) -> str:
-        product_dict = dataclasses.asdict(product)
-        df = pd.DataFrame([product_dict])
-        df = df.drop(columns=["product_details"])
-        csv_line = df.to_csv(index=False, header=False, encoding="utf-8").strip()
+        def escape_quotes(text: str) -> str:
+            """Replaces quotes with a empty space in the provided text."""
+            if isinstance(text, str):
+                text = text.replace('"', "").replace("'", " ")
+            return text
+
+        product_dict = asdict(product)
+        product_dict.pop(
+            "product_details", None
+        )  # Remove 'product_details' field if present
+
+        cleaned_product_dict = {k: escape_quotes(v) for k, v in product_dict.items()}
+
+        df = pd.DataFrame([cleaned_product_dict])
+        csv_line = df.to_csv(
+            index=False, header=False, encoding="utf-8", quoting=csv.QUOTE_MINIMAL
+        ).strip()
         return csv_line
 
     @staticmethod

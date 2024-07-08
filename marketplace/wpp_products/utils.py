@@ -1,15 +1,18 @@
 import io
 import logging
+import json
 
 from typing import List, Dict, Any
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from django.db.models import QuerySet
 
 from django_redis import get_redis_connection
 
 from sentry_sdk import configure_scope
+
+from dataclasses import fields
 
 from marketplace.clients.facebook.client import FacebookClient
 from marketplace.clients.rapidpro.client import RapidproClient
@@ -19,10 +22,12 @@ from marketplace.wpp_products.models import (
     ProductValidation,
     UploadProduct,
 )
+from marketplace.services.vtex.utils.data_processor import FacebookProductDTO
 from marketplace.services.facebook.service import (
     FacebookService,
 )
 from marketplace.services.rapidpro.service import RapidproService
+from marketplace.celery import app as celery_app
 
 
 logger = logging.getLogger(__name__)
@@ -94,7 +99,7 @@ class ProductUploader:
                 )
 
             current_time = datetime.now().strftime("%Y-%m-%d_%H-%M")
-            file_name = f"update_{current_time}_{self.catalog.name}"
+            file_name = f"update_{current_time}_{self.catalog.facebook_catalog_id}"
             upload_id = self.fb_service.update_product_feed(
                 self.feed_id, csv_content, file_name
             )
@@ -171,14 +176,20 @@ class ProductUploader:
 class ProductUploadManager:
     def convert_to_csv(self, products: QuerySet, include_header=True) -> io.BytesIO:
         """Converts products to CSV format in a buffer, optionally including header."""
-        header = "id,title,description,availability,status,condition,price,link,image_link,brand,sale_price"
+
+        # Generate header dynamically from the FacebookProductDTO dataclass
+        header = ",".join(
+            field.name
+            for field in fields(FacebookProductDTO)
+            if field.name != "product_details"
+        )
         csv_lines = []
 
         if include_header:
             csv_lines.append(header)
 
         for product in products:
-            csv_line = escape_quotes(product.data)
+            csv_line = product.data
             csv_lines.append(csv_line)
 
         csv_content = "\n".join(csv_lines)
@@ -232,21 +243,6 @@ class ProductBatchFetcher(ProductUploadManager):
         return products, products_ids
 
 
-def escape_quotes(text):
-    """Replaces quotes with a empty space in the provided text."""
-    text = text.replace('"', "").replace("'", " ")
-    return text
-
-
-def extract_sku_id(product_id: str) -> int:
-    """Extract sku_id from facebook_product_id."""
-    sku_part = product_id.split("#")[0]
-    if sku_part.isdigit():
-        return int(sku_part)
-    else:
-        raise ValueError(f"Invalid SKU ID, error: {sku_part} is not a number")
-
-
 def generate_log_with_file(csv_content: io.BytesIO, data, exception: Exception):
     """Generates a detailed log entry with the file content for debugging."""
     with configure_scope() as scope:
@@ -262,6 +258,56 @@ def generate_log_with_file(csv_content: io.BytesIO, data, exception: Exception):
             stack_info=True,
             extra=data,
         )
+
+
+class SellerSyncUtils:
+    @staticmethod
+    def create_lock(app_uuid, sellers, expiration_time=86_400):
+        redis_client = get_redis_connection()
+        lock_key = f"sync-sellers:{app_uuid}"
+        lock_value = json.dumps(
+            {
+                "app_uuid": app_uuid,
+                "sellers": sellers,
+                "start_time": datetime.now(timezone.utc).isoformat(),
+            }
+        )
+
+        if redis_client.set(lock_key, lock_value, nx=True, ex=expiration_time):
+            return lock_key
+        else:
+            return None
+
+    @staticmethod
+    def release_lock(app_uuid):
+        redis_client = get_redis_connection()
+        lock_key = f"sync-sellers:{app_uuid}"
+        redis_client.delete(lock_key)
+
+    @staticmethod
+    def get_lock_data(lock_key):
+        redis_client = get_redis_connection()
+        lock_value = redis_client.get(lock_key)
+        if lock_value:
+            return json.loads(lock_value)
+        else:
+            return None
+
+
+class UploadManager:
+    @staticmethod
+    def check_and_start_upload(app_uuid):
+        redis_client = get_redis_connection()
+        lock_upload_key = f"upload_lock:{app_uuid}"
+        if not redis_client.exists(lock_upload_key):
+            print(f"No active upload task for App: {app_uuid}, starting upload.")
+            celery_app.send_task(
+                "task_upload_vtex_products",
+                kwargs={"app_vtex_uuid": app_uuid},
+                queue="vtex-product-upload",
+            )
+        else:
+            print(f"An upload task is already in progress for App: {app_uuid}.")
 
 
 class ProductSyncMetaPolices:
@@ -378,3 +424,12 @@ class ProductSyncMetaPolices:
             "sku_id": extract_sku_id(retailer_id),
         }
         return formated_product
+
+
+def extract_sku_id(product_id: str) -> int:
+    """Extract sku_id from facebook_product_id."""
+    sku_part = product_id.split("#")[0]
+    if sku_part.isdigit():
+        return int(sku_part)
+    else:
+        raise ValueError(f"Invalid SKU ID, error: {sku_part} is not a number")
