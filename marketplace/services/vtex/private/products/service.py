@@ -91,14 +91,14 @@ class PrivateProductsService:
         rules = self._load_rules(config.get("rules", []))
         store_domain = config.get("store_domain")
         products_dto = self.data_processor.process_product_data(
-            skus_ids,
-            sellers_ids,
-            self,
-            domain,
-            store_domain,
-            rules,
-            update_product,
-            catalog,
+            skus_ids=skus_ids,
+            active_sellers=sellers_ids,
+            service=self,
+            domain=domain,
+            store_domain=store_domain,
+            rules=rules,
+            catalog=catalog,
+            update_product=update_product,
         )
         return products_dto
 
