@@ -1,3 +1,7 @@
+v3.8.3
+----------
+* Update entrypoint to add celery commands (cloud)
+
 v3.8.2
 ----------
 * Add extra images field, rich description field and new rules gbarbosa
