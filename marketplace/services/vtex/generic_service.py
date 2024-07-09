@@ -448,7 +448,10 @@ class ProductInsertionBySellerService(VtexServiceBase):  # pragma: no cover
             credentials.app_key, credentials.app_token
         )
         products_dto = pvt_service.list_all_products(
-            credentials.domain, catalog.vtex_app.config, sellers, update_product=True
+            domain=credentials.domain,
+            catalog=catalog,
+            sellers=sellers,
+            update_product=True,
         )
         print(f"'list_all_products' returned {len(products_dto)}")
         if not products_dto:
