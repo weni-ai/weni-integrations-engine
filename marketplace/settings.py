@@ -437,12 +437,9 @@ if ALLOW_CRM_ACCESS:
     CRM_EMAILS_LIST = env.list("CRM_EMAILS_LIST")
 
 
-# Define how many products will be updated at a time
-VTEX_UPDATE_BATCH_SIZE = env.int("VTEX_UPDATE_BATCH_SIZE", default=500)
-
 # Define how many requests can be made in a period
 VTEX_PERIOD = env.int("VTEX_PERIOD", default=60)
-VTEX_CALLS_PER_PERIOD = env.int("VTEX_CALLS_PER_PERIOD", default=1500)
+VTEX_CALLS_PER_PERIOD = env.int("VTEX_CALLS_PER_PERIOD", default=50000)
 
 # Rapidpro
 RAPIDPRO_URL = env.str("RAPIDPRO_URL", "")
