@@ -54,9 +54,9 @@ def sync_facebook_catalogs():
 class FacebookCatalogSyncService:
     SYNC_WHATSAPP_CATALOGS_LOCK_KEY = "sync-whatsapp-catalogs-lock"
 
-    def __init__(self, app):
+    def __init__(self, app: App):
         self.app = app
-        self.client = FacebookClient(app.apptype.get_access_token(app))
+        self.client = FacebookClient(app.apptype.get_system_access_token(app))
         self.flows_client = FlowsClient()
         self.redis = get_redis_connection()
 
