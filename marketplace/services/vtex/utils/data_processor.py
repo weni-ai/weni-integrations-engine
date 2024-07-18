@@ -59,6 +59,8 @@ class DataProcessor:
         text = re.sub(r"[ \t]+", " ", text.strip())
         # Remove bullet points
         text = text.replace("•", "")
+        # Ensure there's a space after a period, unless followed by a new line
+        text = re.sub(r"\.(?=[^\s\n])", ". ", text)
         return text
 
     @staticmethod
