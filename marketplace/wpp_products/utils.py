@@ -316,12 +316,12 @@ class ProductSyncMetaPolices:
     def __init__(self, catalog: Any) -> None:
         self.catalog = catalog
         self.app = catalog.app
-        self.client = FacebookClient(self.app.apptype.get_access_token(self.app))
+        self.client = FacebookClient(self.app.apptype.get_system_access_token(self.app))
         self.redis = get_redis_connection()
 
     def sync_products_polices(self) -> None:
         if self.redis.get(self.SYNC_META_POLICES_LOCK_KEY):
-            logger.info(
+            logger.error(
                 "The catalogs are already syncing products polices by another task!"
             )
             return
@@ -405,15 +405,29 @@ class ProductSyncMetaPolices:
                 )
                 continue
 
-            rejection_reason = product.get("rejection_reason")
+            rejection_reason = product.get("rejection_reason", "No reason")
             reason_str = f"{rejection_reason} - sync-tsk"
-            ProductValidation.objects.create(
+
+            # Use get_or_create to avoid duplication
+            _, created = ProductValidation.objects.get_or_create(
                 catalog=catalog,
                 sku_id=sku_id,
-                is_valid=False,
-                classification=reason_str,
-                description=f"Product rejected due to: {reason_str}",
+                defaults={
+                    "is_valid": False,
+                    "classification": reason_str,
+                    "description": f"Product rejected due to: {reason_str}",
+                },
             )
+
+            if created:
+                logger.info(
+                    f"SKU:{sku_id} has been saved as invalid for the first time in catalog: {catalog.name}"
+                )
+            else:
+                logger.info(
+                    f"SKU:{sku_id} already exists in the database "
+                    f"for catalog: {catalog.name} and was not created again."
+                )
 
     def _product_data_info(self, product: Dict[str, Any]) -> Dict[str, Any]:
         retailer_id = product.get("retailer_id")

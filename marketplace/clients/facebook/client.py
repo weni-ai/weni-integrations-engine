@@ -288,11 +288,21 @@ class CatalogsRequests(FacebookAuthorization, RequestClient, CatalogsRequestsInt
             bulk_pagination=True,
         )
 
-        while url:
+        while url and len(all_products) < 5000:
             response = self.make_request(
                 url, method="GET", headers=headers, params=params
             ).json()
-            all_products.extend(response.get("data", []))
+            data = response.get("data", [])
+
+            # Calculate remaining space to 5000
+            remaining_space = 5000 - len(all_products)
+
+            # Add only up to remaining_space items to all_products
+            all_products.extend(data[:remaining_space])
+
+            if len(all_products) >= 5000:
+                break
+
             url = response.get("paging", {}).get("next")
             params = None
             time.sleep(1)
