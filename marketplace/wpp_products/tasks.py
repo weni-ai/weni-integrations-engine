@@ -57,9 +57,9 @@ def sync_facebook_catalogs():
 class FacebookCatalogSyncService:
     SYNC_WHATSAPP_CATALOGS_LOCK_KEY = "sync-whatsapp-catalogs-lock"
 
-    def __init__(self, app):
+    def __init__(self, app: App):
         self.app = app
-        self.client = FacebookClient(app.apptype.get_access_token(app))
+        self.client = FacebookClient(app.apptype.get_system_access_token(app))
         self.flows_client = FlowsClient()
         self.redis = get_redis_connection()
 
@@ -81,9 +81,10 @@ class FacebookCatalogSyncService:
                     self.app.catalogs.values_list("facebook_catalog_id", flat=True)
                 )
                 all_catalogs_id, all_catalogs = self._list_all_catalogs()
+                active_catalog = self._get_active_catalog(wa_waba_id)
 
                 if all_catalogs_id:
-                    self._update_catalogs_on_flows(all_catalogs)
+                    self._update_catalogs_on_flows(all_catalogs, active_catalog)
                     self._sync_local_catalogs(all_catalogs_id, local_catalog_ids)
             except Exception as e:
                 logger.error(f"Error during sync process for App {self.app.name}: {e}")
@@ -97,10 +98,22 @@ class FacebookCatalogSyncService:
             )
             return [], []
 
-    def _update_catalogs_on_flows(self, all_catalogs):
+    def _get_active_catalog(self, wa_waba_id):
+        try:
+            response = self.client.get_connected_catalog(waba_id=wa_waba_id)
+            if len(response.get("data")) > 0:
+                return response.get("data")[0].get("id")
+            return None
+        except Exception as e:
+            logger.error(f"Error on get active catalog: {self.app.uuid} {str(e)}")
+            return None
+
+    def _update_catalogs_on_flows(self, all_catalogs, active_catalog):
         try:
             self.flows_client.update_catalogs(
-                str(self.app.flow_object_uuid), all_catalogs
+                flow_object_uuid=str(self.app.flow_object_uuid),
+                catalogs_data=all_catalogs,
+                active_catalog=active_catalog,
             )
         except Exception as e:
             logger.error(

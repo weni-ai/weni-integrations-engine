@@ -41,7 +41,7 @@ class BaseViewSet(viewsets.ModelViewSet):
         self._flows_service = None
 
     def fb_service(self, app: App):  # pragma: no cover
-        access_token = app.apptype.get_access_token(app)
+        access_token = app.apptype.get_system_access_token(app)
         if not self._fb_service:
             self._fb_service = self.fb_service_class(self.fb_client_class(access_token))
         return self._fb_service

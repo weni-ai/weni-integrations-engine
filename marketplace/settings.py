@@ -360,31 +360,23 @@ CELERY_BEAT_SCHEDULE = {
     },
     "sync-whatsapp-wabas": {
         "task": "sync_whatsapp_wabas",
-        "schedule": timedelta(hours=env.int("SYNC_WHATSAPP_WABAS_TIME", default=7)),
+        "schedule": crontab(minute=0, hour=env.int("SYNC_WHATSAPP_WABAS_HOUR", default=3)),
     },
     "sync-whatsapp-cloud-wabas": {
         "task": "sync_whatsapp_cloud_wabas",
-        "schedule": timedelta(
-            hours=env.int("SYNC_WHATSAPP_CLOUD_WABAS_TIME", default=4)
-        ),
+        "schedule": crontab(minute=0, hour=env.int("SYNC_WHATSAPP_CLOUD_WABAS_HOUR", default=4))
     },
     "sync-whatsapp-phone-numbers": {
         "task": "sync_whatsapp_phone_numbers",
-        "schedule": timedelta(
-            hours=env.int("SYNC_WHATSAPP_PHONE_NUMBERS_TIME", default=6)
-        ),
+        "schedule": crontab(minute=0, hour=env.int("SYNC_WHATSAPP_PHONE_NUMBERS_HOUR", default=5))
     },
     "sync-whatsapp-cloud-phone-numbers": {
         "task": "sync_whatsapp_cloud_phone_numbers",
-        "schedule": timedelta(
-            hours=env.int("SYNC_WHATSAPP_CLOUD_PHONE_NUMBERS_TIME", default=5)
-        ),
+        "schedule": crontab(minute=0, hour=env.int("SYNC_WHATSAPP_CLOUD_PHONE_NUMBERS_HOUR", default=6))
     },
     "refresh-whatsapp-templates-from-facebook": {
         "task": "refresh_whatsapp_templates_from_facebook",
-        "schedule": timedelta(
-            seconds=env.int("REFRESH_WHATSAPP_TEMPLATES_TIME", default=1800)
-        ),
+        "schedule": crontab(minute=0, hour=env.int("REFRESH_WHATSAPP_TEMPLATES_HOUR", default=7))
     },
     "check-apps-uncreated-on-flow": {
         "task": "check_apps_uncreated_on_flow",
@@ -392,9 +384,7 @@ CELERY_BEAT_SCHEDULE = {
     },
     "sync-facebook-catalogs": {
         "task": "sync_facebook_catalogs",
-        "schedule": timedelta(
-            seconds=env.int("SYNC_FACEBOOK_CATALOGS_TIME", default=5400)
-        ),
+        "schedule": crontab(minute=0, hour=env.int("SYNC_FACEBOOK_CATALOGS_HOUR", default=8))
     },
     "task-cleanup-vtex-logs-and-uploads": {
         "task": "task_cleanup_vtex_logs_and_uploads",
@@ -451,12 +441,9 @@ if ALLOW_CRM_ACCESS:
     CRM_EMAILS_LIST = env.list("CRM_EMAILS_LIST")
 
 
-# Define how many products will be updated at a time
-VTEX_UPDATE_BATCH_SIZE = env.int("VTEX_UPDATE_BATCH_SIZE", default=500)
-
 # Define how many requests can be made in a period
 VTEX_PERIOD = env.int("VTEX_PERIOD", default=60)
-VTEX_CALLS_PER_PERIOD = env.int("VTEX_CALLS_PER_PERIOD", default=1500)
+VTEX_CALLS_PER_PERIOD = env.int("VTEX_CALLS_PER_PERIOD", default=50000)
 
 # Rapidpro
 RAPIDPRO_URL = env.str("RAPIDPRO_URL", "")

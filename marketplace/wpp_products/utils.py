@@ -53,7 +53,7 @@ class ProductUploader:
 
     def initialize_fb_service(self) -> FacebookService:  # pragma: no cover
         app = self.catalog.app  # Wpp-cloud App
-        access_token = app.apptype.get_access_token(app)
+        access_token = app.apptype.get_system_access_token(app)
         fb_client = self.fb_client_class(access_token)
         return FacebookService(fb_client)
 

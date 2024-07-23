@@ -1,3 +1,15 @@
+v3.8.4
+----------
+* Using system token to catalogs services
+* Send active catalog to flows
+* Fix: Ensure Proper Spacing After Periods in Titles and Descriptions
+* Feat: change meta sync tasks to crontab
+* Update settings variables environment
+
+v3.8.3
+----------
+* Update entrypoint to add celery commands (cloud)
+
 v3.8.2
 ----------
 * Add extra images field, rich description field and new rules gbarbosa

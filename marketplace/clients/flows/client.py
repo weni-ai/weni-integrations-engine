@@ -64,8 +64,8 @@ class FlowsClient(RequestClient):
         )
         return True
 
-    def update_catalogs(self, flow_object_uuid, catalogs_data):
-        data = {"data": catalogs_data}
+    def update_catalogs(self, flow_object_uuid, catalogs_data, active_catalog):
+        data = {"data": catalogs_data, "active_catalog": active_catalog}
         url = f"{self.base_url}/catalogs/{flow_object_uuid}/update-catalog/"
 
         response = self.make_request(
