@@ -15,6 +15,7 @@ from queue import Queue
 
 from marketplace.services.vtex.utils.sku_validator import SKUValidator
 from marketplace.clients.exceptions import CustomAPIException
+from marketplace.clients.zeroshot.client import MockZeroShotClient
 
 
 @dataclass
@@ -141,7 +142,7 @@ class DataProcessor:
         self.update_product = update_product
         self.invalid_products_count = 0
         self.catalog = catalog
-        self.sku_validator = SKUValidator(service, domain)
+        self.sku_validator = SKUValidator(service, domain, MockZeroShotClient())
 
         # Preparing the tqdm progress bar
         print("Initiated process of product treatment:")

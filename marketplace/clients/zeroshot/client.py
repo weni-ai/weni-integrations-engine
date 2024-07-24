@@ -1,5 +1,7 @@
 from django.conf import settings
 
+from typing import Dict, Any
+
 from marketplace.clients.base import RequestClient
 
 
@@ -228,3 +230,13 @@ class ZeroShotClient(ZeroShotAuthorization, RequestClient):
         )
 
         return response.json()
+
+
+class MockZeroShotClient:
+    def validate_product_policy(self, product_description: str) -> Dict[str, Any]:
+        return {
+            "output": {
+                "classification": "Valid because API is inactive",
+                "other": True,
+            }
+        }

@@ -1,14 +1,13 @@
 from django_redis import get_redis_connection
 
 from marketplace.wpp_products.models import ProductValidation
-from marketplace.clients.zeroshot.client import ZeroShotClient
 
 
 class SKUValidator:
-    def __init__(self, service, domain):
+    def __init__(self, service, domain, zeroshot_client):
         self.service = service
         self.domain = domain
-        self.zeroshot_client = ZeroShotClient()
+        self.zeroshot_client = zeroshot_client
         self.redis_client = get_redis_connection()
 
     def validate_product_details(self, sku_id, catalog):
@@ -42,19 +41,17 @@ class SKUValidator:
             product_description = f"{name}. {description}"
 
         product_description = product_description[:9999]
-        # Code related to AI validation temporarily inactive
-        # Would normally be called:
-        # is_valid, classification = self.validate_with_ai(product_description)
-        # Mocking validation response as always valid during API downtime
-        is_valid, classification = True, "Valid because API is inactive"
-        ProductValidation.objects.create(
-            catalog=catalog,
-            sku_id=sku_id,
-            is_valid=is_valid,
-            classification=classification,
-            description=product_description,
-        )
+
+        is_valid, classification = self.validate_with_ai(product_description)
+
         if not is_valid:
+            ProductValidation.objects.create(
+                catalog=catalog,
+                sku_id=sku_id,
+                is_valid=is_valid,
+                classification=classification,
+                description=product_description,
+            )
             print(f"{classification} is not a valid category")
             return None
 
@@ -65,9 +62,8 @@ class SKUValidator:
             response = self.zeroshot_client.validate_product_policy(product_description)
             response = response["output"]
             classification = response["classification"]
-            is_valid = response[
-                "other"
-            ]  # if ither comes false it means that the product is within some goal exclusion rule
+            # if ither comes false it means that the product is within some goal exclusion rule
+            is_valid = response["other"]
         except Exception as e:
             print(f"An error ocurred on get policy on zeroshot {e}")
             is_valid = True
