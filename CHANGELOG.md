@@ -1,3 +1,9 @@
+v3.9.0
+----------
+* Classify vtex product policies and stores the result in DB
+* Search for invalid products on Facebook and remove them
+* Synchronizes catalogs to vtex project applications
+
 v3.8.4
 ----------
 * Using system token to catalogs services
