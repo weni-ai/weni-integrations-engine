@@ -10,6 +10,8 @@ from django.db.models import QuerySet
 
 from django_redis import get_redis_connection
 
+from redis import exceptions
+
 from sentry_sdk import configure_scope
 
 from dataclasses import fields
@@ -326,28 +328,29 @@ class ProductSyncMetaPolices:
             )
             return
 
-        with self.redis.lock(self.SYNC_META_POLICES_LOCK_KEY, timeout=1200):
-            wa_business_id = self.app.config.get("wa_business_id")
-            wa_waba_id = self.app.config.get("wa_waba_id")
+        try:
+            with self.redis.lock(self.SYNC_META_POLICES_LOCK_KEY, timeout=1200):
+                wa_business_id = self.app.config.get("wa_business_id")
+                wa_waba_id = self.app.config.get("wa_waba_id")
 
-            if not (wa_business_id and wa_waba_id):
-                logger.warning(
-                    f"Business ID or WABA ID missing for app: {self.app.uuid}"
-                )
-                return
+                if not (wa_business_id and wa_waba_id):
+                    logger.warning(
+                        f"Business ID or WABA ID missing for app: {self.app.uuid}"
+                    )
+                    return
 
-            all_products = self._list_unapproved_products()
-            try:
-                if all_products:
-                    self._sync_local_products(all_products)
-            except Exception as e:
-                logger.error(
-                    f"Error during sync process for App {self.app.name}: {e}",
-                    exc_info=True,
-                    stack_info=True,
-                )
-            finally:
-                self.redis.delete(self.SYNC_META_POLICES_LOCK_KEY)
+                all_products = self._list_unapproved_products()
+                try:
+                    if all_products:
+                        self._sync_local_products(all_products)
+                except Exception as e:
+                    logger.error(
+                        f"Error during sync process for App {self.app.name}: {e}",
+                        exc_info=True,
+                        stack_info=True,
+                    )
+        except exceptions.LockError as e:
+            logger.error(f"Failed to acquire or release lock: {e}")
 
     def _list_unapproved_products(self) -> List[Dict[str, Any]]:
         return self.client.list_unapproved_products(self.catalog.facebook_catalog_id)
