@@ -27,7 +27,6 @@ from marketplace.services.vtex.generic_service import (
     ProductInsertionBySellerService,
 )
 from marketplace.services.vtex.generic_service import APICredentials
-from marketplace.core.types import APPTYPES
 from marketplace.applications.models import App
 
 from django_redis import get_redis_connection
@@ -48,10 +47,20 @@ SYNC_WHATSAPP_CATALOGS_LOCK_KEY = "sync-whatsapp-catalogs-lock"
 
 @shared_task(name="sync_facebook_catalogs")
 def sync_facebook_catalogs():
-    apptype = APPTYPES.get("wpp-cloud")
-    for app in apptype.apps:
+    project_uuids = get_projects_with_vtex_app()
+    apps = App.objects.filter(code="wpp-cloud", project_uuid__in=project_uuids)
+    for app in apps:
         service = FacebookCatalogSyncService(app)
         service.sync_catalogs()
+
+
+def get_projects_with_vtex_app() -> list:
+    apps = App.objects.filter(code="vtex")
+    related_wpp_cloud_project_uuids = []
+    for app in apps:
+        if app.project_uuid:
+            related_wpp_cloud_project_uuids.append(str(app.project_uuid))
+    return related_wpp_cloud_project_uuids
 
 
 class FacebookCatalogSyncService:
