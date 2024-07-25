@@ -360,23 +360,33 @@ CELERY_BEAT_SCHEDULE = {
     },
     "sync-whatsapp-wabas": {
         "task": "sync_whatsapp_wabas",
-        "schedule": crontab(minute=0, hour=env.int("SYNC_WHATSAPP_WABAS_HOUR", default=3)),
+        "schedule": crontab(
+            minute=0, hour=env.int("SYNC_WHATSAPP_WABAS_HOUR", default=3)
+        ),
     },
     "sync-whatsapp-cloud-wabas": {
         "task": "sync_whatsapp_cloud_wabas",
-        "schedule": crontab(minute=0, hour=env.int("SYNC_WHATSAPP_CLOUD_WABAS_HOUR", default=4))
+        "schedule": crontab(
+            minute=0, hour=env.int("SYNC_WHATSAPP_CLOUD_WABAS_HOUR", default=4)
+        ),
     },
     "sync-whatsapp-phone-numbers": {
         "task": "sync_whatsapp_phone_numbers",
-        "schedule": crontab(minute=0, hour=env.int("SYNC_WHATSAPP_PHONE_NUMBERS_HOUR", default=5))
+        "schedule": crontab(
+            minute=0, hour=env.int("SYNC_WHATSAPP_PHONE_NUMBERS_HOUR", default=5)
+        ),
     },
     "sync-whatsapp-cloud-phone-numbers": {
         "task": "sync_whatsapp_cloud_phone_numbers",
-        "schedule": crontab(minute=0, hour=env.int("SYNC_WHATSAPP_CLOUD_PHONE_NUMBERS_HOUR", default=6))
+        "schedule": crontab(
+            minute=0, hour=env.int("SYNC_WHATSAPP_CLOUD_PHONE_NUMBERS_HOUR", default=6)
+        ),
     },
     "refresh-whatsapp-templates-from-facebook": {
         "task": "refresh_whatsapp_templates_from_facebook",
-        "schedule": crontab(minute=0, hour=env.int("REFRESH_WHATSAPP_TEMPLATES_HOUR", default=7))
+        "schedule": crontab(
+            minute=0, hour=env.int("REFRESH_WHATSAPP_TEMPLATES_HOUR", default=7)
+        ),
     },
     "check-apps-uncreated-on-flow": {
         "task": "check_apps_uncreated_on_flow",
@@ -384,11 +394,17 @@ CELERY_BEAT_SCHEDULE = {
     },
     "sync-facebook-catalogs": {
         "task": "sync_facebook_catalogs",
-        "schedule": crontab(minute=0, hour=env.int("SYNC_FACEBOOK_CATALOGS_HOUR", default=8))
+        "schedule": crontab(
+            minute=0, hour=env.int("SYNC_FACEBOOK_CATALOGS_HOUR", default=8)
+        ),
     },
     "task-cleanup-vtex-logs-and-uploads": {
         "task": "task_cleanup_vtex_logs_and_uploads",
         "schedule": crontab(minute=0, hour=0),
+    },
+    "task-sync-product-policies": {
+        "task": "task_sync_product_policies",
+        "schedule": crontab(minute=30),
     },
 }
 
@@ -446,3 +462,7 @@ RAPIDPRO_URL = env.str("RAPIDPRO_URL", "")
 RAPIDPRO_API_TOKEN = env.str("RAPIDPRO_API_TOKEN", "")
 RAPIDPRO_FLOW_GROUP_UUID = env.str("RAPIDPRO_FLOW_GROUP_UUID", "")
 RAPIDPRO_FLOW_UUID = env.str("RAPIDPRO_FLOW_UUID", "")
+
+# Zeroshot URL and ACCESS TOKEN
+ZEROSHOT_URL = env.str("ZEROSHOT_URL", "")
+ZEROSHOT_ACCESS_TOKEN = env.str("ZEROSHOT_ACCESS_TOKEN", "")

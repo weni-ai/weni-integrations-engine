@@ -13,7 +13,9 @@ from typing import List, Optional
 from tqdm import tqdm
 from queue import Queue
 
+from marketplace.services.vtex.utils.sku_validator import SKUValidator
 from marketplace.clients.exceptions import CustomAPIException
+from marketplace.clients.zeroshot.client import MockZeroShotClient
 
 
 @dataclass
@@ -127,6 +129,7 @@ class DataProcessor:
         domain,
         store_domain,
         rules,
+        catalog,
         update_product=False,
     ) -> List[FacebookProductDTO]:
         self.queue = Queue()
@@ -138,6 +141,8 @@ class DataProcessor:
         self.rules = rules
         self.update_product = update_product
         self.invalid_products_count = 0
+        self.catalog = catalog
+        self.sku_validator = SKUValidator(service, domain, MockZeroShotClient())
 
         # Preparing the tqdm progress bar
         print("Initiated process of product treatment:")
@@ -192,7 +197,12 @@ class DataProcessor:
         facebook_products = []
 
         try:
-            product_details = self.service.get_product_details(sku_id, self.domain)
+            product_details = self.sku_validator.validate_product_details(
+                sku_id, self.catalog
+            )
+            if not product_details:
+                return facebook_products
+
         except CustomAPIException as e:
             if e.status_code == 404:
                 print(f"SKU {sku_id} not found. Skipping...")
