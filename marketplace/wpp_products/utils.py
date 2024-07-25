@@ -326,7 +326,7 @@ class ProductSyncMetaPolices:
             )
             return
 
-        with self.redis.lock(self.SYNC_META_POLICES_LOCK_KEY):
+        with self.redis.lock(self.SYNC_META_POLICES_LOCK_KEY, timeout=1200):
             wa_business_id = self.app.config.get("wa_business_id")
             wa_waba_id = self.app.config.get("wa_waba_id")
 
