@@ -1,3 +1,8 @@
+v3.9.1
+----------
+* Add cache to product polices validation
+* Add rule SetDefaultImageURL
+
 v3.9.0
 ----------
 * Classify vtex product policies and stores the result in DB
