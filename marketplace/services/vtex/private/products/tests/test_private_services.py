@@ -42,8 +42,9 @@ class MockCatalog:
         def __init__(self, config):
             self.config = config
 
-    def __init__(self, config):
+    def __init__(self, config, uuid):
         self.vtex_app = self.VtexApp(config)
+        self.uuid = uuid
 
 
 class PrivateProductsServiceTestCase(TestCase):
@@ -51,7 +52,7 @@ class PrivateProductsServiceTestCase(TestCase):
         self.mock_client = MockClient()
         self.service = PrivateProductsService(self.mock_client)
         self.mock_catalog = MockCatalog(
-            config={"rules": [], "store_domain": "store.domain.com"}
+            config={"rules": [], "store_domain": "store.domain.com"}, uuid="mock-uuid"
         )
 
     def test_check_is_valid_domain_valid(self):
@@ -100,7 +101,7 @@ class PrivateProductsServiceTestCase(TestCase):
         )
 
     def test_update_webhook_product_info(self):
-        self.service.data_processor.process_product_data = Mock(return_value=[])
+        self.service.webhook_data_processor.process_product_data = Mock(return_value=[])
         updated_products = self.service.update_webhook_product_info(
             "valid.domain.com", ["sku1"], ["seller1"], self.mock_catalog
         )
