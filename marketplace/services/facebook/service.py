@@ -193,7 +193,7 @@ class TemplateService:
             waba_id=waba_id,
             name=name,
             category=category,
-            components=components,
+            components=self._clean_components(components),
             language=language,
         )
 
@@ -222,6 +222,21 @@ class TemplateService:
         response = self.client.delete_template_message(waba_id, name)
         # TODO: check what value retuned if succes delete
         return response
+
+    def _clean_components(self, components):
+        if isinstance(components, dict):
+            return {k: self._clean_components(v) for k, v in components.items()}
+        elif isinstance(components, list):
+            return [self._clean_components(item) for item in components]
+        elif isinstance(components, str):
+            return self._clean_text(components)
+        else:
+            return components
+
+    def _clean_text(self, text):
+        # Replace non-breaking spaces with normal spaces
+        text = text.replace("\xa0", " ")
+        return text.strip()
 
 
 class PhotoAPIService:
