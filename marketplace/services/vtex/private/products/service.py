@@ -44,6 +44,7 @@ class PrivateProductsService:
     def __init__(self, client, data_processor_class=DataProcessor):
         self.client = client
         self.data_processor = data_processor_class()
+        self.webhook_data_processor = data_processor_class(use_threads=False)
         # TODO: Check if it makes sense to leave the domain instantiated
         # so that the domain parameter is removed from the methods
 
@@ -116,7 +117,7 @@ class PrivateProductsService:
         config = catalog.vtex_app.config
         rules = self._load_rules(config.get("rules", []))
         store_domain = config.get("store_domain")
-        updated_products_dto = self.data_processor.process_product_data(
+        updated_products_dto = self.webhook_data_processor.process_product_data(
             skus_ids=skus_ids,
             active_sellers=seller_ids,
             service=self,
