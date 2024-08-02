@@ -1,3 +1,8 @@
+v3.9.2
+----------
+* Allows not to use threads on sync vtex products
+* Fix non-breaking spaces on create template
+
 v3.9.1
 ----------
 * Add cache to product polices validation
