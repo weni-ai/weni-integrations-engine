@@ -58,7 +58,7 @@ def sync_whatsapp_cloud_apps():
                     config["config_before_migration"] = app.config
                     app.config = config
                 else:
-                    app.config.update(config)
+                    app.config = config
 
                 app.modified_by = user
                 app.save()

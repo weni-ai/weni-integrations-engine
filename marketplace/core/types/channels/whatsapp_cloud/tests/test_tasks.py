@@ -29,14 +29,14 @@ class SyncWhatsAppCloudAppsTaskTestCase(TestCase):
         wpp_cloud_type = APPTYPES.get("wpp-cloud")
 
         self.wpp_app = wpp_type.create_app(
-            config={"have_to_stay": "fake"},
+            config={"have_to_stay": True},
             project_uuid=uuid4(),
             flow_object_uuid=uuid4(),
             created_by=User.objects.get_admin_user(),
         )
 
         self.wpp_cloud_app = wpp_cloud_type.create_app(
-            config={"have_to_stay": "fake"},
+            config={"have_to_stay": True},
             project_uuid=uuid4(),
             flow_object_uuid=uuid4(),
             created_by=User.objects.get_admin_user(),
@@ -44,22 +44,23 @@ class SyncWhatsAppCloudAppsTaskTestCase(TestCase):
 
         return super().setUp()
 
-    def _get_mock_value(self, project_uuid: str, flow_object_uuid: str) -> list:
+    def _get_mock_value(self, project_uuid, flow_object_uuid):
         return [
             {
-                "uuid": flow_object_uuid,
-                "name": "teste",
-                "config": {},
-                "address": "f234234",
                 "project_uuid": project_uuid,
-                "is_active": True,
+                "uuid": flow_object_uuid,
+                "address": "wa_phone_number_id",
+                "config": {
+                    "wa_number": "wa_number_value",
+                    "have_to_stay": "some_value",
+                },
             }
         ]
 
     @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.get_redis_connection")
     @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
     def test_whatsapp_app_that_already_exists_is_migrated_correctly(
-        self, list_channel_mock: "MagicMock", mock_redis
+        self, list_channel_mock: MagicMock, mock_redis: MagicMock
     ) -> None:
         list_channel_mock.return_value = self._get_mock_value(
             str(self.wpp_app.project_uuid), str(self.wpp_app.flow_object_uuid)
@@ -77,7 +78,7 @@ class SyncWhatsAppCloudAppsTaskTestCase(TestCase):
     @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.get_redis_connection")
     @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
     def test_sync_for_non_migrated_channels(
-        self, list_channel_mock: "MagicMock", mock_redis
+        self, list_channel_mock: MagicMock, mock_redis: MagicMock
     ) -> None:
         list_channel_mock.return_value = self._get_mock_value(
             str(self.wpp_cloud_app.project_uuid),
