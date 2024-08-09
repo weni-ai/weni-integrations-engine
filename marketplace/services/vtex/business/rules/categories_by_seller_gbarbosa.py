@@ -47,7 +47,7 @@ class CategoriesBySeller(Rule):
         self, product: FacebookProductDTO, service, domain
     ) -> str:
         product_id = product.product_details.get("ProductId")
-        specification_text = "<br><br><b>Características:</b><br><br>"
+        specification_text = "\n\n*Características:*\n\n"
         specifications = service.get_product_specification(product_id, domain)
 
         specification_parts = []
@@ -55,9 +55,9 @@ class CategoriesBySeller(Rule):
             name = specification.get("Name")
             value = ", ".join(specification.get("Value", []))
             if value:
-                specification_parts.append(f"<b>{name}</b> : {value}")
+                specification_parts.append(f"*{name}* : {value}")
 
-        specification_text += "<br>".join(specification_parts) + "."
+        specification_text += "\n".join(specification_parts) + "."
         return specification_text
 
     def _product_description(self, product: FacebookProductDTO) -> str:
