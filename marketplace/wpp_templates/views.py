@@ -1,33 +1,26 @@
 import datetime
-import requests
 import re
 import base64
+import pytz
 
 from django.contrib.auth import get_user_model
 from django.conf import settings
-import pytz
-
-
-from sentry_sdk import capture_exception
+from django.core.exceptions import ValidationError
 
 from rest_framework import viewsets
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
-from django.core.exceptions import ValidationError
 
 from marketplace.applications.models import App
 from marketplace.core.types import APPTYPES
-from marketplace.core.types.channels.whatsapp_base.exceptions import (
-    FacebookApiException,
-)
 from marketplace.core.types.channels.whatsapp_base.mixins import QueryParamsParser
-from marketplace.core.types.channels.whatsapp_cloud.requests import PhotoAPIRequest
+from marketplace.services.facebook.service import TemplateService, PhotoAPIService
+from marketplace.clients.facebook.client import FacebookClient
 
 from .models import TemplateHeader, TemplateMessage, TemplateTranslation, TemplateButton
 from .serializers import TemplateMessageSerializer, TemplateTranslationSerializer
-from .requests import TemplateMessageRequest
 from .languages import LANGUAGES
 
 
@@ -125,22 +118,8 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
                 f"This app: {instance.app.uuid} does not have waba id in config"
             )
 
-        template_request = TemplateMessageRequest(access_token=access_token)
-
-        response = template_request.delete_template_message(
-            waba_id=waba_id, name=instance.name
-        )
-
-        if response.status_code != status.HTTP_200_OK:
-            capture_exception(FacebookApiException(response.json()))
-            if response.json().get("error", {}).get("error_subcode", 0) == 2388094:
-                return Response(
-                    data=dict(error="WhatsApp.templates.error.delete_sample"),
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            return Response(status=status.HTTP_400_BAD_REQUEST)
-
+        template_service = TemplateService(client=FacebookClient(access_token))
+        template_service.delete_template_message(waba_id=waba_id, name=instance.name)
         instance.delete()
         return Response(status=status.HTTP_200_OK)
 
@@ -200,7 +179,7 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
                 or header.get("format") == "DOCUMENT"
                 or header.get("format") == "VIDEO"
             ):
-                photo_api_request = PhotoAPIRequest(access_token)
+                photo_api_request = PhotoAPIService(client=FacebookClient(access_token))
                 photo = header.get("example")
                 file_type = re.search("(?<=data:)(.*)(?=;base64)", photo).group(0)
                 photo = photo.split(";base64,")[1]
@@ -208,23 +187,12 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
                     len(base64.b64decode(photo)),
                     file_type=file_type,
                 )
-
-                url = (
-                    f"https://graph.facebook.com/{WHATSAPP_VERSION}/{upload_session_id}"
+                dict_response = photo_api_request.upload_session(
+                    upload_session_id=upload_session_id,
+                    file_type=file_type,
+                    data=base64.b64decode(photo),
                 )
-                headers = {
-                    "Content-Type": file_type,
-                    "Authorization": f"OAuth {access_token}",
-                }
-                headers["file_offset"] = "0"
-                response = requests.post(
-                    url, headers=headers, data=base64.b64decode(photo)
-                )
-
-                if response.status_code != 200:
-                    raise FacebookApiException(response.json())
-
-                upload_handle = response.json().get("h", "")
+                upload_handle = dict_response.get("h", "")
                 header.pop("example")
                 header["example"] = dict(header_handle=upload_handle)
 
@@ -277,9 +245,9 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
 
         components = list_components
 
-        template_request = TemplateMessageRequest(access_token=access_token)
+        template_service = TemplateService(client=FacebookClient(access_token))
 
-        response = template_request.update_template_message(
+        response = template_service.update_template_message(
             message_template_id=message_template_id,
             name=template.name,
             components=components,

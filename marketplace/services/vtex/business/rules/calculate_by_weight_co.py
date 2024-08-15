@@ -52,6 +52,17 @@ class CalculateByWeightCO(Rule):
         return product.product_details["Dimension"]["weight"]
 
     def _calculates_by_weight(self, product: FacebookProductDTO) -> bool:
+        title_endings = ["kg", "g", "ml", "unidad", "gr"]
+        description_endings = ["kg", "g", "unid", "unidade", "unidad", "ml"]
+
+        title_lower = product.title.lower()
+        description_lower = product.description.lower()
+
+        if any(title_lower.endswith(ending) for ending in title_endings) or any(
+            description_lower.endswith(ending) for ending in description_endings
+        ):
+            return False
+
         all_categories = [
             "carne y pollo",
             "carne res",

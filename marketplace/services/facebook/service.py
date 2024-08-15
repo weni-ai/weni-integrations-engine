@@ -3,6 +3,14 @@ import logging
 
 from marketplace.services.facebook.exceptions import FileNotSendValidationError
 from marketplace.wpp_products.models import Catalog
+from marketplace.interfaces.facebook.interfaces import (
+    TemplatesRequestsInterface,
+    PhotoAPIRequestsInterface,
+    PhoneNumbersRequestsInterface,
+    CloudProfileRequestsInterface,
+    BusinessMetaRequestsInterface,
+    CatalogsRequestsInterface,
+)
 
 
 logger = logging.getLogger(__name__)
