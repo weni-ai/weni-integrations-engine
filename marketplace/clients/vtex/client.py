@@ -139,6 +139,7 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
                 "is_available": item_data["availability"] == "available",
                 "price": item_data["price"],
                 "list_price": item_data["listPrice"],
+                "data": simulation_data,
             }
         else:
             return {
