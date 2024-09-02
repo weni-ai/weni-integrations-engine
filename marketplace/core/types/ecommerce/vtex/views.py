@@ -62,6 +62,7 @@ class VtexViewSet(views.BaseAppTypeViewSet):
         )
         wpp_cloud_uuid = validated_data["wpp_cloud_uuid"]
         store_domain = validated_data["store_domain"]
+        vtex_ads = validated_data["vtex_ads"]
 
         self.service.check_is_valid_credentials(credentials)
 
@@ -73,10 +74,10 @@ class VtexViewSet(views.BaseAppTypeViewSet):
 
         try:
             updated_app = self.service.configure(
-                app, credentials, wpp_cloud_uuid, store_domain
+                app, credentials, wpp_cloud_uuid, store_domain, vtex_ads
             )
             self.flows_service.update_vtex_integration_status(
-                app.project_uuid, app.created_by.email, action="POST"
+                app.project_uuid, app.created_by.email, vtex_ads, action="POST"
             )
             return Response(
                 data=self.get_serializer(updated_app).data,
