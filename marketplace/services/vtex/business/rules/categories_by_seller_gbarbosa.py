@@ -1,4 +1,5 @@
 from .interface import Rule
+from typing import Union
 from marketplace.services.vtex.utils.data_processor import FacebookProductDTO
 
 
@@ -85,9 +86,15 @@ class CategoriesBySeller(Rule):
 
         if is_available:
             pix_value = self._extract_pix_value(availability_details)
-            if pix_value:
+            current_sale_price = product.sale_price or product.price
+
+            if pix_value and pix_value < current_sale_price:
+                self._append_pix_promotion_description(
+                    product, pix_value, current_sale_price
+                )
                 product.sale_price = pix_value
-                self._append_pix_promotion_description(product)
+            elif not product.sale_price:
+                product.sale_price = current_sale_price
 
     def _extract_pix_value(self, availability_details: dict) -> float:
         data = availability_details.get("data", {})
@@ -101,6 +108,18 @@ class CategoriesBySeller(Rule):
                     return installments[0].get("value")
         return None
 
-    def _append_pix_promotion_description(self, product: FacebookProductDTO):
-        pix_description = "*Preço promocional para o pagamento no pix*\n"
+    def _append_pix_promotion_description(
+        self, product: FacebookProductDTO, pix_value, sale_price
+    ):
+        pix_description = (
+            f"*Preço promocional PIX R$ {self._format_price(pix_value)} ou "
+            f"R$ {self._format_price(sale_price)} em outras modalidades de pagamento*\n\n"
+        )
         product.description = pix_description + product.description
+        product.rich_text_description = product.description
+
+    def _format_price(self, price: Union[int, float]) -> str:
+        formatted_price = (
+            f"{price / 100:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        )
+        return formatted_price
