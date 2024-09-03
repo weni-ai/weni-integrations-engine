@@ -53,9 +53,18 @@ class FlowsClient(RequestClient):
         )
         return response
 
-    def update_vtex_integration_status(
-        self, project_uuid, user_email, action, vtex_ads
-    ):
+    def update_vtex_integration_status(self, project_uuid, user_email, action):
+        url = f"{self.base_url}/api/v2/internals/orgs/{project_uuid}/update-vtex/"
+        payload = {"user_email": user_email}
+        self.make_request(
+            url=url,
+            method=action,
+            headers=self.authentication_instance.headers,
+            json=payload,
+        )
+        return True
+
+    def update_vtex_ads_status(self, project_uuid, user_email, action, vtex_ads):
         url = f"{self.base_url}/api/v2/internals/orgs/{project_uuid}/update-vtex/"
         payload = {"user_email": user_email, "vtex_ads": vtex_ads}
         self.make_request(

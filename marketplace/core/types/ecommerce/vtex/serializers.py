@@ -13,7 +13,6 @@ class VtexSerializer(serializers.Serializer):
     uuid = serializers.UUIDField(required=True)
     project_uuid = serializers.UUIDField(required=True)
     store_domain = serializers.CharField(required=True)
-    vtex_ads = serializers.BooleanField(required=False)
 
     def validate_wpp_cloud_uuid(self, value):
         """
@@ -64,3 +63,7 @@ class VtexSyncSellerSerializer(serializers.Serializer):
                 "The list of sellers exceeds the limit of 5 items."
             )
         return value
+
+
+class VtexAdsSerializer(serializers.Serializer):
+    vtex_ads = serializers.BooleanField(required=True)
