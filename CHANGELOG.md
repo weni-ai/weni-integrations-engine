@@ -1,3 +1,8 @@
+v3.9.3
+----------
+* Update wpp app config data from flows config
+* Change swagger url
+
 v3.9.2
 ----------
 * Allows not to use threads on sync vtex products
