@@ -1,3 +1,8 @@
+v3.9.4
+----------
+* Display pix price to gbarbosa eletro
+* Remove HTML tags from categories_by_seller gbx rule
+
 v3.9.3
 ----------
 * Update wpp app config data from flows config
