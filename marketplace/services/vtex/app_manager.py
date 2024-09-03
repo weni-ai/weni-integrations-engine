@@ -36,3 +36,7 @@ class AppVtexManager:
                 App.objects.get(uuid=new_uuid)
             except App.DoesNotExist:
                 return new_uuid
+
+    def update_vtex_ads(self, app, vtex_ads):
+        app.config["vtex_ads"] = vtex_ads
+        app.save()
