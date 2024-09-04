@@ -1,3 +1,8 @@
+v3.9.5
+----------
+* Add csv file extension to file name and add logger on upload feed
+* Remove class variables from gbarbosa rule
+
 v3.9.4
 ----------
 * Display pix price to gbarbosa eletro
