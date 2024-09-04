@@ -1,6 +1,7 @@
 import time
 import json
 import requests
+import logging
 
 from django.conf import settings
 
@@ -14,6 +15,9 @@ from marketplace.interfaces.facebook.interfaces import (
     TemplatesRequestsInterface,
     CatalogsRequestsInterface,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class FacebookAuthorization:
@@ -64,6 +68,13 @@ class CatalogsRequests(FacebookAuthorization, RequestClient, CatalogsRequestsInt
     def upload_product_feed(
         self, feed_id, file, file_name, file_content_type, update_only=False
     ):
+        logger.info(
+            f"Uploading file: {file_name}, Size: {file.getbuffer().nbytes} bytes"
+        )
+
+        if not file or file.getbuffer().nbytes == 0:
+            logger.error("Attempting to upload an empty file.")
+            raise ValueError("File is either None or empty.")
         url = f"{self.get_url}/{feed_id}/uploads"
 
         headers = self._get_headers()
