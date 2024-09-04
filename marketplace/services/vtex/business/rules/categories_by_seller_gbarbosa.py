@@ -54,11 +54,17 @@ class CategoriesBySeller(Rule):
         specification_text = "\n\n*Características:*\n\n"
         specifications = service.get_product_specification(product_id, domain)
 
-        specification_parts = [
-            f"*{specification.get('Name')}* : {', '.join(specification.get('Value', []))}"
-            for specification in specifications
-            if specification.get("Value")
-        ]
+        specification_parts = []
+
+        for specification in specifications:
+            values = [
+                value for value in specification.get("Value", []) if value != "CD"
+            ]
+
+            if values:
+                specification_parts.append(
+                    f"*{specification.get('Name')}* : {', '.join(values)}"
+                )
 
         specification_text += "\n".join(specification_parts) + "."
         return specification_text
