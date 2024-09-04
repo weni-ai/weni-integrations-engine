@@ -7,22 +7,16 @@ class CategoriesBySeller(Rule):
     HOME_APPLIANCES_CATEGORIES = {"eletrodoméstico", "eletro", "eletroportáteis"}
     DESCRIPTION_MAX_LENGTH = 9999
 
-    def __init__(self):
-        self.sku = None
-        self.seller_id = None
-        self.domain = None
-        self.service = None
-
     def apply(self, product: FacebookProductDTO, **kwargs) -> bool:
-        self.seller_id = kwargs.get("seller_id")
-        self.service = kwargs.get("service")
-        self.domain = kwargs.get("domain")
+        seller_id = kwargs.get("seller_id")
+        service = kwargs.get("service")
+        domain = kwargs.get("domain")
 
         if self._is_home_appliance(product):
-            if self.seller_id != "gbarbosab101":
+            if seller_id != "gbarbosab101":
                 return False
 
-            specifications = self._product_specification(product)
+            specifications = self._product_specification(product, service, domain)
 
             combined_description = f"{product.description}\n{specifications}"
             combined_rich_text_description = (
@@ -36,7 +30,7 @@ class CategoriesBySeller(Rule):
                 combined_rich_text_description, self.DESCRIPTION_MAX_LENGTH
             )
 
-            self._fetch_and_update_pix_price(product)
+            self._fetch_and_update_pix_price(product, service, seller_id, domain)
 
         return True
 
@@ -52,18 +46,25 @@ class CategoriesBySeller(Rule):
         product_categories = self._get_categories(product)
         return bool(self.HOME_APPLIANCES_CATEGORIES.intersection(product_categories))
 
-    def _product_specification(self, product: FacebookProductDTO) -> str:
-        self.sku = product.product_details.get("Id")
+    def _product_specification(
+        self, product: FacebookProductDTO, service, domain
+    ) -> str:
         product_id = product.product_details.get("ProductId")
 
         specification_text = "\n\n*Características:*\n\n"
-        specifications = self.service.get_product_specification(product_id, self.domain)
+        specifications = service.get_product_specification(product_id, domain)
 
-        specification_parts = [
-            f"*{specification.get('Name')}* : {', '.join(specification.get('Value', []))}"
-            for specification in specifications
-            if specification.get("Value")
-        ]
+        specification_parts = []
+
+        for specification in specifications:
+            values = [
+                value for value in specification.get("Value", []) if value != "CD"
+            ]
+
+            if values:
+                specification_parts.append(
+                    f"*{specification.get('Name')}* : {', '.join(values)}"
+                )
 
         specification_text += "\n".join(specification_parts) + "."
         return specification_text
@@ -78,9 +79,11 @@ class CategoriesBySeller(Rule):
     def _truncate_text(text: str, max_length: int) -> str:
         return text[:max_length] if len(text) > max_length else text
 
-    def _fetch_and_update_pix_price(self, product: FacebookProductDTO):
-        availability_details = self.service.simulate_cart_for_seller(
-            self.sku, self.seller_id, self.domain
+    def _fetch_and_update_pix_price(
+        self, product: FacebookProductDTO, service, seller_id, domain
+    ):
+        availability_details = service.simulate_cart_for_seller(
+            product.product_details.get("Id"), seller_id, domain
         )
         is_available = availability_details.get("is_available")
 
