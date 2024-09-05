@@ -1,5 +1,4 @@
 import string
-import requests
 
 from typing import TYPE_CHECKING
 
@@ -15,17 +14,19 @@ from django.utils.crypto import get_random_string
 from marketplace.core.types import views
 from marketplace.applications.models import App
 from marketplace.celery import app as celery_app
-from marketplace.connect.client import ConnectProjectClient
-from marketplace.flows.client import FlowsClient
+from marketplace.clients.flows.client import FlowsClient
 from marketplace.accounts.permissions import ProjectManagePermission, IsCRMUser
+from marketplace.clients.facebook.client import FacebookClient
+from marketplace.services.facebook.service import (
+    PhoneNumbersService,
+    BusinessMetaService,
+)
+from marketplace.services.flows.service import FlowsService
 
 from ..whatsapp_base import mixins
 from ..whatsapp_base.serializers import WhatsAppSerializer
-
-from .facades import CloudProfileFacade, CloudProfileContactFacade
-from .requests import PhoneNumbersRequest
-
 from .serializers import WhatsAppCloudConfigureSerializer
+from .facades import CloudProfileFacade, CloudProfileContactFacade
 
 
 if TYPE_CHECKING:
@@ -89,75 +90,35 @@ class WhatsAppCloudViewSet(
         serializer.is_valid(raise_exception=True)
 
         project_uuid = request.data.get("project_uuid")
-
         waba_id = serializer.validated_data.get("waba_id")
         phone_number_id = serializer.validated_data.get("phone_number_id")
         auth_code = serializer.validated_data.get("auth_code")
         waba_currency = "USD"
 
-        base_url = settings.WHATSAPP_API_URL
-        weni_token_headers = {
-            "Authorization": f"Bearer {settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN}"
-        }
+        whatsapp_system_user_access_token = settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
+        facebook_client = FacebookClient(whatsapp_system_user_access_token)
+        business_service = BusinessMetaService(client=facebook_client)
 
-        url = f"{base_url}/oauth/access_token"
-        params = dict(
-            client_id=settings.WHATSAPP_APPLICATION_ID,
-            client_secret=settings.WHATSAPP_APPLICATION_SECRET,
-            code=auth_code,
-        )
-        response = requests.get(url, params=params)
-        if response.status_code != status.HTTP_200_OK:
-            raise ValidationError(response.json())
-
-        user_auth = response.json().get("access_token")
-        headers = {"Authorization": f"Bearer {user_auth}"}
-
-        url = f"{base_url}/{waba_id}"
-        params = dict(fields="on_behalf_of_business_info,message_template_namespace")
-        response = requests.get(url, params=params, headers=headers)
-
-        message_template_namespace = response.json().get("message_template_namespace")
-        business_id = response.json().get("on_behalf_of_business_info").get("id")
-
-        url = f"{base_url}/{waba_id}/assigned_users"
-        params = dict(
-            user=settings.WHATSAPP_CLOUD_SYSTEM_USER_ID,
-            access_token=settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN,
-            tasks="MANAGE",
+        # Configure WhatsApp Cloud
+        config_data = business_service.configure_whatsapp_cloud(
+            auth_code, waba_id, phone_number_id, waba_currency
         )
 
-        response = requests.post(url, params=params, headers=headers)
+        user_access_token = config_data["user_access_token"]
+        business_id = config_data["business_id"]
+        message_template_namespace = config_data["message_template_namespace"]
+        allocation_config_id = config_data["allocation_config_id"]
 
-        if response.status_code != status.HTTP_200_OK:
-            raise ValidationError(response.json())
-
-        url = f"{base_url}/{settings.WHATSAPP_CLOUD_EXTENDED_CREDIT_ID}/whatsapp_credit_sharing_and_attach"
-        params = dict(waba_id=waba_id, waba_currency=waba_currency)
-
-        response = requests.post(url, params=params, headers=weni_token_headers)
-
-        if response.status_code != status.HTTP_200_OK:
-            raise ValidationError(response.json())
-
-        allocation_config_id = response.json().get("allocation_config_id")
-
-        url = f"{base_url}/{waba_id}/subscribed_apps"
-        response = requests.post(url, headers=headers)
-
-        if response.status_code != status.HTTP_200_OK:
-            raise ValidationError(response.json())
-
-        phone_number_request = PhoneNumbersRequest(user_auth)
+        # Get phone number
+        phone_number_request = PhoneNumbersService(
+            client=FacebookClient(whatsapp_system_user_access_token)
+        )
         phone_number = phone_number_request.get_phone_number(phone_number_id)
 
-        url = f"{base_url}/{phone_number_id}/register"
+        # Register phone number
         pin = get_random_string(6, string.digits)
         data = dict(messaging_product="whatsapp", pin=pin)
-        response = requests.post(url, headers=headers, data=data)
-
-        if response.status_code != status.HTTP_200_OK:
-            raise ValidationError(response.json())
+        business_service.register_phone_number(phone_number_id, user_access_token, data)
 
         config = dict(
             wa_number=phone_number.get("display_phone_number"),
@@ -167,11 +128,11 @@ class WhatsAppCloudViewSet(
             wa_business_id=business_id,
             wa_message_template_namespace=message_template_namespace,
             wa_pin=pin,
-            wa_user_token=user_auth,
+            wa_user_token=user_access_token,
         )
 
-        client = ConnectProjectClient()
-        channel = client.create_wac_channel(
+        flows_service = FlowsService(client=FlowsClient())
+        channel = flows_service.create_wac_channel(
             request.user.email, project_uuid, phone_number_id, config
         )
 

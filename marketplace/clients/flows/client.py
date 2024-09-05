@@ -64,8 +64,19 @@ class FlowsClient(RequestClient):
         )
         return True
 
-    def update_catalogs(self, flow_object_uuid, catalogs_data):
-        data = {"data": catalogs_data}
+    def update_vtex_ads_status(self, project_uuid, user_email, action, vtex_ads):
+        url = f"{self.base_url}/api/v2/internals/orgs/{project_uuid}/update-vtex/"
+        payload = {"user_email": user_email, "vtex_ads": vtex_ads}
+        self.make_request(
+            url=url,
+            method=action,
+            headers=self.authentication_instance.headers,
+            json=payload,
+        )
+        return True
+
+    def update_catalogs(self, flow_object_uuid, catalogs_data, active_catalog):
+        data = {"data": catalogs_data, "active_catalog": active_catalog}
         url = f"{self.base_url}/catalogs/{flow_object_uuid}/update-catalog/"
 
         response = self.make_request(
@@ -132,5 +143,41 @@ class FlowsClient(RequestClient):
             method="POST",
             headers=self.authentication_instance.headers,
             json=data,
+        )
+        return response
+
+    def create_wac_channel(
+        self, user: str, project_uuid: str, phone_number_id: str, config: dict
+    ) -> dict:
+        url = f"{self.base_url}/api/v2/internals/channel/create_wac/"
+        payload = {
+            "user": user,
+            "org": str(project_uuid),
+            "config": config,
+            "phone_number_id": phone_number_id,
+        }
+        response = self.make_request(
+            method="POST",
+            url=url,
+            json=payload,
+            headers=self.authentication_instance.headers,
+        )
+        return response.json()
+
+    def get_sent_messagers(
+        self, project_uuid: str, start_date: str, end_date: str, user: str
+    ):
+        url = f"{self.base_url}/api/v2/internals/template-messages/"
+        params = {
+            "project_uuid": project_uuid,
+            "start_date": start_date,
+            "end_date": end_date,
+            "user": user,
+        }
+        response = self.make_request(
+            url,
+            method="GET",
+            headers=self.authentication_instance.headers,
+            params=params,
         )
         return response

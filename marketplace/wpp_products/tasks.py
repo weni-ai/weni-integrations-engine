@@ -1,15 +1,19 @@
 import logging
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from celery import shared_task
 
 from django.db import reset_queries, close_old_connections
+from django.db.models import Exists, OuterRef
+
+from django.utils import timezone
 
 from marketplace.clients.facebook.client import FacebookClient
 
 from marketplace.wpp_products.models import (
     Catalog,
+    ProductFeed,
     ProductUploadLog,
     UploadProduct,
     WebhookLog,
@@ -20,14 +24,19 @@ from marketplace.services.vtex.generic_service import (
     ProductUpdateService,
     ProductInsertionService,
     VtexServiceBase,
+    ProductInsertionBySellerService,
 )
 from marketplace.services.vtex.generic_service import APICredentials
-from marketplace.core.types import APPTYPES
 from marketplace.applications.models import App
 
 from django_redis import get_redis_connection
 
-from marketplace.wpp_products.utils import ProductUploader
+from marketplace.wpp_products.utils import (
+    ProductUploader,
+    SellerSyncUtils,
+    UploadManager,
+    ProductSyncMetaPolices,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -38,18 +47,28 @@ SYNC_WHATSAPP_CATALOGS_LOCK_KEY = "sync-whatsapp-catalogs-lock"
 
 @shared_task(name="sync_facebook_catalogs")
 def sync_facebook_catalogs():
-    apptype = APPTYPES.get("wpp-cloud")
-    for app in apptype.apps:
+    project_uuids = get_projects_with_vtex_app()
+    apps = App.objects.filter(code="wpp-cloud", project_uuid__in=project_uuids)
+    for app in apps:
         service = FacebookCatalogSyncService(app)
         service.sync_catalogs()
+
+
+def get_projects_with_vtex_app() -> list:
+    apps = App.objects.filter(code="vtex")
+    related_wpp_cloud_project_uuids = []
+    for app in apps:
+        if app.project_uuid:
+            related_wpp_cloud_project_uuids.append(str(app.project_uuid))
+    return related_wpp_cloud_project_uuids
 
 
 class FacebookCatalogSyncService:
     SYNC_WHATSAPP_CATALOGS_LOCK_KEY = "sync-whatsapp-catalogs-lock"
 
-    def __init__(self, app):
+    def __init__(self, app: App):
         self.app = app
-        self.client = FacebookClient(app.apptype.get_access_token(app))
+        self.client = FacebookClient(app.apptype.get_system_access_token(app))
         self.flows_client = FlowsClient()
         self.redis = get_redis_connection()
 
@@ -71,9 +90,10 @@ class FacebookCatalogSyncService:
                     self.app.catalogs.values_list("facebook_catalog_id", flat=True)
                 )
                 all_catalogs_id, all_catalogs = self._list_all_catalogs()
+                active_catalog = self._get_active_catalog(wa_waba_id)
 
                 if all_catalogs_id:
-                    self._update_catalogs_on_flows(all_catalogs)
+                    self._update_catalogs_on_flows(all_catalogs, active_catalog)
                     self._sync_local_catalogs(all_catalogs_id, local_catalog_ids)
             except Exception as e:
                 logger.error(f"Error during sync process for App {self.app.name}: {e}")
@@ -87,10 +107,22 @@ class FacebookCatalogSyncService:
             )
             return [], []
 
-    def _update_catalogs_on_flows(self, all_catalogs):
+    def _get_active_catalog(self, wa_waba_id):
+        try:
+            response = self.client.get_connected_catalog(waba_id=wa_waba_id)
+            if len(response.get("data")) > 0:
+                return response.get("data")[0].get("id")
+            return None
+        except Exception as e:
+            logger.error(f"Error on get active catalog: {self.app.uuid} {str(e)}")
+            return None
+
+    def _update_catalogs_on_flows(self, all_catalogs, active_catalog):
         try:
             self.flows_client.update_catalogs(
-                str(self.app.flow_object_uuid), all_catalogs
+                flow_object_uuid=str(self.app.flow_object_uuid),
+                catalogs_data=all_catalogs,
+                active_catalog=active_catalog,
             )
         except Exception as e:
             logger.error(
@@ -189,14 +221,8 @@ def task_update_vtex_products(**kwargs):
             f"'An':{seller_an}, 'SellerChain': {seller_chain}."
         )
         vtex_app = App.objects.get(uuid=app_uuid, configured=True, code="vtex")
-        (
-            domain,
-            app_key,
-            app_token,
-        ) = vtex_base_service.get_vtex_credentials_or_raise(vtex_app)
-        api_credentials = APICredentials(
-            app_key=app_key, app_token=app_token, domain=domain
-        )
+
+        api_credentials = vtex_base_service.get_vtex_credentials_or_raise(vtex_app)
 
         catalog = vtex_app.vtex_catalogs.first()
         if not catalog or not catalog.feeds.first():
@@ -235,19 +261,8 @@ def task_update_vtex_products(**kwargs):
     )
     logger.info(f"Task completed in {int(minutes)} minutes and {int(seconds)} seconds.")
 
-    redis_client = get_redis_connection()
-    lock_key = f"upload_lock:{app_uuid}"
-    # Check for existing upload lock for the vtex app
-    if not redis_client.exists(lock_key):
-        print(f"No active upload task for App: {app_uuid}, starting upload.")
-        celery_app.send_task(
-            "task_upload_vtex_products",
-            kwargs={"app_vtex_uuid": app_uuid},
-            queue="vtex-product-upload",
-        )
-    else:
-        print(f"An upload task is already in progress for App: {app_uuid}.")
-
+    # Check and start upload task
+    UploadManager.check_and_start_upload(app_uuid)
     print("=" * 40)
 
 
@@ -279,6 +294,7 @@ def task_forward_vtex_webhook(**kwargs):
         "task_update_vtex_products",
         kwargs={"app_uuid": str(app_uuid), "webhook": webhook},
         queue=celery_queue,
+        ignore_result=True,
     )
 
 
@@ -324,4 +340,132 @@ def task_cleanup_vtex_logs_and_uploads():
     # Delete all UploadProduct records with "success" status
     UploadProduct.objects.filter(status="success").delete()
 
+    # Update status to "pending" for all UploadProduct records with "error" status
+    error_queryset = UploadProduct.objects.filter(status="error")
+    if error_queryset.exists():
+        error_queryset.update(status="pending")
+
+    # Update status to "pending" for records that have been "processing" for more than 20 minutes
+    time_threshold = timezone.now() - timedelta(minutes=20)
+    in_processing = UploadProduct.objects.filter(
+        status="processing", modified_on__lt=time_threshold
+    )
+    if in_processing.exists():
+        in_processing.update(status="pending")
+
     print("Logs and successful uploads have been cleaned up.")
+
+
+def send_sync(app_uuid: str, webhook: dict):
+    try:
+        app = App.objects.get(uuid=app_uuid, configured=True, code="vtex")
+    except App.DoesNotExist:
+        logger.info(f"No VTEX App configured with the provided UUID: {app_uuid}")
+        return
+
+    can_synchronize = app.config.get("initial_sync_completed", False)
+
+    if not can_synchronize:
+        print(f"Initial sync not completed. App:{str(app.uuid)}")
+        return
+
+    celery_queue = app.config.get("celery_queue_name", "product_synchronization")
+    sku_id = webhook.get("IdSku")
+
+    if not sku_id:
+        raise ValueError(f"SKU ID not provided in the request. App:{str(app.uuid)}")
+
+    celery_app.send_task(
+        "task_update_vtex_products",
+        kwargs={"app_uuid": str(app_uuid), "webhook": webhook},
+        queue=celery_queue,
+        ignore_result=True,
+    )
+
+
+@celery_app.task(name="task_insert_vtex_products_by_sellers")
+def task_insert_vtex_products_by_sellers(**kwargs):
+    print("Starting insertion products by seller")
+    vtex_service = ProductInsertionBySellerService()
+
+    credentials = kwargs.get("credentials")
+    catalog_uuid = kwargs.get("catalog_uuid")
+    sellers = kwargs.get("sellers")
+
+    if not sellers:
+        logger.error(
+            "Missing required parameters [sellers] for task_insert_vtex_products_by_sellers"
+        )
+        return
+
+    if not all([credentials, catalog_uuid]):
+        logger.error(
+            "Missing required parameters [credentials, catalog_uuid] for task_insert_vtex_products"
+        )
+        return
+
+    try:
+        catalog = Catalog.objects.get(uuid=catalog_uuid)
+        api_credentials = APICredentials(
+            app_key=credentials["app_key"],
+            app_token=credentials["app_token"],
+            domain=credentials["domain"],
+        )
+        print(f"Starting sync by sellers for catalog: {str(catalog.name)}")
+
+        lock_key = None
+        vtex_app_uuid = str(catalog.vtex_app.uuid)
+        lock_key = SellerSyncUtils.create_lock(vtex_app_uuid, sellers)
+
+        if lock_key:
+            products = vtex_service.insertion_products_by_seller(
+                api_credentials, catalog, sellers
+            )
+            if products is None:
+                print("There are no products to be shipped after processing the rules.")
+                return
+
+            # Check and start upload task
+            UploadManager.check_and_start_upload(vtex_app_uuid)
+
+        else:
+            print(
+                f"An upload is already being processed for this client: {vtex_app_uuid}"
+            )
+
+    except Exception as e:
+        logger.error(
+            f"An error occurred during the 'insertion_products_by_seller' for catalog {catalog.name}, {e}",
+            exc_info=True,
+            stack_info=True,
+        )
+    finally:
+        if lock_key:
+            print(f"Release sync-sellers lock_key: {lock_key}")
+            SellerSyncUtils.release_lock(vtex_app_uuid)
+
+    print(f"finishing 'insertion_products_by_seller'catalog {catalog.name}")
+    print("=" * 40)
+
+
+@celery_app.task(name="task_sync_product_policies")
+def task_sync_product_policies():
+    print("Starting synchronization of product policies")
+
+    try:
+        # Filter catalogs that have an associated ProductFeed
+        catalogs_with_feeds = Catalog.objects.annotate(
+            has_feed=Exists(ProductFeed.objects.filter(catalog=OuterRef("pk")))
+        ).filter(has_feed=True)
+        for catalog in catalogs_with_feeds:
+            product_sync_service = ProductSyncMetaPolices(catalog)
+            product_sync_service.sync_products_polices()
+
+    except Exception as e:
+        logger.exception(
+            f"An error occurred during the 'task_sync_product_policies'. error: {e}"
+        )
+        return
+
+    print("finishing 'task_sync_product_policies'")
+    print("=" * 40)

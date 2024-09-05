@@ -13,18 +13,18 @@ def get_or_create_user_by_email(email: str) -> tuple:  # pragma: no cover
 
 
 def set_user_project_authorization_role(
-    user: User, project: Project, role: int
+    user: User, project: str, role: int
 ):  # pragma: no cover
 
     project_authorization, created = ProjectAuthorization.objects.get_or_create(
-        user=user, project_uuid=project.uuid
+        user=user, project_uuid=project
     )
 
     project_authorization.role = role
     project_authorization.save(update_fields=["role"])
 
 
-def update_user_permission(role: int, project: Project, user: User):  # pragma: no cover
+def update_user_permission(role: int, project: str, user: User):  # pragma: no cover
     if role == 1:
         set_user_project_authorization_role(
             user=user, project=project, role=ProjectAuthorization.ROLE_VIEWER
@@ -48,22 +48,21 @@ def update_user_permission(role: int, project: Project, user: User):  # pragma: 
 
 def delete_permisison(role, project, user):  # pragma: no cover
     project_authorization = ProjectAuthorization.objects.get(
-        user=user, project_uuid=project.uuid, role=role
+        user=user, project_uuid=project, role=role
     )
 
     project_authorization.delete()
 
 
 def update_permission(
-    project_uuid: Project, action: str, user_email: str, role: int
+    project_uuid: str, action: str, user_email: str, role: int
 ) -> Project:  # pragma: no cover
-    project = Project.objects.get(uuid=project_uuid)
     user, _ = get_or_create_user_by_email(user_email)
 
     if action == "create" or action == "update":
-        update_user_permission(role, project, user)
+        update_user_permission(role, project_uuid, user)
 
     if action == "delete":
-        delete_permisison(role, project, user)
+        delete_permisison(role, project_uuid, user)
 
-    return project
+    return project_uuid

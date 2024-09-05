@@ -1,3 +1,103 @@
+v3.9.3
+----------
+* Update wpp app config data from flows config
+* Change swagger url
+
+v3.9.2
+----------
+* Allows not to use threads on sync vtex products
+* Fix non-breaking spaces on create template
+
+v3.9.1
+----------
+* Add cache to product polices validation
+* Add rule SetDefaultImageURL
+
+v3.9.0
+----------
+* Classify vtex product policies and stores the result in DB
+* Search for invalid products on Facebook and remove them
+* Synchronizes catalogs to vtex project applications
+
+v3.8.4
+----------
+* Using system token to catalogs services
+* Send active catalog to flows
+* Fix: Ensure Proper Spacing After Periods in Titles and Descriptions
+* Feat: change meta sync tasks to crontab
+* Update settings variables environment
+
+v3.8.3
+----------
+* Update entrypoint to add celery commands (cloud)
+
+v3.8.2
+----------
+* Add extra images field, rich description field and new rules gbarbosa
+* Change connected catalog app type
+* Add tags html to product specification
+* Synchronize specific sellers
+* Remove WebhookQueueManager class
+
+v3.8.1
+----------
+* Set template status with pending on create
+
+v3.8.0
+----------
+* Move methods to facebook client to display errors to user
+* Refactoring communication classes with Facebook
+* Change the limit parameter and change old facebook client
+
+v3.7.9
+----------
+* Add environment variables to meta sync tasks
+* Add retry for failed uploads
+* Remove project validation in update permission
+
+v3.7.8
+----------
+* Add logger to base request client
+
+v3.7.7
+----------
+* Add logger to upload vtex products
+
+v3.7.6
+----------
+* Fixing update products by sellers
+
+v3.7.5
+----------
+* Separate categories by seller
+* Add new category in alcoholic drinks categories
+* Insert vtex products by sellers
+
+v3.7.4
+----------
+* Hotfix: Create alert to notify upload errors
+
+v3.7.3
+----------
+* Hotfix: Remove quotation marks and HTML tags from the title and description of vtex products
+
+v3.7.2
+----------
+* Check the view if it can synchronize and add ignore results to tasks
+
+v3.7.1
+----------
+* Hotfix: Set CELERY_RESULT_BACKEND with None
+
+v3.7.0
+----------
+* Processes vtex update webhooks asynchronously and saves them on DB
+* Create task to upload products from db to fba-meta
+* Saves uploads sent to Facebook and creates a task to clear logs 
+* Fix: limits requests on vtex per minute
+* Fix: list paginated sellers
+* Remove url redirection from view
+
 v3.6.4
 ----------
 * Temporarily enable redirection of vtex updates

@@ -37,12 +37,14 @@ from marketplace.services.vtex.exceptions import CredentialsValidationError
 from marketplace.services.vtex.utils.data_processor import DataProcessor
 from marketplace.services.vtex.business.rules.rule_mappings import RULE_MAPPINGS
 from marketplace.services.vtex.utils.data_processor import FacebookProductDTO
+from marketplace.wpp_products.models import Catalog
 
 
 class PrivateProductsService:
     def __init__(self, client, data_processor_class=DataProcessor):
         self.client = client
         self.data_processor = data_processor_class()
+        self.webhook_data_processor = data_processor_class(use_threads=False)
         # TODO: Check if it makes sense to leave the domain instantiated
         # so that the domain parameter is removed from the methods
 
@@ -60,10 +62,21 @@ class PrivateProductsService:
         self.check_is_valid_domain(domain)
         return self.client.is_valid_credentials(domain)
 
+    def list_active_sellers(self, domain):
+        return self.client.list_active_sellers(domain)
+
+    def list_all_active_products(self, domain):
+        return self.client.list_all_active_products(domain)
+
     def list_all_products(
-        self, domain: str, config: dict, sellers: Optional[List[str]] = None
+        self,
+        domain: str,
+        catalog: Catalog,
+        sellers: Optional[List[str]] = None,
+        update_product=False,
     ) -> List[FacebookProductDTO]:
-        active_sellers = set(self.client.list_active_sellers(domain))
+        config = catalog.vtex_app.config
+        active_sellers = set(self.list_active_sellers(domain))
         if sellers is not None:
             valid_sellers = [seller for seller in sellers if seller in active_sellers]
             invalid_sellers = set(sellers) - active_sellers
@@ -75,11 +88,18 @@ class PrivateProductsService:
         else:
             sellers_ids = list(active_sellers)
 
-        skus_ids = self.client.list_all_active_products(domain)
+        skus_ids = self.list_all_active_products(domain)
         rules = self._load_rules(config.get("rules", []))
         store_domain = config.get("store_domain")
         products_dto = self.data_processor.process_product_data(
-            skus_ids, sellers_ids, self, domain, store_domain, rules
+            skus_ids=skus_ids,
+            active_sellers=sellers_ids,
+            service=self,
+            domain=domain,
+            store_domain=store_domain,
+            rules=rules,
+            catalog=catalog,
+            update_product=update_product,
         )
         return products_dto
 
@@ -92,21 +112,26 @@ class PrivateProductsService:
         )  # TODO: Change to pvt_simulate_cart_for_seller
 
     def update_webhook_product_info(
-        self, domain: str, skus_ids: list, seller_ids: list, config: dict
+        self, domain: str, skus_ids: list, seller_ids: list, catalog: Catalog
     ) -> List[FacebookProductDTO]:
+        config = catalog.vtex_app.config
         rules = self._load_rules(config.get("rules", []))
         store_domain = config.get("store_domain")
-        updated_products_dto = self.data_processor.process_product_data(
-            skus_ids,
-            seller_ids,
-            self,
-            domain,
-            store_domain,
-            rules,
+        updated_products_dto = self.webhook_data_processor.process_product_data(
+            skus_ids=skus_ids,
+            active_sellers=seller_ids,
+            service=self,
+            domain=domain,
+            store_domain=store_domain,
+            rules=rules,
+            catalog=catalog,
             update_product=True,
         )
 
         return updated_products_dto
+
+    def get_product_specification(self, product_id, domain):
+        return self.client.get_product_specification(product_id, domain)
 
     # ================================
     # Private Methods

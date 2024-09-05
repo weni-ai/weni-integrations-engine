@@ -1,17 +1,21 @@
 import concurrent.futures
+import csv
 import pandas as pd
 import io
 import dataclasses
 import threading
+import re
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
-from typing import List
+from typing import List, Optional
 
 from tqdm import tqdm
 from queue import Queue
 
+from marketplace.services.vtex.utils.sku_validator import SKUValidator
 from marketplace.clients.exceptions import CustomAPIException
+from marketplace.clients.zeroshot.client import MockZeroShotClient
 
 
 @dataclass
@@ -28,6 +32,8 @@ class FacebookProductDTO:
     brand: str
     sale_price: str
     product_details: dict  # TODO: Implement ProductDetailsDTO
+    additional_image_link: Optional[str] = ""
+    rich_text_description: Optional[str] = ""
 
 
 @dataclass
@@ -36,9 +42,29 @@ class VtexProductDTO:  # TODO: Implement This VtexProductDTO
 
 
 class DataProcessor:
-    def __init__(self):
+    def __init__(self, use_threads=True):
         self.max_workers = 100
         self.progress_lock = threading.Lock()
+        self.use_threads = use_threads
+
+    @staticmethod
+    def clean_text(text: str) -> str:
+        """Cleans up text by removing HTML tags, replacing quotes with empty space,
+        replacing commas with semicolons, and normalizing whitespace but keeping new lines.
+        """
+        # Remove HTML tags
+        text = re.sub(r"<[^>]*>", "", text)
+        # Replace double and single quotes with empty space
+        text = text.replace('"', "").replace("'", " ")
+        # Normalize new lines and carriage returns to a single newline
+        text = re.sub(r"\r\n|\r|\n", "\n", text)
+        # Remove excessive whitespace but keep new lines
+        text = re.sub(r"[ \t]+", " ", text.strip())
+        # Remove bullet points
+        text = text.replace("•", "")
+        # Ensure there's a space after a period, unless followed by a new line
+        text = re.sub(r"\.(?=[^\s\n])", ". ", text)
+        return text
 
     @staticmethod
     def extract_fields(
@@ -69,9 +95,12 @@ class DataProcessor:
             else product_details["SkuName"]
         )
         title = product_details["SkuName"].title()
-        # Limit title and description to 200 characters for Facebook rules
-        description = description[:200]
-        title = title[:200]
+        # Applies the .title() before clearing the text
+        title = title[:200].title()
+        description = description[:9999].title()
+        # Clean title and description
+        title = DataProcessor.clean_text(title)
+        description = DataProcessor.clean_text(description)
 
         availability = (
             "in stock" if availability_details["is_available"] else "out of stock"
@@ -80,8 +109,8 @@ class DataProcessor:
 
         return FacebookProductDTO(
             id=sku_id,
-            title=title.title(),
-            description=description.title(),
+            title=title,
+            description=description,
             availability=availability,
             status=status,
             condition="new",
@@ -101,6 +130,7 @@ class DataProcessor:
         domain,
         store_domain,
         rules,
+        catalog,
         update_product=False,
     ) -> List[FacebookProductDTO]:
         self.queue = Queue()
@@ -112,28 +142,35 @@ class DataProcessor:
         self.rules = rules
         self.update_product = update_product
         self.invalid_products_count = 0
+        self.catalog = catalog
+        self.sku_validator = SKUValidator(service, domain, MockZeroShotClient())
 
         # Preparing the tqdm progress bar
         print("Initiated process of product treatment:")
         self.progress_bar = tqdm(
-            total=len(skus_ids) * len(self.active_sellers),
-            desc="[✓:0, ✗:0]",
-            ncols=0,
+            total=len(skus_ids) * len(self.active_sellers), desc="[✓:0, ✗:0]", ncols=0
         )
 
         # Initializing the queue with SKUs
         for sku_id in skus_ids:
             self.queue.put(sku_id)
 
-        # Starting the workers
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=self.max_workers
-        ) as executor:
-            futures = [executor.submit(self.worker) for _ in range(self.max_workers)]
+        if self.use_threads:
+            # Using threads for processing
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=self.max_workers
+            ) as executor:
+                futures = [
+                    executor.submit(self.worker) for _ in range(self.max_workers)
+                ]
 
-        # Waiting for all the workers to finish
-        for future in futures:
-            future.result()
+            # Waiting for all the workers to finish
+            for future in futures:
+                future.result()
+        else:
+            # Processing without using threads
+            while not self.queue.empty():
+                self.worker()
 
         self.progress_bar.close()
 
@@ -164,12 +201,19 @@ class DataProcessor:
 
     def process_single_sku(self, sku_id):
         facebook_products = []
-
         try:
-            product_details = self.service.get_product_details(sku_id, self.domain)
+            product_details = self.sku_validator.validate_product_details(
+                sku_id, self.catalog
+            )
+            if not product_details:
+                return facebook_products
         except CustomAPIException as e:
             if e.status_code == 404:
                 print(f"SKU {sku_id} not found. Skipping...")
+            elif e.status_code == 500:
+                print(f"SKU {sku_id} returned status: {e.status_code}. Skipping...")
+
+            print(f"An error {e} occurred on get_product_details. SKU: {sku_id}")
             return []
 
         is_active = product_details.get("IsActive")
@@ -184,10 +228,11 @@ class DataProcessor:
             except CustomAPIException as e:
                 if e.status_code == 500:
                     print(
-                        f"An error {e.status_code} occurred when simulating cart. SKU {sku_id}, Seller {seller_id}."
-                        "Skipping..."
+                        f"An error {e.status_code} occurred when simulating cart. SKU {sku_id}, "
+                        f"Seller {seller_id}. Skipping..."
                     )
                 continue
+
             if (
                 self.update_product is False
                 and not availability_details["is_available"]
@@ -200,7 +245,11 @@ class DataProcessor:
             if not self._validate_product_dto(product_dto):
                 continue
 
-            params = {"seller_id": seller_id}
+            params = {
+                "seller_id": seller_id,
+                "service": self.service,
+                "domain": self.domain,
+            }
             all_rules_applied = True
             for rule in self.rules:
                 if not rule.apply(product_dto, **params):
@@ -226,10 +275,23 @@ class DataProcessor:
 
     @staticmethod
     def product_to_csv_line(product: FacebookProductDTO) -> str:
-        product_dict = dataclasses.asdict(product)
-        df = pd.DataFrame([product_dict])
-        df = df.drop(columns=["product_details"])
-        csv_line = df.to_csv(index=False, header=False, encoding="utf-8").strip()
+        def escape_quotes(text: str) -> str:
+            """Replaces quotes with a empty space in the provided text."""
+            if isinstance(text, str):
+                text = text.replace('"', "").replace("'", " ")
+            return text
+
+        product_dict = asdict(product)
+        product_dict.pop(
+            "product_details", None
+        )  # Remove 'product_details' field if present
+
+        cleaned_product_dict = {k: escape_quotes(v) for k, v in product_dict.items()}
+
+        df = pd.DataFrame([cleaned_product_dict])
+        csv_line = df.to_csv(
+            index=False, header=False, encoding="utf-8", quoting=csv.QUOTE_MINIMAL
+        ).strip()
         return csv_line
 
     @staticmethod
@@ -249,8 +311,7 @@ class DataProcessor:
         return dicts_list
 
     def _validate_product_dto(self, product_dto: FacebookProductDTO) -> bool:
-        """
-        Verifies that all required fields in the FacebookProductDTO are filled in.
+        """Verifies that all required fields in the FacebookProductDTO are filled in.
         Returns True if the product is valid, False otherwise.
         """
         required_fields = [
