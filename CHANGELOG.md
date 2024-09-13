@@ -1,3 +1,8 @@
+v3.9.6
+----------
+* Add ProjectManagePermission to TemplateMessageViewSet
+* Add ProjectManagePermission to Catalog BaseViewSet
+
 v3.9.5
 ----------
 * Add csv file extension to file name and add logger on upload feed
