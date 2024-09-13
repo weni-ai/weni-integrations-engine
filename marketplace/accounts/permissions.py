@@ -31,6 +31,9 @@ class ProjectManagePermission(permissions.IsAuthenticated):
             project_uuid = request.data.get("project_uuid")
 
             if project_uuid is None:
+                project_uuid = request.headers.get("Project-Uuid")
+
+            if project_uuid is None:
                 return False
 
             try:
