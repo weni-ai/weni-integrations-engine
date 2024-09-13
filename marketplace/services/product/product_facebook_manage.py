@@ -3,7 +3,13 @@ from typing import List
 from django.contrib.auth import get_user_model
 from django.db import transaction
 
-from marketplace.wpp_products.models import Product, UploadProduct, Catalog, ProductFeed
+from marketplace.wpp_products.models import (
+    Product,
+    UploadProduct,
+    Catalog,
+    ProductFeed,
+    remove_duplicates,
+)
 from marketplace.services.vtex.utils.data_processor import (
     DataProcessor,
     FacebookProductDTO,
@@ -99,6 +105,8 @@ class ProductFacebookManager:
                     f"{len(products_to_create)} products have been created in the integration databases"
                 )
 
+        # Call duplicate cleanup after processing
+        remove_duplicates(catalog)
         return True
 
     def save_csv_product_data(
@@ -129,6 +137,10 @@ class ProductFacebookManager:
             except Exception as e:
                 print(f"Failed to save or update product: {str(e)}")
                 all_success = False
+
+        # Call duplicate cleanup after processing
+        remove_duplicates(catalog)
+
         print(
             f"All {len(products_dto)} products were saved successfully in the database:"
             f"Catalog ID {catalog.facebook_catalog_id}, "
@@ -178,6 +190,9 @@ class ProductFacebookManager:
         if products_to_create:
             UploadProduct.objects.bulk_create(products_to_create, batch_size=batch_size)
             print(f"Bulk created {len(products_to_create)} remaining products.")
+
+        # Call duplicate cleanup after processing
+        remove_duplicates(catalog)
 
         print("Initial data insertion process completed successfully.")
         return True
@@ -255,5 +270,8 @@ class ProductFacebookManager:
         except Exception as e:
             print(f"Failed to save or update products: {str(e)}")
             all_success = False
+
+        # Call duplicate cleanup after processing
+        remove_duplicates(catalog)
 
         return all_success

@@ -228,22 +228,33 @@ class ProductBatchFetcher(ProductUploadManager):
         return self
 
     def __next__(self):
-        products = UploadProduct.objects.filter(
-            catalog=self.catalog, status="pending"
-        ).order_by("modified_on")[: self.batch_size]
+        # TODO: Test the solution
+        # Step 1: Get the most recent modified_on for each facebook_product_id
+        latest_products = (
+            UploadProduct.objects.filter(catalog=self.catalog, status="pending")
+            .order_by(
+                "facebook_product_id", "-modified_on"
+            )  # Order by ID and most recent modification
+            .distinct(
+                "facebook_product_id"
+            )[  # Get distinct products by facebook_product_id
+                : self.batch_size
+            ]  # Limit to batch size
+        )
 
-        if not products.exists():
+        if not latest_products.exists():
             print(f"No more pending products for catalog {self.catalog.name}.")
             raise StopIteration
 
-        product_ids = list(products.values_list("id", flat=True))
+        product_ids = list(latest_products.values_list("id", flat=True))
         UploadProduct.objects.filter(id__in=product_ids).update(status="processing")
-        products = UploadProduct.objects.filter(id__in=product_ids)
 
-        print(f"Products marked as processing: {len(products)}")
+        print(f"Products marked as processing: {len(product_ids)}")
 
-        products_ids = list(products.values_list("facebook_product_id", flat=True))
-        return products, products_ids
+        products_ids = list(
+            latest_products.values_list("facebook_product_id", flat=True)
+        )
+        return latest_products, products_ids
 
 
 def generate_log_with_file(csv_content: io.BytesIO, data, exception: Exception):

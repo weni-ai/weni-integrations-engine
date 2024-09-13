@@ -1,8 +1,6 @@
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.db.models import JSONField
-from django.db.models.signals import post_save
-from django.dispatch import receiver
 
 from marketplace.core.models import BaseModel
 from marketplace.applications.models import App
@@ -152,14 +150,11 @@ class UploadProduct(models.Model):
         ]
 
 
-# Signal to remove duplicates after saving a record
-@receiver(post_save, sender=UploadProduct)
-def remove_duplicates(
-    sender, instance, **kwargs
-):  # TODO: check if bulk create calls 1 or several times
-    # Get all duplicate records in the catalog of the saved record
+# Duplicate cleanup function
+def remove_duplicates(catalog):
+    # Get all duplicate records in the catalog
     duplicates = (
-        UploadProduct.objects.filter(catalog=instance.catalog)
+        UploadProduct.objects.filter(catalog=catalog)
         .values("facebook_product_id")
         .annotate(count=models.Count("id"))
         .filter(count__gt=1)
@@ -168,7 +163,7 @@ def remove_duplicates(
     for duplicate in duplicates:
         duplicate_records = UploadProduct.objects.filter(
             facebook_product_id=duplicate["facebook_product_id"],
-            catalog=instance.catalog,
+            catalog=catalog,
         ).order_by("modified_on")
         # Keep the most recent and delete the others
         for record in duplicate_records[:-1]:
