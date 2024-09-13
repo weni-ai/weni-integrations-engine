@@ -1,18 +1,18 @@
 """ Tests for the wpp_templates module """
 
 import uuid
-import textwrap
+# import textwrap
 import pytz
 
 from datetime import datetime
 
-from rest_framework import status
+# from rest_framework import status
 from rest_framework.test import APIClient
 
 from django.contrib.auth import get_user_model
 from django.urls import reverse
-from django.utils.translation import gettext_lazy as _
-from django.core.exceptions import ValidationError
+# from django.utils.translation import gettext_lazy as _
+# from django.core.exceptions import ValidationError
 
 from marketplace.applications.models import App
 from marketplace.clients.facebook.client import FacebookClient
