@@ -18,6 +18,7 @@ from marketplace.core.types import APPTYPES
 from marketplace.core.types.channels.whatsapp_base.mixins import QueryParamsParser
 from marketplace.services.facebook.service import TemplateService, PhotoAPIService
 from marketplace.clients.facebook.client import FacebookClient
+from marketplace.accounts.permissions import ProjectManagePermission
 
 from .models import TemplateHeader, TemplateMessage, TemplateTranslation, TemplateButton
 from .serializers import TemplateMessageSerializer, TemplateTranslationSerializer
@@ -43,6 +44,7 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
     lookup_field = "uuid"
     serializer_class = TemplateMessageSerializer
     pagination_class = CustomResultsPagination
+    permission_classes = [ProjectManagePermission]
 
     def filter_queryset(self, queryset):
         params = self.request.query_params
