@@ -50,8 +50,9 @@ class ProjectManagePermission(permissions.IsAuthenticated):
     def has_object_permission(self, request, view, obj):
         if request.method not in WRITE_METHODS:
             try:
+                project_uuid = self._get_project_uuid_from_object(obj)
                 authorization = request.user.authorizations.get(
-                    project_uuid=obj.project_uuid
+                    project_uuid=project_uuid
                 )
                 is_admin = authorization.is_admin
                 is_contributor = authorization.is_contributor
@@ -66,6 +67,16 @@ class ProjectManagePermission(permissions.IsAuthenticated):
                 return is_viewer or is_contributor or is_admin
 
         return True
+
+    def _get_project_uuid_from_object(self, obj):
+        """
+        Helper method to retrieve the project UUID from the object or its related App.
+        """
+        if hasattr(obj, "project_uuid"):
+            return obj.project_uuid
+        if hasattr(obj, "app") and hasattr(obj.app, "project_uuid"):
+            return obj.app.project_uuid
+        return None
 
 
 class ProjectViewPermission(permissions.BasePermission):

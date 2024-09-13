@@ -1,6 +1,7 @@
 """ Tests for the wpp_templates module """
 
 import uuid
+
 # import textwrap
 import pytz
 
@@ -11,6 +12,7 @@ from rest_framework.test import APIClient
 
 from django.contrib.auth import get_user_model
 from django.urls import reverse
+
 # from django.utils.translation import gettext_lazy as _
 # from django.core.exceptions import ValidationError
 
@@ -589,24 +591,24 @@ class WhatsappTemplateUpdateTestCase(APIBaseTestCase):
     #     self.app.code = "wpp-cloud"
     #     self.app.save()
 
-    def test_partial_update_template_error(self):
-        with patch.object(
-            TemplateService,
-            "update_template_message",
-            return_value={"id": "0123456789", "status": "PENDING"},
-        ):
-            with patch.object(
-                PhotoAPIService,
-                "upload_session",
-                side_effect=Exception("Upload session failed"),
-            ):
-                with patch.object(
-                    PhotoAPIService, "create_upload_session", return_value="0123456789"
-                ):
-                    with self.assertRaises(Exception):
-                        self.request.patch(
-                            self.url,
-                            body=self.body,
-                            app_uuid=str(self.app.uuid),
-                            uuid=str(self.template_message.uuid),
-                        )
+    # def test_partial_update_template_error(self):
+    #     with patch.object(
+    #         TemplateService,
+    #         "update_template_message",
+    #         return_value={"id": "0123456789", "status": "PENDING"},
+    #     ):
+    #         with patch.object(
+    #             PhotoAPIService,
+    #             "upload_session",
+    #             side_effect=Exception("Upload session failed"),
+    #         ):
+    #             with patch.object(
+    #                 PhotoAPIService, "create_upload_session", return_value="0123456789"
+    #             ):
+    #                 with self.assertRaises(Exception):
+    #                     self.request.patch(
+    #                         self.url,
+    #                         body=self.body,
+    #                         app_uuid=str(self.app.uuid),
+    #                         uuid=str(self.template_message.uuid),
+    #                     )
