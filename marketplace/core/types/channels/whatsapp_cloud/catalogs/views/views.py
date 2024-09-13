@@ -26,6 +26,7 @@ from marketplace.wpp_products.serializers import (
 )
 from marketplace.services.vtex.generic_service import VtexServiceBase
 from marketplace.celery import app as celery_app
+from marketplace.accounts.permissions import ProjectManagePermission
 
 
 class BaseViewSet(viewsets.ModelViewSet):
@@ -34,6 +35,8 @@ class BaseViewSet(viewsets.ModelViewSet):
 
     fb_client_class = FacebookClient
     flows_client_class = FlowsClient
+
+    permission_classes = [ProjectManagePermission]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
