@@ -44,6 +44,9 @@ class MockFlowsService:
     def update_vtex_integration_status(self, project_uuid, user_email, action):
         return True
 
+    def update_vtex_ads_status(self, project_uuid, user_email, action):
+        return True
+
 
 class SetUpService(APIBaseTestCase):
     view_class = VtexViewSet
@@ -376,3 +379,30 @@ class VtexViewSetTestCase(APIBaseTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["message"], "No synchronization in progress")
+
+
+class UpdateVtexAdsTestCase(SetUpService):
+    def setUp(self):
+        super().setUp()
+        self.app = apptype.create_app(
+            created_by=self.user, project_uuid=str(uuid.uuid4())
+        )
+        self.url = reverse("vtex-app-update-vtex-ads", kwargs={"uuid": self.app.uuid})
+        self.body = {
+            "vtex_ads": True,
+            "project_uuid": self.app.project_uuid,
+        }
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid, role=ProjectAuthorization.ROLE_ADMIN
+        )
+
+    @property
+    def view(self):
+        return self.view_class.as_view({"post": "update_vtex_ads"})
+
+    def test_update_vtex_ads_success(self):
+        response = self.request.post(self.url, self.body, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.mock_app_manager.update_vtex_ads.assert_called_once_with(
+            self.app, self.body["vtex_ads"]
+        )

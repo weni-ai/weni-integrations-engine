@@ -64,6 +64,17 @@ class FlowsClient(RequestClient):
         )
         return True
 
+    def update_vtex_ads_status(self, project_uuid, user_email, action, vtex_ads):
+        url = f"{self.base_url}/api/v2/internals/orgs/{project_uuid}/update-vtex/"
+        payload = {"user_email": user_email, "vtex_ads": vtex_ads}
+        self.make_request(
+            url=url,
+            method=action,
+            headers=self.authentication_instance.headers,
+            json=payload,
+        )
+        return True
+
     def update_catalogs(self, flow_object_uuid, catalogs_data, active_catalog):
         data = {"data": catalogs_data, "active_catalog": active_catalog}
         url = f"{self.base_url}/catalogs/{flow_object_uuid}/update-catalog/"
