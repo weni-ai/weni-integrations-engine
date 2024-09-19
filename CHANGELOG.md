@@ -1,3 +1,7 @@
+v3.9.7
+----------
+* Vtex ads switch
+
 v3.9.6
 ----------
 * Add ProjectManagePermission to TemplateMessageViewSet
