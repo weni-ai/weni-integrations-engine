@@ -290,6 +290,11 @@ APPTYPE_OMIE_PATH = "externals.omie.type.OmieType"
 APPTYPE_CHATGPT_PATH = "externals.chatgpt.type.ChatGPTType"
 APPTYPE_VTEX_PATH = "ecommerce.vtex.type.VtexType"
 
+# Emails
+APPTYPE_GENERIC_EMAIL_PATH = "emails.generic_email.type.GenericEmailType"
+APPTYPE_GMAIL_PATH = "emails.g_mail.type.GmailType"
+
+
 APPTYPES_CLASSES = [
     APPTYPE_WENI_WEB_CHAT_PATH,
     APPTYPE_TELEGRAM_PATH,
@@ -302,6 +307,8 @@ APPTYPES_CLASSES = [
     APPTYPE_GENERIC_CHANNEL_PATH,
     APPTYPE_CHATGPT_PATH,
     APPTYPE_VTEX_PATH,
+    APPTYPE_GENERIC_EMAIL_PATH,
+    APPTYPE_GMAIL_PATH,
 ]
 
 # These conditions avoid dependence between apptypes,

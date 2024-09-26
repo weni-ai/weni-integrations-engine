@@ -62,3 +62,10 @@ class FlowsService:
         return self.client.create_wac_channel(
             user, project_uuid, phone_number_id, config
         )
+
+    def create_channel(
+        self, user_email: str, project_uuid: str, data: dict, channeltype_code: str
+    ) -> dict:
+        return self.client.create_channel(
+            user_email, project_uuid, data, channeltype_code
+        )
