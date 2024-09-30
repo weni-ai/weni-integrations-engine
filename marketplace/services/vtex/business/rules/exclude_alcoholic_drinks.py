@@ -17,6 +17,7 @@ class ExcludeAlcoholicDrinks(Rule):
     ALCOHOLIC_DRINKS_CATEGORIES = {
         "bebida alcoólica",
         "bebidas alcoólicas",
+        "bebidas alcohólicas",
         "vinos y licores",
         "licores",
         "vinos",
