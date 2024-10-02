@@ -47,7 +47,6 @@ class ProductBatchFetcherTestCase(TestCase):
             modified_on=timezone.now() - timezone.timedelta(days=1),
             status="pending",
         )
-        print(f"produto mais novo. {product_newer.id}")
 
         # Create another set of products
         product_2 = UploadProduct.objects.create(

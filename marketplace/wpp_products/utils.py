@@ -240,11 +240,12 @@ class ProductBatchFetcher(ProductUploadManager):
         # Update status to "processing"
         UploadProduct.objects.filter(id__in=product_ids).update(status="processing")
 
+        print(f"Products marked as processing: {len(product_ids)}")
+
         # Prepare the result as (products, facebook_product_ids)
         facebook_product_ids = list(
             latest_products.values_list("facebook_product_id", flat=True)
         )
-
         return latest_products, facebook_product_ids
 
 
