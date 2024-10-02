@@ -179,7 +179,6 @@ class ProductUploader:
 class ProductUploadManager:
     def convert_to_csv(self, products: QuerySet, include_header=True) -> io.BytesIO:
         """Converts products to CSV format in a buffer, optionally including header."""
-
         # Generate header dynamically from the FacebookProductDTO dataclass
         header = ",".join(
             field.name
@@ -228,18 +227,8 @@ class ProductBatchFetcher(ProductUploadManager):
         return self
 
     def __next__(self):
-        # TODO: Test the solution
-        # Step 1: Get the most recent modified_on for each facebook_product_id
-        latest_products = (
-            UploadProduct.objects.filter(catalog=self.catalog, status="pending")
-            .order_by(
-                "facebook_product_id", "-modified_on"
-            )  # Order by ID and most recent modification
-            .distinct(
-                "facebook_product_id"
-            )[  # Get distinct products by facebook_product_id
-                : self.batch_size
-            ]  # Limit to batch size
+        latest_products = UploadProduct.get_latest_products(
+            catalog=self.catalog, status="pending", batch_size=self.batch_size
         )
 
         if not latest_products.exists():
@@ -247,14 +236,16 @@ class ProductBatchFetcher(ProductUploadManager):
             raise StopIteration
 
         product_ids = list(latest_products.values_list("id", flat=True))
+
+        # Update status to "processing"
         UploadProduct.objects.filter(id__in=product_ids).update(status="processing")
 
-        print(f"Products marked as processing: {len(product_ids)}")
-
-        products_ids = list(
+        # Prepare the result as (products, facebook_product_ids)
+        facebook_product_ids = list(
             latest_products.values_list("facebook_product_id", flat=True)
         )
-        return latest_products, products_ids
+
+        return latest_products, facebook_product_ids
 
 
 def generate_log_with_file(csv_content: io.BytesIO, data, exception: Exception):
