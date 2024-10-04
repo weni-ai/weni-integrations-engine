@@ -170,26 +170,28 @@ class MockServiceTestCase(SetUpTestBase):
         patcher_flows.start()
 
 
-# TODO: Fix the tests
-# class CatalogListTestCase(MockServiceTestCase):
-#     current_view_mapping = {"get": "list"}
+class CatalogListTestCase(MockServiceTestCase):
+    current_view_mapping = {"get": "list"}
 
-#     def test_list_catalogs(self):
-#         url = reverse("catalog-list-create", kwargs={"app_uuid": self.app.uuid})
-#         response = self.request.get(url, app_uuid=self.app.uuid)
-#         self.assertEqual(response.status_code, status.HTTP_200_OK)
-#         self.assertEqual(len(response.json["results"]), 3)
+    def test_list_catalogs(self):
+        url = reverse("catalog-list-create", kwargs={"app_uuid": self.app.uuid})
+        response = self.request.get(url, app_uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.json["results"]), 3)
 
-#     def test_filter_by_name(self):
-#         url = reverse("catalog-list-create", kwargs={"app_uuid": self.app.uuid})
+    def test_filter_by_name(self):
+        url = reverse("catalog-list-create", kwargs={"app_uuid": self.app.uuid})
+        response = self.request.get(
+            url, params={"name": "catalog test"}, app_uuid=self.app.uuid
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertNotEqual(len(response.json["results"]), 0)
 
-#         response = self.client.get(url, {"name": "catalog test"})
-#         self.assertEqual(response.status_code, status.HTTP_200_OK)
-#         self.assertNotEqual(len(response.json()["results"]), 0)
-
-#         response = self.client.get(url, {"name": "non-existing name"})
-#         self.assertEqual(response.status_code, status.HTTP_200_OK)
-#         self.assertEqual(len(response.json()["results"]), 0)
+        response = self.request.get(
+            url, {"name": "non-existing name"}, app_uuid=self.app.uuid
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.json["results"]), 0)
 
 
 class CatalogRetrieveTestCase(MockServiceTestCase):
@@ -207,70 +209,82 @@ class CatalogRetrieveTestCase(MockServiceTestCase):
         self.assertEqual(len(response.json), 5)
 
 
-# class CatalogEnabledTestCase(MockServiceTestCase):
-#     current_view_mapping = {"post": "enable_catalog"}
+class CatalogEnabledTestCase(MockServiceTestCase):
+    current_view_mapping = {"post": "enable_catalog"}
 
-#     def test_enable_catalog(self):
-#         url = reverse(
-#             "catalog-enable",
-#             kwargs={"app_uuid": self.app.uuid, "catalog_uuid": self.catalog.uuid},
-#         )
-#         response = self.request.post(
-#             url, app_uuid=self.app.uuid, catalog_uuid=self.catalog.uuid
-#         )
-#         self.assertEqual(response.status_code, status.HTTP_200_OK)
+    def test_enable_catalog(self):
+        url = reverse(
+            "catalog-enable",
+            kwargs={"app_uuid": self.app.uuid, "catalog_uuid": self.catalog.uuid},
+        )
+        response = self.request.post(
+            url,
+            app_uuid=self.app.uuid,
+            catalog_uuid=self.catalog.uuid,
+            body={"project_uuid": str(self.app.project_uuid)},
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-# def test_failed_enable_catalog(self):
-#     mock_facebook_service = MockFailiedEnableDisableCatalogFacebookService()
-#     patcher_fb_failure = patch.object(
-#         self.view_class,
-#         "fb_service",
-#         Mock(return_value=mock_facebook_service),
-#     )
-#     patcher_fb_failure.start()
-#     self.addCleanup(patcher_fb_failure.stop)
+    def test_failed_enable_catalog(self):
+        mock_facebook_service = MockFailiedEnableDisableCatalogFacebookService()
+        patcher_fb_failure = patch.object(
+            self.view_class,
+            "fb_service",
+            Mock(return_value=mock_facebook_service),
+        )
+        patcher_fb_failure.start()
+        self.addCleanup(patcher_fb_failure.stop)
 
-#     url = reverse(
-#         "catalog-enable",
-#         kwargs={"app_uuid": self.app.uuid, "catalog_uuid": self.catalog.uuid},
-#     )
-#     response = self.request.post(
-#         url, app_uuid=self.app.uuid, catalog_uuid=self.catalog.uuid
-#     )
-#     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        url = reverse(
+            "catalog-enable",
+            kwargs={"app_uuid": self.app.uuid, "catalog_uuid": self.catalog.uuid},
+        )
+        response = self.request.post(
+            url,
+            app_uuid=self.app.uuid,
+            catalog_uuid=self.catalog.uuid,
+            body={"project_uuid": str(self.app.project_uuid)},
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
-# class CatalogDisableTestCase(MockServiceTestCase):
-#     current_view_mapping = {"post": "disable_catalog"}
+class CatalogDisableTestCase(MockServiceTestCase):
+    current_view_mapping = {"post": "disable_catalog"}
 
-#     def test_disable_catalog(self):
-#         url = reverse(
-#             "catalog-disable",
-#             kwargs={"app_uuid": self.app.uuid, "catalog_uuid": self.catalog.uuid},
-#         )
-#         response = self.request.post(
-#             url, app_uuid=self.app.uuid, catalog_uuid=self.catalog.uuid
-#         )
-#         self.assertEqual(response.status_code, status.HTTP_200_OK)
+    def test_disable_catalog(self):
+        url = reverse(
+            "catalog-disable",
+            kwargs={"app_uuid": self.app.uuid, "catalog_uuid": self.catalog.uuid},
+        )
+        response = self.request.post(
+            url,
+            app_uuid=self.app.uuid,
+            catalog_uuid=self.catalog.uuid,
+            body={"project_uuid": str(self.app.project_uuid)},
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-# def test_failed_disable_catalog(self):
-#     mock_facebook_service = MockFailiedEnableDisableCatalogFacebookService()
-#     patcher_fb_failure = patch.object(
-#         self.view_class,
-#         "fb_service",
-#         Mock(return_value=mock_facebook_service),
-#     )
-#     patcher_fb_failure.start()
-#     self.addCleanup(patcher_fb_failure.stop)
+    def test_failed_disable_catalog(self):
+        mock_facebook_service = MockFailiedEnableDisableCatalogFacebookService()
+        patcher_fb_failure = patch.object(
+            self.view_class,
+            "fb_service",
+            Mock(return_value=mock_facebook_service),
+        )
+        patcher_fb_failure.start()
+        self.addCleanup(patcher_fb_failure.stop)
 
-#     url = reverse(
-#         "catalog-disable",
-#         kwargs={"app_uuid": self.app.uuid, "catalog_uuid": self.catalog.uuid},
-#     )
-#     response = self.request.post(
-#         url, app_uuid=self.app.uuid, catalog_uuid=self.catalog.uuid
-#     )
-#     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        url = reverse(
+            "catalog-disable",
+            kwargs={"app_uuid": self.app.uuid, "catalog_uuid": self.catalog.uuid},
+        )
+        response = self.request.post(
+            url,
+            app_uuid=self.app.uuid,
+            catalog_uuid=self.catalog.uuid,
+            body={"project_uuid": str(self.app.project_uuid)},
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
 class CatalogConnectedTestCase(MockServiceTestCase):
@@ -365,49 +379,49 @@ class CatalogCreateTestCase(MockServiceTestCase):
             platform=App.PLATFORM_WENI_FLOWS,
         )
 
-    # def test_create_catalog_with_vtex_app(self):
-    #     data = {"name": "valid_catalog"}
-    #     url = reverse("catalog-list-create", kwargs={"app_uuid": self.app.uuid})
+    def test_create_catalog_with_vtex_app(self):
+        data = {"name": "valid_catalog", "project_uuid": str(self.app.project_uuid)}
+        url = reverse("catalog-list-create", kwargs={"app_uuid": self.app.uuid})
 
-    #     response = self.request.post(url, data, app_uuid=self.app.uuid)
-    #     self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-    #     self.assertEqual(response.data["facebook_catalog_id"], "123456789")
+        response = self.request.post(url, data, app_uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["facebook_catalog_id"], "123456789")
 
-    # def test_create_catalog_with_unconfigured_app(self):
-    #     data = {"name": "valid_catalog"}
-    #     url = reverse(
-    #         "catalog-list-create", kwargs={"app_uuid": self.app_without_vtex.uuid}
-    #     )
+    def test_create_catalog_with_unconfigured_app(self):
+        data = {"name": "valid_catalog", "project_uuid": str(self.app.project_uuid)}
+        url = reverse(
+            "catalog-list-create", kwargs={"app_uuid": self.app_without_vtex.uuid}
+        )
 
-    #     response = self.request.post(url, data, app_uuid=self.app_without_vtex.uuid)
-    #     self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-    #     self.assertEqual(response.data["detail"], "There is no VTEX App configured.")
+        response = self.request.post(url, data, app_uuid=self.app_without_vtex.uuid)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.data["detail"], "There is no VTEX App configured.")
 
-    # def test_create_catalog_with_multiple_configured_apps(self):
-    #     data = {"name": "valid_catalog"}
-    #     url = reverse(
-    #         "catalog-list-create", kwargs={"app_uuid": self.app_double_vtex.uuid}
-    #     )
+    def test_create_catalog_with_multiple_configured_apps(self):
+        data = {"name": "valid_catalog", "project_uuid": str(self.app.project_uuid)}
+        url = reverse(
+            "catalog-list-create", kwargs={"app_uuid": self.app_double_vtex.uuid}
+        )
 
-    #     response = self.request.post(url, data, app_uuid=self.app_double_vtex.uuid)
-    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-    #     self.assertEqual(
-    #         response.data["detail"],
-    #         "Multiple VTEX Apps are configured, which is not expected.",
-    #     )
+        response = self.request.post(url, data, app_uuid=self.app_double_vtex.uuid)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data["detail"],
+            "Multiple VTEX Apps are configured, which is not expected.",
+        )
 
-    # def test_create_catalog_failure(self):
-    #     with patch.object(
-    #         MockFacebookService, "create_vtex_catalog", return_value=(None, None)
-    #     ):
-    #         data = {"name": "valid_catalog"}
-    #         url = reverse("catalog-list-create", kwargs={"app_uuid": self.app.uuid})
+    def test_create_catalog_failure(self):
+        with patch.object(
+            MockFacebookService, "create_vtex_catalog", return_value=(None, None)
+        ):
+            data = {"name": "valid_catalog", "project_uuid": str(self.app.project_uuid)}
+            url = reverse("catalog-list-create", kwargs={"app_uuid": self.app.uuid})
 
-    #         response = self.request.post(url, data, app_uuid=self.app.uuid)
-    #         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-    #         self.assertEqual(
-    #             response.data["detail"], "Failed to create catalog on Facebook."
-    #         )
+            response = self.request.post(url, data, app_uuid=self.app.uuid)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+            self.assertEqual(
+                response.data["detail"], "Failed to create catalog on Facebook."
+            )
 
 
 class CatalogListProductsTestCase(MockServiceTestCase):
