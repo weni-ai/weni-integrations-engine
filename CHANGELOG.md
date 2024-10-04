@@ -1,3 +1,10 @@
+v3.9.8
+----------
+* feat: add view to return vtex integration details by project UUID
+* Fix Unit Tests And Refactor Request class
+* Groups log erros to facebook sync tasks
+* Adds new exclusion rules by categories to colombia
+
 v3.9.7
 ----------
 * Vtex ads switch
