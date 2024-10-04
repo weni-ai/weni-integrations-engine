@@ -305,7 +305,10 @@ def sync_whatsapp_phone_numbers():
 
     if error_counts:
         total_errors = sum(error_counts.values())
-        logger.error(f"Sync phone numbers task failed with {total_errors}")
+        logger.error(
+            f"Sync phone numbers task failed with {total_errors}",
+            extra={"erros": error_counts},
+        )
 
 
 @celery_app.task(name="sync_whatsapp_cloud_phone_numbers")
@@ -374,7 +377,10 @@ def sync_whatsapp_cloud_phone_numbers():
 
     if error_counts:
         total_errors = sum(error_counts.values())
-        logger.error(f"Sync phone numbers task failed with {total_errors}.")
+        logger.error(
+            f"Sync phone numbers task failed with {total_errors}.",
+            extra={"erros": error_counts},
+        )
 
 
 def delete_inactive_apps(apps, flow_object_uuid):
