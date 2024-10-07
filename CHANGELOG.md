@@ -1,3 +1,58 @@
+v3.9.8
+----------
+* feat: add view to return vtex integration details by project UUID
+* Fix Unit Tests And Refactor Request class
+* Groups log erros to facebook sync tasks
+* Adds new exclusion rules by categories to colombia
+
+v3.9.7
+----------
+* Vtex ads switch
+
+v3.9.6
+----------
+* Add ProjectManagePermission to TemplateMessageViewSet
+* Add ProjectManagePermission to Catalog BaseViewSet
+
+v3.9.5
+----------
+* Add csv file extension to file name and add logger on upload feed
+* Remove class variables from gbarbosa rule
+
+v3.9.4
+----------
+* Display pix price to gbarbosa eletro
+* Remove HTML tags from categories_by_seller gbx rule
+
+v3.9.3
+----------
+* Update wpp app config data from flows config
+* Change swagger url
+
+v3.9.2
+----------
+* Allows not to use threads on sync vtex products
+* Fix non-breaking spaces on create template
+
+v3.9.1
+----------
+* Add cache to product polices validation
+* Add rule SetDefaultImageURL
+
+v3.9.0
+----------
+* Classify vtex product policies and stores the result in DB
+* Search for invalid products on Facebook and remove them
+* Synchronizes catalogs to vtex project applications
+
+v3.8.4
+----------
+* Using system token to catalogs services
+* Send active catalog to flows
+* Fix: Ensure Proper Spacing After Periods in Titles and Descriptions
+* Feat: change meta sync tasks to crontab
+* Update settings variables environment
+
 v3.8.3
 ----------
 * Update entrypoint to add celery commands (cloud)

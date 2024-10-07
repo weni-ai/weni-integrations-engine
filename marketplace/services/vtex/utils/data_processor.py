@@ -13,7 +13,9 @@ from typing import List, Optional
 from tqdm import tqdm
 from queue import Queue
 
+from marketplace.services.vtex.utils.sku_validator import SKUValidator
 from marketplace.clients.exceptions import CustomAPIException
+from marketplace.clients.zeroshot.client import MockZeroShotClient
 
 
 @dataclass
@@ -40,9 +42,10 @@ class VtexProductDTO:  # TODO: Implement This VtexProductDTO
 
 
 class DataProcessor:
-    def __init__(self):
+    def __init__(self, use_threads=True):
         self.max_workers = 100
         self.progress_lock = threading.Lock()
+        self.use_threads = use_threads
 
     @staticmethod
     def clean_text(text: str) -> str:
@@ -59,6 +62,8 @@ class DataProcessor:
         text = re.sub(r"[ \t]+", " ", text.strip())
         # Remove bullet points
         text = text.replace("•", "")
+        # Ensure there's a space after a period, unless followed by a new line
+        text = re.sub(r"\.(?=[^\s\n])", ". ", text)
         return text
 
     @staticmethod
@@ -125,6 +130,7 @@ class DataProcessor:
         domain,
         store_domain,
         rules,
+        catalog,
         update_product=False,
     ) -> List[FacebookProductDTO]:
         self.queue = Queue()
@@ -136,28 +142,35 @@ class DataProcessor:
         self.rules = rules
         self.update_product = update_product
         self.invalid_products_count = 0
+        self.catalog = catalog
+        self.sku_validator = SKUValidator(service, domain, MockZeroShotClient())
 
         # Preparing the tqdm progress bar
         print("Initiated process of product treatment:")
         self.progress_bar = tqdm(
-            total=len(skus_ids) * len(self.active_sellers),
-            desc="[✓:0, ✗:0]",
-            ncols=0,
+            total=len(skus_ids) * len(self.active_sellers), desc="[✓:0, ✗:0]", ncols=0
         )
 
         # Initializing the queue with SKUs
         for sku_id in skus_ids:
             self.queue.put(sku_id)
 
-        # Starting the workers
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=self.max_workers
-        ) as executor:
-            futures = [executor.submit(self.worker) for _ in range(self.max_workers)]
+        if self.use_threads:
+            # Using threads for processing
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=self.max_workers
+            ) as executor:
+                futures = [
+                    executor.submit(self.worker) for _ in range(self.max_workers)
+                ]
 
-        # Waiting for all the workers to finish
-        for future in futures:
-            future.result()
+            # Waiting for all the workers to finish
+            for future in futures:
+                future.result()
+        else:
+            # Processing without using threads
+            while not self.queue.empty():
+                self.worker()
 
         self.progress_bar.close()
 
@@ -188,16 +201,19 @@ class DataProcessor:
 
     def process_single_sku(self, sku_id):
         facebook_products = []
-
         try:
-            product_details = self.service.get_product_details(sku_id, self.domain)
+            product_details = self.sku_validator.validate_product_details(
+                sku_id, self.catalog
+            )
+            if not product_details:
+                return facebook_products
         except CustomAPIException as e:
             if e.status_code == 404:
                 print(f"SKU {sku_id} not found. Skipping...")
             elif e.status_code == 500:
                 print(f"SKU {sku_id} returned status: {e.status_code}. Skipping...")
 
-            print(f"An error {e} ocurred on get_product_details. Sku:{sku_id}")
+            print(f"An error {e} occurred on get_product_details. SKU: {sku_id}")
             return []
 
         is_active = product_details.get("IsActive")
@@ -212,10 +228,11 @@ class DataProcessor:
             except CustomAPIException as e:
                 if e.status_code == 500:
                     print(
-                        f"An error {e.status_code} occurred when simulating cart. SKU {sku_id}, Seller {seller_id}."
-                        "Skipping..."
+                        f"An error {e.status_code} occurred when simulating cart. SKU {sku_id}, "
+                        f"Seller {seller_id}. Skipping..."
                     )
                 continue
+
             if (
                 self.update_product is False
                 and not availability_details["is_available"]
@@ -294,8 +311,7 @@ class DataProcessor:
         return dicts_list
 
     def _validate_product_dto(self, product_dto: FacebookProductDTO) -> bool:
-        """
-        Verifies that all required fields in the FacebookProductDTO are filled in.
+        """Verifies that all required fields in the FacebookProductDTO are filled in.
         Returns True if the product is valid, False otherwise.
         """
         required_fields = [

@@ -6,7 +6,7 @@ from rest_framework import permissions
 view = get_schema_view(
     openapi.Info(
         title="Integrations API Documentation",
-        default_version="v3.8.3",
+        default_version="v3.9.8",
         desccription="Documentation of the Integrations APIs",
     ),
     public=True,

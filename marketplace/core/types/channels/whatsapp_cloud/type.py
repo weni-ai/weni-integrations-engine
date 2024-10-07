@@ -22,3 +22,6 @@ class WhatsAppCloudType(AppType):
         if user_token:
             return user_token
         return settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
+
+    def get_system_access_token(self, app: App):
+        return settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN

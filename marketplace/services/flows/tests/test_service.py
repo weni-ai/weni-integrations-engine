@@ -57,6 +57,9 @@ class MockFlowsClient:
     def update_vtex_products(self, products, flow_object_uuid, dict_catalog):
         return "Mocked Result"
 
+    def update_vtex_ads_status(self, app, vtex_ads, action):
+        return "Mocked Result"
+
 
 class FlowsServiceTestCase(TestCase):
     def setUp(self):
@@ -185,3 +188,18 @@ class FlowsServiceTestCase(TestCase):
 
         mock_method.assert_called_once_with(user, project_uuid, phone_number_id, config)
         self.assertEqual(result, {"uuid": "mock_uuid"})
+
+    def test_update_vtex_ads_status(self):
+        vtex_ads = True
+        action = "active"
+
+        with patch.object(self.mock_client, "update_vtex_ads_status") as mock_method:
+            mock_method.return_value = "Mocked Result"
+            result = self.flows_service.update_vtex_ads_status(
+                self.app, vtex_ads, action
+            )
+
+        mock_method.assert_called_once_with(
+            self.app.project_uuid, self.app.created_by.email, action, vtex_ads
+        )
+        self.assertEqual(result, "Mocked Result")

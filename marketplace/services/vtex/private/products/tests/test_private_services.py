@@ -37,10 +37,23 @@ class MockClient:
         )
 
 
+class MockCatalog:
+    class VtexApp:
+        def __init__(self, config):
+            self.config = config
+
+    def __init__(self, config, uuid):
+        self.vtex_app = self.VtexApp(config)
+        self.uuid = uuid
+
+
 class PrivateProductsServiceTestCase(TestCase):
     def setUp(self):
         self.mock_client = MockClient()
         self.service = PrivateProductsService(self.mock_client)
+        self.mock_catalog = MockCatalog(
+            config={"rules": [], "store_domain": "store.domain.com"}, uuid="mock-uuid"
+        )
 
     def test_check_is_valid_domain_valid(self):
         self.assertTrue(self.service.check_is_valid_domain("valid.domain.com"))
@@ -70,9 +83,8 @@ class PrivateProductsServiceTestCase(TestCase):
         self.assertEqual(products, ["sku1", "sku2"])
 
     def test_list_all_products(self):
-        config = {"rules": [], "store_domain": "store.domain.com"}
         self.service.data_processor.process_product_data = Mock(return_value=[])
-        products = self.service.list_all_products("valid.domain.com", config)
+        products = self.service.list_all_products("valid.domain.com", self.mock_catalog)
         self.assertIsInstance(products, list)
 
     def test_get_product_details(self):
@@ -89,10 +101,9 @@ class PrivateProductsServiceTestCase(TestCase):
         )
 
     def test_update_webhook_product_info(self):
-        config = {"rules": [], "store_domain": "store.domain.com"}
-        self.service.data_processor.process_product_data = Mock(return_value=[])
+        self.service.webhook_data_processor.process_product_data = Mock(return_value=[])
         updated_products = self.service.update_webhook_product_info(
-            "valid.domain.com", ["sku1"], ["seller1"], config
+            "valid.domain.com", ["sku1"], ["seller1"], self.mock_catalog
         )
         self.assertIsInstance(updated_products, list)
 
@@ -121,7 +132,6 @@ class PrivateProductsServiceTestCase(TestCase):
             self.assertNotEqual(type(rule).__name__, "invalid_rule")
 
     def test_list_all_products_with_invalid_sellers(self):
-        config = {"rules": [], "store_domain": "store.domain.com"}
         sellers = ["seller1", "invalid_seller"]
         self.service.list_active_sellers = Mock(return_value=["seller1", "seller2"])
         self.service.list_all_active_products = Mock(return_value=["sku1", "sku2"])
@@ -129,7 +139,7 @@ class PrivateProductsServiceTestCase(TestCase):
 
         with patch("builtins.print") as mock_print:
             products = self.service.list_all_products(
-                "valid.domain.com", config, sellers
+                "valid.domain.com", self.mock_catalog, sellers
             )
             mock_print.assert_called_with(
                 "Warning: Sellers IDs {'invalid_seller'} are not active and will be ignored."

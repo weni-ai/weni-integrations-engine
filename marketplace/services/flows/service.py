@@ -7,6 +7,11 @@ class FlowsService:
             project_uuid, user_email, action
         )
 
+    def update_vtex_ads_status(self, app, vtex_ads, action):
+        return self.client.update_vtex_ads_status(
+            app.project_uuid, app.created_by.email, action, vtex_ads
+        )
+
     def update_vtex_products(self, products: list, flow_object_uuid, dict_catalog):
         return self.client.update_vtex_products(
             products, flow_object_uuid, dict_catalog

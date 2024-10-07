@@ -1,19 +1,25 @@
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import action
+from rest_framework.views import APIView
 
 from marketplace.core.types.ecommerce.vtex.serializers import (
+    VtexAdsSerializer,
     VtexSerializer,
     VtexAppSerializer,
     VtexSyncSellerSerializer,
 )
 from marketplace.core.types import views
+from marketplace.core.types.ecommerce.vtex.usecases.vtex_integration import (
+    VtexIntegration,
+)
 from marketplace.services.vtex.generic_service import VtexServiceBase
 from marketplace.services.vtex.generic_service import APICredentials
 from marketplace.services.flows.service import FlowsService
 from marketplace.clients.flows.client import FlowsClient
 from marketplace.services.vtex.app_manager import AppVtexManager
 from marketplace.wpp_products.utils import SellerSyncUtils
+from marketplace.accounts.permissions import ProjectManagePermission
 
 
 class VtexViewSet(views.BaseAppTypeViewSet):
@@ -142,3 +148,26 @@ class VtexViewSet(views.BaseAppTypeViewSet):
             data={"message": "No synchronization in progress"},
             status=status.HTTP_200_OK,
         )
+
+    @action(detail=True, methods=["POST"], url_path="update-vtex-ads")
+    def update_vtex_ads(self, request, app_uuid=None, *args, **kwargs):
+        app = self.get_object()
+        serializer = VtexAdsSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        vtex_ads = serializer.validated_data["vtex_ads"]
+
+        self.app_manager.update_vtex_ads(app, serializer.validated_data["vtex_ads"])
+
+        self.flows_service.update_vtex_ads_status(app, vtex_ads, action="POST")
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class VtexIntegrationDetailsView(APIView):
+    permission_classes = [ProjectManagePermission]
+
+    def get(self, request, project_uuid):
+        integration_details = VtexIntegration.vtex_integration_detail(
+            project_uuid=project_uuid
+        )
+        return Response(status=status.HTTP_200_OK, data=integration_details)

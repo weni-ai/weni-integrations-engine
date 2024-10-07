@@ -1,6 +1,7 @@
 """ Tests for the wpp_templates module """
 
 import uuid
+
 import textwrap
 import pytz
 
@@ -9,8 +10,11 @@ from datetime import datetime
 from rest_framework import status
 from rest_framework.test import APIClient
 
+from unittest.mock import patch, Mock
+
 from django.contrib.auth import get_user_model
 from django.urls import reverse
+
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
 
@@ -20,8 +24,8 @@ from marketplace.services.facebook.service import PhotoAPIService, TemplateServi
 from marketplace.wpp_templates.models import TemplateMessage, TemplateTranslation
 from marketplace.wpp_templates.views import TemplateMessageViewSet
 from marketplace.core.tests.base import APIBaseTestCase
+from marketplace.accounts.models import ProjectAuthorization
 
-from unittest.mock import patch, Mock
 
 User = get_user_model()
 
@@ -30,19 +34,27 @@ class WhatsappTemplateCreateTestCase(APIBaseTestCase):
     view_class = TemplateMessageViewSet
 
     def setUp(self):
+        super().setUp()
+
         self.app = App.objects.create(
             config=dict(wa_waba_id="432321321"),
             project_uuid=uuid.uuid4(),
             platform=App.PLATFORM_WENI_FLOWS,
             code="wpp-cloud",
             created_on=datetime.now(pytz.UTC),
-            created_by=User.objects.get_admin_user(),
+            created_by=self.user,
         )
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
         self.body = dict(
-            name="teste", category="ACCOUNT_UPDATE", text_preview="Preview Test"
+            name="teste",
+            category="ACCOUNT_UPDATE",
+            text_preview="Preview Test",
+            project_uuid=str(self.app.project_uuid),
         )
         self.url = reverse("app-template-list", kwargs={"app_uuid": str(self.app.uuid)})
-        super().setUp()
 
     @property
     def view(self):
@@ -82,13 +94,18 @@ class WhatsappTemplateDestroyTestCase(APIBaseTestCase):
     view_class = TemplateMessageViewSet
 
     def setUp(self):
+        super().setUp()
         self.app = App.objects.create(
             config={"waba": {"id": "432321321"}, "fb_access_token": "token"},
             project_uuid=uuid.uuid4(),
             platform=App.PLATFORM_WENI_FLOWS,
             code="wpp",
-            created_by=User.objects.get_admin_user(),
+            created_by=self.user,
         )
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
         self.template_message = TemplateMessage.objects.create(
             name="teste",
             category="ACCOUNT_UPDATE",
@@ -101,7 +118,6 @@ class WhatsappTemplateDestroyTestCase(APIBaseTestCase):
                 "uuid": str(self.template_message.uuid),
             },
         )
-        super().setUp()
 
     @property
     def view(self):
@@ -280,9 +296,9 @@ class TemplateMessageViewSetTestCase(APIBaseTestCase):
             "end": formatted_date,
             "sort": "name",
         }
-        response = self.client.get(url, params)
+        response = self.request.get(url, params, app_uuid=str(self.app.uuid))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.json()
+        data = response.json
         self.assertEqual(len(data["results"]), 1)
 
 
@@ -319,7 +335,7 @@ class WhatsappTemplateTranslationsTestCase(APIBaseTestCase):
             project_uuid=uuid.uuid4(),
             platform=App.PLATFORM_WENI_FLOWS,
             code="wpp-cloud",
-            created_by=User.objects.get_admin_user(),
+            created_by=self.user,
         )
 
         self.template_message = TemplateMessage.objects.create(
@@ -328,14 +344,20 @@ class WhatsappTemplateTranslationsTestCase(APIBaseTestCase):
             category="UTILITY",
             created_on=datetime.now(pytz.UTC),
             template_type="TEXT",
-            created_by_id=User.objects.get_admin_user().id,
+            created_by=self.user,
         )
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+
         self.url = reverse(
             "app-template-translations",
             kwargs={"app_uuid": self.app.uuid, "uuid": self.template_message.uuid},
         )
 
         self.body = dict(
+            project_uuid=str(self.app.project_uuid),
             language="ja",
             body={"text": "test", "type": "BODY"},
             country="Brasil",
@@ -465,6 +487,40 @@ class WhatsappTemplateUpdateTestCase(APIBaseTestCase):
                 }
             ],
         )
+
+        self.app = App.objects.create(
+            config={"wa_waba_id": "432321321"},
+            project_uuid=uuid.uuid4(),
+            platform=App.PLATFORM_WENI_FLOWS,
+            code="wpp-cloud",
+            created_by=self.user,
+        )
+
+        self.template_message = TemplateMessage.objects.create(
+            name="teste",
+            app=self.app,
+            category="TRANSACTIONAL",
+            created_on=datetime.now(pytz.UTC),  # Ensuring timezone-aware datetime
+            template_type="TEXT",
+            created_by=self.user,
+        )
+
+        self.translation = TemplateTranslation.objects.create(
+            template=self.template_message,
+            status="PENDING",
+            body=self.validated_data.get("body", {}).get("text", ""),
+            footer=self.validated_data.get("footer", {}).get("text", ""),
+            language=self.validated_data.get("language"),
+            country=self.validated_data.get("country", "Brasil"),
+            variable_count=0,
+            message_template_id="0123456789",
+        )
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+
+        self.headers = {"Project-Uuid": str(self.app.project_uuid)}
         self.body = {
             "message_template_id": "0123456789",
             "header": {
@@ -483,34 +539,6 @@ class WhatsappTemplateUpdateTestCase(APIBaseTestCase):
                 }
             ],
         }
-
-        self.app = App.objects.create(
-            config={"wa_waba_id": "432321321"},
-            project_uuid=uuid.uuid4(),
-            platform=App.PLATFORM_WENI_FLOWS,
-            code="wpp-cloud",
-            created_by=User.objects.get_admin_user(),
-        )
-
-        self.template_message = TemplateMessage.objects.create(
-            name="teste",
-            app=self.app,
-            category="TRANSACTIONAL",
-            created_on=datetime.now(pytz.UTC),  # Ensuring timezone-aware datetime
-            template_type="TEXT",
-            created_by_id=User.objects.get_admin_user().id,
-        )
-
-        self.translation = TemplateTranslation.objects.create(
-            template=self.template_message,
-            status="PENDING",
-            body=self.validated_data.get("body", {}).get("text", ""),
-            footer=self.validated_data.get("footer", {}).get("text", ""),
-            language=self.validated_data.get("language"),
-            country=self.validated_data.get("country", "Brasil"),
-            variable_count=0,
-            message_template_id="0123456789",
-        )
 
         self.url = reverse(
             "app-template-detail",
@@ -561,6 +589,7 @@ class WhatsappTemplateUpdateTestCase(APIBaseTestCase):
                         body=self.body,
                         app_uuid=str(self.app.uuid),
                         uuid=str(self.template_message.uuid),
+                        headers=self.headers,
                     )
 
                     self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -581,6 +610,7 @@ class WhatsappTemplateUpdateTestCase(APIBaseTestCase):
                 body=self.body,
                 app_uuid=str(self.app.uuid),
                 uuid=str(self.template_message.uuid),
+                headers=self.headers,
             )
 
         self.app.config = {"waba": {"id": "432321321"}, "fb_access_token": "token"}
@@ -607,4 +637,5 @@ class WhatsappTemplateUpdateTestCase(APIBaseTestCase):
                             body=self.body,
                             app_uuid=str(self.app.uuid),
                             uuid=str(self.template_message.uuid),
+                            headers=self.headers,
                         )

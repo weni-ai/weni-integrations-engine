@@ -181,14 +181,17 @@ class CatalogListTestCase(MockServiceTestCase):
 
     def test_filter_by_name(self):
         url = reverse("catalog-list-create", kwargs={"app_uuid": self.app.uuid})
-
-        response = self.client.get(url, {"name": "catalog test"})
+        response = self.request.get(
+            url, params={"name": "catalog test"}, app_uuid=self.app.uuid
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertNotEqual(len(response.json()["results"]), 0)
+        self.assertNotEqual(len(response.json["results"]), 0)
 
-        response = self.client.get(url, {"name": "non-existing name"})
+        response = self.request.get(
+            url, {"name": "non-existing name"}, app_uuid=self.app.uuid
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.json()["results"]), 0)
+        self.assertEqual(len(response.json["results"]), 0)
 
 
 class CatalogRetrieveTestCase(MockServiceTestCase):
@@ -215,7 +218,10 @@ class CatalogEnabledTestCase(MockServiceTestCase):
             kwargs={"app_uuid": self.app.uuid, "catalog_uuid": self.catalog.uuid},
         )
         response = self.request.post(
-            url, app_uuid=self.app.uuid, catalog_uuid=self.catalog.uuid
+            url,
+            app_uuid=self.app.uuid,
+            catalog_uuid=self.catalog.uuid,
+            body={"project_uuid": str(self.app.project_uuid)},
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -234,7 +240,10 @@ class CatalogEnabledTestCase(MockServiceTestCase):
             kwargs={"app_uuid": self.app.uuid, "catalog_uuid": self.catalog.uuid},
         )
         response = self.request.post(
-            url, app_uuid=self.app.uuid, catalog_uuid=self.catalog.uuid
+            url,
+            app_uuid=self.app.uuid,
+            catalog_uuid=self.catalog.uuid,
+            body={"project_uuid": str(self.app.project_uuid)},
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -248,7 +257,10 @@ class CatalogDisableTestCase(MockServiceTestCase):
             kwargs={"app_uuid": self.app.uuid, "catalog_uuid": self.catalog.uuid},
         )
         response = self.request.post(
-            url, app_uuid=self.app.uuid, catalog_uuid=self.catalog.uuid
+            url,
+            app_uuid=self.app.uuid,
+            catalog_uuid=self.catalog.uuid,
+            body={"project_uuid": str(self.app.project_uuid)},
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -267,7 +279,10 @@ class CatalogDisableTestCase(MockServiceTestCase):
             kwargs={"app_uuid": self.app.uuid, "catalog_uuid": self.catalog.uuid},
         )
         response = self.request.post(
-            url, app_uuid=self.app.uuid, catalog_uuid=self.catalog.uuid
+            url,
+            app_uuid=self.app.uuid,
+            catalog_uuid=self.catalog.uuid,
+            body={"project_uuid": str(self.app.project_uuid)},
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -365,7 +380,7 @@ class CatalogCreateTestCase(MockServiceTestCase):
         )
 
     def test_create_catalog_with_vtex_app(self):
-        data = {"name": "valid_catalog"}
+        data = {"name": "valid_catalog", "project_uuid": str(self.app.project_uuid)}
         url = reverse("catalog-list-create", kwargs={"app_uuid": self.app.uuid})
 
         response = self.request.post(url, data, app_uuid=self.app.uuid)
@@ -373,7 +388,7 @@ class CatalogCreateTestCase(MockServiceTestCase):
         self.assertEqual(response.data["facebook_catalog_id"], "123456789")
 
     def test_create_catalog_with_unconfigured_app(self):
-        data = {"name": "valid_catalog"}
+        data = {"name": "valid_catalog", "project_uuid": str(self.app.project_uuid)}
         url = reverse(
             "catalog-list-create", kwargs={"app_uuid": self.app_without_vtex.uuid}
         )
@@ -383,7 +398,7 @@ class CatalogCreateTestCase(MockServiceTestCase):
         self.assertEqual(response.data["detail"], "There is no VTEX App configured.")
 
     def test_create_catalog_with_multiple_configured_apps(self):
-        data = {"name": "valid_catalog"}
+        data = {"name": "valid_catalog", "project_uuid": str(self.app.project_uuid)}
         url = reverse(
             "catalog-list-create", kwargs={"app_uuid": self.app_double_vtex.uuid}
         )
@@ -399,7 +414,7 @@ class CatalogCreateTestCase(MockServiceTestCase):
         with patch.object(
             MockFacebookService, "create_vtex_catalog", return_value=(None, None)
         ):
-            data = {"name": "valid_catalog"}
+            data = {"name": "valid_catalog", "project_uuid": str(self.app.project_uuid)}
             url = reverse("catalog-list-create", kwargs={"app_uuid": self.app.uuid})
 
             response = self.request.post(url, data, app_uuid=self.app.uuid)

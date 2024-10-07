@@ -62,7 +62,7 @@ class VtexServiceBase:
         self.app_manager = AppVtexManager()
 
     def fb_service(self, app: App) -> FacebookService:  # pragma: no cover
-        access_token = app.apptype.get_access_token(app)
+        access_token = app.apptype.get_system_access_token(app)
         if not self._fb_service:
             self._fb_service = self.fb_service_class(self.fb_client_class(access_token))
         return self._fb_service
@@ -152,8 +152,9 @@ class ProductInsertionService(VtexServiceBase):
         pvt_service = self.get_private_service(
             credentials.app_key, credentials.app_token
         )
+
         products = pvt_service.list_all_products(
-            credentials.domain, catalog.vtex_app.config, sellers
+            domain=credentials.domain, catalog=catalog, sellers=sellers
         )
         if not products:
             return None
@@ -253,10 +254,10 @@ class ProductUpdateService(VtexServiceBase):
         seller_ids = self._get_sellers_ids(pvt_service)
 
         products_dto = pvt_service.update_webhook_product_info(
-            self.api_credentials.domain,
-            self.skus_ids,
-            seller_ids,
-            self.catalog.vtex_app.config,
+            domain=self.api_credentials.domain,
+            skus_ids=self.skus_ids,
+            seller_ids=seller_ids,
+            catalog=self.catalog,
         )
         if not products_dto:
             return None
@@ -447,7 +448,10 @@ class ProductInsertionBySellerService(VtexServiceBase):  # pragma: no cover
             credentials.app_key, credentials.app_token
         )
         products_dto = pvt_service.list_all_products(
-            credentials.domain, catalog.vtex_app.config, sellers, update_product=True
+            domain=credentials.domain,
+            catalog=catalog,
+            sellers=sellers,
+            update_product=True,
         )
         print(f"'list_all_products' returned {len(products_dto)}")
         if not products_dto:

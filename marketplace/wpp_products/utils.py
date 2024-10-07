@@ -2,7 +2,7 @@ import io
 import logging
 import json
 
-from typing import List
+from typing import List, Dict, Any
 
 from datetime import datetime, timezone
 
@@ -10,14 +10,21 @@ from django.db.models import QuerySet
 
 from django_redis import get_redis_connection
 
+from redis import exceptions
+
 from sentry_sdk import configure_scope
 
 from dataclasses import fields
 
 from marketplace.clients.facebook.client import FacebookClient
 from marketplace.clients.rapidpro.client import RapidproClient
+from marketplace.wpp_products.models import (
+    Catalog,
+    ProductUploadLog,
+    ProductValidation,
+    UploadProduct,
+)
 from marketplace.services.vtex.utils.data_processor import FacebookProductDTO
-from marketplace.wpp_products.models import Catalog, ProductUploadLog, UploadProduct
 from marketplace.services.facebook.service import (
     FacebookService,
 )
@@ -48,7 +55,7 @@ class ProductUploader:
 
     def initialize_fb_service(self) -> FacebookService:  # pragma: no cover
         app = self.catalog.app  # Wpp-cloud App
-        access_token = app.apptype.get_access_token(app)
+        access_token = app.apptype.get_system_access_token(app)
         fb_client = self.fb_client_class(access_token)
         return FacebookService(fb_client)
 
@@ -94,7 +101,7 @@ class ProductUploader:
                 )
 
             current_time = datetime.now().strftime("%Y-%m-%d_%H-%M")
-            file_name = f"update_{current_time}_{self.catalog.facebook_catalog_id}"
+            file_name = f"update_{current_time}_{self.catalog.facebook_catalog_id}.csv"
             upload_id = self.fb_service.update_product_feed(
                 self.feed_id, csv_content, file_name
             )
@@ -148,20 +155,12 @@ class ProductUploader:
         """Logs the successfully sent products to the log table."""
         for product_id in product_ids:
             # Extract SKU ID from "sku_id#seller_id"
-            sku_id = self.extract_sku_id(product_id)
+            sku_id = extract_sku_id(product_id)
             ProductUploadLog.objects.create(
                 sku_id=sku_id, vtex_app=self.catalog.vtex_app
             )
 
         print(f"Logged {len(product_ids)} products as sent.")
-
-    def extract_sku_id(self, product_id: str) -> int:
-        """Extract sku_id from facebook_product_id."""
-        sku_part = product_id.split("#")[0]
-        if sku_part.isdigit():
-            return int(sku_part)
-        else:
-            raise ValueError(f"Invalid SKU ID, error: {sku_part} is not a number")
 
     def _generate_file_upload_log(
         self, csv_content, exception, file_name, upload_id=None
@@ -314,3 +313,143 @@ class UploadManager:
             )
         else:
             print(f"An upload task is already in progress for App: {app_uuid}.")
+
+
+class ProductSyncMetaPolices:
+    SYNC_META_POLICES_LOCK_KEY = "sync-meta-polices-lock"
+
+    def __init__(self, catalog: Any) -> None:
+        self.catalog = catalog
+        self.app = catalog.app
+        self.client = FacebookClient(self.app.apptype.get_system_access_token(self.app))
+        self.redis = get_redis_connection()
+
+    def sync_products_polices(self) -> None:
+        if self.redis.get(self.SYNC_META_POLICES_LOCK_KEY):
+            logger.error(
+                "The catalogs are already syncing products polices by another task!"
+            )
+            return
+
+        try:
+            with self.redis.lock(self.SYNC_META_POLICES_LOCK_KEY, timeout=1200):
+                wa_business_id = self.app.config.get("wa_business_id")
+                wa_waba_id = self.app.config.get("wa_waba_id")
+
+                if not (wa_business_id and wa_waba_id):
+                    logger.warning(
+                        f"Business ID or WABA ID missing for app: {self.app.uuid}"
+                    )
+                    return
+
+                all_products = self._list_unapproved_products()
+                try:
+                    if all_products:
+                        self._sync_local_products(all_products)
+                except Exception as e:
+                    logger.error(
+                        f"Error during sync process for App {self.app.name}: {e}",
+                        exc_info=True,
+                        stack_info=True,
+                    )
+        except exceptions.LockError as e:
+            logger.error(f"Failed to acquire or release lock: {e}")
+
+    def _list_unapproved_products(self) -> List[Dict[str, Any]]:
+        return self.client.list_unapproved_products(self.catalog.facebook_catalog_id)
+
+    def _sync_local_products(self, all_products: List[Dict[str, Any]]) -> None:
+        products_to_delete = []
+        products_invalid = []
+        for product in all_products:
+            formated_product = self._product_data_info(product)
+            try:
+                retailer_id = formated_product["retailer_id"]
+                if retailer_id:
+                    products_to_delete.append(
+                        {
+                            "method": "DELETE",
+                            "retailer_id": retailer_id,
+                        }
+                    )
+                    products_invalid.append(formated_product)
+
+            except Exception as e:
+                logger.error(
+                    f"Error creating catalog {self.catalog.facebook_catalog_id} for App: {str(e)}"
+                )
+
+        if products_to_delete:
+            self._delete_products_in_batch(products_to_delete)
+            self._save_invalid_products(products_invalid)
+
+        logger.info(
+            f"Success in synchronizing product polices for catalog: {self.catalog.name}"
+        )
+
+    def _delete_products_in_batch(
+        self, products_to_delete: List[Dict[str, Any]]
+    ) -> None:
+        self.client.delete_products_in_batch(
+            catalog_id=self.catalog.facebook_catalog_id,
+            products_to_delete=products_to_delete,
+        )
+
+    def _save_invalid_products(self, products_invalid: List[Dict[str, Any]]) -> None:
+        for product in products_invalid:
+            sku_id = product.get("sku_id")
+            catalog = self.catalog
+
+            is_valid = (
+                ProductValidation.objects.filter(sku_id=sku_id, catalog=catalog)
+                .values_list("is_valid", flat=True)
+                .first()
+            )
+            if is_valid is not None and not is_valid:
+                logger.info(
+                    f"SKU:{sku_id} is already invalid in the database for catalog: {catalog.name}"
+                )
+                continue
+
+            rejection_reason = product.get("rejection_reason", "No reason")
+            reason_str = f"{rejection_reason} - sync-tsk"
+
+            # Use get_or_create to avoid duplication
+            _, created = ProductValidation.objects.get_or_create(
+                catalog=catalog,
+                sku_id=sku_id,
+                defaults={
+                    "is_valid": False,
+                    "classification": reason_str,
+                    "description": f"Product rejected due to: {reason_str}",
+                },
+            )
+
+            if created:
+                logger.info(
+                    f"SKU:{sku_id} has been saved as invalid for the first time in catalog: {catalog.name}"
+                )
+            else:
+                logger.info(
+                    f"SKU:{sku_id} already exists in the database "
+                    f"for catalog: {catalog.name} and was not created again."
+                )
+
+    def _product_data_info(self, product: Dict[str, Any]) -> Dict[str, Any]:
+        retailer_id = product.get("retailer_id")
+        formated_product = {
+            "id": product.get("id"),
+            "rejection_reason": product.get("review_rejection_reasons"),
+            "retailer_id": retailer_id,
+            "sku_id": extract_sku_id(retailer_id),
+        }
+        return formated_product
+
+
+def extract_sku_id(product_id: str) -> int:
+    """Extract sku_id from facebook_product_id."""
+    sku_part = product_id.split("#")[0]
+    if sku_part.isdigit():
+        return int(sku_part)
+    else:
+        raise ValueError(f"Invalid SKU ID, error: {sku_part} is not a number")
