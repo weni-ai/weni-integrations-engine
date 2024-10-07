@@ -118,9 +118,11 @@ class ProductFacebookManager:
             f"Starting insertion process for {len(products_dto)} products. Catalog: {catalog.name}"
         )
 
-        # Use get_latest_products to get the most recent existing products in the database
-        existing_products = UploadProduct.get_latest_products(
-            catalog=catalog, status="pending"
+        # Fetch products matching facebook_product_id from products_dto, regardless of status
+        existing_products = UploadProduct.objects.filter(
+            facebook_product_id__in=[product.id for product in products_dto],
+            catalog=catalog,
+            feed=product_feed,
         )
 
         # Create a dictionary of existing products for easy access
