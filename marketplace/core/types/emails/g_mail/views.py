@@ -48,9 +48,7 @@ class GmailViewSet(views.BaseAppTypeViewSet):
             channeltype_code=self.type_class.flows_type_code,
         )
 
-        # TODO: Test and adjust this method
         EmailAppUtils.create_and_configure_gmail_app(
-            user_email=request.user.email,
             project_uuid=project_uuid,
             config_data=channel_data,
             type_class=self.type_class,
