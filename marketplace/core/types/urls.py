@@ -3,6 +3,7 @@ from rest_framework_nested import routers
 
 from marketplace.core import types
 
+
 urlpatterns = []
 
 
@@ -14,12 +15,19 @@ for apptype in types.APPTYPES.values():
     router.register("apps", apptype.view_class, basename=f"{apptype.code}-app")
     urlpatterns.append(path(f"apptypes/{apptype.code}/", include(router.urls)))
 
+
 urlpatterns.append(
     path("apptypes/generic/", include("marketplace.core.types.channels.generic.urls")),
 )
+
 urlpatterns.append(
     path(
         "apptypes/wpp-cloud/",
         include("marketplace.core.types.channels.whatsapp_cloud.catalogs.urls"),
     ),
+)
+
+# VTEX
+urlpatterns.append(
+    path("apptypes/vtex/", include("marketplace.core.types.ecommerce.vtex.urls")),
 )

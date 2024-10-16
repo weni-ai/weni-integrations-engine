@@ -45,45 +45,73 @@ class Request(object):
     def _get_response(self, request, **kwargs) -> Response:
         response = self._view(request, **kwargs)
         setattr(response, "json", self.get_response_data(response))
-
         return response
 
-    def get(self, url: str, params=None, **kwargs) -> Response:
-        request = self.factory.get(url, data=params)
-        force_authenticate(request, user=self._user)
+    def _apply_headers(self, headers=None):
+        """
+        Helper function to transform headers and apply the 'HTTP_' prefix when necessary.
+        """
+        if headers is None:
+            return {}
 
+        # Prefix 'HTTP_' for all headers except common HTTP headers like 'Content-Type' and 'Content-Length'
+        return {
+            (
+                f'HTTP_{key.replace("-", "_").upper()}'
+                if key not in ["Content-Type", "Content-Length"]
+                else key
+            ): value
+            for key, value in headers.items()
+        }
+
+    def get(self, url: str, params=None, headers=None, **kwargs) -> Response:
+        request_headers = self._apply_headers(headers)
+        request = self.factory.get(url, data=params, **request_headers)
+        force_authenticate(request, user=self._user)
         return self._get_response(request, **kwargs)
 
-    def post(self, url: str, body=None, **kwargs) -> Response:
+    def post(self, url: str, body=None, headers=None, **kwargs) -> Response:
+        request_headers = self._apply_headers(headers)
         request = self.factory.post(
-            url, data=json.dumps(body), content_type="application/json"
+            url,
+            data=json.dumps(body),
+            content_type="application/json",
+            **request_headers,
         )
         force_authenticate(request, user=self._user)
-
         return self._get_response(request, **kwargs)
 
-    def put(self, url: str, body=None, **kwargs) -> Response:
+    def put(self, url: str, body=None, headers=None, **kwargs) -> Response:
+        request_headers = self._apply_headers(headers)
         request = self.factory.put(
-            url, data=json.dumps(body), content_type="application/json"
+            url,
+            data=json.dumps(body),
+            content_type="application/json",
+            **request_headers,
         )
         force_authenticate(request, user=self._user)
-
         return self._get_response(request, **kwargs)
 
-    def delete(self, url: str, body=None, **kwargs) -> Response:
+    def delete(self, url: str, body=None, headers=None, **kwargs) -> Response:
+        request_headers = self._apply_headers(headers)
         request = self.factory.delete(
-            url, data=json.dumps(body), content_type="application/json"
+            url,
+            data=json.dumps(body),
+            content_type="application/json",
+            **request_headers,
         )
         force_authenticate(request, user=self._user)
-
         return self._get_response(request, **kwargs)
 
-    def patch(self, url: str, body=None, **kwargs) -> Response:
+    def patch(self, url: str, body=None, headers=None, **kwargs) -> Response:
+        request_headers = self._apply_headers(headers)
         request = self.factory.patch(
-            url, data=json.dumps(body), content_type="application/json"
+            url,
+            data=json.dumps(body),
+            content_type="application/json",
+            **request_headers,
         )
         force_authenticate(request, user=self._user)
-
         return self._get_response(request, **kwargs)
 
 
