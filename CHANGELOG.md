@@ -1,3 +1,8 @@
+
+v3.9.9
+----------
+* Remove UploadProduct constraint and create classmethod to UploadProduct model
+
 v3.9.8
 ----------
 * feat: add view to return vtex integration details by project UUID
