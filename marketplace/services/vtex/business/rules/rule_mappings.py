@@ -9,6 +9,7 @@ from .categories_by_seller_gbarbosa import CategoriesBySeller
 from .use_extra_imgs import UseExtraImgs
 from .use_rich_description import UseRichDescription
 from .set_default_image_url import SetDefaultImageURL
+from .exclude_categories_co import ExcludeCustomizedCategoriesCO
 
 
 """
@@ -27,4 +28,5 @@ RULE_MAPPINGS = {
     "use_extra_imgs": UseExtraImgs,
     "use_rich_description": UseRichDescription,
     "set_default_image_url": SetDefaultImageURL,
+    "exclude_categories_co": ExcludeCustomizedCategoriesCO,
 }

@@ -63,3 +63,7 @@ class VtexSyncSellerSerializer(serializers.Serializer):
                 "The list of sellers exceeds the limit of 5 items."
             )
         return value
+
+
+class VtexAdsSerializer(serializers.Serializer):
+    vtex_ads = serializers.BooleanField(required=True)

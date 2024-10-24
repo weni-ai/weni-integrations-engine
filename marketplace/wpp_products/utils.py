@@ -178,7 +178,6 @@ class ProductUploader:
 class ProductUploadManager:
     def convert_to_csv(self, products: QuerySet, include_header=True) -> io.BytesIO:
         """Converts products to CSV format in a buffer, optionally including header."""
-
         # Generate header dynamically from the FacebookProductDTO dataclass
         header = ",".join(
             field.name
@@ -227,22 +226,26 @@ class ProductBatchFetcher(ProductUploadManager):
         return self
 
     def __next__(self):
-        products = UploadProduct.objects.filter(
-            catalog=self.catalog, status="pending"
-        ).order_by("modified_on")[: self.batch_size]
+        latest_products = UploadProduct.get_latest_products(
+            catalog=self.catalog, status="pending", batch_size=self.batch_size
+        )
 
-        if not products.exists():
+        if not latest_products.exists():
             print(f"No more pending products for catalog {self.catalog.name}.")
             raise StopIteration
 
-        product_ids = list(products.values_list("id", flat=True))
+        product_ids = list(latest_products.values_list("id", flat=True))
+
+        # Update status to "processing"
         UploadProduct.objects.filter(id__in=product_ids).update(status="processing")
-        products = UploadProduct.objects.filter(id__in=product_ids)
 
-        print(f"Products marked as processing: {len(products)}")
+        print(f"Products marked as processing: {len(product_ids)}")
 
-        products_ids = list(products.values_list("facebook_product_id", flat=True))
-        return products, products_ids
+        # Prepare the result as (products, facebook_product_ids)
+        facebook_product_ids = list(
+            latest_products.values_list("facebook_product_id", flat=True)
+        )
+        return latest_products, facebook_product_ids
 
 
 def generate_log_with_file(csv_content: io.BytesIO, data, exception: Exception):

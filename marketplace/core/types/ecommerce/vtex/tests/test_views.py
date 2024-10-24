@@ -11,7 +11,10 @@ from rest_framework import status
 from marketplace.core.tests.base import APIBaseTestCase
 from marketplace.accounts.models import ProjectAuthorization
 from marketplace.applications.models import App
-from marketplace.core.types.ecommerce.vtex.views import VtexViewSet
+from marketplace.core.types.ecommerce.vtex.views import (
+    VtexIntegrationDetailsView,
+    VtexViewSet,
+)
 from marketplace.core.types.ecommerce.vtex.type import VtexType
 from marketplace.clients.flows.client import FlowsClient
 from marketplace.services.vtex.app_manager import AppVtexManager
@@ -42,6 +45,9 @@ class MockVtexService:
 
 class MockFlowsService:
     def update_vtex_integration_status(self, project_uuid, user_email, action):
+        return True
+
+    def update_vtex_ads_status(self, project_uuid, user_email, action):
         return True
 
 
@@ -376,3 +382,78 @@ class VtexViewSetTestCase(APIBaseTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["message"], "No synchronization in progress")
+
+
+class UpdateVtexAdsTestCase(SetUpService):
+    def setUp(self):
+        super().setUp()
+        self.app = apptype.create_app(
+            created_by=self.user, project_uuid=str(uuid.uuid4())
+        )
+        self.url = reverse("vtex-app-update-vtex-ads", kwargs={"uuid": self.app.uuid})
+        self.body = {
+            "vtex_ads": True,
+            "project_uuid": self.app.project_uuid,
+        }
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid, role=ProjectAuthorization.ROLE_ADMIN
+        )
+
+    @property
+    def view(self):
+        return self.view_class.as_view({"post": "update_vtex_ads"})
+
+    def test_update_vtex_ads_success(self):
+        response = self.request.post(self.url, self.body, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.mock_app_manager.update_vtex_ads.assert_called_once_with(
+            self.app, self.body["vtex_ads"]
+        )
+
+
+class VtexIntegrationDetailsViewTest(APIBaseTestCase):
+    view_class = VtexIntegrationDetailsView
+
+    def setUp(self):
+        super().setUp()
+        self.project_uuid = uuid.uuid4()
+        self.url = reverse(
+            "integration-details", kwargs={"project_uuid": self.project_uuid}
+        )
+
+        self.vtex_app = App.objects.create(
+            code="vtex",
+            created_by=self.user,
+            project_uuid=self.project_uuid,
+            platform=App.PLATFORM_VTEX,
+            config={
+                "api_credentials": {
+                    "app_key": "key123",
+                    "app_token": "token123",
+                    "domain": "vtex.com",
+                }
+            },
+        )
+
+    def test_integration_details_success(self):
+        response = self.request.get(self.url, project_uuid=self.project_uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("app_key", response.data)
+        self.assertIn("app_token", response.data)
+        self.assertIn("domain", response.data)
+
+    def test_integration_details_not_found(self):
+        invalid_project_uuid = uuid.uuid4()
+        url = reverse(
+            "integration-details", kwargs={"project_uuid": invalid_project_uuid}
+        )
+        response = self.request.get(url, project_uuid=invalid_project_uuid)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    @property
+    def view(self):
+        """
+        Overriding the 'view' property of the base class.
+        Returns the view that will be used in the test.
+        """
+        return self.view_class.as_view()

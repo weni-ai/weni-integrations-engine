@@ -233,6 +233,8 @@ def sync_whatsapp_phone_numbers():
 
         app.save()
 
+    error_counts = {}
+
     for app in apptype.apps:
         key = SYNC_WHATSAPP_PHONE_NUMBER_LOCK_KEY.format(app_uuid=str(app.uuid))
 
@@ -287,7 +289,12 @@ def sync_whatsapp_phone_numbers():
                     settings.WHATSAPP_TIME_BETWEEN_SYNC_PHONE_NUMBERS_IN_HOURS,
                 )
             except FacebookApiException as error:
-                logger.error(
+                error_message = str(error)
+                if error_message in error_counts:
+                    error_counts[error_message] += 1
+                else:
+                    error_counts[error_message] = 1
+                logger.info(
                     f"An error occurred while trying to sync the app phone number. UUID: {app.uuid}. Error: {error}"
                 )
 
@@ -296,13 +303,20 @@ def sync_whatsapp_phone_numbers():
                 f"Skipping the app because it was recently synced. {redis.ttl(key)} seconds left. UUID: {app.uuid}"
             )
 
+    if error_counts:
+        total_errors = sum(error_counts.values())
+        logger.error(
+            f"Sync phone numbers task failed with {total_errors}",
+            extra={"erros": error_counts},
+        )
+
 
 @celery_app.task(name="sync_whatsapp_cloud_phone_numbers")
 def sync_whatsapp_cloud_phone_numbers():
     apptype = APPTYPES.get("wpp-cloud")
     redis = get_redis_connection()
 
-    exceptions = []
+    error_counts = {}
 
     for app in apptype.apps:
         key = SYNC_WHATSAPP_PHONE_NUMBER_LOCK_KEY.format(app_uuid=str(app.uuid))
@@ -348,8 +362,12 @@ def sync_whatsapp_cloud_phone_numbers():
                 )
 
             except Exception as e:
-                logger.exception(e)
-                exceptions.append(e)
+                error_message = str(e)
+                if error_message in error_counts:
+                    error_counts[error_message] += 1
+                else:
+                    error_counts[error_message] = 1
+                logger.info(f"sync_whatsapp_cloud_phone_numbers:{e}")
                 continue
 
         else:
@@ -357,9 +375,11 @@ def sync_whatsapp_cloud_phone_numbers():
                 f"Skipping the app because it was recently synced. {redis.ttl(key)} seconds left. UUID: {app.uuid}"
             )
 
-    if len(exceptions) > 0:
+    if error_counts:
+        total_errors = sum(error_counts.values())
         logger.error(
-            f"Sync phone numbers task failed with {len(exceptions)} exception(s): {exceptions}"
+            f"Sync phone numbers task failed with {total_errors}.",
+            extra={"erros": error_counts},
         )
 
 

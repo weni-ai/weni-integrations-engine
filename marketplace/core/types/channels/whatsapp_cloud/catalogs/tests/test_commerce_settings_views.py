@@ -83,25 +83,32 @@ class CommerceSettingsCatalogTestCase(MockServiceTestCase):
         self.assertEqual(response.json["settings_status"], "active")
 
 
-# TODO: Fix the tests
-# class CommerceSettingsToggleCatalogVisibilityTestCase(MockServiceTestCase):
-#     current_view_mapping = {"post": "toggle_catalog_visibility"}
+class CommerceSettingsToggleCatalogVisibilityTestCase(MockServiceTestCase):
+    current_view_mapping = {"post": "toggle_catalog_visibility"}
 
-#     def test_toggle_catalog_visibility(self):
-#         url = reverse("toggle-catalog-visibility", kwargs={"app_uuid": self.app.uuid})
-#         response = self.request.post(url, body={"enable": True}, app_uuid=self.app.uuid)
-#         self.assertEqual(response.status_code, status.HTTP_200_OK)
-#         self.assertEqual(response.json["visibility_status"], "visible")
+    def test_toggle_catalog_visibility(self):
+        url = reverse("toggle-catalog-visibility", kwargs={"app_uuid": self.app.uuid})
+        response = self.request.post(
+            url,
+            body={"enable": True, "project_uuid": str(self.app.project_uuid)},
+            app_uuid=self.app.uuid,
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json["visibility_status"], "visible")
 
 
-# class CommerceSettingsToggleCartVisibilityTestCase(MockServiceTestCase):
-#     current_view_mapping = {"post": "toggle_cart_visibility"}
+class CommerceSettingsToggleCartVisibilityTestCase(MockServiceTestCase):
+    current_view_mapping = {"post": "toggle_cart_visibility"}
 
-#     def test_toggle_cart_visibility(self):
-#         url = reverse("toggle-cart-visibility", kwargs={"app_uuid": self.app.uuid})
-#         response = self.request.post(url, body={"enable": True}, app_uuid=self.app.uuid)
-#         self.assertEqual(response.status_code, status.HTTP_200_OK)
-#         self.assertEqual(response.json["cart_status"], "visible")
+    def test_toggle_cart_visibility(self):
+        url = reverse("toggle-cart-visibility", kwargs={"app_uuid": self.app.uuid})
+        response = self.request.post(
+            url,
+            body={"enable": True, "project_uuid": str(self.app.project_uuid)},
+            app_uuid=self.app.uuid,
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json["cart_status"], "visible")
 
 
 class CommerceSettingsGetActiveCatalogTestCase(MockServiceTestCase):
