@@ -15,7 +15,7 @@ class GmailSerializer(BaseEmailSerializer):
         base_data = super().to_channel_data()
         base_data.update(
             {
-                "token": self.validated_data["token"],
+                "access_token": self.validated_data["access_token"],
                 "refresh_token": self.validated_data["refresh_token"],
             }
         )

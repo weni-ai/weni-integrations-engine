@@ -27,7 +27,7 @@ class EmailSerializer(AppTypeBaseSerializer):
 
 
 class BaseEmailSerializer(serializers.Serializer):
-    user_name = serializers.EmailField(required=True)
+    username = serializers.EmailField(required=True)
     password = serializers.CharField(required=True)
     smtp_host = serializers.CharField(required=True)
     smtp_port = serializers.IntegerField(required=True)
@@ -66,7 +66,7 @@ class BaseEmailSerializer(serializers.Serializer):
         Common to all email configurations.
         """
         return {
-            "user_name": self.validated_data["user_name"],
+            "username": self.validated_data["username"],
             "password": self.validated_data["password"],
             "smtp_host": self.validated_data["smtp_host"],
             "smtp_port": self.validated_data["smtp_port"],
