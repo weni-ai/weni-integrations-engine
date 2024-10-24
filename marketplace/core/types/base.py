@@ -17,6 +17,7 @@ class AbstractAppType(ABC):
     CATEGORY_TICKETER = "TK"
     CATEGORY_EXTERNAL = "EXT"
     CATEGORY_ECOMMERCE = "ECM"
+    CATEGORY_EMAIL = "EM"
 
     CATEGORY_CHOICES = (
         (CATEGORY_CHANNEL, "channel"),
@@ -24,6 +25,7 @@ class AbstractAppType(ABC):
         (CATEGORY_TICKETER, "ticketer"),
         (CATEGORY_EXTERNAL, "external"),
         (CATEGORY_ECOMMERCE, "ecommerce"),
+        (CATEGORY_EMAIL, "email"),
     )
 
     @abstractproperty
