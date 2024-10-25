@@ -1,4 +1,8 @@
 
+v3.9.10
+----------
+* feat: add startFullScreen and embedded fields to WWC
+
 v3.9.9
 ----------
 * Remove UploadProduct constraint and create classmethod to UploadProduct model
