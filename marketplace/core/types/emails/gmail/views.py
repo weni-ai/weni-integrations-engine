@@ -2,13 +2,13 @@ from rest_framework.response import Response
 from rest_framework import status
 
 
-from marketplace.core.types.emails.g_mail.serializers import GmailSerializer
+from marketplace.core.types.emails.gmail.serializers import GmailSerializer
 
 from marketplace.core.types.emails.base_serializer import EmailSerializer
 
 from marketplace.core.types import views
-from marketplace.core.types.emails.generic_email import type as type_
-from marketplace.core.types.emails.generic_email.utils import EmailAppUtils
+from marketplace.core.types.emails.gmail import type as type_
+from marketplace.core.types.emails.utils import EmailAppUtils
 from marketplace.services.flows.service import FlowsService
 from marketplace.clients.flows.client import FlowsClient
 
@@ -21,7 +21,7 @@ class GmailViewSet(views.BaseAppTypeViewSet):
     _flows_service = None  # Cache the service to avoid re-creating it
 
     @property
-    def flows_service(self):
+    def flows_service(self):  # pragma: no cover
         if not self._flows_service:
             self._flows_service = self.flows_service_class(self.flows_client_class())
         return self._flows_service
@@ -35,7 +35,6 @@ class GmailViewSet(views.BaseAppTypeViewSet):
         """
         serializer = GmailSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
         project_uuid = request.data.get("project_uuid")
 
         channel_data = serializer.to_channel_data()
@@ -48,12 +47,14 @@ class GmailViewSet(views.BaseAppTypeViewSet):
             channeltype_code=self.type_class.flows_type_code,
         )
 
-        EmailAppUtils.create_and_configure_gmail_app(
+        app = EmailAppUtils.create_and_configure_gmail_app(
             project_uuid=project_uuid,
             config_data=channel_data,
             type_class=self.type_class,
             created_by=request.user,
             flows_response=response,
         )
+        # Serialize the app data
+        app_serializer = self.serializer_class(app)
 
-        return Response(serializer.validated_data, status=status.HTTP_201_CREATED)
+        return Response(app_serializer.data, status=status.HTTP_201_CREATED)

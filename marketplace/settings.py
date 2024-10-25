@@ -292,7 +292,7 @@ APPTYPE_VTEX_PATH = "ecommerce.vtex.type.VtexType"
 
 # Emails
 APPTYPE_GENERIC_EMAIL_PATH = "emails.generic_email.type.GenericEmailType"
-APPTYPE_GMAIL_PATH = "emails.g_mail.type.GmailType"
+APPTYPE_GMAIL_PATH = "emails.gmail.type.GmailType"
 
 
 APPTYPES_CLASSES = [

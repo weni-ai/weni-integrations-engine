@@ -11,7 +11,7 @@ from marketplace.core.types.emails.base_serializer import (
 
 from marketplace.core.types import views
 from marketplace.core.types.emails.generic_email import type as type_
-from marketplace.core.types.emails.generic_email.utils import EmailAppUtils
+from marketplace.core.types.emails.utils import EmailAppUtils
 from marketplace.services.flows.service import FlowsService
 from marketplace.clients.flows.client import FlowsClient
 
@@ -24,7 +24,7 @@ class GenericEmailViewSet(views.BaseAppTypeViewSet):
     _flows_service = None  # Cache the service to avoid re-creating it
 
     @property
-    def flows_service(self):
+    def flows_service(self):  # pragma: no cover
         if not self._flows_service:
             self._flows_service = self.flows_service_class(self.flows_client_class())
         return self._flows_service

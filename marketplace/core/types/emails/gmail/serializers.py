@@ -4,7 +4,7 @@ from marketplace.core.types.emails.base_serializer import BaseEmailSerializer
 
 
 class GmailSerializer(BaseEmailSerializer):
-    token = serializers.CharField(required=True)
+    access_token = serializers.CharField(required=True)
     refresh_token = serializers.CharField(required=True)
 
     def to_channel_data(self):
