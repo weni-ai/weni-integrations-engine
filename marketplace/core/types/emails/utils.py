@@ -28,7 +28,6 @@ class EmailAppUtils:
         Handles the creation of the Gmail app and the channel configuration in one utility function.
         """
         config_data.update({"title": "G-Mail"})
-        # TODO: compares this methods with gmail utils method
         app = App.objects.create(
             code=type_class.code,
             project_uuid=project_uuid,
