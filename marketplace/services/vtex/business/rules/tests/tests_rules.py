@@ -3,6 +3,17 @@ import unittest
 from marketplace.services.vtex.business.rules.round_up_calculate_by_weight import (
     RoundUpCalculateByWeight,
 )
+from marketplace.services.vtex.business.rules.calculate_by_weight_co import (
+    CalculateByWeightCO,
+)
+from marketplace.services.vtex.business.rules.exclude_alcoholic_drinks import (
+    ExcludeAlcoholicDrinks,
+)
+from marketplace.services.vtex.business.rules.currency_co import CurrencyCOP
+from marketplace.services.vtex.business.rules.set_default_image_url import (
+    SetDefaultImageURL,
+)
+
 from marketplace.services.vtex.utils.data_processor import FacebookProductDTO
 
 
@@ -22,7 +33,7 @@ class MockProductsDTO(unittest.TestCase):
                 brand="ExampleBrand",
                 sale_price=2439,
                 product_details={
-                    "UnitMultiplier": 0.6,
+                    "UnitMultiplier": 0.5000,
                     "Dimension": {
                         "cubicweight": 0.3063,
                         "height": 5.0,
@@ -127,12 +138,33 @@ class MockProductsDTO(unittest.TestCase):
                     "ProductCategories": {"category": "hortifruti"},
                 },
             ),
+            FacebookProductDTO(
+                id=24546,
+                title="Carne molida de cordero Majada",
+                description="Disfruta todos los mejores productos que tiene Majada para ti",
+                availability="in stock",
+                status="Active",
+                condition="new",
+                price=1164000,
+                link="https://tiendasjumbo.co//batata-x-500-g/p?idsku=33689",
+                image_link="https://jumbocolombiaio.vteximg.com.br/arquivos/ids/205437/2042.jpg",
+                brand="A GRANEL",
+                sale_price=1164000,
+                product_details={
+                    "Dimension": {"weight": 500.0},
+                    "UnitMultiplier": 1.0,
+                    "ProductCategories": {
+                        "2000045": "carne y pollo",
+                        "2000001": "Supermercado",
+                    },
+                },
+            ),
         ]
 
 
 class TestRoundUpCalculateByWeight(MockProductsDTO):
     def setUp(self):
-        super().setUp()  # Call setUp of MockProductsDTO
+        super().setUp()
         self.rule = RoundUpCalculateByWeight()
 
     def test_apply_rounding_up_product_1(self):
@@ -140,20 +172,18 @@ class TestRoundUpCalculateByWeight(MockProductsDTO):
 
         before_title = product.title
         expected_title = f"{before_title} Unidade"
-        expected_price_per_kg = "24.40"
-
-        _, weight = self.rule._get_product_measurements(product)
-        grams = self.rule._format_grams(weight)
         expected_description = (
-            f"{before_title} - Aprox. {grams}, Preço do KG: R$ {expected_price_per_kg}"
+            product.description + " - Aprox. 500g, Preço do KG: R$ 24.40"
         )
+        product.price = 2439
+        expected_price = 1220
 
         self.rule.apply(product)
 
         self.assertEqual(product.title, expected_title)
         self.assertEqual(product.description, expected_description)
-        self.assertEqual(product.price, 1464)
-        self.assertEqual(product.sale_price, 1464)
+        self.assertEqual(product.price, expected_price)
+        self.assertEqual(product.sale_price, expected_price)
 
     def test_not_apply_rule(self):
         product = self.products[1]
@@ -187,3 +217,99 @@ class TestRoundUpCalculateByWeight(MockProductsDTO):
         product = self.products[5]
         weight = self.rule._get_weight(product)
         self.assertEqual(self.rule._format_grams(weight), "1.050g")
+
+
+class TestCalculateByWeightCO(MockProductsDTO):
+    def setUp(self):
+        super().setUp()
+        self.rule = CalculateByWeightCO()
+
+    def test_apply_with_increase(self):
+        product = self.products[-1]
+
+        initial_price = product.price
+        product.sale_price = initial_price
+
+        self.rule.apply(product)
+
+        ten_percent = initial_price * 0.10
+        expected_price = initial_price + ten_percent
+
+        self.assertAlmostEqual(product.price, expected_price, places=1)
+        self.assertAlmostEqual(product.sale_price, expected_price, places=1)
+
+    def test_apply_without_increase(self):
+        product = self.products[
+            4
+        ]  # A product that doesn't qualify for a price increase
+
+        product.price = 50
+        product.sale_price = 50
+        self.rule.apply(product)
+        # Assert that the price remains the same
+        self.assertEqual(product.price, 50)
+        self.assertEqual(product.sale_price, 50)
+
+
+class TestExcludeAlcoholicDrinks(MockProductsDTO):
+    def setUp(self):
+        super().setUp()
+        self.rule = ExcludeAlcoholicDrinks()
+
+    def test_apply_excludes_alcohol(self):
+        # Mock a product that belongs to the alcoholic category
+        product = FacebookProductDTO(
+            id="test_alcohol",
+            title="Wine Bottle",
+            description="Red wine",
+            availability="in stock",
+            status="active",
+            condition="new",
+            price=1000,
+            sale_price=900,
+            link="http://example.com/product",
+            image_link="http://example.com/image.jpg",
+            brand="Brand Name",
+            product_details={
+                "ProductCategories": {"1": "vinos y licores"},
+            },
+        )
+
+        result = self.rule.apply(product)
+        self.assertFalse(result)  # Expect the rule to exclude this product
+
+    def test_apply_non_alcoholic(self):
+        product = self.products[0]  # A non-alcoholic product
+
+        result = self.rule.apply(product)
+        self.assertTrue(result)  # Expect the rule to pass this product
+
+
+class TestCurrencyCOP(MockProductsDTO):
+    def setUp(self):
+        super().setUp()
+        self.rule = CurrencyCOP()
+
+    def test_format_cop_price(self):
+        product = self.products[0]
+
+        self.rule.apply(product)
+
+        # Assert that the prices have been formatted correctly
+        self.assertEqual(product.price, "24.39 COP")
+        self.assertEqual(product.sale_price, "24.39 COP")
+
+
+class TestSetDefaultImageURL(MockProductsDTO):
+    def setUp(self):
+        super().setUp()
+        self.rule = SetDefaultImageURL()
+
+    def test_set_image_url(self):
+        product = self.products[0]
+        product.product_details["ImageUrl"] = "http://example.com/new_image.jpg"
+
+        self.rule.apply(product)
+
+        # Check if the image link is set correctly
+        self.assertEqual(product.image_link, "http://example.com/new_image.jpg")
