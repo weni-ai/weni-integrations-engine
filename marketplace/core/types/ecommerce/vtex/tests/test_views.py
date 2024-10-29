@@ -29,7 +29,7 @@ class MockVtexService:
         return True
 
     def configure(self, app, credentials, wpp_cloud_uuid, store_domain):
-        app.config["api_credentials"] = credentials.to_dict()
+        app.config["operator_token"] = credentials.to_dict()
         app.config["wpp_cloud_uuid"] = wpp_cloud_uuid
         app.config["store_domain"] = store_domain
         app.configured = True
@@ -427,7 +427,7 @@ class VtexIntegrationDetailsViewTest(APIBaseTestCase):
             project_uuid=self.project_uuid,
             platform=App.PLATFORM_VTEX,
             config={
-                "api_credentials": {
+                "operator_token": {
                     "app_key": "key123",
                     "app_token": "token123",
                     "domain": "vtex.com",

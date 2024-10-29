@@ -25,8 +25,11 @@ class VtexIntegration:
         """
         Extracts API credentials from the app's config and ensures the domain has https.
         """
-        config = vtex_app.config.get("api_credentials", {})
-
+        config = vtex_app.config.get("operator_token")
+        if config is None:
+            raise NotFound(
+                detail="The operator_token was not found for the provided project UUID."
+            )
         api_credentials = {
             "app_key": config.get("app_key"),
             "app_token": config.get("app_token"),
