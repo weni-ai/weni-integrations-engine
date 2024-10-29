@@ -27,7 +27,7 @@ class VtexIntegrationTest(TestCase):
             project_uuid=self.project_uuid,
             created_by=self.user,
             config={
-                "api_credentials": {
+                "operator_token": {
                     "app_key": "key123",
                     "app_token": "token123",
                     "domain": "vtex.com",
@@ -73,3 +73,17 @@ class VtexIntegrationTest(TestCase):
 
         result = VtexIntegration.ensure_https("")
         self.assertEqual(result, "")
+
+    def test_get_integration_details_operator_token_not_found(self):
+        # Test whether the NotFound exception is raised when the operator_token is not found
+        # Remove operator_token from App configuration
+        self.vtex_app.config.pop("operator_token")
+        self.vtex_app.save()
+
+        with self.assertRaises(NotFound) as context:
+            VtexIntegration.vtex_integration_detail(self.project_uuid)
+
+        self.assertEqual(
+            str(context.exception.detail),
+            "The operator_token was not found for the provided project UUID.",
+        )
