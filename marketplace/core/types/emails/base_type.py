@@ -11,4 +11,4 @@ class EmailAppType(AppType):
     summary = "email.data.summary"
     developer = "Weni"
     bg_color = "#039be533"
-    config_design = "sidebar"
+    config_design = "popup"
