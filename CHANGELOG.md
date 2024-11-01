@@ -1,4 +1,8 @@
 
+v3.9.11
+----------
+* fix: returns operator token
+
 v3.9.10
 ----------
 * feat: add startFullScreen and embedded fields to WWC
