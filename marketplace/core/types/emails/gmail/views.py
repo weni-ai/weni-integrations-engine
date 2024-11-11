@@ -1,16 +1,15 @@
 from rest_framework.response import Response
 from rest_framework import status
-
+from rest_framework.decorators import action
 
 from marketplace.core.types.emails.gmail.serializers import GmailSerializer
-
 from marketplace.core.types.emails.base_serializer import EmailSerializer
-
 from marketplace.core.types import views
 from marketplace.core.types.emails.gmail import type as type_
 from marketplace.core.types.emails.utils import EmailAppUtils
 from marketplace.services.flows.service import FlowsService
 from marketplace.clients.flows.client import FlowsClient
+from marketplace.services.google.service import GoogleAuthService
 
 
 class GmailViewSet(views.BaseAppTypeViewSet):
@@ -58,3 +57,25 @@ class GmailViewSet(views.BaseAppTypeViewSet):
         app_serializer = self.serializer_class(app)
 
         return Response(app_serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=["POST"], url_path="authenticate-google")
+    def authenticate_google(self, request):
+        """
+        Authenticates Google using the authorization code
+        and returns the access_token and refresh_token.
+        """
+        code = request.data.get("code")
+
+        if not code:
+            return Response(
+                {"error": "Authorization code is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            # Use the service to exchange the code for tokens
+            tokens = GoogleAuthService.exchange_code_for_token(code)
+            return Response(tokens, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
