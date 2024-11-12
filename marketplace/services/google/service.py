@@ -37,9 +37,19 @@ class GoogleAuthService:  # pragma: no cover
                 "access_token": tokens.get("access_token"),
                 "refresh_token": tokens.get("refresh_token"),
             }
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to exchange code for token: {str(e)}")
-            raise
+        except requests.exceptions.HTTPError as e:
+            error_message = f"Failed to exchange code for token: {str(e)}"
+            try:
+                # Attempt to parse the error response JSON if available
+                error_details = e.response.json()
+                logger.error(f"{error_message}. Details: {error_details}")
+                raise Exception(
+                    {"error": error_message, "details": error_details}
+                ) from e
+            except ValueError:
+                # If the response isn't JSON, log and raise the basic error message
+                logger.error(error_message)
+                raise Exception(error_message) from e
 
     @staticmethod
     def refresh_access_token(refresh_token):
@@ -59,6 +69,16 @@ class GoogleAuthService:  # pragma: no cover
             tokens = response.json()
             logger.info("Successfully refreshed access token.")
             return tokens.get("access_token")
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to refresh access token: {str(e)}")
-            raise
+        except requests.exceptions.HTTPError as e:
+            error_message = f"Failed to refresh access token: {str(e)}"
+            try:
+                # Attempt to parse the error response JSON if available
+                error_details = e.response.json()
+                logger.error(f"{error_message}. Details: {error_details}")
+                raise Exception(
+                    {"error": error_message, "details": error_details}
+                ) from e
+            except ValueError:
+                # If the response isn't JSON, log and raise the basic error message
+                logger.error(error_message)
+                raise Exception(error_message) from e
