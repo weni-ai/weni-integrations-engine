@@ -20,3 +20,7 @@ class GmailSerializer(BaseEmailSerializer):
             }
         )
         return base_data
+
+
+class GmailOAuth(serializers.Serializer):
+    code = serializers.CharField(required=True)

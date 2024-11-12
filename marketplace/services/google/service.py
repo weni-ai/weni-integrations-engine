@@ -7,7 +7,7 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 
-class GoogleAuthService:
+class GoogleAuthService:  # pragma: no cover
     """
     Service for handling Google authentication, exchanging authorization code for access token,
     and refreshing the access token when necessary.
@@ -58,9 +58,7 @@ class GoogleAuthService:
             response.raise_for_status()
             tokens = response.json()
             logger.info("Successfully refreshed access token.")
-            print("Successfully refreshed access token.")
             return tokens.get("access_token")
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to refresh access token: {str(e)}")
-            print(f"Failed to refresh access token: {str(e)}")
             raise

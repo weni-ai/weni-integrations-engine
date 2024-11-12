@@ -20,6 +20,16 @@ class MockFlowsService:
         return {"uuid": str(uuid.uuid4()), "name": "Test Gmail Channel"}
 
 
+class MockGoogleAuthService:
+    def exchange_code_for_token(self, code):
+        if code == "valid_code":
+            return {
+                "access_token": "mock_access_token",
+                "refresh_token": "mock_refresh_token",
+            }
+        raise Exception("Invalid code")
+
+
 class SetUpTestBase(APIBaseTestCase):
     current_view_mapping = {}
     view_class = GmailViewSet
@@ -33,6 +43,13 @@ class SetUpTestBase(APIBaseTestCase):
         )
         self.mock_flows_service.start()
         self.addCleanup(self.mock_flows_service.stop)
+
+        # Mocking the GoogleAuthService directly in setUp
+        self.mock_auth_service = patch.object(
+            self.view_class, "auth_service", new_callable=MockGoogleAuthService
+        )
+        self.mock_auth_service.start()
+        self.addCleanup(self.mock_auth_service.stop)
 
         self.project_uuid = str(uuid.uuid4())
         self.app = App.objects.create(
@@ -167,3 +184,25 @@ class DestroyGmailAppTestCase(SetUpTestBase):
         self.user_authorization.set_role(ProjectAuthorization.ROLE_NOT_SETTED)
         response = self.request.delete(self.url, uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class AuthenticateGoogleTestCase(SetUpTestBase):
+    current_view_mapping = {"post": "authenticate_google"}
+    url = reverse("gmail-app-list")
+
+    def setUp(self):
+        super().setUp()
+        self.valid_body = {"code": "valid_code", "project_uuid": self.project_uuid}
+        self.invalid_body = {"code": "invalid_code", "project_uuid": self.project_uuid}
+
+    def test_authenticate_google_success(self):
+        response = self.request.post(self.url, self.valid_body)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["access_token"], "mock_access_token")
+        self.assertEqual(response.data["refresh_token"], "mock_refresh_token")
+
+    def test_authenticate_google_invalid_code(self):
+        response = self.request.post(self.url, self.invalid_body)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("error", response.data)
+        self.assertEqual(response.data["error"], "Invalid code")

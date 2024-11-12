@@ -2,7 +2,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import action
 
-from marketplace.core.types.emails.gmail.serializers import GmailSerializer
+from marketplace.core.types.emails.gmail.serializers import GmailOAuth, GmailSerializer
 from marketplace.core.types.emails.base_serializer import EmailSerializer
 from marketplace.core.types import views
 from marketplace.core.types.emails.gmail import type as type_
@@ -16,14 +16,22 @@ class GmailViewSet(views.BaseAppTypeViewSet):
     serializer_class = EmailSerializer
     flows_service_class = FlowsService
     flows_client_class = FlowsClient
+    auth_service_class = GoogleAuthService
 
     _flows_service = None  # Cache the service to avoid re-creating it
+    _auth_service = None  # Cache the GoogleAuthService instance
 
     @property
     def flows_service(self):  # pragma: no cover
         if not self._flows_service:
             self._flows_service = self.flows_service_class(self.flows_client_class())
         return self._flows_service
+
+    @property
+    def auth_service(self):  # pragma: no cover
+        if not self._auth_service:
+            self._auth_service = self.auth_service_class()
+        return self._auth_service
 
     def get_queryset(self):
         return super().get_queryset().filter(code=type_.GmailType.code)
@@ -64,17 +72,14 @@ class GmailViewSet(views.BaseAppTypeViewSet):
         Authenticates Google using the authorization code
         and returns the access_token and refresh_token.
         """
-        code = request.data.get("code")
-
-        if not code:
-            return Response(
-                {"error": "Authorization code is required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        serializer = GmailOAuth(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
         try:
             # Use the service to exchange the code for tokens
-            tokens = GoogleAuthService.exchange_code_for_token(code)
+            tokens = self.auth_service.exchange_code_for_token(
+                serializer.validated_data["code"]
+            )
             return Response(tokens, status=status.HTTP_200_OK)
 
         except Exception as e:
