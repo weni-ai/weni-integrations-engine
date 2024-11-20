@@ -67,3 +67,15 @@ class FlowsService:
         return self.client.create_wac_channel(
             user, project_uuid, phone_number_id, config
         )
+
+    # TODO: need implement methods on client
+    def create_facebook_template(self, flow_object_uuid, template_data, template_name):
+        return self.client.create_facebook_template(
+            flow_object_uuid, template_data, template_name
+        )
+
+    # TODO: need implement methods on client
+    def delete_facebook_template(self, flow_object_uuid, template_data, template_name):
+        return self.client.delete_facebook_template(
+            flow_object_uuid, template_data, template_name
+        )
