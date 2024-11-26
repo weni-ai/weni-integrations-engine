@@ -4,7 +4,6 @@ import logging
 from django.conf import settings
 from rest_framework import serializers
 
-from marketplace.core.types.emails.base_serializer import BaseEmailSerializer
 
 logger = logging.getLogger(__name__)
 
