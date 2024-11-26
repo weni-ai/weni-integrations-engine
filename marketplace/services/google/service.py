@@ -59,7 +59,6 @@ class GoogleAuthService:
             response.raise_for_status()
             tokens = response.json()
             logger.info("Successfully refreshed access token.")
-            print("Successfully refreshed access token.")
             return tokens.get("access_token")
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to refresh access token: {str(e)}")

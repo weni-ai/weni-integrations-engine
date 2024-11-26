@@ -9,7 +9,7 @@ from marketplace.core.types.emails.base_serializer import BaseEmailSerializer
 logger = logging.getLogger(__name__)
 
 
-class GmailSerializer(BaseEmailSerializer):
+class GmailSerializer(serializers.Serializer):
     access_token = serializers.CharField(required=True)
     refresh_token = serializers.CharField(required=True)
 
