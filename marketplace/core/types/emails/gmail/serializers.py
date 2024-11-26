@@ -8,6 +8,7 @@ from marketplace.core.types.emails.base_serializer import BaseEmailSerializer
 
 logger = logging.getLogger(__name__)
 
+
 class GmailSerializer(BaseEmailSerializer):
     access_token = serializers.CharField(required=True)
     refresh_token = serializers.CharField(required=True)
@@ -18,7 +19,8 @@ class GmailSerializer(BaseEmailSerializer):
         Extends the base data with Gmail-specific fields.
         """
         # base_data = super().to_channel_data()
-        url = f"https://www.googleapis.com/userinfo/v2/me?access_token={self.validated_data['access_token']}&alt=json&prettyPrint=true"
+        url = "https://www.googleapis.com/userinfo/v2/me?"
+        url += f"access_token={self.validated_data['access_token']}&alt=json&prettyPrint=true"
         response = requests.get(url=url)
         base_data = {
             "username": response.json().get("email"),
@@ -36,5 +38,5 @@ class GmailSerializer(BaseEmailSerializer):
         )
         logger.info(f"user_data: {base_data}")
         print(f"user_data: {base_data}")
-        
+
         return base_data
