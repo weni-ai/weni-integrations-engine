@@ -6,7 +6,7 @@ from celery import shared_task
 
 from django.db import reset_queries, close_old_connections
 from django.db.models import Exists, OuterRef
-
+from django.core.cache import cache
 from django.utils import timezone
 
 from marketplace.clients.facebook.client import FacebookClient
@@ -220,7 +220,11 @@ def task_update_vtex_products(**kwargs):
             f"SKU_ID: {sku_id} at {current_time}. "
             f"'An':{seller_an}, 'SellerChain': {seller_chain}."
         )
-        vtex_app = App.objects.get(uuid=app_uuid, configured=True, code="vtex")
+        cache_key = f"app_cache_{app_uuid}"
+        vtex_app = cache.get(cache_key)
+        if not vtex_app:
+            vtex_app = App.objects.get(uuid=app_uuid, configured=True, code="vtex")
+            cache.set(cache_key, vtex_app, timeout=300)
 
         api_credentials = vtex_base_service.get_vtex_credentials_or_raise(vtex_app)
 
@@ -358,7 +362,11 @@ def task_cleanup_vtex_logs_and_uploads():
 
 def send_sync(app_uuid: str, webhook: dict):
     try:
-        app = App.objects.get(uuid=app_uuid, configured=True, code="vtex")
+        cache_key = f"app_cache_{app_uuid}"
+        app = cache.get(cache_key)
+        if not app:
+            app = App.objects.get(uuid=app_uuid, configured=True, code="vtex")
+            cache.set(cache_key, app, timeout=300)
     except App.DoesNotExist:
         logger.info(f"No VTEX App configured with the provided UUID: {app_uuid}")
         return
@@ -372,6 +380,17 @@ def send_sync(app_uuid: str, webhook: dict):
     celery_queue = app.config.get("celery_queue_name", "product_synchronization")
     sku_id = webhook.get("IdSku")
 
+    sync_specific_sellers = app.config.get("sync_specific_sellers", [])
+
+    if sync_specific_sellers:
+        seller_id = _extract_sellers_ids(webhook)
+        if seller_id not in sync_specific_sellers:
+            print(
+                f"Seller ID '{seller_id}' not in allowed list: {sync_specific_sellers}. "
+                f"Webhook for App {app_uuid} ignored."
+            )
+            return
+
     if not sku_id:
         raise ValueError(f"SKU ID not provided in the request. App:{str(app.uuid)}")
 
@@ -381,6 +400,19 @@ def send_sync(app_uuid: str, webhook: dict):
         queue=celery_queue,
         ignore_result=True,
     )
+
+
+def _extract_sellers_ids(webhook: dict):
+    seller_an = webhook.get("An")
+    seller_chain = webhook.get("SellerChain")
+
+    if seller_chain and seller_an:
+        return seller_chain
+
+    if seller_an and not seller_chain:
+        return seller_an
+
+    return None
 
 
 @celery_app.task(name="task_insert_vtex_products_by_sellers")
