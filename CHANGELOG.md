@@ -1,3 +1,7 @@
+v3.9.12
+----------
+* feat: add caching for App retrieval and filter specific sellers
+* fix: remove regular type to conversation type from FacebookConversationAPI
 
 v3.9.11
 ----------
