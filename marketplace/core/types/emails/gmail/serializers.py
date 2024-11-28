@@ -27,14 +27,14 @@ class GmailSerializer(serializers.Serializer):
             url += f"&oauth_token={self.validated_data['access_token']}"
             url += "&alt=json&prettyPrint=true"
             response = requests.get(url=url)
-            if response.status == 200:
+            if response.status_code == 200:
                 print(f"successfull using: {url}")
             else:
                 print(f"error in second try: {response.json()}")
                 url = "https://www.googleapis.com/oauth2/v1/userinfo?access_token="
                 url += {self.validated_data['access_token']}
                 response = requests.get(url=url)
-                if response == 200:
+                if response.status_code == 200:
                     print(f"sucess using: {url}")
                 else:
                     print(f"error in third try: {response.json}")
