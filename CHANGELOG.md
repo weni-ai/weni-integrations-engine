@@ -1,5 +1,10 @@
 v3.9.12
 ----------
+* feat: added gmail integration by oauth
+* feat: added generic email integration by form 
+
+v3.9.12
+----------
 * feat: add caching for App retrieval and filter specific sellers
 * fix: remove regular type to conversation type from FacebookConversationAPI
 
