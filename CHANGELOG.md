@@ -1,4 +1,4 @@
-v3.9.12
+v3.9.13
 ----------
 * feat: added gmail integration by oauth
 * feat: added generic email integration by form 
