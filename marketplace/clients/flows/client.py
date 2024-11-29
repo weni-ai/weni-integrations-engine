@@ -181,3 +181,23 @@ class FlowsClient(RequestClient):
             params=params,
         )
         return response
+
+    def create_channel(
+        self, user_email: str, project_uuid: str, data: dict, channeltype_code: str
+    ) -> dict:
+        payload = {
+            "user": user_email,
+            "org": str(project_uuid),
+            "data": data,
+            "channeltype_code": channeltype_code,
+        }
+        url = f"{self.base_url}/api/v2/internals/channel/"
+
+        response = self.make_request(
+            url,
+            method="POST",
+            headers=self.authentication_instance.headers,
+            json=payload,
+        )
+
+        return response.json()
