@@ -37,7 +37,6 @@ class GmailViewSet(views.BaseAppTypeViewSet):
         project_uuid = request.data.get("project_uuid")
 
         channel_data = serializer.to_channel_data()
-        print(f"channel data: {channel_data}")
 
         # Create Channel on flows
         response = self.flows_service.create_channel(

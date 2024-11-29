@@ -33,7 +33,6 @@ class GoogleAuthService:
             response.raise_for_status()  # Raise an error for bad HTTP status codes
             tokens = response.json()
             logger.info("Successfully exchanged authorization code for tokens.")
-            print(f"tokens: {tokens}")
             return {
                 "access_token": tokens.get("access_token"),
                 "refresh_token": tokens.get("refresh_token"),
@@ -62,5 +61,4 @@ class GoogleAuthService:
             return tokens.get("access_token")
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to refresh access token: {str(e)}")
-            print(f"Failed to refresh access token: {str(e)}")
             raise

@@ -20,13 +20,8 @@ class GmailSerializer(serializers.Serializer):
         url = "https://gmail.googleapis.com/gmail/v1/users/me/profile"
         headers = {"Authorization": f"Bearer {self.validated_data['access_token']}"}
         response = requests.get(url=url, headers=headers)
-        if response.status_code != 200:
-            print(f"error: {response.status_code} - {response.json()}")
-        else:
-            print(f"success: {response.json()}")
-
         base_data = {
-            "username": response.json().get("email"),
+            "username": response.json().get("emailAddress"),
             "password": "",
             "smtp_host": "smtp.gmail.com",
             "smtp_port": 587,
@@ -40,6 +35,5 @@ class GmailSerializer(serializers.Serializer):
             }
         )
         logger.info(f"user_data: {base_data}")
-        print(f"user_data: {base_data}")
 
         return base_data
