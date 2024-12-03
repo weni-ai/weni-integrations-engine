@@ -147,9 +147,7 @@ class DataProcessor:
 
         # Preparing the tqdm progress bar
         print("Initiated process of product treatment:")
-        self.progress_bar = tqdm(
-            total=len(skus_ids) * len(self.active_sellers), desc="[✓:0, ✗:0]", ncols=0
-        )
+        self.progress_bar = tqdm(total=len(skus_ids), desc="[✓:0, ✗:0]", ncols=0)
 
         # Initializing the queue with SKUs
         for sku_id in skus_ids:
@@ -179,25 +177,24 @@ class DataProcessor:
     def worker(self):
         while not self.queue.empty():
             sku_id = self.queue.get()
-            initial_invalid_count = len(self.active_sellers)
             result = self.process_single_sku(sku_id)
 
             with self.progress_lock:
                 if result:
+                    # If the SKU has valid products, count it as valid
                     self.results.extend(result)
-                    valid_count = len(result)
-                    invalid_count = initial_invalid_count - valid_count
-                    self.invalid_products_count += invalid_count
-                    # Updates progress for each SKU processed, valid or not.
-                    self.progress_bar.update(valid_count + invalid_count)
+                    self.progress_bar.set_description(
+                        f"[✓:{len(self.results)}, ✗:{self.invalid_products_count}]"
+                    )
                 else:
-                    self.invalid_products_count += initial_invalid_count
-                    # If no valid result was found, the entire attempt is considered invalid.
-                    self.progress_bar.update(initial_invalid_count)
+                    # If no valid products were found for the SKU, count it as invalid
+                    self.invalid_products_count += 1
+                    self.progress_bar.set_description(
+                        f"[✓:{len(self.results)}, ✗:{self.invalid_products_count}]"
+                    )
 
-                self.progress_bar.set_description(
-                    f"[✓:{len(self.results)}, ✗:{self.invalid_products_count}]"
-                )
+                # Update progress for the processed SKU
+                self.progress_bar.update(1)
 
     def process_single_sku(self, sku_id):
         facebook_products = []
@@ -220,7 +217,13 @@ class DataProcessor:
         if not is_active and not self.update_product:
             return facebook_products
 
-        for seller_id in self.active_sellers:
+        sku_sellers = product_details.get("SkuSellers")
+        for seller in sku_sellers:
+            seller_id = seller.get("SellerId")
+
+            if seller_id not in self.active_sellers:
+                continue
+
             try:
                 availability_details = self.service.simulate_cart_for_seller(
                     sku_id, seller_id, self.domain
