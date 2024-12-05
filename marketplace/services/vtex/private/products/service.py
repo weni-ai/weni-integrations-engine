@@ -33,6 +33,8 @@ Example:
 
 from typing import List, Optional
 
+from django.core.cache import cache
+
 from marketplace.services.vtex.exceptions import CredentialsValidationError
 from marketplace.services.vtex.utils.data_processor import DataProcessor
 from marketplace.services.vtex.business.rules.rule_mappings import RULE_MAPPINGS
@@ -66,7 +68,16 @@ class PrivateProductsService:
         return self.client.list_active_sellers(domain)
 
     def list_all_active_products(self, domain):
-        return self.client.list_all_active_products(domain)
+        cache_key = f"active_products_{domain}"
+        cached_skus = cache.get(cache_key)
+        if cached_skus:
+            print(f"Returning cached SKUs for domain {domain}.")
+            return cached_skus
+
+        skus = self.client.list_all_active_products(domain)
+        cache.set(cache_key, skus, timeout=3600)  # Cache for 1 hour
+        print(f"Fetched SKUs for domain {domain} and stored in cache.")
+        return skus
 
     def list_all_products(
         self,
@@ -74,7 +85,11 @@ class PrivateProductsService:
         catalog: Catalog,
         sellers: Optional[List[str]] = None,
         update_product=False,
+        upload_on_sync=False,
     ) -> List[FacebookProductDTO]:
+        """
+        Fetches and processes all products for the given catalog and sellers.
+        """
         config = catalog.vtex_app.config
         active_sellers = set(self.list_active_sellers(domain))
         if sellers is not None:
@@ -84,6 +99,7 @@ class PrivateProductsService:
                 print(
                     f"Warning: Sellers IDs {invalid_sellers} are not active and will be ignored."
                 )
+                return
             sellers_ids = valid_sellers
         else:
             sellers_ids = list(active_sellers)
@@ -91,6 +107,7 @@ class PrivateProductsService:
         skus_ids = self.list_all_active_products(domain)
         rules = self._load_rules(config.get("rules", []))
         store_domain = config.get("store_domain")
+
         products_dto = self.data_processor.process_product_data(
             skus_ids=skus_ids,
             active_sellers=sellers_ids,
@@ -100,6 +117,7 @@ class PrivateProductsService:
             rules=rules,
             catalog=catalog,
             update_product=update_product,
+            upload_on_sync=upload_on_sync,
         )
         return products_dto
 

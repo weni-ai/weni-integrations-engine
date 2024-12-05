@@ -32,6 +32,7 @@ from marketplace.applications.models import App
 from django_redis import get_redis_connection
 
 from marketplace.wpp_products.utils import (
+    ProductBatchUploader,
     ProductUploader,
     SellerSyncUtils,
     UploadManager,
@@ -271,7 +272,10 @@ def task_update_vtex_products(**kwargs):
 
 
 @celery_app.task(name="task_forward_vtex_webhook")
-def task_forward_vtex_webhook(**kwargs):
+def task_forward_vtex_webhook(**kwargs):  # TODO: removes this method not in use
+    """
+    Forwards the VTEX webhook to the appropriate task based on the app configuration.
+    """
     app_uuid = kwargs.get("app_uuid")
     webhook = kwargs.get("webhook")
 
@@ -281,25 +285,36 @@ def task_forward_vtex_webhook(**kwargs):
         logger.info(f"No VTEX App configured with the provided UUID: {app_uuid}")
         return
 
-    can_synchronize = app.config.get("initial_sync_completed", False)
-
-    celery_queue = app.config.get("celery_queue_name", "product_synchronization")
-
-    if not can_synchronize:
-        print(f"Initial sync not completed. App:{str(app.uuid)}")
+    # Check if the initial sync has been completed
+    if not app.config.get("initial_sync_completed", False):
+        logger.info(f"Initial sync not completed for App: {app_uuid}. Task skipped.")
         return
 
+    # Get the SKU ID from the webhook
     sku_id = webhook.get("IdSku")
-
     if not sku_id:
-        raise ValueError(f"SKU ID not provided in the request. App:{str(app.uuid)}")
+        raise ValueError(f"SKU ID is missing in the webhook for App: {app_uuid}")
 
-    celery_app.send_task(
-        "task_update_vtex_products",
-        kwargs={"app_uuid": str(app_uuid), "webhook": webhook},
-        queue=celery_queue,
-        ignore_result=True,
-    )
+    # Check if the app uses the new batch sync
+    use_sync_v2 = app.config.get("use_sync_v2", False)
+    celery_queue = app.config.get("celery_queue_name", "product_synchronization")
+
+    if use_sync_v2:
+        logger.info(f"App {app_uuid} uses Sync v2. Forwarding to batch update task.")
+        celery_app.send_task(
+            "task_update_batch_products",
+            kwargs={"app_vtex_uuid": app_uuid},
+            queue=celery_queue,
+            ignore_result=True,
+        )
+    else:
+        logger.info(f"App {app_uuid} uses legacy sync. Forwarding to update task.")
+        celery_app.send_task(
+            "task_update_vtex_products",
+            kwargs={"app_uuid": app_uuid, "webhook": webhook},
+            queue=celery_queue,
+            ignore_result=True,
+        )
 
 
 @celery_app.task(name="task_upload_vtex_products")
@@ -318,13 +333,19 @@ def task_upload_vtex_products(**kwargs):
                 print("No catalogs found.")
                 return
 
-            for catalog in catalogs:
-                if catalog.feeds.first():
-                    print(f"Processing upload for catalog: {catalog.name}")
-                    uploader = ProductUploader(catalog=catalog)
-                    uploader.process_and_upload(
-                        redis_client, lock_key, lock_expiration_time
-                    )
+            # Checks if the application is using Sync v2
+            if app_vtex.config.get("use_sync_v2", False):
+                for catalog in catalogs:
+                    if catalog.vtex_app:
+                        print(f"Using Sync v2 for catalog: {catalog.name}")
+                        uploader = ProductBatchUploader(catalog=catalog)
+            else:
+                for catalog in catalogs:
+                    if catalog.feeds.first():
+                        print(f"Processing upload for catalog: {catalog.name}")
+                        uploader = ProductUploader(catalog=catalog)
+
+            uploader.process_and_upload(redis_client, lock_key, lock_expiration_time)
 
         finally:
             # Release the lock
@@ -377,7 +398,6 @@ def send_sync(app_uuid: str, webhook: dict):
         print(f"Initial sync not completed. App:{str(app.uuid)}")
         return
 
-    celery_queue = app.config.get("celery_queue_name", "product_synchronization")
     sku_id = webhook.get("IdSku")
 
     sync_specific_sellers = app.config.get("sync_specific_sellers", [])
@@ -394,12 +414,28 @@ def send_sync(app_uuid: str, webhook: dict):
     if not sku_id:
         raise ValueError(f"SKU ID not provided in the request. App:{str(app.uuid)}")
 
-    celery_app.send_task(
-        "task_update_vtex_products",
-        kwargs={"app_uuid": str(app_uuid), "webhook": webhook},
-        queue=celery_queue,
-        ignore_result=True,
-    )
+    # Check if the app uses the new batch sync
+    use_sync_v2 = app.config.get("use_sync_v2", False)
+
+    # Check if the app uses specific queue
+    celery_queue = app.config.get("celery_queue_name", "product_synchronization")
+
+    if use_sync_v2:
+        logger.info(f"App {app_uuid} uses Sync v2. Forwarding to batch update task.")
+        celery_app.send_task(
+            "task_update_batch_products",
+            kwargs={"app_uuid": app_uuid, "webhook": webhook},
+            queue=celery_queue,
+            ignore_result=True,
+        )
+    else:
+        logger.info(f"App {app_uuid} uses legacy sync. Forwarding to update task.")
+        celery_app.send_task(
+            "task_update_vtex_products",
+            kwargs={"app_uuid": app_uuid, "webhook": webhook},
+            queue=celery_queue,
+            ignore_result=True,
+        )
 
 
 def _extract_sellers_ids(webhook: dict):
@@ -501,3 +537,81 @@ def task_sync_product_policies():
 
     print("finishing 'task_sync_product_policies'")
     print("=" * 40)
+
+
+@celery_app.task(name="task_update_batch_products")
+def task_update_batch_products(**kwargs):
+    """
+    Processes product updates for a VTEX app based on a webhook.
+    """
+    start_time = datetime.now()
+    vtex_base_service = VtexServiceBase()
+
+    app_uuid = kwargs.get("app_uuid")
+    webhook = kwargs.get("webhook")
+
+    sku_id = webhook.get("IdSku")
+    seller_an = webhook.get("An")
+    seller_chain = webhook.get("SellerChain")
+
+    try:
+        logger.info(
+            f"Processing product update for App UUID: {app_uuid}, SKU_ID: {sku_id}. "
+            f"'An': {seller_an}, 'SellerChain': {seller_chain}."
+        )
+
+        cache_key = f"app_cache_{app_uuid}"
+        vtex_app = cache.get(cache_key)
+        if not vtex_app:
+            vtex_app = App.objects.get(uuid=app_uuid, configured=True, code="vtex")
+            cache.set(cache_key, vtex_app, timeout=300)
+
+        # Ensure the app is configured for synchronization
+        if not vtex_app.config.get("initial_sync_completed", False):
+            logger.info(f"Initial sync not completed for App: {app_uuid}. Task ending.")
+            return
+
+        api_credentials = vtex_base_service.get_vtex_credentials_or_raise(vtex_app)
+
+        catalog = vtex_app.vtex_catalogs.first()
+        if not catalog:
+            logger.info(f"No catalog found for VTEX app: {vtex_app.uuid}")
+            return
+
+        # Initialize ProductUpdateService
+        vtex_update_service = ProductUpdateService(
+            api_credentials=api_credentials,
+            catalog=catalog,
+            skus_ids=[sku_id],
+            webhook=webhook,
+        )
+
+        # Process products
+        products = vtex_update_service.process_batch_sync()
+        if products is None:
+            logger.info(
+                f"No products to process for VTEX app: {app_uuid}. Task ending."
+            )
+            return
+
+        # Log webhook
+        close_old_connections()
+        WebhookLog.objects.create(sku_id=sku_id, data=webhook, vtex_app=vtex_app)
+
+    except Exception as e:
+        logger.error(
+            f"An error occurred during the updating Webhook VTEX products for App: {app_uuid}, {e}"
+        )
+
+    # Log task duration
+    end_time = datetime.now()
+    duration = (end_time - start_time).total_seconds()
+    minutes, seconds = divmod(duration, 60)
+
+    logger.info(
+        f"Finished processing update for SKU: {sku_id}, App: {app_uuid}. "
+        f"Task completed in {int(minutes)} minutes and {int(seconds)} seconds."
+    )
+
+    # Start upload task
+    UploadManager.check_and_start_upload(app_uuid)

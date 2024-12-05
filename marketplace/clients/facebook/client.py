@@ -330,6 +330,23 @@ class CatalogsRequests(FacebookAuthorization, RequestClient, CatalogsRequestsInt
         response = self.make_request(url, method="POST", headers=headers, json=payload)
         return response.json()
 
+    def upload_items_batch(self, catalog_id: str, payload: dict):
+        """
+        Sends a batch of product updates to the Meta API.
+
+        :param catalog_id: The ID of the Facebook catalog.
+        :param payload: The payload containing the batch requests.
+        :return: The API response as a dictionary.
+        """
+        url = f"{self.get_url}/{catalog_id}/items_batch"
+        headers = self._get_headers()
+
+        response = self.make_request(
+            url=url, method="POST", headers=headers, json=payload, timeout=120
+        )
+
+        return response.json()
+
 
 class TemplatesRequests(
     FacebookAuthorization, RequestClient, TemplatesRequestsInterface

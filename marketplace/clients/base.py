@@ -17,6 +17,7 @@ class RequestClient:
         params=None,
         files=None,
         json=None,
+        timeout=60,
     ):
         if data and json:
             raise ValueError(
@@ -29,7 +30,7 @@ class RequestClient:
                 headers=headers,
                 json=json,
                 data=data,
-                timeout=60,
+                timeout=timeout,
                 params=params,
                 files=files,
             )
@@ -81,7 +82,7 @@ class RequestClient:
         logger.error(
             f"Error on request url {url}",
             exc_info=True,
-            stack_info=True,
+            stack_info=False,
             extra={
                 "request_details": request_details,
                 "response_details": response_details,
@@ -118,7 +119,7 @@ class RequestClient:
         logger.error(
             f"Request exception for URL {url}",
             exc_info=True,
-            stack_info=True,
+            stack_info=False,
             extra={
                 "request_details": request_details,
                 "exception_details": exception_details,

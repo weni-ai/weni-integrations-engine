@@ -3,15 +3,13 @@ from typing import List
 from django.contrib.auth import get_user_model
 from django.db import transaction
 
+from marketplace.services.vtex.utils.facebook_product_dto import FacebookProductDTO
 from marketplace.wpp_products.models import (
     UploadProduct,
     Catalog,
     ProductFeed,
 )
-from marketplace.services.vtex.utils.data_processor import (
-    DataProcessor,
-    FacebookProductDTO,
-)
+from marketplace.services.vtex.utils.file_product_manager import FileProductManager
 
 
 User = get_user_model()
@@ -23,7 +21,7 @@ class ProductFacebookManager:
         products_dto: List[FacebookProductDTO],
         catalog: Catalog,
         product_feed: ProductFeed,
-        data_processor: DataProcessor,
+        data_processor: FileProductManager,
     ):
         all_success = True
         print(
@@ -57,61 +55,12 @@ class ProductFacebookManager:
         )
         return all_success
 
-    def save_first_csv_product_data(
-        self,
-        products_dto: List[FacebookProductDTO],
-        catalog: Catalog,
-        product_feed: ProductFeed,
-        data_processor: DataProcessor,
-    ):
-        print("Starting the initial data insertion process in UploadProduct")
-
-        # Step 1: Delete existing products for the catalog
-        deleted_count, _ = UploadProduct.objects.filter(catalog=catalog).delete()
-        print(
-            f"Deleted {deleted_count} existing products for catalog {catalog.facebook_catalog_id}"
-        )
-
-        # Step 2: Prepare data for bulk create
-        products_to_create = []
-        batch_size = 30000  # Define the batch size for bulk creation
-
-        for dto in products_dto:
-            product_csv = data_processor.product_to_csv_line(dto)
-            new_product = UploadProduct(
-                facebook_product_id=dto.id,
-                data=product_csv,
-                catalog=catalog,
-                feed=product_feed,
-                status="pending",
-            )
-            products_to_create.append(new_product)
-
-            # Bulk create in batches
-            if len(products_to_create) >= batch_size:
-                UploadProduct.objects.bulk_create(
-                    products_to_create, batch_size=batch_size
-                )
-                print(f"Bulk created {len(products_to_create)} products.")
-                products_to_create.clear()  # Clear the list after bulk creation
-
-        # If remaining products, create
-        if products_to_create:
-            UploadProduct.objects.bulk_create(products_to_create, batch_size=batch_size)
-            print(f"Bulk created {len(products_to_create)} remaining products.")
-
-        # Call duplicate cleanup after processing
-        UploadProduct.remove_duplicates(catalog)
-
-        print("Initial data insertion process completed successfully.")
-        return True
-
     def bulk_save_csv_product_data(
         self,
         products_dto: List[FacebookProductDTO],
         catalog: Catalog,
         product_feed: ProductFeed,
-        data_processor: DataProcessor,
+        data_processor: FileProductManager,
         batch_size: int = 30000,
     ):
         print(
@@ -184,4 +133,65 @@ class ProductFacebookManager:
         # Call duplicate cleanup after processing
         UploadProduct.remove_duplicates(catalog)
 
+        return all_success
+
+    def save_batch_product_data(
+        self,
+        products_dto: List[FacebookProductDTO],
+        catalog: Catalog,
+    ):
+        """
+        Save or update products in batch format for the new process.
+        """
+        all_success = True
+        print(
+            f"Starting insertion process for {len(products_dto)} products (Batch). Catalog: {catalog.name}"
+        )
+        for product in products_dto:
+            facebook_product_id = product.id
+            try:
+                UploadProduct.objects.update_or_create(
+                    facebook_product_id=facebook_product_id,
+                    catalog=catalog,
+                    defaults={"data": product.to_meta_payload(), "status": "pending"},
+                )
+            except Exception as e:
+                print(f"Failed to save or update product: {str(e)}")
+                all_success = False
+
+        UploadProduct.remove_duplicates(catalog)
+        return all_success
+
+    def bulk_save_initial_product_data(
+        self, products_dto: List[FacebookProductDTO], catalog: Catalog
+    ):
+        """
+        Save or update products in batch format for the initial insertion process.
+        """
+        all_success = True
+        print(
+            f"Starting bulk insertion process for {len(products_dto)} products. Catalog: {catalog.name}"
+        )
+
+        new_products = [
+            UploadProduct(
+                facebook_product_id=product.id,
+                catalog=catalog,
+                data=product.to_meta_payload(),
+                status="pending",
+            )
+            for product in products_dto
+        ]
+
+        try:
+            with transaction.atomic():
+                UploadProduct.objects.bulk_create(new_products, batch_size=5000)
+            print(
+                f"All {len(products_dto)} products were saved successfully in the database."
+            )
+        except Exception as e:
+            print(f"Failed to save products during bulk initial insertion: {str(e)}")
+            all_success = False
+
+        UploadProduct.remove_duplicates(catalog)
         return all_success

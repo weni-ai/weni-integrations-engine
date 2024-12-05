@@ -4,8 +4,6 @@ Service for managing VTEX App instances within a project.
 
 import logging
 
-from datetime import datetime
-
 from typing import Optional, List
 
 from django.db import close_old_connections
@@ -27,10 +25,6 @@ from marketplace.clients.facebook.client import FacebookClient
 from marketplace.wpp_products.models import ProductFeed
 from marketplace.wpp_products.models import Catalog
 from marketplace.services.product.product_facebook_manage import ProductFacebookManager
-from marketplace.services.vtex.exceptions import (
-    UnexpectedFacebookApiResponseValidationError,
-)
-from marketplace.services.facebook.exceptions import FileNotSendValidationError
 from marketplace.services.vtex.app_manager import AppVtexManager
 
 
@@ -149,85 +143,25 @@ class ProductInsertionService(VtexServiceBase):
         catalog: Catalog,
         sellers: Optional[List[str]] = None,
     ):
+        """
+        Handles the first product insert process.
+        """
         pvt_service = self.get_private_service(
             credentials.app_key, credentials.app_token
         )
 
         products = pvt_service.list_all_products(
-            domain=credentials.domain, catalog=catalog, sellers=sellers
+            domain=credentials.domain,
+            catalog=catalog,
+            sellers=sellers,
+            upload_on_sync=True,  # Enable upload during synchronization
         )
+
         if not products:
             return None
 
-        close_old_connections()
-        # TODO: --BEGIN: This block needs to be removed--
-        products_csv = pvt_service.data_processor.products_to_csv(products)
-        close_old_connections()
-        self._send_products_to_facebook(products_csv, catalog)
-        pvt_service.data_processor.clear_csv_buffer(
-            products_csv
-        )  # frees the memory of the csv file
-        # TODO: --END: This block needs to be removed--
-
-        # TODO: --BEGIN: This block will replace the block above--
-        # all_success = self.product_manager.save_first_csv_product_data(
-        #     products, catalog, product_feed,pvt_service.data_processor
-        # )
-        # if not all_success:
-        #     raise Exception(
-        #         f"Error on save first csv on database. Catalog:{self.catalog.facebook_catalog_id}"
-        #     )
-        # TODO --END: This block will replace the block above-
-        close_old_connections()
         self.app_manager.initial_sync_products_completed(catalog.vtex_app)
-
         return products
-
-    # TODO: This method needs to be removed after replacement--
-    def _send_products_to_facebook(self, products_csv, catalog: Catalog):
-        print("Starting to upload the CSV file to Facebook")
-        current_time = datetime.now().strftime("%Y-%m-%d_%H-%M")
-        file_name = f"csv_vtex_products_{current_time}.csv"
-        product_feed = self._create_product_feed(file_name, catalog)
-        self._upload_product_feed(
-            catalog.app,
-            product_feed.facebook_feed_id,
-            products_csv,
-            file_name,
-        )
-        print("Uploading the CSV file to Facebook completed successfully")
-        return product_feed
-
-    # TODO: This method needs to be removed after replacement--
-    def _create_product_feed(self, name, catalog: Catalog) -> ProductFeed:
-        print("Creating the product feed")
-        service = self.fb_service(catalog.app)
-        response = service.create_product_feed(catalog.facebook_catalog_id, name)
-
-        if "id" not in response:
-            raise UnexpectedFacebookApiResponseValidationError()
-
-        product_feed = ProductFeed.objects.create(
-            facebook_feed_id=response["id"],
-            name=name,
-            catalog=catalog,
-            created_by=catalog.created_by,
-        )
-        return product_feed
-
-    # TODO: This method needs to be removed after replacement--
-    def _upload_product_feed(
-        self, app, product_feed_id, csv_file, file_name, update_only=False
-    ):
-        print("Uploading the product feed to facebook")
-        service = self.fb_service(app)
-        response = service.upload_product_feed(
-            product_feed_id, csv_file, file_name, "text/csv", update_only
-        )
-        if "id" not in response:
-            raise FileNotSendValidationError()
-
-        return True
 
 
 class ProductUpdateService(VtexServiceBase):
@@ -236,9 +170,12 @@ class ProductUpdateService(VtexServiceBase):
         api_credentials: APICredentials,
         catalog: Catalog,
         skus_ids: list,
-        product_feed: ProductFeed,
         webhook: dict,
+        product_feed: Optional[ProductFeed] = None,
     ):
+        """
+        Service for processing product updates via VTEX webhooks.
+        """
         super().__init__()
         self.api_credentials = api_credentials
         self.catalog = catalog
@@ -246,13 +183,19 @@ class ProductUpdateService(VtexServiceBase):
         self.product_feed = product_feed
         self.app = self.catalog.app
         self.webhook = webhook
+        self.product_manager = ProductFacebookManager()
 
     def webhook_product_insert(self):
+        """
+        Processes and saves product updates based on the webhook data for the legacy synchronization method.
+        """
+        # Initialize private service
         pvt_service = self.get_private_service(
             self.api_credentials.app_key, self.api_credentials.app_token
         )
         seller_ids = self._get_sellers_ids(pvt_service)
 
+        # Fetch product data
         products_dto = pvt_service.update_webhook_product_info(
             domain=self.api_credentials.domain,
             skus_ids=self.skus_ids,
@@ -262,12 +205,49 @@ class ProductUpdateService(VtexServiceBase):
         if not products_dto:
             return None
 
+        # Save product data in the legacy CSV format
+        if not self.product_feed:
+            raise ValueError("Product feed is required for legacy synchronization.")
+
         all_success = self.product_manager.save_csv_product_data(
             products_dto, self.catalog, self.product_feed, pvt_service.data_processor
         )
+
         if not all_success:
             raise Exception(
-                f"Error on save csv on database. Catalog:{self.catalog.facebook_catalog_id}"
+                f"Error saving products in database for Catalog: {self.catalog.facebook_catalog_id}"
+            )
+
+        return products_dto
+
+    def process_batch_sync(self):
+        """
+        Processes product updates for the new batch synchronization method.
+        """
+        # Initialize private service
+        pvt_service = self.get_private_service(
+            self.api_credentials.app_key, self.api_credentials.app_token
+        )
+        seller_ids = self._get_sellers_ids(pvt_service)
+
+        # Fetch product data
+        products_dto = pvt_service.update_webhook_product_info(
+            domain=self.api_credentials.domain,
+            skus_ids=self.skus_ids,
+            seller_ids=seller_ids,
+            catalog=self.catalog,
+        )
+        if not products_dto:
+            return None
+
+        # Save product data for batch sync
+        all_success = self.product_manager.save_batch_product_data(
+            products_dto, self.catalog
+        )
+
+        if not all_success:
+            raise Exception(
+                f"Error saving batch products in database for Catalog: {self.catalog.facebook_catalog_id}"
             )
 
         return products_dto
