@@ -176,6 +176,19 @@ class FacebookService:  # TODO: Change the name to CatalogService
         )
         return False
 
+    def upload_batch(self, catalog_id: str, payload: dict):
+        """
+        Sends the prepared payload to the client for batch upload.
+
+        :param catalog_id: The ID of the Facebook catalog.
+        :param payload: The prepared payload containing batch requests.
+        :return: The response from the client.
+        """
+        print(
+            f"Sending batch payload with {len(payload.get('requests', []))} requests."
+        )
+        return self.client.upload_items_batch(catalog_id, payload)
+
 
 class TemplateService:
     def __init__(self, client: TemplatesRequestsInterface):

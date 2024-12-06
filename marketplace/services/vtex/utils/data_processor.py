@@ -1,44 +1,19 @@
 import concurrent.futures
-import csv
-import pandas as pd
-import io
-import dataclasses
+
 import threading
 import re
 
-from dataclasses import asdict, dataclass
-
-from typing import List, Optional
+from typing import List
 
 from tqdm import tqdm
 from queue import Queue
 
+from marketplace.services.product.product_facebook_manage import ProductFacebookManager
+from marketplace.services.vtex.utils.facebook_product_dto import FacebookProductDTO
 from marketplace.services.vtex.utils.sku_validator import SKUValidator
 from marketplace.clients.exceptions import CustomAPIException
 from marketplace.clients.zeroshot.client import MockZeroShotClient
-
-
-@dataclass
-class FacebookProductDTO:
-    id: str
-    title: str
-    description: str
-    availability: str
-    status: str
-    condition: str
-    price: str
-    link: str
-    image_link: str
-    brand: str
-    sale_price: str
-    product_details: dict  # TODO: Implement ProductDetailsDTO
-    additional_image_link: Optional[str] = ""
-    rich_text_description: Optional[str] = ""
-
-
-@dataclass
-class VtexProductDTO:  # TODO: Implement This VtexProductDTO
-    pass
+from marketplace.wpp_products.utils import UploadManager
 
 
 class DataProcessor:
@@ -46,6 +21,8 @@ class DataProcessor:
         self.max_workers = 100
         self.progress_lock = threading.Lock()
         self.use_threads = use_threads
+        self.batch_size = 5000
+        self.save_lock = threading.Lock()  # Exclusive lock for _save_batch_to_database
 
     @staticmethod
     def clean_text(text: str) -> str:
@@ -132,7 +109,11 @@ class DataProcessor:
         rules,
         catalog,
         update_product=False,
+        upload_on_sync=False,
     ) -> List[FacebookProductDTO]:
+        """
+        Processes product data and saves batches to the database if upload_on_sync is True.
+        """
         self.queue = Queue()
         self.results = []
         self.active_sellers = active_sellers
@@ -144,6 +125,12 @@ class DataProcessor:
         self.invalid_products_count = 0
         self.catalog = catalog
         self.sku_validator = SKUValidator(service, domain, MockZeroShotClient())
+        self.upload_on_sync = upload_on_sync
+        self.sent_to_db_count = 0  # Tracks the number of items sent to the database.
+        self.vtex_app = self.catalog.vtex_app
+        self.use_sku_sellers = self.catalog.vtex_app.config.get(
+            "use_sku_sellers", False
+        )
 
         # Preparing the tqdm progress bar
         print("Initiated process of product treatment:")
@@ -164,7 +151,10 @@ class DataProcessor:
 
             # Waiting for all the workers to finish
             for future in futures:
-                future.result()
+                try:
+                    future.result()
+                except Exception as e:
+                    print(f"Error in thread execution: {str(e)}")
         else:
             # Processing without using threads
             while not self.queue.empty():
@@ -172,31 +162,49 @@ class DataProcessor:
 
         self.progress_bar.close()
 
+        # Upload remaining items in the buffer
+        if self.upload_on_sync and self.results:
+            print(f"Uploading the last {len(self.results)} items to the database.")
+            self._save_batch_to_database()
+
+        print(f"Processing completed. Total valid products: {len(self.results)}")
         return self.results
 
     def worker(self):
         while not self.queue.empty():
             sku_id = self.queue.get()
-            result = self.process_single_sku(sku_id)
+            try:
+                result = self.process_single_sku(sku_id)
+            except Exception as e:
+                print(f"Error processing SKU {sku_id}: {str(e)}")
+                result = []
 
             with self.progress_lock:
                 if result:
-                    # If the SKU has valid products, count it as valid
                     self.results.extend(result)
                     self.progress_bar.set_description(
-                        f"[✓:{len(self.results)}, ✗:{self.invalid_products_count}]"
-                    )
-                else:
-                    # If no valid products were found for the SKU, count it as invalid
-                    self.invalid_products_count += 1
-                    self.progress_bar.set_description(
-                        f"[✓:{len(self.results)}, ✗:{self.invalid_products_count}]"
+                        f"[✓:{len(self.results)} | DB:{self.sent_to_db_count} | ✗:{self.invalid_products_count}]"
                     )
 
-                # Update progress for the processed SKU
+                    # Save batch to the database when reaching batch_size
+                    if self.upload_on_sync and len(self.results) >= self.batch_size:
+                        with self.save_lock:  # Ensure that only one thread executes
+                            print(
+                                f"Batch size of {self.batch_size} reached. Saving to the database."
+                            )
+                            self._save_batch_to_database()
+                else:
+                    self.invalid_products_count += 1
+                    self.progress_bar.set_description(
+                        f"[✓:{len(self.results)} | DB:{self.sent_to_db_count} | ✗:{self.invalid_products_count}]"
+                    )
+
                 self.progress_bar.update(1)
 
     def process_single_sku(self, sku_id):
+        """
+        Process a single SKU by validating its details and simulating availability across multiple sellers.
+        """
         facebook_products = []
         try:
             product_details = self.sku_validator.validate_product_details(
@@ -217,29 +225,33 @@ class DataProcessor:
         if not is_active and not self.update_product:
             return facebook_products
 
-        sku_sellers = product_details.get("SkuSellers")
-        for seller in sku_sellers:
-            seller_id = seller.get("SellerId")
+        # Define the sellers to be synchronized
+        sellers_to_sync = []
+        if self.use_sku_sellers:
+            sku_sellers = product_details.get("SkuSellers")
+            for seller in sku_sellers:
+                seller_id = seller.get("SellerId")
+                if seller_id:
+                    sellers_to_sync.append(seller_id)
+        else:
+            sellers_to_sync = self.active_sellers
 
-            if seller_id not in self.active_sellers:
-                continue
+        if not sellers_to_sync:
+            print(f"No sellers to sync for SKU {sku_id}. Skipping...")
+            return facebook_products
 
-            try:
-                availability_details = self.service.simulate_cart_for_seller(
-                    sku_id, seller_id, self.domain
-                )
-            except CustomAPIException as e:
-                if e.status_code == 500:
-                    print(
-                        f"An error {e.status_code} occurred when simulating cart. SKU {sku_id}, "
-                        f"Seller {seller_id}. Skipping..."
-                    )
-                continue
+        # Perform the simulation for multiple sellers
+        try:
+            availability_results = self.service.simulate_cart_for_multiple_sellers(
+                sku_id, sellers_to_sync, self.domain
+            )
+        except CustomAPIException as e:
+            print(f"Failed to simulate cart for SKU {sku_id} with sellers: {e}")
+            return facebook_products
 
-            if (
-                self.update_product is False
-                and not availability_details["is_available"]
-            ):
+        # Process simulation results
+        for seller_id, availability_details in availability_results.items():
+            if not availability_details["is_available"] and not self.update_product:
                 continue
 
             product_dto = DataProcessor.extract_fields(
@@ -263,55 +275,6 @@ class DataProcessor:
                 facebook_products.append(product_dto)
 
         return facebook_products
-
-    @staticmethod
-    def products_to_csv(products: List[FacebookProductDTO]) -> io.BytesIO:
-        print("Generating CSV file")
-        product_dicts = [dataclasses.asdict(product) for product in products]
-        df = pd.DataFrame(product_dicts)
-        df = df.drop(columns=["product_details"])
-        buffer = io.BytesIO()
-        df.to_csv(buffer, index=False, encoding="utf-8")
-        buffer.seek(0)
-        print("CSV file successfully generated in memory")
-        return buffer
-
-    @staticmethod
-    def product_to_csv_line(product: FacebookProductDTO) -> str:
-        def escape_quotes(text: str) -> str:
-            """Replaces quotes with a empty space in the provided text."""
-            if isinstance(text, str):
-                text = text.replace('"', "").replace("'", " ")
-            return text
-
-        product_dict = asdict(product)
-        product_dict.pop(
-            "product_details", None
-        )  # Remove 'product_details' field if present
-
-        cleaned_product_dict = {k: escape_quotes(v) for k, v in product_dict.items()}
-
-        df = pd.DataFrame([cleaned_product_dict])
-        csv_line = df.to_csv(
-            index=False, header=False, encoding="utf-8", quoting=csv.QUOTE_MINIMAL
-        ).strip()
-        return csv_line
-
-    @staticmethod
-    def clear_csv_buffer(buffer: io.BytesIO):
-        buffer.close()
-
-    @staticmethod
-    def convert_dtos_to_dicts_list(dtos: List[FacebookProductDTO]) -> List[dict]:
-        print("Converting DTO's into dictionary.")
-        dicts_list = []
-        for dto in dtos:
-            dto_dict = dataclasses.asdict(dto)
-            dto_dict.pop("product_details", None)
-            dicts_list.append(dto_dict)
-
-        print("Products successfully converted to dictionary.")
-        return dicts_list
 
     def _validate_product_dto(self, product_dto: FacebookProductDTO) -> bool:
         """Verifies that all required fields in the FacebookProductDTO are filled in.
@@ -345,3 +308,36 @@ class DataProcessor:
                 return False
 
         return True
+
+    def _save_batch_to_database(self):
+        """
+        Saves processed products to the database in batches.
+        """
+        batch = self.results[: self.batch_size]
+        if not batch:
+            return
+
+        try:
+            product_manager = ProductFacebookManager()  # Manages database interactions.
+            # Use the bulk save method for initial insertion.
+            all_success = product_manager.bulk_save_initial_product_data(
+                batch, self.catalog
+            )
+            if all_success:
+                print(
+                    f"Successfully saved a batch of {len(batch)} items to the database."
+                )
+                # Increment the saved item counter
+                self.sent_to_db_count += len(batch)
+
+                # Remove saved items from the buffer.
+                self.results = self.results[self.batch_size :]  # noqa: E203
+
+                # Start upload task
+                UploadManager.check_and_start_upload(self.vtex_app.uuid)
+            else:
+                print(
+                    "Failed to save batch to the database. Will retry in the next cycle."
+                )
+        except Exception as e:
+            print(f"Error while saving batch to the database: {e}")

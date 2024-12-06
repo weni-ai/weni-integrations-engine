@@ -24,7 +24,7 @@ from marketplace.wpp_products.models import (
     ProductValidation,
     UploadProduct,
 )
-from marketplace.services.vtex.utils.data_processor import FacebookProductDTO
+from marketplace.services.vtex.utils.facebook_product_dto import FacebookProductDTO
 from marketplace.services.facebook.service import (
     FacebookService,
 )
@@ -453,3 +453,97 @@ def extract_sku_id(product_id: str) -> int:
         return int(sku_part)
     else:
         raise ValueError(f"Invalid SKU ID, error: {sku_part} is not a number")
+
+
+class ProductBatchUploader:
+    fb_service_class = FacebookService
+    fb_client_class = FacebookClient
+
+    def __init__(self, catalog: Catalog, batch_size=5000):
+        self.catalog = catalog
+        self.batch_size = batch_size
+        self.fb_service = self.initialize_fb_service()
+        self.product_manager = ProductBatchFetcher(catalog, batch_size)
+
+    def initialize_fb_service(self) -> FacebookService:
+        app = self.catalog.app
+        access_token = app.apptype.get_system_access_token(app)
+        fb_client = self.fb_client_class(access_token)
+        return FacebookService(fb_client)
+
+    def process_and_upload(
+        self, redis_client, lock_key: str, lock_expiration_time: int
+    ):
+        """
+        Processes products in batches and uploads them to Meta, renewing the lock.
+        """
+        try:
+            for products, product_ids in self.product_manager:
+                # Creates the payload in the format required by the Meta
+                payload = self.create_batch_payload(products)
+                # Sends data to Meta and processes the results
+                if self.send_to_meta(payload):
+                    self.product_manager.mark_products_as_sent(product_ids)
+                    self.log_sent_products(product_ids)
+                else:
+                    self.product_manager.mark_products_as_error(product_ids)
+
+                # Renew the lock
+                redis_client.expire(lock_key, lock_expiration_time)
+        except Exception as e:
+            logger.error(
+                f"Error during 'process_and_upload' for {self.catalog.name}: {e}",
+                exc_info=True,
+                stack_info=True,
+            )
+            self.product_manager.mark_products_as_error(product_ids)
+
+    def create_batch_payload(self, products: QuerySet) -> dict:
+        """
+        Creates a payload for the Meta Batch API from a list of products.
+        """
+        batch_requests = [
+            {
+                "method": "UPDATE",
+                "data": product.data,
+            }
+            for product in products
+        ]
+        return {
+            "item_type": "PRODUCT_ITEM",
+            "requests": batch_requests,
+        }
+
+    def send_to_meta(self, products: List) -> bool:
+        """
+        Sends the payload to Meta and handles the response.
+        """
+        try:
+            response = self.fb_service.upload_batch(
+                self.catalog.facebook_catalog_id, products
+            )
+
+            if response.get("handles"):
+                print(f"Batch upload successful for catalog {self.catalog.name}.")
+                return True
+            else:
+                print(f"Batch upload failed for catalog {self.catalog.name}.")
+                return False
+        except Exception as e:
+            logger.error(
+                f"Error sending batch to Meta for catalog {self.catalog.name}: {e}",
+                exc_info=True,
+                stack_info=True,
+            )
+            return False
+
+    def log_sent_products(self, product_ids: List[str]):
+        """
+        Logs the successfully sent products to the log table.
+        """
+        for product_id in product_ids:
+            sku_id = extract_sku_id(product_id)
+            ProductUploadLog.objects.create(
+                sku_id=sku_id, vtex_app=self.catalog.vtex_app
+            )
+        print(f"Logged {len(product_ids)} products as sent.")
