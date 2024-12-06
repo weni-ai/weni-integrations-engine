@@ -210,7 +210,9 @@ class ProductUpdateService(VtexServiceBase):
             raise ValueError("Product feed is required for legacy synchronization.")
 
         all_success = self.product_manager.save_csv_product_data(
-            products_dto, self.catalog, self.product_feed, pvt_service.data_processor
+            products_dto=products_dto,
+            catalog=self.catalog,
+            product_feed=self.product_feed,
         )
 
         if not all_success:

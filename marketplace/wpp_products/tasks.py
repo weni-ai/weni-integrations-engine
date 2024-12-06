@@ -239,7 +239,11 @@ def task_update_vtex_products(**kwargs):
         product_feed = catalog.feeds.first()
 
         vtex_update_service = ProductUpdateService(
-            api_credentials, catalog, [sku_id], product_feed, webhook
+            api_credentials=api_credentials,
+            catalog=catalog,
+            skus_ids=[sku_id],
+            product_feed=product_feed,
+            webhook=webhook,
         )
         products = vtex_update_service.webhook_product_insert()
         if products is None:

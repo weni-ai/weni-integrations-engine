@@ -21,7 +21,7 @@ class ProductFacebookManager:
         products_dto: List[FacebookProductDTO],
         catalog: Catalog,
         product_feed: ProductFeed,
-        data_processor: FileProductManager,
+        file_manager=FileProductManager,
     ):
         all_success = True
         print(
@@ -29,7 +29,7 @@ class ProductFacebookManager:
         )
         for product in products_dto:
             facebook_product_id = product.id
-            product_csv = data_processor.product_to_csv_line(product)
+            product_csv = file_manager.product_to_csv_line(product)
 
             try:
                 product, _ = UploadProduct.objects.update_or_create(
@@ -60,7 +60,7 @@ class ProductFacebookManager:
         products_dto: List[FacebookProductDTO],
         catalog: Catalog,
         product_feed: ProductFeed,
-        data_processor: FileProductManager,
+        file_manager=FileProductManager,
         batch_size: int = 30000,
     ):
         print(
@@ -84,7 +84,7 @@ class ProductFacebookManager:
 
         for product in products_dto:
             facebook_product_id = product.id
-            product_csv = data_processor.product_to_csv_line(product)
+            product_csv = file_manager.product_to_csv_line(product)
 
             if facebook_product_id in existing_products_dict:
                 # Update existing product
