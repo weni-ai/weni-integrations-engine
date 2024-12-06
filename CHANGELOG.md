@@ -1,3 +1,9 @@
+v4.0.0
+----------
+* feat: add unit tests to business rules
+* feat: simulate cart from product_details.SkuSellers
+* feat: refactoring first_product_synchronization and add product update with batch products
+
 v3.9.13
 ----------
 * feat: added gmail integration by oauth
