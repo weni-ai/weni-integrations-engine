@@ -95,9 +95,23 @@ class RoundUpCalculateByWeight(Rule):
         return not categories_to_calculate.isdisjoint(product_categories)
 
     def _format_grams(self, value: float) -> str:
+        """
+        Formats the weight into grams as a string. Converts values less than 1 kg to grams,
+        and values equal or above 1 kg are displayed in grams with thousands separator.
+
+        Examples:
+        - 0.5 -> "500g"
+        - 500.0000 -> "500g"
+        - 1000.0000 -> "1.000g"
+        - 10000.0000 -> "10.000g"
+        """
         if 0 < value < 1:
+            # If the weight is less than 1 kg (e.g., 0.5 kg), convert to grams by multiplying by 1000
+            # Example: 0.5 kg -> 500 grams
             grams = int(value * 1000)
         else:
+            # If the weight is 1 kg or more, assume it's already in grams and convert to integer
+            # Example: 1000.0000 -> 1000 grams, 10000.0000 -> 10000 grams
             grams = int(value)
 
         if grams > 999:
