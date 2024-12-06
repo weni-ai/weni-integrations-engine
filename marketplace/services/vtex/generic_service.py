@@ -442,7 +442,9 @@ class ProductInsertionBySellerService(VtexServiceBase):  # pragma: no cover
         close_old_connections()
         print("starting bulk save process in database")
         all_success = self.product_manager.bulk_save_csv_product_data(
-            products_dto, catalog, catalog.feeds.first(), pvt_service.data_processor
+            products_dto=products_dto,
+            catalog=catalog,
+            product_feed=catalog.feeds.first(),
         )
         if not all_success:
             raise Exception(
