@@ -219,7 +219,7 @@ class DataProcessor:
             for seller in sku_sellers:
                 seller_id = seller.get("SellerId")
                 if seller_id:
-                    sellers_to_sync.append()
+                    sellers_to_sync.append(seller_id)
         else:
             sellers_to_sync = self.active_sellers
 
