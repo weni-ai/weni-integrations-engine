@@ -95,11 +95,16 @@ class PrivateProductsService:
         if sellers is not None:
             valid_sellers = [seller for seller in sellers if seller in active_sellers]
             invalid_sellers = set(sellers) - active_sellers
+
             if invalid_sellers:
                 print(
                     f"Warning: Sellers IDs {invalid_sellers} are not active and will be ignored."
                 )
-                return
+            if not valid_sellers:
+                # No valid sellers, stop execution
+                print("No valid sellers available. Process will be stopped.")
+                return []
+
             sellers_ids = valid_sellers
         else:
             sellers_ids = list(active_sellers)

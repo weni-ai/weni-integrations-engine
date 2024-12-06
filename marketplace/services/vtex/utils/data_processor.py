@@ -127,6 +127,7 @@ class DataProcessor:
         self.sku_validator = SKUValidator(service, domain, MockZeroShotClient())
         self.upload_on_sync = upload_on_sync
         self.sent_to_db_count = 0  # Tracks the number of items sent to the database.
+        self.vtex_app = self.catalog.vtex_app
 
         # Preparing the tqdm progress bar
         print("Initiated process of product treatment:")
@@ -211,9 +212,9 @@ class DataProcessor:
         if not is_active and not self.update_product:
             return facebook_products
 
-        marketplace = False  # TODO : extract rule from app.config
+        use_sku_sellers = self.vtex_app.config.get("use_sku_sellers", False)
         sellers_to_sync = []
-        if marketplace:
+        if use_sku_sellers:
             sku_sellers = product_details.get("SkuSellers")
             for seller in sku_sellers:
                 seller_id = seller.get("SellerId")
@@ -324,7 +325,7 @@ class DataProcessor:
                 self.results = self.results[self.batch_size :]  # noqa: E203
 
                 # Start upload task
-                UploadManager.check_and_start_upload(self.catalog.vtex_app.uuid)
+                UploadManager.check_and_start_upload(self.vtex_app.uuid)
             else:
                 print(
                     "Failed to save batch to the database. Will retry in the next cycle."
