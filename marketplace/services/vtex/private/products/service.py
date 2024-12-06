@@ -134,6 +134,24 @@ class PrivateProductsService:
             sku_id, seller_id, domain
         )  # TODO: Change to pvt_simulate_cart_for_seller
 
+    def simulate_cart_for_multiple_sellers(self, sku_id, sellers, domain):
+        """
+        Simulate cart for a SKU across multiple sellers in batches of 200.
+        """
+        results = {}
+
+        # Split the sellers list into chunks of 200
+        for i in range(0, len(sellers), 200):
+            seller_chunk = sellers[i : i + 200]  # noqa: E203
+            # Call the client method for each chunk of sellers
+            chunk_results = self.client.simulate_cart_for_multiple_sellers(
+                sku_id, seller_chunk, domain
+            )
+            # Merge the results from the client into the overall results
+            results.update(chunk_results)
+
+        return results
+
     def update_webhook_product_info(
         self, domain: str, skus_ids: list, seller_ids: list, catalog: Catalog
     ) -> List[FacebookProductDTO]:
