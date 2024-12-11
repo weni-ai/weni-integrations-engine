@@ -173,7 +173,6 @@ class ProductUpdateService(VtexServiceBase):
         webhook: Optional[dict] = None,
         sellers_ids: list[str] = None,
         product_feed: Optional[ProductFeed] = None,
-        
     ):
         """
         Service for processing product updates via VTEX webhooks.

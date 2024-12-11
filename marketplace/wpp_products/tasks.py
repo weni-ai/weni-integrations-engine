@@ -30,8 +30,6 @@ from marketplace.services.vtex.generic_service import (
 from marketplace.services.vtex.generic_service import APICredentials
 from marketplace.applications.models import App
 
-from django_redis import get_redis_connection
-
 from marketplace.wpp_products.utils import (
     ProductBatchUploader,
     ProductUploader,
@@ -675,7 +673,6 @@ def task_dequeue_webhooks(app_uuid: str, celery_queue: str):
         print(
             f"Starting dequeue process for App: {app_uuid}. Total items: {queue.length()}"
         )
-        import time
 
         while True:
             # Renew the lock to ensure we don't lose it while processing
