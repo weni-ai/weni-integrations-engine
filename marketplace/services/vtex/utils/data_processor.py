@@ -227,7 +227,7 @@ class DataProcessor:
 
         # Define the sellers to be synchronized
         sellers_to_sync = []
-        if self.use_sku_sellers:
+        if self.use_sku_sellers and not self.update_product:
             sku_sellers = product_details.get("SkuSellers")
             for seller in sku_sellers:
                 seller_id = seller.get("SellerId")
