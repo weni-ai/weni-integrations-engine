@@ -30,8 +30,6 @@ from marketplace.services.vtex.generic_service import (
 from marketplace.services.vtex.generic_service import APICredentials
 from marketplace.applications.models import App
 
-from django_redis import get_redis_connection
-
 from marketplace.wpp_products.utils import (
     ProductBatchUploader,
     ProductUploader,
@@ -655,9 +653,9 @@ def task_enqueue_webhook(app_uuid: str, seller: str, sku_id: str):
 
 
 @celery_app.task(name="task_dequeue_webhooks")
-def task_dequeue_webhooks(app_uuid: str, celery_queue: str):
+def task_dequeue_webhooks(app_uuid: str, celery_queue: str, batch_size: int = 5000):
     """
-    Dequeues webhooks from Redis and dispatches them to `task_update_batch_products`.
+    Dequeues webhooks from Redis and dispatches them in batches.
     """
     queue_key = f"webhook_queue:{app_uuid}"
     queue = RedisQueue(queue_key)
@@ -672,35 +670,77 @@ def task_dequeue_webhooks(app_uuid: str, celery_queue: str):
         return
 
     try:
-        print(
+        logger.info(
             f"Starting dequeue process for App: {app_uuid}. Total items: {queue.length()}"
         )
-        import time
 
-        while True:
-            # Renew the lock to ensure we don't lose it while processing
-            redis.expire(lock_key, lock_ttl_seconds)
+        while queue.length() > 0:
+            redis.expire(lock_key, lock_ttl_seconds)  # Renew lock
 
-            item = queue.remove()  # Fetch the next item from the queue
-            if not item:
-                break  # Exit when the queue is empty
+            # Get batch of items
+            batch = queue.get_batch(batch_size)
+            if not batch:
+                break
 
-            seller, sku_id = item.split("#")
             celery_app.send_task(
-                "task_update_batch_products",
-                kwargs={
-                    "app_uuid": app_uuid,
-                    "seller": seller,
-                    "sku_id": sku_id,
-                },
+                "task_update_webhook_batch_products",
+                kwargs={"app_uuid": app_uuid, "batch": batch},
                 queue=celery_queue,
                 ignore_result=True,
             )
-            print({"app_uuid": app_uuid, "seller": seller, "sku_id": sku_id})
-            logger.info(f"Dispatched task for Seller: {seller}, SKU: {sku_id}")
+            logger.info(f"Dispatched batch of {len(batch)} items for App: {app_uuid}.")
 
     except Exception as e:
         logger.error(f"Error during dequeue process for App: {app_uuid}, {e}")
     finally:
-        # Release the lock at the end of the task
         redis.delete(lock_key)
+
+
+@celery_app.task(name="task_update_batch_products")
+def task_update_webhook_batch_products(app_uuid: str, batch: list):
+    """
+    Processes product updates in batches for a VTEX app.
+    """
+    start_time = datetime.now()
+    vtex_base_service = VtexServiceBase()
+
+    try:
+        logger.info(f"Processing batch of {len(batch)} items for App: {app_uuid}.")
+
+        # Fetch app configuration
+        cache_key = f"app_cache_{app_uuid}"
+        vtex_app = cache.get(cache_key)
+        if not vtex_app:
+            vtex_app = App.objects.get(uuid=app_uuid, configured=True, code="vtex")
+            cache.set(cache_key, vtex_app, timeout=300)
+
+        if not vtex_app.config.get("initial_sync_completed", False):
+            logger.info(f"Initial sync not completed for App: {app_uuid}. Task ending.")
+            return
+
+        # Get VTEX credentials
+        api_credentials = vtex_base_service.get_vtex_credentials_or_raise(vtex_app)
+        catalog = vtex_app.vtex_catalogs.first()
+        if not catalog:
+            logger.info(f"No catalog found for VTEX app: {vtex_app.uuid}")
+            return
+
+        # Initialize ProductUpdateService
+        vtex_update_service = ProductUpdateService(
+            api_credentials=api_credentials, catalog=catalog, sellers_skus=batch
+        )
+
+        success = vtex_update_service.process_batch_sync()
+        if not success:
+            logger.info(f"Fail to process batch for App: {app_uuid}.")
+            return
+
+    except Exception as e:
+        logger.error(f"Error during batch processing for App: {app_uuid}, {e}")
+
+    finally:
+        end_time = datetime.now()
+        duration = (end_time - start_time).total_seconds()
+        logger.info(
+            f"Finished processing batch for App: {app_uuid}. Duration: {duration:.2f} seconds."
+        )
