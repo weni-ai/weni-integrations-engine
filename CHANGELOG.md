@@ -1,3 +1,8 @@
+v4.0.2
+----------
+* fix: add redis mock to vtex service tests
+* feat: update webhook products in batch
+
 v4.0.1
 ----------
 * feat: save updates products on redis queue
