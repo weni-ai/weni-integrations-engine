@@ -1,5 +1,7 @@
 import logging
 
+import time
+
 from datetime import datetime, timedelta
 
 from celery import shared_task
@@ -634,6 +636,7 @@ def task_dequeue_webhooks(app_uuid: str, celery_queue: str, batch_size: int = 50
             # Get batch of items
             batch = queue.get_batch(batch_size)
             if not batch:
+                print(f"No items to process for App: {app_uuid}. Stopping dequeue.")
                 break
 
             celery_app.send_task(
@@ -643,10 +646,16 @@ def task_dequeue_webhooks(app_uuid: str, celery_queue: str, batch_size: int = 50
                 ignore_result=True,
             )
             logger.info(f"Dispatched batch of {len(batch)} items for App: {app_uuid}.")
-
+            print(
+                f"Wait for 5 seconds before the next batch processing for app : {app_uuid}"
+            )
+            time.sleep(5)
     except Exception as e:
         logger.error(f"Error during dequeue process for App: {app_uuid}, {e}")
     finally:
+        print(
+            f"Dequeue process completed for App: {app_uuid}. Removing lock key: {lock_key}"
+        )
         redis.delete(lock_key)
 
 
