@@ -124,6 +124,7 @@ class DataProcessor:
         self.rules = rules
         self.update_product = update_product
         self.invalid_products_count = 0
+        self.valid_products_count = 0
         self.catalog = catalog
         self.sku_validator = SKUValidator(service, domain, MockZeroShotClient())
         self.upload_on_sync = upload_on_sync
@@ -132,6 +133,7 @@ class DataProcessor:
         self.use_sku_sellers = self.catalog.vtex_app.config.get(
             "use_sku_sellers", False
         )
+        self.use_sync_v2 = self.vtex_app.config.get("use_sync_v2", False)
 
         print("Initiated process of product treatment.")
         self.progress_bar = tqdm(total=len(skus_ids), desc="[✓:0, ✗:0]", ncols=0)
@@ -419,7 +421,7 @@ class DataProcessor:
             self.queue.put(seller_sku)
 
         # Determine whether to use threads
-        use_threads = len(seller_sku_pairs) > 2
+        use_threads = len(seller_sku_pairs) > 10
 
         try:
             # Process items in queue

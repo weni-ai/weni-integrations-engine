@@ -275,52 +275,6 @@ def task_update_vtex_products(**kwargs):
     print("=" * 40)
 
 
-@celery_app.task(name="task_forward_vtex_webhook")
-def task_forward_vtex_webhook(**kwargs):  # TODO: removes this method not in use
-    """
-    Forwards the VTEX webhook to the appropriate task based on the app configuration.
-    """
-    app_uuid = kwargs.get("app_uuid")
-    webhook = kwargs.get("webhook")
-
-    try:
-        app = App.objects.get(uuid=app_uuid, configured=True, code="vtex")
-    except App.DoesNotExist:
-        logger.info(f"No VTEX App configured with the provided UUID: {app_uuid}")
-        return
-
-    # Check if the initial sync has been completed
-    if not app.config.get("initial_sync_completed", False):
-        logger.info(f"Initial sync not completed for App: {app_uuid}. Task skipped.")
-        return
-
-    # Get the SKU ID from the webhook
-    sku_id = webhook.get("IdSku")
-    if not sku_id:
-        raise ValueError(f"SKU ID is missing in the webhook for App: {app_uuid}")
-
-    # Check if the app uses the new batch sync
-    use_sync_v2 = app.config.get("use_sync_v2", False)
-    celery_queue = app.config.get("celery_queue_name", "product_synchronization")
-
-    if use_sync_v2:
-        logger.info(f"App {app_uuid} uses Sync v2. Forwarding to batch update task.")
-        celery_app.send_task(
-            "task_update_batch_products",
-            kwargs={"app_vtex_uuid": app_uuid},
-            queue=celery_queue,
-            ignore_result=True,
-        )
-    else:
-        logger.info(f"App {app_uuid} uses legacy sync. Forwarding to update task.")
-        celery_app.send_task(
-            "task_update_vtex_products",
-            kwargs={"app_uuid": app_uuid, "webhook": webhook},
-            queue=celery_queue,
-            ignore_result=True,
-        )
-
-
 @celery_app.task(name="task_upload_vtex_products")
 def task_upload_vtex_products(**kwargs):
     app_vtex_uuid = kwargs.get("app_vtex_uuid")
@@ -696,7 +650,7 @@ def task_dequeue_webhooks(app_uuid: str, celery_queue: str, batch_size: int = 50
         redis.delete(lock_key)
 
 
-@celery_app.task(name="task_update_batch_products")
+@celery_app.task(name="task_update_webhook_batch_products")
 def task_update_webhook_batch_products(app_uuid: str, batch: list):
     """
     Processes product updates in batches for a VTEX app.
