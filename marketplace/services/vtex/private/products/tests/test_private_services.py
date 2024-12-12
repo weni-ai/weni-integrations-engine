@@ -78,13 +78,30 @@ class PrivateProductsServiceTestCase(TestCase):
         sellers = self.service.list_active_sellers("valid.domain.com")
         self.assertEqual(sellers, ["seller1", "seller2"])
 
-    def test_list_all_active_products(self):
+    @patch("django.core.cache.cache.get")
+    @patch("django.core.cache.cache.set")
+    def test_list_all_active_products(self, mock_cache_set, mock_cache_get):
+        mock_cache_get.return_value = ["sku1", "sku2"]
         products = self.service.list_all_active_products("valid.domain.com")
+        mock_cache_get.assert_called_once_with("active_products_valid.domain.com")
         self.assertEqual(products, ["sku1", "sku2"])
 
-    def test_list_all_products(self):
+        mock_cache_get.return_value = None
+        self.mock_client.list_all_active_products = Mock(return_value=["sku3", "sku4"])
+        products = self.service.list_all_active_products("new.domain.com")
+        mock_cache_set.assert_called_once_with(
+            "active_products_new.domain.com", ["sku3", "sku4"], timeout=3600
+        )
+
+    @patch("django.core.cache.cache.get")
+    def test_list_all_products(self, mock_cache_get):
         self.service.data_processor.process_product_data = Mock(return_value=[])
+        self.mock_client.list_all_active_products = Mock(return_value=["sku1", "sku2"])
+        mock_cache_get.return_value = ["sku1", "sku2"]
+
         products = self.service.list_all_products("valid.domain.com", self.mock_catalog)
+
+        mock_cache_get.assert_called_once_with("active_products_valid.domain.com")
         self.assertIsInstance(products, list)
 
     def test_get_product_details(self):
