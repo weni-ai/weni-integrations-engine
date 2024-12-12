@@ -171,6 +171,23 @@ class PrivateProductsService:
 
         return updated_products_dto
 
+    def update_batch_webhook(
+        self, domain: str, sellers_skus: list, catalog: Catalog
+    ) -> List[FacebookProductDTO]:
+        config = catalog.vtex_app.config
+        rules = self._load_rules(config.get("rules", []))
+        store_domain = config.get("store_domain")
+        updated_products_dto = self.webhook_data_processor.process_sellers_skus_batch(
+            service=self,
+            domain=domain,
+            store_domain=store_domain,
+            rules=rules,
+            catalog=catalog,
+            seller_sku_pairs=sellers_skus,
+        )
+
+        return updated_products_dto
+
     def get_product_specification(self, product_id, domain):
         return self.client.get_product_specification(product_id, domain)
 

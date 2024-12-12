@@ -162,10 +162,11 @@ class UploadProduct(models.Model):
             .filter(count__gt=1)
         )
 
-        for duplicate in duplicates:
+        if duplicates:
             print(
-                f"Found duplicate entries for facebook_product_id: {duplicate['facebook_product_id']}"
+                f"Found duplicate entries for catalog : {catalog.name}, Deleted all but the most recent records"
             )
+        for duplicate in duplicates:
             # Get all records for the duplicate facebook_product_id, ordered by most recent first
             duplicate_records = cls.objects.filter(
                 facebook_product_id=duplicate["facebook_product_id"],
@@ -180,10 +181,6 @@ class UploadProduct(models.Model):
                 facebook_product_id=duplicate["facebook_product_id"],
                 catalog=catalog,
             ).exclude(id=most_recent_record.id).delete()
-
-            print(
-                f"Deleted all but the most recent record with ID {most_recent_record.id}"
-            )
 
     @classmethod
     def get_latest_products(

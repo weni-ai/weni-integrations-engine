@@ -170,10 +170,11 @@ class ProductUpdateService(VtexServiceBase):
         self,
         api_credentials: APICredentials,
         catalog: Catalog,
-        skus_ids: list,
+        skus_ids: list[str] = None,
         webhook: Optional[dict] = None,
         sellers_ids: list[str] = None,
         product_feed: Optional[ProductFeed] = None,
+        sellers_skus: list[str] = None,
     ):
         """
         Service for processing product updates via VTEX webhooks.
@@ -186,6 +187,7 @@ class ProductUpdateService(VtexServiceBase):
         self.app = self.catalog.app
         self.webhook = webhook
         self.sellers_ids = sellers_ids if sellers_ids else []
+        self.sellers_skus = sellers_skus if sellers_skus else []
         self.product_manager = ProductFacebookManager()
 
     def webhook_product_insert(self):
@@ -235,18 +237,10 @@ class ProductUpdateService(VtexServiceBase):
         )
 
         # Fetch product data
-        products_dto = pvt_service.update_webhook_product_info(
+        all_success = pvt_service.update_batch_webhook(
             domain=self.api_credentials.domain,
-            skus_ids=self.skus_ids,
-            seller_ids=self.sellers_ids,
+            sellers_skus=self.sellers_skus,
             catalog=self.catalog,
-        )
-        if not products_dto:
-            return None
-
-        # Save product data for batch sync
-        all_success = self.product_manager.save_batch_product_data(
-            products_dto, self.catalog
         )
 
         if not all_success:
@@ -254,7 +248,7 @@ class ProductUpdateService(VtexServiceBase):
                 f"Error saving batch products in database for Catalog: {self.catalog.facebook_catalog_id}"
             )
 
-        return products_dto
+        return all_success
 
     def _get_sellers_ids(self, service):
         seller_id = extract_sellers_ids(self.webhook)
