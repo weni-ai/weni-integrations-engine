@@ -1,3 +1,7 @@
+v4.0.1
+----------
+* feat: save updates products on redis queue
+
 v4.0.0
 ----------
 * feat: add unit tests to business rules
