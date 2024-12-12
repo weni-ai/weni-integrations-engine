@@ -92,6 +92,7 @@ class VtexServiceBase:
             "currency_pt_br",
             "unifies_id_with_seller",
         ]
+        app.config["use_sync_v2"] = True
         app.config["store_domain"] = store_domain
         app.configured = True
         app.save()
