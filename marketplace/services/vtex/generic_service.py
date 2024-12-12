@@ -92,6 +92,7 @@ class VtexServiceBase:
             "currency_pt_br",
             "unifies_id_with_seller",
         ]
+        app.config["use_sync_v2"] = True
         app.config["store_domain"] = store_domain
         app.configured = True
         app.save()
@@ -170,7 +171,8 @@ class ProductUpdateService(VtexServiceBase):
         api_credentials: APICredentials,
         catalog: Catalog,
         skus_ids: list,
-        webhook: dict,
+        webhook: Optional[dict] = None,
+        sellers_ids: list[str] = None,
         product_feed: Optional[ProductFeed] = None,
     ):
         """
@@ -183,6 +185,7 @@ class ProductUpdateService(VtexServiceBase):
         self.product_feed = product_feed
         self.app = self.catalog.app
         self.webhook = webhook
+        self.sellers_ids = sellers_ids if sellers_ids else []
         self.product_manager = ProductFacebookManager()
 
     def webhook_product_insert(self):
@@ -230,13 +233,12 @@ class ProductUpdateService(VtexServiceBase):
         pvt_service = self.get_private_service(
             self.api_credentials.app_key, self.api_credentials.app_token
         )
-        seller_ids = self._get_sellers_ids(pvt_service)
 
         # Fetch product data
         products_dto = pvt_service.update_webhook_product_info(
             domain=self.api_credentials.domain,
             skus_ids=self.skus_ids,
-            seller_ids=seller_ids,
+            seller_ids=self.sellers_ids,
             catalog=self.catalog,
         )
         if not products_dto:

@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 
 from celery import shared_task
 
+from django_redis import get_redis_connection
 from django.db import reset_queries, close_old_connections
 from django.db.models import Exists, OuterRef
 from django.core.cache import cache
@@ -29,11 +30,10 @@ from marketplace.services.vtex.generic_service import (
 from marketplace.services.vtex.generic_service import APICredentials
 from marketplace.applications.models import App
 
-from django_redis import get_redis_connection
-
 from marketplace.wpp_products.utils import (
     ProductBatchUploader,
     ProductUploader,
+    RedisQueue,
     SellerSyncUtils,
     UploadManager,
     ProductSyncMetaPolices,
@@ -425,10 +425,24 @@ def send_sync(app_uuid: str, webhook: dict):
     celery_queue = app.config.get("celery_queue_name", "product_synchronization")
 
     if use_sync_v2:
-        logger.info(f"App {app_uuid} uses Sync v2. Forwarding to batch update task.")
+        logger.info(f"App {app_uuid} uses Sync v2. Enqueuing for batch update.")
+
+        # Extract seller_id from webhook
+        seller_id = _extract_sellers_ids(webhook)
+        if not seller_id:
+            raise ValueError(f"Seller ID not found in webhook. App:{str(app.uuid)}")
+
+        # Enqueue the seller and SKU in the task_enqueue_webhook
         celery_app.send_task(
-            "task_update_batch_products",
-            kwargs={"app_uuid": app_uuid, "webhook": webhook},
+            "task_enqueue_webhook",
+            kwargs={"app_uuid": app_uuid, "seller": seller_id, "sku_id": sku_id},
+            queue=celery_queue,
+            ignore_result=True,
+        )
+        # Dequeue
+        celery_app.send_task(
+            "task_dequeue_webhooks",
+            kwargs={"app_uuid": app_uuid, "celery_queue": celery_queue},
             queue=celery_queue,
             ignore_result=True,
         )
@@ -544,39 +558,34 @@ def task_sync_product_policies():
 
 
 @celery_app.task(name="task_update_batch_products")
-def task_update_batch_products(**kwargs):
+def task_update_batch_products(app_uuid: str, seller: str, sku_id: str):
     """
-    Processes product updates for a VTEX app based on a webhook.
+    Processes product updates for a VTEX app based on a seller and SKU.
     """
     start_time = datetime.now()
     vtex_base_service = VtexServiceBase()
 
-    app_uuid = kwargs.get("app_uuid")
-    webhook = kwargs.get("webhook")
-
-    sku_id = webhook.get("IdSku")
-    seller_an = webhook.get("An")
-    seller_chain = webhook.get("SellerChain")
-
     try:
         logger.info(
-            f"Processing product update for App UUID: {app_uuid}, SKU_ID: {sku_id}. "
-            f"'An': {seller_an}, 'SellerChain': {seller_chain}."
+            f"Processing product update for App UUID: {app_uuid}, SKU_ID: {sku_id}, Seller: {seller}."
         )
 
+        # Fetch app configuration from cache or database
         cache_key = f"app_cache_{app_uuid}"
         vtex_app = cache.get(cache_key)
         if not vtex_app:
             vtex_app = App.objects.get(uuid=app_uuid, configured=True, code="vtex")
             cache.set(cache_key, vtex_app, timeout=300)
 
-        # Ensure the app is configured for synchronization
+        # Ensure synchronization is enabled for the app
         if not vtex_app.config.get("initial_sync_completed", False):
             logger.info(f"Initial sync not completed for App: {app_uuid}. Task ending.")
             return
 
+        # Get VTEX credentials
         api_credentials = vtex_base_service.get_vtex_credentials_or_raise(vtex_app)
 
+        # Fetch catalog
         catalog = vtex_app.vtex_catalogs.first()
         if not catalog:
             logger.info(f"No catalog found for VTEX app: {vtex_app.uuid}")
@@ -587,35 +596,108 @@ def task_update_batch_products(**kwargs):
             api_credentials=api_credentials,
             catalog=catalog,
             skus_ids=[sku_id],
-            webhook=webhook,
+            sellers_ids=[seller],
         )
 
-        # Process products
+        # Process product updates in batch
         products = vtex_update_service.process_batch_sync()
         if products is None:
             logger.info(
-                f"No products to process for VTEX app: {app_uuid}. Task ending."
+                f"No products to process for App: {app_uuid}, SKU: {sku_id}. Task ending."
             )
             return
 
-        # Log webhook
+        # Log webhook after successful processing
         close_old_connections()
-        WebhookLog.objects.create(sku_id=sku_id, data=webhook, vtex_app=vtex_app)
+        WebhookLog.objects.create(
+            sku_id=sku_id, data={"IdSku": sku_id, "An": seller}, vtex_app=vtex_app
+        )
 
     except Exception as e:
         logger.error(
-            f"An error occurred during the updating Webhook VTEX products for App: {app_uuid}, {e}"
+            f"An error occurred during the processing of SKU: {sku_id} for App: {app_uuid}. Error: {e}"
         )
 
-    # Log task duration
-    end_time = datetime.now()
-    duration = (end_time - start_time).total_seconds()
-    minutes, seconds = divmod(duration, 60)
+    finally:
+        # Log task duration
+        end_time = datetime.now()
+        duration = (end_time - start_time).total_seconds()
+        minutes, seconds = divmod(duration, 60)
 
-    logger.info(
-        f"Finished processing update for SKU: {sku_id}, App: {app_uuid}. "
-        f"Task completed in {int(minutes)} minutes and {int(seconds)} seconds."
-    )
+        logger.info(
+            f"Finished processing update for SKU: {sku_id}, App: {app_uuid}. "
+            f"Task completed in {int(minutes)} minutes and {int(seconds)} seconds."
+        )
 
-    # Start upload task
-    UploadManager.check_and_start_upload(app_uuid)
+        # Start upload task
+        UploadManager.check_and_start_upload(app_uuid)
+
+
+@celery_app.task(name="task_enqueue_webhook")
+def task_enqueue_webhook(app_uuid: str, seller: str, sku_id: str):
+    """
+    Enqueues the seller and SKU in Redis for batch processing.
+    """
+    try:
+        queue = RedisQueue(f"webhook_queue:{app_uuid}")
+        value = f"{seller}#{sku_id}"
+
+        # Added to queue if it doesn't exist
+        queue.insert(value)
+
+        print(
+            f"Webhook enqueued for App: {app_uuid}, Item: {value}, Total Enqueue: {queue.length()}"
+        )
+    except Exception as e:
+        logger.error(f"Failed to enqueue webhook for App: {app_uuid}, {e}")
+
+
+@celery_app.task(name="task_dequeue_webhooks")
+def task_dequeue_webhooks(app_uuid: str, celery_queue: str):
+    """
+    Dequeues webhooks from Redis and dispatches them to `task_update_batch_products`.
+    """
+    queue_key = f"webhook_queue:{app_uuid}"
+    queue = RedisQueue(queue_key)
+    lock_key = f"lock:{queue_key}"
+    redis = queue.redis
+
+    lock_ttl_seconds = 60 * 5  # Lock expires in 5 minutes
+
+    # Attempt to acquire the lock
+    if not redis.set(lock_key, "locked", nx=True, ex=lock_ttl_seconds):
+        logger.info(f"Task already running for App: {app_uuid}. Skipping dequeue.")
+        return
+
+    try:
+        print(
+            f"Starting dequeue process for App: {app_uuid}. Total items: {queue.length()}"
+        )
+
+        while True:
+            # Renew the lock to ensure we don't lose it while processing
+            redis.expire(lock_key, lock_ttl_seconds)
+
+            item = queue.remove()  # Fetch the next item from the queue
+            if not item:
+                break  # Exit when the queue is empty
+
+            seller, sku_id = item.split("#")
+            celery_app.send_task(
+                "task_update_batch_products",
+                kwargs={
+                    "app_uuid": app_uuid,
+                    "seller": seller,
+                    "sku_id": sku_id,
+                },
+                queue=celery_queue,
+                ignore_result=True,
+            )
+            print({"app_uuid": app_uuid, "seller": seller, "sku_id": sku_id})
+            logger.info(f"Dispatched task for Seller: {seller}, SKU: {sku_id}")
+
+    except Exception as e:
+        logger.error(f"Error during dequeue process for App: {app_uuid}, {e}")
+    finally:
+        # Release the lock at the end of the task
+        redis.delete(lock_key)
