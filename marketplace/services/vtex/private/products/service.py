@@ -86,6 +86,7 @@ class PrivateProductsService:
         sellers: Optional[List[str]] = None,
         update_product=False,
         upload_on_sync=False,
+        sync_specific_sellers=False,
     ) -> List[FacebookProductDTO]:
         """
         Fetches and processes all products for the given catalog and sellers.
@@ -123,6 +124,7 @@ class PrivateProductsService:
             catalog=catalog,
             update_product=update_product,
             upload_on_sync=upload_on_sync,
+            sync_specific_sellers=sync_specific_sellers,
         )
         return products_dto
 

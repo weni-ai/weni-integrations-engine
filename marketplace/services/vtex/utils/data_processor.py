@@ -110,6 +110,7 @@ class DataProcessor:
         catalog,
         update_product=False,
         upload_on_sync=False,
+        sync_specific_sellers=False,
     ) -> List[FacebookProductDTO]:
         """
         Process a batch of SKU IDs with optional active sellers using threads if the batch size is large
@@ -134,6 +135,7 @@ class DataProcessor:
             "use_sku_sellers", False
         )
         self.use_sync_v2 = self.vtex_app.config.get("use_sync_v2", False)
+        self.sync_specific_sellers = sync_specific_sellers
 
         print("Initiated process of product treatment.")
         self.progress_bar = tqdm(total=len(skus_ids), desc="[✓:0, ✗:0]", ncols=0)
@@ -179,34 +181,41 @@ class DataProcessor:
 
     def worker(self):
         """
-        Processes items from the queue. For v2 (use_sync_v2), processes `seller_id` and `sku_id`.
-        For v1, processes only `sku_id`.
+        Processes items from the queue.
+
+        - For v2 (`use_sync_v2`) with `update_product=True`
+        (e.g., batch uploads without specific sellers), processes items as `seller_id` and `sku_id` pairs.
+
+        - For v1 or initial sync (`update_product=False`), or when `sync_specific_sellers=True`,
+        processes only `sku_id` with default seller combinations.
+
+        The method dynamically determines the appropriate processing logic
+        based on the `use_sync_v2`, `update_product`, and `sync_specific_sellers` flags.
         """
         while not self.queue.empty():
             try:
                 # Extract item from the queue
                 item = self.queue.get()
 
-                # Determine processing logic based on use_sync_v2
-                if self.use_sync_v2:
+                # Determine conditions for processing
+                is_v2_batch_upload = self.use_sync_v2 and self.update_product
+
+                if is_v2_batch_upload and not self.sync_specific_sellers:
+                    # Parse and process `seller_id` and `sku_id` for v2 batch uploads
                     seller_id, sku_id = self._parse_seller_sku(item)
                     processing_result = self.process_seller_sku(
                         seller_id=seller_id, sku_id=sku_id
                     )
                 else:
-                    processing_result = self.process_single_sku(item)
+                    # Process `sku_id` for v1 or first sync
+                    processing_result = self.process_single_sku(sku_id=item)
 
-                # Handle the result and update the state
+                # Handle the processing result (e.g., add to results, update progress bar)
                 self._handle_processing_result(processing_result)
 
             except Exception as e:
-                print(f"Error processing item: {item}. Details: {str(e)}")
-                with self.progress_lock:
-                    self.invalid_products_count += 1
-                    self.progress_bar.set_description(
-                        f"[✓:{len(self.results)} | DB:{self.sent_to_db_count} | ✗:{self.invalid_products_count}]"
-                    )
-                    self.progress_bar.update(1)
+                # Log any processing errors and continue
+                self._handle_worker_error(item, str(e))
 
     def _parse_seller_sku(self, seller_sku):
         """
@@ -240,6 +249,18 @@ class DataProcessor:
                 self.progress_bar.set_description(
                     f"[✓:{len(self.results)} | DB:{self.sent_to_db_count} | ✗:{self.invalid_products_count}]"
                 )
+            self.progress_bar.update(1)
+
+    def _handle_worker_error(self, item, error_message: str):
+        """
+        Handles errors during worker processing by logging and updating progress.
+        """
+        print(f"Error processing item {item}: {error_message}")
+        with self.progress_lock:
+            self.invalid_products_count += 1
+            self.progress_bar.set_description(
+                f"[✓:{len(self.results)} | DB:{self.sent_to_db_count} | ✗:{self.invalid_products_count}]"
+            )
             self.progress_bar.update(1)
 
     def process_single_sku(self, sku_id):
@@ -392,6 +413,7 @@ class DataProcessor:
         catalog,
         seller_sku_pairs,
         upload_on_sync=True,
+        sync_specific_sellers=False,
     ):
         """
         Process a batch of seller and SKU pairs using threads if the batch size is large.
@@ -412,6 +434,7 @@ class DataProcessor:
         self.sku_validator = SKUValidator(service, domain, MockZeroShotClient())
         self.sent_to_db_count = 0  # Tracks the number of items sent to the database.
         self.update_product = True
+        self.sync_specific_sellers = sync_specific_sellers
 
         # Populate the queue
         initial_batch_count = len(seller_sku_pairs)
