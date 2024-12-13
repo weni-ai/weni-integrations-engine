@@ -150,17 +150,14 @@ class ProductInsertionService(VtexServiceBase):
         pvt_service = self.get_private_service(
             credentials.app_key, credentials.app_token
         )
-
+        # TODO: calculate whether there was any success in sending to return
         products = pvt_service.list_all_products(
             domain=credentials.domain,
             catalog=catalog,
             sellers=sellers,
             upload_on_sync=True,  # Enable upload during synchronization
         )
-
-        if not products:
-            return None
-
+        print(f"First product sync completed for Catalog: {catalog.name}")
         self.app_manager.initial_sync_products_completed(catalog.vtex_app)
         return products
 
@@ -549,7 +546,7 @@ class CatalogInsertionBySeller:  # pragma: no cover
     def _validate_sync_status(vtex_app) -> None:
         can_synchronize = vtex_app.config.get("initial_sync_completed", False)
         if not can_synchronize:
-            raise ValueError("Missing one or more API credentials.")
+            raise ValueError("Initial synchronization not completed.")
 
         print("validate_sync_status - Ok")
 
