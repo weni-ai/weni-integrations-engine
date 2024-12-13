@@ -1,3 +1,9 @@
+v4.0.3
+----------
+* fix: first sync v2 with method data_processor.process_single_sku
+* fix: checks sync version on sync-sellers
+* fix: call initial_sync_products_completed after first sync and adjust validate_sync_status
+
 v4.0.2
 ----------
 * fix: add redis mock to vtex service tests
