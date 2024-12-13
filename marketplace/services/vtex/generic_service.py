@@ -403,14 +403,26 @@ class CatalogProductInsertion:
 
 class ProductInsertionBySellerService(VtexServiceBase):  # pragma: no cover
     """
-    Service for inserting products by seller into UploadProduct model.
+    Service for inserting products by seller into the UploadProduct model.
 
-    This class is used to fetch products from a specific seller and place them in the upload queue
-    for subsequent processing and insertion into the database.
+    This service fetches products from a specific seller and places them in the upload queue
+    for subsequent processing and database insertion.
 
-    Important:
-    ----------
-    It is necessary to have a feed already configured both locally and on the Meta platform.
+    Note:
+    -----
+    - A feed must already be configured both locally and on the Meta platform.
+    - Supports both v1 and v2 synchronization methods.
+
+    Parameters:
+    ------------
+    - credentials (APICredentials): API credentials for accessing the VTEX platform.
+    - catalog (Catalog): The catalog associated with the seller's products.
+    - sellers (List[str]): A list of seller IDs to fetch products for.
+
+    Methods:
+    ---------
+    - insertion_products_by_seller: Fetches products for the specified sellers and processes them
+      for insertion into the database or further synchronization.
     """
 
     def insertion_products_by_seller(
@@ -419,33 +431,72 @@ class ProductInsertionBySellerService(VtexServiceBase):  # pragma: no cover
         catalog: Catalog,
         sellers: List[str],
     ):
+        """
+        Fetches and inserts products by seller into the UploadProduct model.
+
+        Parameters:
+        ------------
+        - credentials (APICredentials): API credentials for accessing the VTEX platform.
+        - catalog (Catalog): The catalog associated with the seller's products.
+        - sellers (List[str]): A list of seller IDs to fetch products for.
+
+        Raises:
+        -------
+        - ValueError: If the `sellers` parameter is not provided.
+        - Exception: If an error occurs during the bulk save process.
+
+        Returns:
+        --------
+        - List[FacebookProductDTO]: A list of product DTOs if the `use_sync_v2` flag is True.
+        - None: If no products are returned for v1 synchronization.
+        """
         if not sellers:
             raise ValueError("'sellers' is required")
 
+        # Initialize private service
         pvt_service = self.get_private_service(
             credentials.app_key, credentials.app_token
         )
+
+        # Determine if synchronization v2 is used
+        use_sync_v2 = catalog.vtex_app.config.get("use_sync_v2", False)
+        upload_on_sync = use_sync_v2
+
+        # Fetch product data from the VTEX platform
         products_dto = pvt_service.list_all_products(
             domain=credentials.domain,
             catalog=catalog,
             sellers=sellers,
+            upload_on_sync=upload_on_sync,
             update_product=True,
+            sync_specific_sellers=True,
         )
-        print(f"'list_all_products' returned {len(products_dto)}")
-        if not products_dto:
-            return None
 
-        close_old_connections()
-        print("starting bulk save process in database")
-        all_success = self.product_manager.bulk_save_csv_product_data(
-            products_dto=products_dto,
-            catalog=catalog,
-            product_feed=catalog.feeds.first(),
+        print(
+            f"Finished synchronizing products for specific sellers: {sellers}. Use sync v2: {use_sync_v2}."
         )
-        if not all_success:
-            raise Exception(
-                f"Error on save csv on database. Catalog:{self.catalog.facebook_catalog_id}"
+
+        # Handle v1 synchronization (non-batch upload mode)
+        if not use_sync_v2:
+            if not products_dto:
+                return None
+
+            # Close old database connections
+            close_old_connections()
+            print(f"'list_all_products' returned {len(products_dto)} products.")
+            print("Starting bulk save process in the database.")
+
+            # Save products in bulk
+            all_success = self.product_manager.bulk_save_csv_product_data(
+                products_dto=products_dto,
+                catalog=catalog,
+                product_feed=catalog.feeds.first(),
             )
+
+            if not all_success:
+                raise Exception(
+                    f"Error saving CSV to the database. Catalog: {catalog.facebook_catalog_id}"
+                )
 
         return products_dto
 
@@ -466,7 +517,10 @@ class CatalogInsertionBySeller:  # pragma: no cover
         catalog = cls._validate_link_apps(wpp_cloud, vtex_app)
 
         cls._validate_sync_status(vtex_app)
-        cls._validate_catalog_feed(catalog)
+        use_sync_v2 = cls._use_sync_v2(vtex_app)
+        if use_sync_v2 is False:
+            cls._validate_catalog_feed(catalog)
+
         cls._validate_connected_catalog_flag(vtex_app)
 
         cls._send_task(credentials, catalog, sellers)
@@ -550,6 +604,12 @@ class CatalogInsertionBySeller:  # pragma: no cover
             raise ValueError("At least 1 feed created is required")
 
         print("validate_catalog_feed - Ok")
+
+    @staticmethod
+    def _use_sync_v2(vtex_app) -> bool:
+        use_sync_v2 = vtex_app.config.get("use_sync_v2", False)
+        print(f"App use_sync_v2: {use_sync_v2}")
+        return use_sync_v2
 
     @staticmethod
     def _send_task(credentials, catalog, sellers: Optional[List[str]] = None) -> None:
