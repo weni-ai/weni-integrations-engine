@@ -179,28 +179,38 @@ class DataProcessor:
 
     def worker(self):
         """
-        Processes items from the queue. For v2 (use_sync_v2), processes `seller_id` and `sku_id`.
-        For v1, processes only `sku_id`.
+        Processes items from the queue.
+
+        - For v2 (`use_sync_v2`) with `update_product=True`
+        (for example, batch uploads), processes items as `seller_id` and `sku_id` pairs.
+
+        - For v1 or initial sync (`update_product=False`), processes only `sku_id` with default seller combinations.
+
+        The method dynamically determines the appropriate processing logic
+        based on the `use_sync_v2` flag and the context (`update_product`).
         """
         while not self.queue.empty():
             try:
                 # Extract item from the queue
                 item = self.queue.get()
 
-                # Determine processing logic based on use_sync_v2
-                if self.use_sync_v2:
+                # Determine processing logic based on `use_sync_v2` and `update_product`
+                if self.use_sync_v2 and self.update_product:
+                    # Parse `seller_id` and `sku_id` pair for v2 batch uploads
                     seller_id, sku_id = self._parse_seller_sku(item)
                     processing_result = self.process_seller_sku(
                         seller_id=seller_id, sku_id=sku_id
                     )
                 else:
-                    processing_result = self.process_single_sku(item)
+                    # Process `sku_id` for v1 or first sync
+                    processing_result = self.process_single_sku(sku_id=item)
 
-                # Handle the result and update the state
+                # Handle the processing result (e.g., add to results, update progress bar)
                 self._handle_processing_result(processing_result)
 
             except Exception as e:
-                print(f"Error processing item: {item}. Details: {str(e)}")
+                # Log any processing errors and continue
+                print(f"Error processing item {item}: {str(e)}")
                 with self.progress_lock:
                     self.invalid_products_count += 1
                     self.progress_bar.set_description(
