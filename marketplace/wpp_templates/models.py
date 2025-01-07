@@ -129,6 +129,7 @@ class TemplateButton(models.Model):
     country_code = models.IntegerField(null=True)
     phone_number = models.CharField(max_length=20, null=True)
     url = models.CharField(max_length=2000, null=True)
+    example = models.CharField(max_length=2000, default=None, null=True)
 
 
 class TemplateHeader(models.Model):
