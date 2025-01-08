@@ -41,6 +41,8 @@ class ProjectManagePermission(permissions.IsAuthenticated):
                     project_uuid=project_uuid
                 )
             except ProjectAuthorization.DoesNotExist:
+                if request.user.has_perm("accounts.can_communicate_internally"):
+                    return True
                 return False
 
             return authorization.is_contributor or authorization.is_admin
