@@ -1,3 +1,9 @@
+v4.0.4
+----------
+* feat: return flow_object_uuid and app_uuid on create wpp-cloud
+* feat: add can_communicate_internally permission
+* feat: add dynamic url to message template button
+
 v4.0.3
 ----------
 * fix: first sync v2 with method data_processor.process_single_sku
