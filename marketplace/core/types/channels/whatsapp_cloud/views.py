@@ -141,7 +141,7 @@ class WhatsAppCloudViewSet(
         config["wa_phone_number_id"] = phone_number_id
         config["has_insights"] = False
 
-        App.objects.create(
+        app = App.objects.create(
             code=self.type_class.code,
             config=config,
             project_uuid=project_uuid,
@@ -154,7 +154,12 @@ class WhatsAppCloudViewSet(
         celery_app.send_task(name="sync_whatsapp_cloud_wabas")
         celery_app.send_task(name="sync_whatsapp_cloud_phone_numbers")
 
-        return Response(serializer.validated_data)
+        response_data = {
+            **serializer.validated_data,
+            "app_uuid": str(app.uuid),
+            "flow_object_uuid": str(app.flow_object_uuid),
+        }
+        return Response(response_data)
 
     @action(detail=True, methods=["PATCH"])
     def update_webhook(self, request, uuid=None):
