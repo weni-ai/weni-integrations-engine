@@ -40,10 +40,18 @@ class ButtonSerializer(serializers.ModelSerializer):
     country_code = serializers.CharField(required=False)
     phone_number = serializers.CharField(required=False)
     url = serializers.CharField(required=False)
+    example = serializers.ListField(required=False)
 
     class Meta:
         model = TemplateButton
-        fields = ["button_type", "text", "country_code", "phone_number", "url"]
+        fields = [
+            "button_type",
+            "text",
+            "country_code",
+            "phone_number",
+            "url",
+            "example",
+        ]
 
 
 class TemplateTranslationSerializer(serializers.Serializer):
@@ -81,17 +89,15 @@ class TemplateTranslationSerializer(serializers.Serializer):
         components = [validated_data.get("body", {})]
         header = validated_data.get("header")
 
+        # Process Header
         if header:
             header = dict(header)
             header["type"] = "HEADER"
             header["format"] = header.get("header_type", "TEXT")
             header.pop("header_type")
 
-            if (
-                header.get("format") == "IMAGE"
-                or header.get("format") == "DOCUMENT"
-                or header.get("format") == "VIDEO"
-            ):
+            # Handle Media Uploads
+            if header.get("format") in ["IMAGE", "DOCUMENT", "VIDEO"]:
                 photo_api_request = PhotoAPIService(client=FacebookClient(access_token))
                 photo = header.get("example")
                 file_type = re.search("(?<=data:)(.*)(?=;base64)", photo).group(0)
@@ -113,6 +119,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
         components = self.append_to_components(components, validated_data.get("footer"))
         buttons = validated_data.get("buttons", {})
 
+        # Process Buttons
         buttons_component = {
             "type": "BUTTONS",
             "buttons": [],
@@ -121,6 +128,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
         for button in buttons:
             button = dict(button)
             button["type"] = button.get("button_type")
+
             if button.get("phone_number"):
                 button[
                     "phone_number"
