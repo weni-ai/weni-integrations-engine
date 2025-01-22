@@ -1,6 +1,7 @@
 import io
 import logging
 import json
+import time
 
 from typing import List, Dict, Any
 
@@ -24,7 +25,7 @@ from marketplace.wpp_products.models import (
     ProductValidation,
     UploadProduct,
 )
-from marketplace.services.vtex.utils.data_processor import FacebookProductDTO
+from marketplace.services.vtex.utils.facebook_product_dto import FacebookProductDTO
 from marketplace.services.facebook.service import (
     FacebookService,
 )
@@ -178,7 +179,6 @@ class ProductUploader:
 class ProductUploadManager:
     def convert_to_csv(self, products: QuerySet, include_header=True) -> io.BytesIO:
         """Converts products to CSV format in a buffer, optionally including header."""
-
         # Generate header dynamically from the FacebookProductDTO dataclass
         header = ",".join(
             field.name
@@ -227,22 +227,26 @@ class ProductBatchFetcher(ProductUploadManager):
         return self
 
     def __next__(self):
-        products = UploadProduct.objects.filter(
-            catalog=self.catalog, status="pending"
-        ).order_by("modified_on")[: self.batch_size]
+        latest_products = UploadProduct.get_latest_products(
+            catalog=self.catalog, status="pending", batch_size=self.batch_size
+        )
 
-        if not products.exists():
+        if not latest_products.exists():
             print(f"No more pending products for catalog {self.catalog.name}.")
             raise StopIteration
 
-        product_ids = list(products.values_list("id", flat=True))
+        product_ids = list(latest_products.values_list("id", flat=True))
+
+        # Update status to "processing"
         UploadProduct.objects.filter(id__in=product_ids).update(status="processing")
-        products = UploadProduct.objects.filter(id__in=product_ids)
 
-        print(f"Products marked as processing: {len(products)}")
+        print(f"Products marked as processing: {len(product_ids)}")
 
-        products_ids = list(products.values_list("facebook_product_id", flat=True))
-        return products, products_ids
+        # Prepare the result as (products, facebook_product_ids)
+        facebook_product_ids = list(
+            latest_products.values_list("facebook_product_id", flat=True)
+        )
+        return latest_products, facebook_product_ids
 
 
 def generate_log_with_file(csv_content: io.BytesIO, data, exception: Exception):
@@ -450,3 +454,141 @@ def extract_sku_id(product_id: str) -> int:
         return int(sku_part)
     else:
         raise ValueError(f"Invalid SKU ID, error: {sku_part} is not a number")
+
+
+class ProductBatchUploader:
+    fb_service_class = FacebookService
+    fb_client_class = FacebookClient
+
+    def __init__(self, catalog: Catalog, batch_size=5000):
+        self.catalog = catalog
+        self.batch_size = batch_size
+        self.fb_service = self.initialize_fb_service()
+        self.product_manager = ProductBatchFetcher(catalog, batch_size)
+
+    def initialize_fb_service(self) -> FacebookService:
+        app = self.catalog.app
+        access_token = app.apptype.get_system_access_token(app)
+        fb_client = self.fb_client_class(access_token)
+        return FacebookService(fb_client)
+
+    def process_and_upload(
+        self, redis_client, lock_key: str, lock_expiration_time: int
+    ):
+        """
+        Processes products in batches and uploads them to Meta, renewing the lock.
+        """
+        try:
+            for products, product_ids in self.product_manager:
+                # Creates the payload in the format required by the Meta
+                payload = self.create_batch_payload(products)
+                # Sends data to Meta and processes the results
+                if self.send_to_meta(payload):
+                    self.product_manager.mark_products_as_sent(product_ids)
+                    self.log_sent_products(product_ids)
+                else:
+                    self.product_manager.mark_products_as_error(product_ids)
+
+                # Renew the lock
+                redis_client.expire(lock_key, lock_expiration_time)
+        except Exception as e:
+            logger.error(
+                f"Error during 'process_and_upload' for {self.catalog.name}: {e}",
+                exc_info=True,
+                stack_info=True,
+            )
+            self.product_manager.mark_products_as_error(product_ids)
+
+    def create_batch_payload(self, products: QuerySet) -> dict:
+        """
+        Creates a payload for the Meta Batch API from a list of products.
+        """
+        batch_requests = [
+            {
+                "method": "UPDATE",
+                "data": product.data,
+            }
+            for product in products
+        ]
+        return {
+            "item_type": "PRODUCT_ITEM",
+            "requests": batch_requests,
+        }
+
+    def send_to_meta(self, products: List) -> bool:
+        """
+        Sends the payload to Meta and handles the response.
+        """
+        try:
+            response = self.fb_service.upload_batch(
+                self.catalog.facebook_catalog_id, products
+            )
+
+            if response.get("handles"):
+                print(f"Batch upload successful for catalog {self.catalog.name}.")
+                return True
+            else:
+                print(f"Batch upload failed for catalog {self.catalog.name}.")
+                return False
+        except Exception as e:
+            logger.error(
+                f"Error sending batch to Meta for catalog {self.catalog.name}: {e}",
+                exc_info=True,
+                stack_info=True,
+            )
+            return False
+
+    def log_sent_products(self, product_ids: List[str]):
+        """
+        Logs the successfully sent products to the log table.
+        """
+        for product_id in product_ids:
+            sku_id = extract_sku_id(product_id)
+            ProductUploadLog.objects.create(
+                sku_id=sku_id, vtex_app=self.catalog.vtex_app
+            )
+        print(f"Logged {len(product_ids)} products as sent.")
+
+
+class RedisQueue:
+    def __init__(self, queue_key):
+        self.queue_key = queue_key
+        self.redis = get_redis_connection()
+
+    def insert(self, value):
+        """Add an item to the ZSET queue with a timestamp score."""
+        # Check if the item already exists
+        if self.redis.zscore(self.queue_key, value) is not None:
+            print(value, "already exists")
+            return False  # Skip insertion if it exists
+
+        # Add the item with the current timestamp as the score
+        score = time.time()
+        self.redis.zadd(self.queue_key, {value: score})
+        self.redis.expire(self.queue_key, 3600 * 24)  # TTL of 24 hours
+        return True
+
+    def remove(self):
+        """Remove and return the first item from the queue (FIFO)."""
+        items = self.redis.zrange(
+            self.queue_key, 0, 0, withscores=False
+        )  # Get the first item
+        if not items:
+            return None
+        self.redis.zrem(self.queue_key, items[0])  # Remove the first item
+        return items[0].decode("utf-8")
+
+    def order(self):
+        """List all items in the queue in order."""
+        items = self.redis.zrange(self.queue_key, 0, -1, withscores=False)
+        return [item.decode("utf-8") for item in items]
+
+    def length(self):
+        """Returns the total number of items in the queue."""
+        return self.redis.zcard(self.queue_key)
+
+    def get_batch(self, batch_size):
+        items = self.redis.zrange(self.queue_key, 0, batch_size - 1, withscores=False)
+        if items:
+            self.redis.zrem(self.queue_key, *items)
+        return [item.decode("utf-8") for item in items]

@@ -1,6 +1,8 @@
 from django.db import models
 from django.core.exceptions import ValidationError
-from django.db.models import JSONField
+from django.db.models import JSONField, Max, QuerySet
+
+from typing import Optional
 
 from marketplace.core.models import BaseModel
 from marketplace.applications.models import App
@@ -148,12 +150,54 @@ class UploadProduct(models.Model):
             models.Index(fields=["facebook_product_id"]),
             models.Index(fields=["modified_on"]),
         ]
-        constraints = [
-            models.UniqueConstraint(
-                fields=["facebook_product_id", "catalog"],
-                name="unique_upload_facebook_product_id_per_catalog",
+
+    @classmethod
+    def remove_duplicates(cls, catalog: Catalog) -> None:
+        """Removes duplicate products for a given catalog, keeping the most recent ones."""
+        # Get all duplicate records in the catalog
+        duplicates = (
+            cls.objects.filter(catalog=catalog)
+            .values("facebook_product_id")
+            .annotate(count=models.Count("id"))
+            .filter(count__gt=1)
+        )
+
+        if duplicates:
+            print(
+                f"Found duplicate entries for catalog : {catalog.name}, Deleted all but the most recent records"
             )
-        ]
+        for duplicate in duplicates:
+            # Get all records for the duplicate facebook_product_id, ordered by most recent first
+            duplicate_records = cls.objects.filter(
+                facebook_product_id=duplicate["facebook_product_id"],
+                catalog=catalog,
+            ).order_by(
+                "-modified_on"
+            )  # Order by newest first
+
+            # Exclude the most recent record and delete all others
+            most_recent_record = duplicate_records.first()
+            cls.objects.filter(
+                facebook_product_id=duplicate["facebook_product_id"],
+                catalog=catalog,
+            ).exclude(id=most_recent_record.id).delete()
+
+    @classmethod
+    def get_latest_products(
+        cls, catalog: Catalog, status: str = "pending", batch_size: Optional[int] = None
+    ) -> QuerySet:
+        """Fetches the most recent product for each facebook_product_id."""
+        query = (
+            cls.objects.filter(catalog=catalog, status=status)
+            .values("facebook_product_id")
+            .annotate(latest_id=Max("id"))
+            .values_list("latest_id", flat=True)
+        )
+        if batch_size:
+            query = query[:batch_size]
+
+        product_ids = list(query)
+        return cls.objects.filter(id__in=product_ids)
 
 
 class WebhookLog(models.Model):

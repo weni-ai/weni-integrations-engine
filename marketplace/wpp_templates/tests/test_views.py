@@ -2,19 +2,21 @@
 
 import uuid
 
-# import textwrap
+import textwrap
 import pytz
 
 from datetime import datetime
 
-# from rest_framework import status
+from rest_framework import status
 from rest_framework.test import APIClient
+
+from unittest.mock import patch, Mock
 
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 
-# from django.utils.translation import gettext_lazy as _
-# from django.core.exceptions import ValidationError
+from django.utils.translation import gettext_lazy as _
+from django.core.exceptions import ValidationError
 
 from marketplace.applications.models import App
 from marketplace.clients.facebook.client import FacebookClient
@@ -22,8 +24,8 @@ from marketplace.services.facebook.service import PhotoAPIService, TemplateServi
 from marketplace.wpp_templates.models import TemplateMessage, TemplateTranslation
 from marketplace.wpp_templates.views import TemplateMessageViewSet
 from marketplace.core.tests.base import APIBaseTestCase
+from marketplace.accounts.models import ProjectAuthorization
 
-from unittest.mock import patch, Mock
 
 User = get_user_model()
 
@@ -32,52 +34,59 @@ class WhatsappTemplateCreateTestCase(APIBaseTestCase):
     view_class = TemplateMessageViewSet
 
     def setUp(self):
+        super().setUp()
+
         self.app = App.objects.create(
             config=dict(wa_waba_id="432321321"),
             project_uuid=uuid.uuid4(),
             platform=App.PLATFORM_WENI_FLOWS,
             code="wpp-cloud",
             created_on=datetime.now(pytz.UTC),
-            created_by=User.objects.get_admin_user(),
+            created_by=self.user,
         )
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
         self.body = dict(
-            name="teste", category="ACCOUNT_UPDATE", text_preview="Preview Test"
+            name="teste",
+            category="ACCOUNT_UPDATE",
+            text_preview="Preview Test",
+            project_uuid=str(self.app.project_uuid),
         )
         self.url = reverse("app-template-list", kwargs={"app_uuid": str(self.app.uuid)})
-        super().setUp()
 
     @property
     def view(self):
         return self.view_class.as_view(APIBaseTestCase.ACTION_CREATE)
 
-    # TODO: Fix broken tests
-    # def test_create_whatsapp_template_with_valid_data(self):
-    #     response = self.request.post(
-    #         self.url, app_uuid=str(self.app.uuid), body=self.body
-    #     )
-    #     self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-    #     self.assertIn("uuid", response.data)
+    def test_create_whatsapp_template_with_valid_data(self):
+        response = self.request.post(
+            self.url, app_uuid=str(self.app.uuid), body=self.body
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn("uuid", response.data)
 
-    # def test_create_whatsapp_template_with_invalid_name(self):
-    #     message = _(
-    #         """
-    #             Invalid name format.
-    #             The name must not contain spaces and must start with a lowercase letter
-    #             followed by one or more uppercase or lowercase letters,
-    #             digits, or underscores.
-    #         """
-    #     )
-    #     error_message = textwrap.dedent(str(message))
-    #     error_message = {"name": [error_message]}
-    #     invalid_body = self.body.copy()
-    #     invalid_body["name"] = "Test Invalid N4M3"
+    def test_create_whatsapp_template_with_invalid_name(self):
+        message = _(
+            """
+                Invalid name format.
+                The name must not contain spaces and must start with a lowercase letter
+                followed by one or more uppercase or lowercase letters,
+                digits, or underscores.
+            """
+        )
+        error_message = textwrap.dedent(str(message))
+        error_message = {"name": [error_message]}
+        invalid_body = self.body.copy()
+        invalid_body["name"] = "Test Invalid N4M3"
 
-    #     response = self.request.post(
-    #         self.url, app_uuid=str(self.app.uuid), body=invalid_body
-    #     )
+        response = self.request.post(
+            self.url, app_uuid=str(self.app.uuid), body=invalid_body
+        )
 
-    #     self.assertEqual(error_message, response.json)
-    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(error_message, response.json)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
 # TODO: Replace decorator path with service class instance
@@ -85,13 +94,18 @@ class WhatsappTemplateDestroyTestCase(APIBaseTestCase):
     view_class = TemplateMessageViewSet
 
     def setUp(self):
+        super().setUp()
         self.app = App.objects.create(
             config={"waba": {"id": "432321321"}, "fb_access_token": "token"},
             project_uuid=uuid.uuid4(),
             platform=App.PLATFORM_WENI_FLOWS,
             code="wpp",
-            created_by=User.objects.get_admin_user(),
+            created_by=self.user,
         )
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
         self.template_message = TemplateMessage.objects.create(
             name="teste",
             category="ACCOUNT_UPDATE",
@@ -104,110 +118,108 @@ class WhatsappTemplateDestroyTestCase(APIBaseTestCase):
                 "uuid": str(self.template_message.uuid),
             },
         )
-        super().setUp()
 
     @property
     def view(self):
         return self.view_class.as_view(APIBaseTestCase.ACTION_DESTROY)
 
-    # TODO: Fix broken tests
-    # @patch(
-    #     "marketplace.services.facebook.service.TemplateService.delete_template_message"
-    # )
-    # def test_destroy_wpp_template_message_successfully(
-    #     self, mock_delete_template_message
-    # ):
-    #     mock_delete_template_message.return_value = None
+    @patch(
+        "marketplace.services.facebook.service.TemplateService.delete_template_message"
+    )
+    def test_destroy_wpp_template_message_successfully(
+        self, mock_delete_template_message
+    ):
+        mock_delete_template_message.return_value = None
 
-    #     response = self.request.delete(
-    #         self.url, app_uuid=str(self.app.uuid), uuid=str(self.template_message.uuid)
-    #     )
+        response = self.request.delete(
+            self.url, app_uuid=str(self.app.uuid), uuid=str(self.template_message.uuid)
+        )
 
-    #     self.assertEqual(response.status_code, status.HTTP_200_OK)
-    #     self.assertFalse(
-    #         TemplateMessage.objects.filter(uuid=self.template_message.uuid).exists()
-    #     )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(
+            TemplateMessage.objects.filter(uuid=self.template_message.uuid).exists()
+        )
 
-    # @patch(
-    #     "marketplace.services.facebook.service.TemplateService.delete_template_message"
-    # )
-    # def test_destroy_template_message_missing_waba(self, mock_delete_template_message):
-    #     self.app.config.pop("waba")
-    #     self.app.save()
+    @patch(
+        "marketplace.services.facebook.service.TemplateService.delete_template_message"
+    )
+    def test_destroy_template_message_missing_waba(self, mock_delete_template_message):
+        self.app.config.pop("waba")
+        self.app.save()
 
-    #     with self.assertRaises(ValidationError):
-    #         self.request.delete(
-    #             self.url,
-    #             app_uuid=str(self.app.uuid),
-    #             uuid=str(self.template_message.uuid),
-    #         )
+        with self.assertRaises(ValidationError):
+            self.request.delete(
+                self.url,
+                app_uuid=str(self.app.uuid),
+                uuid=str(self.template_message.uuid),
+            )
 
-    # @patch(
-    #     "marketplace.services.facebook.service.TemplateService.delete_template_message"
-    # )
-    # def test_destroy_template_message_missing_fb_access_token(
-    #     self, mock_delete_template_message
-    # ):
-    #     self.app.config.pop("fb_access_token")
-    #     self.app.save()
+    @patch(
+        "marketplace.services.facebook.service.TemplateService.delete_template_message"
+    )
+    def test_destroy_template_message_missing_fb_access_token(
+        self, mock_delete_template_message
+    ):
+        self.app.config.pop("fb_access_token")
+        self.app.save()
 
-    #     with self.assertRaises(ValidationError):
-    #         self.request.delete(
-    #             self.url,
-    #             app_uuid=str(self.app.uuid),
-    #             uuid=str(self.template_message.uuid),
-    #         )
+        with self.assertRaises(ValidationError):
+            self.request.delete(
+                self.url,
+                app_uuid=str(self.app.uuid),
+                uuid=str(self.template_message.uuid),
+            )
 
-    # @patch(
-    #     "marketplace.services.facebook.service.TemplateService.delete_template_message"
-    # )
-    # def test_destroy_template_message_wpp_cloud(self, mock_delete_template_message):
-    #     self.app.code = "wpp-cloud"
-    #     self.app.config = {"wa_waba_id": "wa_waba_id_value"}
-    #     self.app.save()
+    @patch(
+        "marketplace.services.facebook.service.TemplateService.delete_template_message"
+    )
+    def test_destroy_template_message_wpp_cloud(self, mock_delete_template_message):
+        self.app.code = "wpp-cloud"
+        self.app.config = {"wa_waba_id": "wa_waba_id_value"}
+        self.app.save()
 
-    #     response = self.request.delete(
-    #         self.url,
-    #         app_uuid=str(self.app.uuid),
-    #         uuid=str(self.template_message.uuid),
-    #     )
-    #     self.assertEqual(response.status_code, status.HTTP_200_OK)
-    #     self.assertFalse(
-    #         TemplateMessage.objects.filter(uuid=self.template_message.uuid).exists()
-    #     )
+        response = self.request.delete(
+            self.url,
+            app_uuid=str(self.app.uuid),
+            uuid=str(self.template_message.uuid),
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(
+            TemplateMessage.objects.filter(uuid=self.template_message.uuid).exists()
+        )
 
-    # @patch(
-    #     "marketplace.services.facebook.service.TemplateService.delete_template_message"
-    # )
-    # def test_destroy_template_message_missing_waba_id(
-    #     self, mock_delete_template_message
-    # ):
-    #     self.app.config["waba"]["id"] = None
-    #     self.app.save()
+    @patch(
+        "marketplace.services.facebook.service.TemplateService.delete_template_message"
+    )
+    def test_destroy_template_message_missing_waba_id(
+        self, mock_delete_template_message
+    ):
+        self.app.config["waba"]["id"] = None
+        self.app.save()
 
-    #     with self.assertRaises(ValidationError):
-    #         self.request.delete(
-    #             self.url,
-    #             app_uuid=str(self.app.uuid),
-    #             uuid=str(self.template_message.uuid),
-    #         )
+        with self.assertRaises(ValidationError):
+            self.request.delete(
+                self.url,
+                app_uuid=str(self.app.uuid),
+                uuid=str(self.template_message.uuid),
+            )
 
-    # @patch(
-    #     "marketplace.services.facebook.service.TemplateService.delete_template_message"
-    # )
-    # def test_destroy_template_message_missing_wpp_cloud_waba_id(
-    #     self, mock_delete_template_message
-    # ):
-    #     self.app.code = "wpp-cloud"
-    #     self.app.config.pop("wa_waba_id", None)
-    #     self.app.save()
+    @patch(
+        "marketplace.services.facebook.service.TemplateService.delete_template_message"
+    )
+    def test_destroy_template_message_missing_wpp_cloud_waba_id(
+        self, mock_delete_template_message
+    ):
+        self.app.code = "wpp-cloud"
+        self.app.config.pop("wa_waba_id", None)
+        self.app.save()
 
-    #     with self.assertRaises(ValidationError):
-    #         self.request.delete(
-    #             self.url,
-    #             app_uuid=str(self.app.uuid),
-    #             uuid=str(self.template_message.uuid),
-    #         )
+        with self.assertRaises(ValidationError):
+            self.request.delete(
+                self.url,
+                app_uuid=str(self.app.uuid),
+                uuid=str(self.template_message.uuid),
+            )
 
 
 class WhatsappTemplateLanguagesTestCase(APIBaseTestCase):
@@ -273,21 +285,21 @@ class TemplateMessageViewSetTestCase(APIBaseTestCase):
     def view(self):
         return self.view_class.as_view(APIBaseTestCase.ACTION_LIST)
 
-    # def test_filter_queryset_with_parameters(self):
-    #     date = datetime.now(pytz.UTC)  # Ensuring timezone-aware datetime
-    #     formatted_date = date.strftime("%-m-%-d-%Y")
-    #     url = reverse("app-template-list", kwargs={"app_uuid": str(self.app.uuid)})
-    #     params = {
-    #         "name": "Template 1",
-    #         "category": "MARKETING",
-    #         "start": formatted_date,
-    #         "end": formatted_date,
-    #         "sort": "name",
-    #     }
-    #     response = self.client.get(url, params)
-    #     self.assertEqual(response.status_code, status.HTTP_200_OK)
-    #     data = response.json()
-    #     self.assertEqual(len(data["results"]), 1)
+    def test_filter_queryset_with_parameters(self):
+        date = datetime.now(pytz.UTC)  # Ensuring timezone-aware datetime
+        formatted_date = date.strftime("%-m-%-d-%Y")
+        url = reverse("app-template-list", kwargs={"app_uuid": str(self.app.uuid)})
+        params = {
+            "name": "Template 1",
+            "category": "MARKETING",
+            "start": formatted_date,
+            "end": formatted_date,
+            "sort": "name",
+        }
+        response = self.request.get(url, params, app_uuid=str(self.app.uuid))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json
+        self.assertEqual(len(data["results"]), 1)
 
 
 class MockPhotoAPIRequests:
@@ -323,7 +335,7 @@ class WhatsappTemplateTranslationsTestCase(APIBaseTestCase):
             project_uuid=uuid.uuid4(),
             platform=App.PLATFORM_WENI_FLOWS,
             code="wpp-cloud",
-            created_by=User.objects.get_admin_user(),
+            created_by=self.user,
         )
 
         self.template_message = TemplateMessage.objects.create(
@@ -332,14 +344,20 @@ class WhatsappTemplateTranslationsTestCase(APIBaseTestCase):
             category="UTILITY",
             created_on=datetime.now(pytz.UTC),
             template_type="TEXT",
-            created_by_id=User.objects.get_admin_user().id,
+            created_by=self.user,
         )
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+
         self.url = reverse(
             "app-template-translations",
             kwargs={"app_uuid": self.app.uuid, "uuid": self.template_message.uuid},
         )
 
         self.body = dict(
+            project_uuid=str(self.app.project_uuid),
             language="ja",
             body={"text": "test", "type": "BODY"},
             country="Brasil",
@@ -383,64 +401,64 @@ class WhatsappTemplateTranslationsTestCase(APIBaseTestCase):
     def view(self):
         return self.view_class.as_view(dict(post="translations"))
 
-    # def test_create_template_translation(self):
-    #     with patch.object(
-    #         TemplateService,
-    #         "create_template_message",
-    #         return_value={"id": "0123456789", "status": "PENDING"},
-    #     ):
-    #         with patch.object(
-    #             PhotoAPIService, "upload_session", return_value={"h": "upload_handle"}
-    #         ):
-    #             with patch.object(
-    #                 PhotoAPIService, "create_upload_session", return_value="0123456789"
-    #             ):
-    #                 response = self.request.post(
-    #                     self.url, body=self.body, uuid=str(self.template_message.uuid)
-    #                 )
-    #                 self.assertEqual(response.status_code, status.HTTP_200_OK)
-    #                 self.assertTrue(
-    #                     TemplateTranslation.objects.filter(
-    #                         template=self.template_message
-    #                     ).exists()
-    #                 )
+    def test_create_template_translation(self):
+        with patch.object(
+            TemplateService,
+            "create_template_message",
+            return_value={"id": "0123456789", "status": "PENDING"},
+        ):
+            with patch.object(
+                PhotoAPIService, "upload_session", return_value={"h": "upload_handle"}
+            ):
+                with patch.object(
+                    PhotoAPIService, "create_upload_session", return_value="0123456789"
+                ):
+                    response = self.request.post(
+                        self.url, body=self.body, uuid=str(self.template_message.uuid)
+                    )
+                    self.assertEqual(response.status_code, status.HTTP_200_OK)
+                    self.assertTrue(
+                        TemplateTranslation.objects.filter(
+                            template=self.template_message
+                        ).exists()
+                    )
 
-    # def test_create_template_translation_error(self):
-    #     with patch.object(
-    #         TemplateService,
-    #         "create_template_message",
-    #         return_value={"id": "0123456789", "status": "PENDING"},
-    #     ):
-    #         with patch.object(
-    #             PhotoAPIService,
-    #             "upload_session",
-    #             side_effect=Exception("Upload session failed"),
-    #         ):
-    #             with patch.object(
-    #                 PhotoAPIService,
-    #                 "create_upload_session",
-    #                 side_effect=Exception("Create upload session failed"),
-    #             ):
-    #                 with self.assertRaises(Exception):
-    #                     self.request.post(
-    #                         self.url,
-    #                         body=self.body,
-    #                         uuid=str(self.template_message.uuid),
-    #                     )
+    def test_create_template_translation_error(self):
+        with patch.object(
+            TemplateService,
+            "create_template_message",
+            return_value={"id": "0123456789", "status": "PENDING"},
+        ):
+            with patch.object(
+                PhotoAPIService,
+                "upload_session",
+                side_effect=Exception("Upload session failed"),
+            ):
+                with patch.object(
+                    PhotoAPIService,
+                    "create_upload_session",
+                    side_effect=Exception("Create upload session failed"),
+                ):
+                    with self.assertRaises(Exception):
+                        self.request.post(
+                            self.url,
+                            body=self.body,
+                            uuid=str(self.template_message.uuid),
+                        )
 
-    # def test_wpp_template_translation_without_token(self):
-    #     self.app.code = "wpp"
-    #     self.app.config = {"waba": {"id": "432321321"}}
-    #     self.app.save()
+    def test_wpp_template_translation_without_token(self):
+        self.app.code = "wpp"
+        self.app.config = {"waba": {"id": "432321321"}}
+        self.app.save()
 
-    #     with self.assertRaises(ValueError):
-    #         self.request.post(
-    #             self.url, body=self.body, uuid=str(self.template_message.uuid)
-    #         )
+        with self.assertRaises(ValueError):
+            self.request.post(
+                self.url, body=self.body, uuid=str(self.template_message.uuid)
+            )
 
-    #     self.app.config = {"waba": {"id": "432321321"}, "fb_access_token": "token"}
-    #     self.app.code = "wpp-cloud"
-    #     self.app.save()
+        self.app.config = {"waba": {"id": "432321321"}, "fb_access_token": "token"}
+        self.app.code = "wpp-cloud"
+        self.app.save()
 
 
 # TODO: Replace decorator path with service class instance
@@ -469,6 +487,40 @@ class WhatsappTemplateUpdateTestCase(APIBaseTestCase):
                 }
             ],
         )
+
+        self.app = App.objects.create(
+            config={"wa_waba_id": "432321321"},
+            project_uuid=uuid.uuid4(),
+            platform=App.PLATFORM_WENI_FLOWS,
+            code="wpp-cloud",
+            created_by=self.user,
+        )
+
+        self.template_message = TemplateMessage.objects.create(
+            name="teste",
+            app=self.app,
+            category="TRANSACTIONAL",
+            created_on=datetime.now(pytz.UTC),  # Ensuring timezone-aware datetime
+            template_type="TEXT",
+            created_by=self.user,
+        )
+
+        self.translation = TemplateTranslation.objects.create(
+            template=self.template_message,
+            status="PENDING",
+            body=self.validated_data.get("body", {}).get("text", ""),
+            footer=self.validated_data.get("footer", {}).get("text", ""),
+            language=self.validated_data.get("language"),
+            country=self.validated_data.get("country", "Brasil"),
+            variable_count=0,
+            message_template_id="0123456789",
+        )
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+
+        self.headers = {"Project-Uuid": str(self.app.project_uuid)}
         self.body = {
             "message_template_id": "0123456789",
             "header": {
@@ -487,34 +539,6 @@ class WhatsappTemplateUpdateTestCase(APIBaseTestCase):
                 }
             ],
         }
-
-        self.app = App.objects.create(
-            config={"wa_waba_id": "432321321"},
-            project_uuid=uuid.uuid4(),
-            platform=App.PLATFORM_WENI_FLOWS,
-            code="wpp-cloud",
-            created_by=User.objects.get_admin_user(),
-        )
-
-        self.template_message = TemplateMessage.objects.create(
-            name="teste",
-            app=self.app,
-            category="TRANSACTIONAL",
-            created_on=datetime.now(pytz.UTC),  # Ensuring timezone-aware datetime
-            template_type="TEXT",
-            created_by_id=User.objects.get_admin_user().id,
-        )
-
-        self.translation = TemplateTranslation.objects.create(
-            template=self.template_message,
-            status="PENDING",
-            body=self.validated_data.get("body", {}).get("text", ""),
-            footer=self.validated_data.get("footer", {}).get("text", ""),
-            language=self.validated_data.get("language"),
-            country=self.validated_data.get("country", "Brasil"),
-            variable_count=0,
-            message_template_id="0123456789",
-        )
 
         self.url = reverse(
             "app-template-detail",
@@ -548,67 +572,70 @@ class WhatsappTemplateUpdateTestCase(APIBaseTestCase):
     def view(self):
         return self.view_class.as_view({"patch": "partial_update"})
 
-    # def test_partial_update_template(self):
-    #     with patch.object(
-    #         TemplateService,
-    #         "update_template_message",
-    #         return_value={"id": "0123456789", "status": "PENDING"},
-    #     ):
-    #         with patch.object(
-    #             PhotoAPIService, "upload_session", return_value={"h": "upload_handle"}
-    #         ):
-    #             with patch.object(
-    #                 PhotoAPIService, "create_upload_session", return_value="0123456789"
-    #             ):
-    #                 response = self.request.patch(
-    #                     self.url,
-    #                     body=self.body,
-    #                     app_uuid=str(self.app.uuid),
-    #                     uuid=str(self.template_message.uuid),
-    #                 )
+    def test_partial_update_template(self):
+        with patch.object(
+            TemplateService,
+            "update_template_message",
+            return_value={"id": "0123456789", "status": "PENDING"},
+        ):
+            with patch.object(
+                PhotoAPIService, "upload_session", return_value={"h": "upload_handle"}
+            ):
+                with patch.object(
+                    PhotoAPIService, "create_upload_session", return_value="0123456789"
+                ):
+                    response = self.request.patch(
+                        self.url,
+                        body=self.body,
+                        app_uuid=str(self.app.uuid),
+                        uuid=str(self.template_message.uuid),
+                        headers=self.headers,
+                    )
 
-    #                 self.assertEqual(response.status_code, status.HTTP_200_OK)
-    #                 self.assertTrue(
-    #                     TemplateTranslation.objects.filter(
-    #                         template=self.template_message
-    #                     ).exists()
-    #                 )
+                    self.assertEqual(response.status_code, status.HTTP_200_OK)
+                    self.assertTrue(
+                        TemplateTranslation.objects.filter(
+                            template=self.template_message
+                        ).exists()
+                    )
 
-    # def test_partial_update_without_token(self):
-    #     self.app.code = "wpp"
-    #     self.app.config = {"waba": {"id": "432321321"}}
-    #     self.app.save()
+    def test_partial_update_without_token(self):
+        self.app.code = "wpp"
+        self.app.config = {"waba": {"id": "432321321"}}
+        self.app.save()
 
-    #     with self.assertRaises(ValidationError):
-    #         self.request.patch(
-    #             self.url,
-    #             body=self.body,
-    #             app_uuid=str(self.app.uuid),
-    #             uuid=str(self.template_message.uuid),
-    #         )
+        with self.assertRaises(ValidationError):
+            self.request.patch(
+                self.url,
+                body=self.body,
+                app_uuid=str(self.app.uuid),
+                uuid=str(self.template_message.uuid),
+                headers=self.headers,
+            )
 
-    #     self.app.config = {"waba": {"id": "432321321"}, "fb_access_token": "token"}
-    #     self.app.code = "wpp-cloud"
-    #     self.app.save()
+        self.app.config = {"waba": {"id": "432321321"}, "fb_access_token": "token"}
+        self.app.code = "wpp-cloud"
+        self.app.save()
 
-    # def test_partial_update_template_error(self):
-    #     with patch.object(
-    #         TemplateService,
-    #         "update_template_message",
-    #         return_value={"id": "0123456789", "status": "PENDING"},
-    #     ):
-    #         with patch.object(
-    #             PhotoAPIService,
-    #             "upload_session",
-    #             side_effect=Exception("Upload session failed"),
-    #         ):
-    #             with patch.object(
-    #                 PhotoAPIService, "create_upload_session", return_value="0123456789"
-    #             ):
-    #                 with self.assertRaises(Exception):
-    #                     self.request.patch(
-    #                         self.url,
-    #                         body=self.body,
-    #                         app_uuid=str(self.app.uuid),
-    #                         uuid=str(self.template_message.uuid),
-    #                     )
+    def test_partial_update_template_error(self):
+        with patch.object(
+            TemplateService,
+            "update_template_message",
+            return_value={"id": "0123456789", "status": "PENDING"},
+        ):
+            with patch.object(
+                PhotoAPIService,
+                "upload_session",
+                side_effect=Exception("Upload session failed"),
+            ):
+                with patch.object(
+                    PhotoAPIService, "create_upload_session", return_value="0123456789"
+                ):
+                    with self.assertRaises(Exception):
+                        self.request.patch(
+                            self.url,
+                            body=self.body,
+                            app_uuid=str(self.app.uuid),
+                            uuid=str(self.template_message.uuid),
+                            headers=self.headers,
+                        )

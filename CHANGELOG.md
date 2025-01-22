@@ -1,3 +1,57 @@
+v4.0.3
+----------
+* fix: first sync v2 with method data_processor.process_single_sku
+* fix: checks sync version on sync-sellers
+* fix: call initial_sync_products_completed after first sync and adjust validate_sync_status
+
+v4.0.2
+----------
+* fix: add redis mock to vtex service tests
+* feat: update webhook products in batch
+
+v4.0.1
+----------
+* feat: save updates products on redis queue
+
+v4.0.0
+----------
+* feat: add unit tests to business rules
+* feat: simulate cart from product_details.SkuSellers
+* feat: refactoring first_product_synchronization and add product update with batch products
+
+v3.9.13
+----------
+* feat: added gmail integration by oauth
+* feat: added generic email integration by form 
+
+v3.9.12
+----------
+* feat: add caching for App retrieval and filter specific sellers
+* fix: remove regular type to conversation type from FacebookConversationAPI
+
+v3.9.11
+----------
+* fix: returns operator token
+
+v3.9.10
+----------
+* feat: add startFullScreen and embedded fields to WWC
+
+v3.9.9
+----------
+* Remove UploadProduct constraint and create classmethod to UploadProduct model
+
+v3.9.8
+----------
+* feat: add view to return vtex integration details by project UUID
+* Fix Unit Tests And Refactor Request class
+* Groups log erros to facebook sync tasks
+* Adds new exclusion rules by categories to colombia
+
+v3.9.7
+----------
+* Vtex ads switch
+
 v3.9.6
 ----------
 * Add ProjectManagePermission to TemplateMessageViewSet

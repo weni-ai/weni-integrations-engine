@@ -182,3 +182,27 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
         headers = self._get_headers()
         response = self.make_request(url, method="GET", headers=headers)
         return response.json()
+
+    @retry_on_exception()
+    def simulate_cart_for_multiple_sellers(self, sku_id, sellers, domain):
+        """
+        Simulate cart for a SKU across multiple sellers in a single request.
+        """
+        cart_simulation_url = f"https://{domain}/api/checkout/pub/orderForms/simulation"
+        items = [{"id": sku_id, "quantity": 1, "seller": seller} for seller in sellers]
+        payload = {"items": items}
+
+        response = self.make_request(cart_simulation_url, method="POST", json=payload)
+        simulation_data = response.json()
+
+        results = {}
+        for item in simulation_data.get("items", []):
+            seller_id = item.get("seller")
+            results[seller_id] = {
+                "is_available": item.get("availability") == "available",
+                "price": item.get("price", 0),
+                "list_price": item.get("listPrice", 0),
+                "data": simulation_data,
+            }
+
+        return results

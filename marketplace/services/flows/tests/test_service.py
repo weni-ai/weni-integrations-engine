@@ -60,6 +60,9 @@ class MockFlowsClient:
     def update_vtex_ads_status(self, app, vtex_ads, action):
         return "Mocked Result"
 
+    def create_channel(self, user_email, project_uuid, data, channeltype_code):
+        return {"uuid": str(uuid.uuid4()), "name": "Test Channel"}
+
 
 class FlowsServiceTestCase(TestCase):
     def setUp(self):
@@ -203,3 +206,33 @@ class FlowsServiceTestCase(TestCase):
             self.app.project_uuid, self.app.created_by.email, action, vtex_ads
         )
         self.assertEqual(result, "Mocked Result")
+
+    def test_create_channel(self):
+        """
+        Test to verify that the create_channel method correctly delegates
+        the call to the client and returns the expected result.
+        """
+        user_email = "test@example.com"
+        project_uuid = "123456789"
+        data = {"key": "value"}
+        channeltype_code = "email"
+
+        # Patch the create_channel method of the mock_client
+        with patch.object(self.mock_client, "create_channel") as mock_method:
+            mock_method.return_value = {"uuid": "mock_uuid", "name": "Test Channel"}
+
+            # Call the create_channel method of the FlowsService
+            result = self.flows_service.create_channel(
+                user_email=user_email,
+                project_uuid=project_uuid,
+                data=data,
+                channeltype_code=channeltype_code,
+            )
+
+        # Verify that the mock client's create_channel was called with the correct parameters
+        mock_method.assert_called_once_with(
+            user_email, project_uuid, data, channeltype_code
+        )
+
+        # Assert that the result matches the mock return value
+        self.assertEqual(result, {"uuid": "mock_uuid", "name": "Test Channel"})

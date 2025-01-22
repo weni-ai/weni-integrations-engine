@@ -33,6 +33,8 @@ Example:
 
 from typing import List, Optional
 
+from django.core.cache import cache
+
 from marketplace.services.vtex.exceptions import CredentialsValidationError
 from marketplace.services.vtex.utils.data_processor import DataProcessor
 from marketplace.services.vtex.business.rules.rule_mappings import RULE_MAPPINGS
@@ -66,7 +68,16 @@ class PrivateProductsService:
         return self.client.list_active_sellers(domain)
 
     def list_all_active_products(self, domain):
-        return self.client.list_all_active_products(domain)
+        cache_key = f"active_products_{domain}"
+        cached_skus = cache.get(cache_key)
+        if cached_skus:
+            print(f"Returning cached SKUs for domain {domain}.")
+            return cached_skus
+
+        skus = self.client.list_all_active_products(domain)
+        cache.set(cache_key, skus, timeout=3600)  # Cache for 1 hour
+        print(f"Fetched SKUs for domain {domain} and stored in cache.")
+        return skus
 
     def list_all_products(
         self,
@@ -74,16 +85,27 @@ class PrivateProductsService:
         catalog: Catalog,
         sellers: Optional[List[str]] = None,
         update_product=False,
+        upload_on_sync=False,
+        sync_specific_sellers=False,
     ) -> List[FacebookProductDTO]:
+        """
+        Fetches and processes all products for the given catalog and sellers.
+        """
         config = catalog.vtex_app.config
         active_sellers = set(self.list_active_sellers(domain))
         if sellers is not None:
             valid_sellers = [seller for seller in sellers if seller in active_sellers]
             invalid_sellers = set(sellers) - active_sellers
+
             if invalid_sellers:
                 print(
                     f"Warning: Sellers IDs {invalid_sellers} are not active and will be ignored."
                 )
+            if not valid_sellers:
+                # No valid sellers, stop execution
+                print("No valid sellers available. Process will be stopped.")
+                return []
+
             sellers_ids = valid_sellers
         else:
             sellers_ids = list(active_sellers)
@@ -91,6 +113,7 @@ class PrivateProductsService:
         skus_ids = self.list_all_active_products(domain)
         rules = self._load_rules(config.get("rules", []))
         store_domain = config.get("store_domain")
+
         products_dto = self.data_processor.process_product_data(
             skus_ids=skus_ids,
             active_sellers=sellers_ids,
@@ -100,6 +123,8 @@ class PrivateProductsService:
             rules=rules,
             catalog=catalog,
             update_product=update_product,
+            upload_on_sync=upload_on_sync,
+            sync_specific_sellers=sync_specific_sellers,
         )
         return products_dto
 
@@ -110,6 +135,24 @@ class PrivateProductsService:
         return self.client.pub_simulate_cart_for_seller(
             sku_id, seller_id, domain
         )  # TODO: Change to pvt_simulate_cart_for_seller
+
+    def simulate_cart_for_multiple_sellers(self, sku_id, sellers, domain):
+        """
+        Simulate cart for a SKU across multiple sellers in batches of 200.
+        """
+        results = {}
+
+        # Split the sellers list into chunks of 200
+        for i in range(0, len(sellers), 200):
+            seller_chunk = sellers[i : i + 200]  # noqa: E203
+            # Call the client method for each chunk of sellers
+            chunk_results = self.client.simulate_cart_for_multiple_sellers(
+                sku_id, seller_chunk, domain
+            )
+            # Merge the results from the client into the overall results
+            results.update(chunk_results)
+
+        return results
 
     def update_webhook_product_info(
         self, domain: str, skus_ids: list, seller_ids: list, catalog: Catalog
@@ -126,6 +169,23 @@ class PrivateProductsService:
             rules=rules,
             catalog=catalog,
             update_product=True,
+        )
+
+        return updated_products_dto
+
+    def update_batch_webhook(
+        self, domain: str, sellers_skus: list, catalog: Catalog
+    ) -> List[FacebookProductDTO]:
+        config = catalog.vtex_app.config
+        rules = self._load_rules(config.get("rules", []))
+        store_domain = config.get("store_domain")
+        updated_products_dto = self.webhook_data_processor.process_sellers_skus_batch(
+            service=self,
+            domain=domain,
+            store_domain=store_domain,
+            rules=rules,
+            catalog=catalog,
+            seller_sku_pairs=sellers_skus,
         )
 
         return updated_products_dto

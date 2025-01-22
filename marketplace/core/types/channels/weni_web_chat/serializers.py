@@ -51,6 +51,8 @@ class ConfigSerializer(serializers.Serializer):
     customCss = serializers.CharField(required=False)
     timeBetweenMessages = serializers.IntegerField(default=1)
     tooltipMessage = serializers.CharField(required=False)
+    startFullScreen = serializers.BooleanField(default=False)
+    embedded = serializers.BooleanField(default=False)
 
     def to_internal_value(self, data):
         self.app = self.parent.instance

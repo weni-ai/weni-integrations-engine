@@ -239,3 +239,16 @@ class CatalogsRequestsInterface(ABC):
     @abstractmethod
     def get_uploads_in_progress_by_feed(self, feed_id: str) -> Any:
         pass
+
+    @abstractmethod
+    def upload_items_batch(
+        self, catalog_id: str, payload: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Uploads a batch of items to a catalog.
+
+        :param catalog_id: The ID of the catalog.
+        :param payload: The payload containing batch requests.
+        :return: A dictionary with the response from the API.
+        """
+        pass
