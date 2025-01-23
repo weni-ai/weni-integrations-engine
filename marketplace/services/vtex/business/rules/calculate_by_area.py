@@ -4,7 +4,7 @@ from typing import Union
 
 
 class CalculateByArea(Rule):
-    class apply(self, product: FacebookProductDTO, **kwargs):
+    def apply(self, product: FacebookProductDTO, **kwargs) -> bool:
         if self._calculate_by_area(product):
             unit_multiplier = self._get_multiplier(product)
             area = _get_area(product)
