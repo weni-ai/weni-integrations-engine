@@ -131,6 +131,11 @@ class WhatsAppCloudViewSet(
             wa_user_token=user_access_token,
         )
 
+        print('CONFIG:' ,config)
+        print('USER_EMAIL: ' ,request.user)
+        print('project_uuid', project_uuid)
+        print('phone_number_id', phone_number_id)
+
         flows_service = FlowsService(client=FlowsClient())
         channel = flows_service.create_wac_channel(
             request.user.email, project_uuid, phone_number_id, config

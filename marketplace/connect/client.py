@@ -81,6 +81,7 @@ class ConnectProjectClient(ConnectAuth):  # TODO: change class name to FlowsREST
         response = requests.post(
             url=url, json=payload, headers=self.auth_header(), timeout=60
         )
+        print('RESPONSE: ', response.json())
         return response.json()
 
     def release_channel(
