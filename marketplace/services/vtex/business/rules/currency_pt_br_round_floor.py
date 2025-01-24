@@ -4,10 +4,11 @@ from marketplace.services.vtex.utils.data_processor import FacebookProductDTO
 from decimal import Decimal, ROUND_FLOOR
 
 
-class CurrencyBRLRoudingDown(Rule):
+class CurrencyBRLRoudingFloor(Rule):
+
     def apply(self, product: FacebookProductDTO, **kwargs) -> bool:
         product.price = self.format_price(product.price)
-        project.sale_price = self.format_price(product.sale_price)
+        product.sale_price = self.format_price(product.sale_price)
         return True
 
     @staticmethod
