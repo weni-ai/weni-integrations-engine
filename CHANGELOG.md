@@ -1,3 +1,7 @@
+v4.0.5
+----------
+* feat: new rules to calculate by m² and format price with round floor
+
 v4.0.4
 ----------
 * feat: return flow_object_uuid and app_uuid on create wpp-cloud
@@ -282,7 +286,7 @@ v3.3.4
 
 v3.3.3
 ----------
-* Fixing the order of parameters for PhotoAPIRequest
+* Fixing75 the order of parameters for PhotoAPIRequest
 * Upgrade python version from 3.8.x to 3.9.x 
 
 v3.3.2
@@ -345,7 +349,7 @@ v3.1.1
 * Template analytics viewset and services
 * Adds try except to continue synchronization
 * Adds tests to facebook service
-* Create tests to flows service
+* Create75 tests to flows service
 
 v3.1.0
 ----------
@@ -356,7 +360,7 @@ v3.0.2
 * Handle exceptions to sentry and dlx in TemplateTypeConsumer
 * Create project authorization with role ADMIN when create project
 
-v3.0.1
+v3.0.175
 ----------
 * Set app.configured to True on create/configure externals apptype
 * Create tests to check_apps_uncreated_on_flow task
