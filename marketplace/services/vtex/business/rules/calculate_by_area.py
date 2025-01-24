@@ -10,10 +10,11 @@ class CalculateByArea(Rule):
             area = _get_area(product)
             product.price *= unit_multiplier
             product.sale_price *= unit_muliplier
+            print(f"price: {product.price}\nsale_price: {product.sale_price}")
         return True
 
     def _calculate_by_area(self, product: FacebookProductDTO):
-        measurementUnit = product.get("MeasurementUnit", "")
+        measurementUnit = product.product_details.get("MeasurementUnit", "")
         if len(messurementUnit) > 0 and mesurementUnit == 'm²':
             return True
         return False
