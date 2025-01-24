@@ -10,6 +10,8 @@ from .use_extra_imgs import UseExtraImgs
 from .use_rich_description import UseRichDescription
 from .set_default_image_url import SetDefaultImageURL
 from .exclude_categories_co import ExcludeCustomizedCategoriesCO
+from .calculate_by_area import CalculateByArea
+from .currency_pt_br_round_floor import CurrencyBRLRoudingFloor
 
 
 """
@@ -29,4 +31,6 @@ RULE_MAPPINGS = {
     "use_rich_description": UseRichDescription,
     "set_default_image_url": SetDefaultImageURL,
     "exclude_categories_co": ExcludeCustomizedCategoriesCO,
+    "calculate_by_area": CalculateByArea,
+    "currency_pt_br_round_floor": CurrencyBRLRoudingFloor,
 }
