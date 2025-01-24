@@ -1,6 +1,5 @@
 from .interface import Rule
 from marketplace.services.vtex.utils.data_processor import FacebookProductDTO
-from typing import Union
 
 
 class CalculateByArea(Rule):
