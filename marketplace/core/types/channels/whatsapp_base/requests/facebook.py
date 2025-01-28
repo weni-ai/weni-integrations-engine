@@ -79,7 +79,7 @@ class FacebookConversationAPI(object):  # TODO: Use BaseFacebookBaseApi
         fields += f".end({end})"
         fields += ".granularity(DAILY)"
         fields += ".phone_numbers([])"
-        fields += '.conversation_types([])'
+        fields += ".conversation_types([])"
         fields += '.dimensions(["conversation_type", "conversation_direction", "conversation_category"])'
 
         return fields

@@ -12,7 +12,7 @@ class CalculateByArea(Rule):
 
     def _calculate_by_area(self, product: FacebookProductDTO):
         measurementUnit = product.product_details.get("MeasurementUnit", "")
-        if len(measurementUnit) > 0 and measurementUnit == 'm²':
+        if len(measurementUnit) > 0 and measurementUnit == "m²":
             return True
         return False
 
