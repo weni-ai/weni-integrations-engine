@@ -254,10 +254,6 @@ def task_update_vtex_products(**kwargs):
             )
             return
 
-        close_old_connections()
-        # Webhook Log
-        WebhookLog.objects.create(sku_id=sku_id, data=webhook, vtex_app=vtex_app)
-
     except Exception as e:
         logger.error(
             f"An error occurred during the updating Webhook vtex products for app {app_uuid}, {str(e)}"
@@ -379,6 +375,9 @@ def send_sync(app_uuid: str, webhook: dict):
 
     # Check if the app uses specific queue
     celery_queue = app.config.get("celery_queue_name", "product_synchronization")
+
+    # Webhook Log
+    WebhookLog.objects.create(sku_id=sku_id, data=webhook, vtex_app=app)
 
     if use_sync_v2:
         logger.info(f"App {app_uuid} uses Sync v2. Enqueuing for batch update.")
@@ -562,12 +561,6 @@ def task_update_batch_products(app_uuid: str, seller: str, sku_id: str):
                 f"No products to process for App: {app_uuid}, SKU: {sku_id}. Task ending."
             )
             return
-
-        # Log webhook after successful processing
-        close_old_connections()
-        WebhookLog.objects.create(
-            sku_id=sku_id, data={"IdSku": sku_id, "An": seller}, vtex_app=vtex_app
-        )
 
     except Exception as e:
         logger.error(
