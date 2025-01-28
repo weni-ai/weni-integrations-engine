@@ -26,7 +26,7 @@ class GmailSerializer(serializers.Serializer):
             "smtp_host": "smtp.gmail.com",
             "smtp_port": 587,
             "imap_host": "imap.gmail.com",
-            "imap_port": 993
+            "imap_port": 993,
         }
         base_data.update(
             {
