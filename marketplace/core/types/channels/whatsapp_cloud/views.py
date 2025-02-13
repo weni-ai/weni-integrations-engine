@@ -2,7 +2,7 @@ import string
 
 from typing import TYPE_CHECKING
 
-from rest_framework import views
+from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from rest_framework import status
@@ -226,7 +226,7 @@ class WhatsAppCloudViewSet(
         return Response(status=response.status_code)
 
 
-class WhatsAppCloudInsights(views.APIView):
+class WhatsAppCloudInsights(APIView):
     permission_classes = [ProjectManagePermission | IsCRMUser]
 
     def get(self, request, *args, **kwargs):
