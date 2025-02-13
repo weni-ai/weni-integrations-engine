@@ -239,3 +239,4 @@ class WhatsAppCloudInsights(views.APIView):
                     "phone_number": app.config.get("phone_number")
                 }
             )
+        return Response({"data": response}, status=status.HTTP_200_OK)
