@@ -28,7 +28,7 @@ urlpatterns.append(
     )
 )
 
-url_patterns.append(
+urlpatterns.append(
     path(
         "apptypes/wpp-cloud/list_wpp-cloud/<uuid:project_uuid>/",
         WhatsAppCloudInsights.as_view(),
