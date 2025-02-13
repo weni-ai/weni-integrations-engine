@@ -223,3 +223,19 @@ class WhatsAppCloudViewSet(
         )
 
         return Response(status=response.status_code)
+
+
+class WhatsAppCloudInsights(views.APIView):
+    permission_classes = [ProjectManagePermission | IsCRMUser]
+
+    def get(self, request, *args, **kwargs):
+        project_uuid = request.query_params.get("project_uuid")
+        apps = App.objects.filter(project_uuid=project_uuid, code="wpp-cloud")
+        response = []
+        for app in apps:
+            response.append(
+                {
+                    "waba_id": app.config.get("wa_waba_id", None),
+                    "phone_number": app.config.get("phone_number")
+                }
+            )
