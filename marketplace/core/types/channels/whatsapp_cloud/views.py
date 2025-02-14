@@ -23,12 +23,12 @@ from marketplace.services.facebook.service import (
     BusinessMetaService,
 )
 from marketplace.services.flows.service import FlowsService
+from marketplace.internal.permissions import CanCommunicateInternally
 
 from ..whatsapp_base import mixins
 from ..whatsapp_base.serializers import WhatsAppSerializer
 from .serializers import WhatsAppCloudConfigureSerializer
 from .facades import CloudProfileFacade, CloudProfileContactFacade
-
 
 if TYPE_CHECKING:
     from rest_framework.request import Request  # pragma: no cover
@@ -227,7 +227,7 @@ class WhatsAppCloudViewSet(
 
 
 class WhatsAppCloudInsights(APIView):
-    permission_classes = [ProjectManagePermission | IsCRMUser]
+    permission_classes = [CanCommunicateInternally]
 
     def get(self, request, *args, **kwargs):
         project_uuid = request.query_params.get("project_uuid")
