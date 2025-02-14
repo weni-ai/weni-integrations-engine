@@ -4,7 +4,6 @@ from django.conf import settings
 
 from marketplace.clients.base import RequestClient
 from marketplace.clients.decorators import retry_on_exception
-from marketplace.clients.vtex.decorator import rate_limit_and_retry_on_exception
 
 
 class VtexAuthorization(RequestClient):
@@ -109,10 +108,7 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
 
         return active_sellers
 
-    # API throttling
-    @rate_limit_and_retry_on_exception(
-        get_domain_from_args, calls_per_period=VTEX_CALLS_PER_PERIOD, period=VTEX_PERIOD
-    )
+    @retry_on_exception()
     def get_product_details(self, sku_id, domain):
         url = (
             f"https://{domain}/api/catalog_system/pvt/sku/stockkeepingunitbyid/{sku_id}"
@@ -121,10 +117,7 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
         response = self.make_request(url, method="GET", headers=headers)
         return response.json()
 
-    # API throttling
-    @rate_limit_and_retry_on_exception(
-        get_domain_from_args, calls_per_period=VTEX_CALLS_PER_PERIOD, period=VTEX_PERIOD
-    )
+    @retry_on_exception()
     def pub_simulate_cart_for_seller(self, sku_id, seller_id, domain):
         cart_simulation_url = f"https://{domain}/api/checkout/pub/orderForms/simulation"
         payload = {"items": [{"id": sku_id, "quantity": 1, "seller": seller_id}]}
@@ -148,11 +141,15 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
                 "list_price": 0,
             }
 
-    @retry_on_exception()
     def list_all_active_products(self, domain):
+        """Retrieves all active product SKUs from VTEX catalog with progress tracking."""
         unique_skus = set()
         step = 250
         current_from = 1
+        total_processed = 0  # Tracks cumulative processed SKUs
+        print_interval = 10_000  # Progress update interval
+
+        headers = self._get_headers()
 
         while True:
             current_to = current_from + step - 1
@@ -160,23 +157,40 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
                 f"https://{domain}/api/catalog_system/pvt/products/"
                 f"GetProductAndSkuIds?_from={current_from}&_to={current_to}&status=1"
             )
-            headers = self._get_headers()
-            response = self.make_request(url, method="GET", headers=headers)
+
+            # Fetch product batch with retry mechanism
+            response = self._fetch_product_batch_with_retry(url, headers)
 
             data = response.json().get("data", {})
             if not data:
                 break
 
+            # Process batch
+            batch_sku_count = sum(len(skus) for _, skus in data.items())
+            total_processed += batch_sku_count
+
+            # Progress tracking
+            if (total_processed // print_interval) > (
+                (total_processed - batch_sku_count) // print_interval
+            ):
+                print(
+                    f"Processed {print_interval * (total_processed // print_interval):,} SKUs..."
+                )
+
             for _, skus in data.items():
                 unique_skus.update(skus)
-            current_from += step
 
+            current_from += step  # Move to the next batch
+
+        print(f"Total SKUs processed: {total_processed:,}")
         return list(unique_skus)
 
-    # API throttling
-    @rate_limit_and_retry_on_exception(
-        get_domain_from_args, calls_per_period=VTEX_CALLS_PER_PERIOD, period=VTEX_PERIOD
-    )
+    @retry_on_exception()
+    def _fetch_product_batch_with_retry(self, url, headers):
+        """Fetches a batch of product SKUs from VTEX with automatic retries on failure."""
+        return self.make_request(url, method="GET", headers=headers)
+
+    @retry_on_exception()
     def get_product_specification(self, product_id, domain):
         url = f"https://{domain}/api/catalog_system/pvt/products/{product_id}/specification"
         headers = self._get_headers()
