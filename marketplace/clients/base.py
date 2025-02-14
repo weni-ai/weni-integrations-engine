@@ -64,6 +64,10 @@ class RequestClient:
         return response
 
     def _generate_log(self, response, url, method, headers, json, data, params, files):
+        if response is None:
+            logger.error("Response object is None, request failed.")
+            return
+
         request_details = {
             "method": method,
             "url": url,
@@ -79,9 +83,9 @@ class RequestClient:
             "body": response.text,
             "url": response.url,
         }
+
         logger.error(
-            f"Error on request url {url}",
-            exc_info=True,
+            f"Response:[{str(response.status_code)}] Error on request url {url}",
             stack_info=False,
             extra={
                 "request_details": request_details,

@@ -58,6 +58,7 @@ class RateLimiter:
             self.redis.delete(key)
 
 
+# TODO: Probably remove this method
 def rate_limit_and_retry_on_exception(domain_key_func, calls_per_period, period):
     """
     Decorator to enforce rate limiting and retries.
@@ -118,7 +119,8 @@ def rate_limit_and_retry_on_exception(domain_key_func, calls_per_period, period)
                             logger.error(e)
 
                 print(
-                    f"Retrying... Attempt {attempts + 1} after {sleep_time} seconds, in {func.__name__}:"
+                    f"Response:[{str(status_code)}] Retrying... "
+                    f"Attempt {attempts + 1} after {sleep_time} seconds, in {func.__name__}:"
                 )
                 time.sleep(sleep_time)
                 attempts += 1

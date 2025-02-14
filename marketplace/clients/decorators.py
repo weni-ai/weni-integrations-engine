@@ -6,7 +6,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def retry_on_exception(max_attempts=8, start_sleep_time=1, factor=2):
+def retry_on_exception(max_attempts=8, start_sleep_time=2, factor=2):
     def decorator_retry(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -29,28 +29,28 @@ def retry_on_exception(max_attempts=8, start_sleep_time=1, factor=2):
                         print(f"A 500 error occurred: {str(e)}. Retrying...")
                         raise
 
-                    if attempts >= 5:
+                    if attempts >= 2:
                         if status_code == 429:
-                            print(f"Too many requests: {str(e)}. Retrying...")
+                            print(f"{str(e)}. Retrying...")
                         elif status_code == 408:
-                            print(f"Timeout error: {str(e)}. Retrying...")
+                            print(f"{str(e)}. Retrying...")
                         else:
                             print(
                                 f"Unexpected error: [{str(e)}]. status: {status_code}"
                             )
                             logger.error(e)
 
-                if attempts >= 5:
-                    print(
-                        f"Retrying... Attempt {attempts + 1} after {sleep_time} seconds, in {func.__name__}:"
-                    )
+                print(
+                    f"Response:[{str(status_code)}] Retrying... "
+                    f"Attempt {attempts + 1} after {sleep_time} seconds, in {func.__name__}:"
+                )
 
                 time.sleep(sleep_time)
                 attempts += 1
                 sleep_time *= factor
 
             message = (
-                f"Rate limit exceeded, max retry attempts reached. Last error in {func.__name__}:"
+                f"Rate limit exceeded, max retry attempts reached. Last error in function ({func.__name__})"
                 f"Last error:{last_exception}, after {attempts} attempts."
             )
 
