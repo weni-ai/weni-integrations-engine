@@ -1,3 +1,7 @@
+v4.0.7
+----------
+* fix: adjust list all active products
+
 v4.0.6
 ----------
 * fix: move webhook logs to send_sync
