@@ -229,8 +229,7 @@ class WhatsAppCloudViewSet(
 class WhatsAppCloudInsights(APIView):
     permission_classes = [CanCommunicateInternally]
 
-    def get(self, request, *args, **kwargs):
-        project_uuid = request.query_params.get("project_uuid")
+    def get(self, request, project_uuid, *args, **kwargs):
         apps = App.objects.filter(project_uuid=project_uuid, code="wpp-cloud")
         response = []
         for app in apps:
