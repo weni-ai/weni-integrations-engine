@@ -96,12 +96,16 @@ class PrivateProductsServiceTestCase(TestCase):
     @patch("django.core.cache.cache.get")
     def test_list_all_products(self, mock_cache_get):
         self.service.data_processor.process_product_data = Mock(return_value=[])
-        self.mock_client.list_all_active_products = Mock(return_value=["sku1", "sku2"])
+        self.mock_client.list_all_products_sku_ids = Mock(return_value=["sku1", "sku2"])
+        self.mock_client.list_active_sellers = Mock(return_value=["seller1", "seller2"])
         mock_cache_get.return_value = ["sku1", "sku2"]
 
         products = self.service.list_all_products("valid.domain.com", self.mock_catalog)
 
-        mock_cache_get.assert_called_once_with("active_products_valid.domain.com")
+        self.mock_client.list_all_products_sku_ids.assert_called_once_with(
+            "valid.domain.com"
+        )
+        self.mock_client.list_active_sellers.assert_called_once_with("valid.domain.com")
         self.assertIsInstance(products, list)
 
     def test_get_product_details(self):
@@ -151,7 +155,7 @@ class PrivateProductsServiceTestCase(TestCase):
     def test_list_all_products_with_invalid_sellers(self):
         sellers = ["seller1", "invalid_seller"]
         self.service.list_active_sellers = Mock(return_value=["seller1", "seller2"])
-        self.service.list_all_active_products = Mock(return_value=["sku1", "sku2"])
+        self.service.list_all_skus_ids = Mock(return_value=["sku1", "sku2"])
         self.service.data_processor.process_product_data = Mock(return_value=[])
 
         with patch("builtins.print") as mock_print:

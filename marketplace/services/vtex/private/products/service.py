@@ -79,6 +79,9 @@ class PrivateProductsService:
         print(f"Fetched SKUs for domain {domain} and stored in cache.")
         return skus
 
+    def list_all_skus_ids(self, domain):
+        return self.client.list_all_products_sku_ids(domain)
+
     def list_all_products(
         self,
         domain: str,
@@ -110,7 +113,7 @@ class PrivateProductsService:
         else:
             sellers_ids = list(active_sellers)
 
-        skus_ids = self.list_all_active_products(domain)
+        skus_ids = self.list_all_skus_ids(domain)
         rules = self._load_rules(config.get("rules", []))
         store_domain = config.get("store_domain")
 
