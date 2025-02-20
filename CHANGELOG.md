@@ -1,3 +1,7 @@
+v4.0.8
+----------
+* fix: change skus listing route
+
 v4.0.7
 ----------
 * fix: adjust list all active products
