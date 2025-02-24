@@ -1,3 +1,7 @@
+v4.0.9
+----------
+* feat: adding new endpoint to list the waba data and phone number of a project
+
 v4.0.8
 ----------
 * fix: change skus listing route
