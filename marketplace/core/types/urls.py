@@ -2,6 +2,7 @@ from django.urls import path, include
 from rest_framework_nested import routers
 
 from marketplace.core import types
+from marketplace.core.types.channels.whatsapp_cloud.views import WhatsAppCloudInsights
 
 
 urlpatterns = []
@@ -24,8 +25,17 @@ urlpatterns.append(
     path(
         "apptypes/wpp-cloud/",
         include("marketplace.core.types.channels.whatsapp_cloud.catalogs.urls"),
-    ),
+    )
 )
+
+urlpatterns.append(
+    path(
+        "apptypes/wpp-cloud/list_wpp-cloud/<uuid:project_uuid>/",
+        WhatsAppCloudInsights.as_view(),
+        name="wpp-cloud-insights"
+    )
+)
+
 
 # VTEX
 urlpatterns.append(

@@ -2,6 +2,7 @@ import string
 
 from typing import TYPE_CHECKING
 
+from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from rest_framework import status
@@ -22,12 +23,12 @@ from marketplace.services.facebook.service import (
     BusinessMetaService,
 )
 from marketplace.services.flows.service import FlowsService
+from marketplace.internal.permissions import CanCommunicateInternally
 
 from ..whatsapp_base import mixins
 from ..whatsapp_base.serializers import WhatsAppSerializer
 from .serializers import WhatsAppCloudConfigureSerializer
 from .facades import CloudProfileFacade, CloudProfileContactFacade
-
 
 if TYPE_CHECKING:
     from rest_framework.request import Request  # pragma: no cover
@@ -223,3 +224,19 @@ class WhatsAppCloudViewSet(
         )
 
         return Response(status=response.status_code)
+
+
+class WhatsAppCloudInsights(APIView):
+    permission_classes = [CanCommunicateInternally]
+
+    def get(self, request, project_uuid, *args, **kwargs):
+        apps = App.objects.filter(project_uuid=project_uuid, code="wpp-cloud")
+        response = []
+        for app in apps:
+            response.append(
+                {
+                    "waba_id": app.config.get("wa_waba_id", None),
+                    "phone_number": app.config.get("phone_number")
+                }
+            )
+        return Response({"data": response}, status=status.HTTP_200_OK)
