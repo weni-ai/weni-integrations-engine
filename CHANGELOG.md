@@ -1,3 +1,8 @@
+v4.0.10
+----------
+* feature: add route to create library template messages
+* Adding a view to retrieve WhatsApp Cloud app UUID and channel UUID
+
 v4.0.9
 ----------
 * feat: adding new endpoint to list the waba data and phone number of a project
