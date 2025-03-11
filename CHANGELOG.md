@@ -1,3 +1,8 @@
+
+v4.0.11
+----------
+* feat: add logger info to update template status task 
+
 v4.0.10
 ----------
 * feature: add route to create library template messages
