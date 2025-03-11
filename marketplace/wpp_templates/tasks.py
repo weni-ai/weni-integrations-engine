@@ -201,6 +201,7 @@ def update_templates_by_webhook(**kwargs):  # pragma: no cover
         "message_template_status_update",
     ]
     webhook_data = kwargs.get("webhook_data")
+    logger.info(f"Update templates by webhook data received: {webhook_data}")
     for entry in webhook_data.get("entry", []):
         whatsapp_business_account_id = entry.get("id")
         for change in entry.get("changes", []):
@@ -215,3 +216,5 @@ def update_templates_by_webhook(**kwargs):  # pragma: no cover
                 )
             else:
                 logger.info(f"Event: {field}, not mapped to usage")
+
+    logger.info("-" * 50)
