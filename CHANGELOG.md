@@ -1,4 +1,8 @@
 
+v4.0.12
+----------
+* feat: create library template objects on db
+
 v4.0.11
 ----------
 * feat: add logger info to update template status task 
