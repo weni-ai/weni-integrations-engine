@@ -16,6 +16,11 @@ from marketplace.services.facebook.service import (
     CloudProfileService,
     BusinessMetaService,
 )
+from marketplace.wpp_templates.models import (
+    TemplateMessage,
+    TemplateTranslation,
+    TemplateButton,
+)
 
 
 User = get_user_model()
@@ -152,6 +157,17 @@ class MockClient:
 
     def get_uploads_in_progress_by_feed(self, feed_id):
         return "upload_id"
+
+    def create_library_template_message(self, waba_id, template_data):
+        """
+        Mock method for creating library template messages
+        Returns a mock response similar to the Facebook API
+        """
+        return {
+            "id": "0123456789",
+            "status": "APPROVED",
+            "category": template_data.get("category", "UTILITY"),
+        }
 
 
 class TestFacebookService(TestCase):
@@ -355,8 +371,21 @@ class TestFacebookCreateDeleteService(TestCase):
 
 class TestTemplateService(TestCase):
     def setUp(self):
+        self.user = User.objects.create(email="template-test@example.com")
         self.client = MockClient()
         self.service = TemplateService(client=self.client)
+
+        self.app = App.objects.create(
+            code="wpp-cloud",
+            created_by=self.user,
+            project_uuid=str(uuid.uuid4()),
+            platform=App.PLATFORM_WENI_FLOWS,
+            config={
+                "wa_business_id": "business-id",
+                "wa_waba_id": "test_waba_id",
+                "wa_phone_number_id": "phone-id",
+            },
+        )
 
     def test_create_template_message(self):
         response = self.service.create_template_message(
@@ -389,6 +418,162 @@ class TestTemplateService(TestCase):
     def test_delete_template_message(self):
         response = self.service.delete_template_message("waba_id", "name")
         self.assertEqual(response, {"success": True})
+
+    def test_create_simple_template_without_buttons(self):
+        """
+        Test creating a simple template without buttons (purchase_receipt_1)
+        """
+        template_data = {
+            "library_template_name": "purchase_receipt_1",
+            "name": "weni_purchase_receipt_1_20250311142829",
+            "language": "pt_BR",
+            "category": "UTILITY",
+        }
+
+        self.service.create_library_template_message(self.app, template_data)
+
+        # Verify if the template was created in the database
+        template = TemplateMessage.objects.get(name=template_data["name"])
+        self.assertEqual(template.category, "UTILITY")
+        self.assertEqual(template.template_type, "TEXT")
+
+        # Verify if the translation was created
+        translation = TemplateTranslation.objects.get(template=template)
+        self.assertEqual(translation.language, "pt_BR")
+        self.assertEqual(translation.message_template_id, "0123456789")
+
+        # Verify if no buttons were created
+        self.assertEqual(
+            TemplateButton.objects.filter(translation=translation).count(), 0
+        )
+
+    def test_create_template_with_url_button(self):
+        """
+        Test creating a template with URL button (payment_confirmation_2)
+        """
+        template_data = {
+            "library_template_name": "payment_confirmation_2",
+            "name": "weni_payment_confirmation_2_20250311142829",
+            "language": "pt_BR",
+            "category": "UTILITY",
+            "library_template_button_inputs": [
+                {
+                    "type": "URL",
+                    "url": {
+                        "base_url": "https://recorrenciacharlie.myvtex.com/account#/orders/",
+                        "url_suffix_example": "https://recorrenciacharlie.myvtex.com/account#/orders/1234567891230-01",
+                    },
+                }
+            ],
+        }
+
+        self.service.create_library_template_message(self.app, template_data)
+
+        template = TemplateMessage.objects.get(name=template_data["name"])
+        translation = TemplateTranslation.objects.get(template=template)
+
+        # Verify if the button was created correctly
+        button = TemplateButton.objects.get(translation=translation)
+        self.assertEqual(button.button_type, "URL")
+        self.assertEqual(
+            button.url, "https://recorrenciacharlie.myvtex.com/account#/orders/"
+        )
+
+    def test_create_order_management_template(self):
+        """
+        Test creating order management template
+        """
+        template_data = {
+            "library_template_name": "order_management_2",
+            "name": "weni_order_management_2_20250311142829",
+            "language": "pt_BR",
+            "category": "UTILITY",
+            "library_template_button_inputs": [
+                {
+                    "type": "URL",
+                    "url": {
+                        "base_url": "https://recorrenciacharlie.myvtex.com/account#/orders/",
+                        "url_suffix_example": "https://recorrenciacharlie.myvtex.com/account#/orders/1234567891230-01",
+                    },
+                }
+            ],
+        }
+
+        self.service.create_library_template_message(self.app, template_data)
+
+        template = TemplateMessage.objects.get(name=template_data["name"])
+        self.assertEqual(template.category, "UTILITY")
+
+    def test_create_order_canceled_template(self):
+        """
+        Test creating order canceled template
+        """
+        template_data = {
+            "library_template_name": "order_canceled_3",
+            "name": "weni_order_canceled_3_20250311142829",
+            "language": "pt_BR",
+            "category": "UTILITY",
+            "library_template_button_inputs": [
+                {
+                    "type": "URL",
+                    "url": {
+                        "base_url": "https://recorrenciacharlie.myvtex.com/account#/orders/",
+                        "url_suffix_example": "https://recorrenciacharlie.myvtex.com/account#/orders/1234567891230-01",
+                    },
+                }
+            ],
+        }
+
+        self.service.create_library_template_message(self.app, template_data)
+
+        template = TemplateMessage.objects.get(name=template_data["name"])
+        translation = TemplateTranslation.objects.get(template=template)
+        self.assertEqual(translation.status, "APPROVED")
+
+    def test_create_transaction_alert_template(self):
+        """
+        Test creating transaction alert template without buttons
+        """
+        template_data = {
+            "library_template_name": "purchase_transaction_alert",
+            "name": "weni_purchase_transaction_alert_20250311142829",
+            "language": "pt_BR",
+            "category": "UTILITY",
+        }
+
+        self.service.create_library_template_message(self.app, template_data)
+
+        template = TemplateMessage.objects.get(name=template_data["name"])
+        translation = TemplateTranslation.objects.get(template=template)
+
+        # Verify if no buttons were created
+        self.assertEqual(
+            TemplateButton.objects.filter(translation=translation).count(), 0
+        )
+
+    def test_client_call_validation(self):
+        """
+        Test if the client is being called with correct parameters
+        """
+        template_data = {
+            "library_template_name": "purchase_receipt_1",
+            "name": "weni_purchase_receipt_1_20250311142829",
+            "language": "pt_BR",
+            "category": "UTILITY",
+        }
+
+        # Create a mock for the method create_library_template_message
+        with patch.object(
+            self.client,
+            "create_library_template_message",
+            wraps=self.client.create_library_template_message,
+        ) as mock_create:
+            self.service.create_library_template_message(self.app, template_data)
+
+            # Verify if the client was called correctly
+            mock_create.assert_called_once_with(
+                waba_id="test_waba_id", template_data=template_data
+            )
 
 
 class TestPhotoAPIService(TestCase):

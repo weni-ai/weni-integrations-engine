@@ -14,6 +14,11 @@ from marketplace.interfaces.facebook.interfaces import (
     BusinessMetaRequestsInterface,
     CatalogsRequestsInterface,
 )
+from marketplace.wpp_templates.models import (
+    TemplateButton,
+    TemplateMessage,
+    TemplateTranslation,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -253,15 +258,74 @@ class TemplateService:
         return text.strip()
 
     def create_library_template_message(
-        self,
-        app: App,
-        template_data: dict,
+        self, app: App, template_data: dict
     ) -> Dict[str, Any]:
+        """Creates a library template in Meta and saves it to the database."""
         waba_id = app.config["wa_waba_id"]
-        return self.client.create_library_template_message(
-            waba_id=waba_id,
-            template_data=template_data,
+
+        # Send the request to create the template in the Facebook API
+        response_data = self.client.create_library_template_message(
+            waba_id=waba_id, template_data=template_data
         )
+
+        # Save to the database based on the input data
+        template_message = self.save_template_in_db(app, template_data, response_data)
+
+        return {
+            "message": "Library template created successfully.",
+            "template_uuid": template_message.uuid,
+        }
+
+    def save_template_in_db(self, app: App, template_data: dict, response_data: dict):
+        """Creates or updates database objects after successful external API call."""
+        template_name = template_data["name"]
+        category = response_data["category"]
+        template_language = template_data["language"]
+        message_template_id = response_data["id"]
+        button_inputs = template_data.get("library_template_button_inputs", [])
+
+        # Create or update the TemplateMessage
+        found_template, _created = TemplateMessage.objects.get_or_create(
+            app=app,
+            name=template_name,
+            defaults={"category": category, "template_type": "TEXT"},
+        )
+
+        found_template.category = category
+        found_template.save()
+
+        # Create or update the Template Translation
+        returned_translation, _created = TemplateTranslation.objects.get_or_create(
+            template=found_template,
+            language=template_language,
+            defaults={
+                "status": response_data["status"],
+                "message_template_id": message_template_id,
+                "body": "",
+                "footer": "",
+                "variable_count": 0,
+                "country": "Brazil",
+            },
+        )
+
+        returned_translation.status = response_data["status"]
+        returned_translation.message_template_id = message_template_id
+        returned_translation.save()
+
+        # Create Buttons, if they exist
+        for button in button_inputs:
+            TemplateButton.objects.get_or_create(
+                translation=returned_translation,
+                button_type=button["type"],
+                url=button["url"]["base_url"] if "url" in button else None,
+                example=button["url"]["url_suffix_example"]
+                if "url" in button
+                else None,
+                text=button.get("text", ""),
+                phone_number=None,
+            )
+
+        return found_template
 
 
 class PhotoAPIService:

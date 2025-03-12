@@ -375,7 +375,7 @@ class TemplatesRequests(
             url, method="POST", json=template_data, headers=self._get_headers()
         )
 
-        return response
+        return response.json()
 
     def get_template_analytics(self, waba_id, fields):
         url = f"{self.get_url}/{waba_id}/template_analytics"
