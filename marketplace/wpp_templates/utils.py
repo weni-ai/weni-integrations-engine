@@ -62,9 +62,9 @@ class WebhookEventProcessor:
                             template_data = extract_template_data(translation)
                             flows_service.update_facebook_templates_webhook(
                                 flow_object_uuid=str(app.flow_object_uuid),
-                                webhook=webhook,
                                 template_data=template_data,
                                 template_name=template_name,
+                                webhook=webhook,
                             )
                             logger.info("Status update of template sent to flows.")
                         except Exception as e:

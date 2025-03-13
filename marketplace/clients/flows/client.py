@@ -130,13 +130,15 @@ class FlowsClient(RequestClient):
         return response
 
     def update_facebook_templates_webhook(
-        self, flow_object_uuid, webhook, template_data, template_name
+        self, flow_object_uuid, template_data, template_name, webhook=None
     ):
         data = {
             "template_name": template_name,
-            "webhook": webhook,
             "template_data": template_data,
         }
+        if webhook:
+            data["webhook"] = webhook
+
         url = f"{self.base_url}/template/{flow_object_uuid}/template-sync/"
         response = self.make_request(
             url,
