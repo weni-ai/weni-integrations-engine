@@ -1,3 +1,6 @@
+v4.0.13
+----------
+* fix: sends library templates to flows
 
 v4.0.12
 ----------
