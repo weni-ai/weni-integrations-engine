@@ -5,6 +5,8 @@ import requests
 from typing import List, Dict, Any
 
 from marketplace.applications.models import App
+from marketplace.clients.flows.client import FlowsClient
+from marketplace.services.flows.service import FlowsService
 from marketplace.wpp_products.models import Catalog
 from marketplace.interfaces.facebook.interfaces import (
     TemplatesRequestsInterface,
@@ -19,6 +21,7 @@ from marketplace.wpp_templates.models import (
     TemplateMessage,
     TemplateTranslation,
 )
+from marketplace.wpp_templates.utils import extract_template_data
 
 
 logger = logging.getLogger(__name__)
@@ -269,11 +272,16 @@ class TemplateService:
         )
 
         # Save to the database based on the input data
-        template_message = self.save_template_in_db(app, template_data, response_data)
+        template_translation = self.save_template_in_db(
+            app, template_data, response_data
+        )
+
+        # Send template to flows
+        self._send_template_to_flows(app, template_translation)
 
         return {
             "message": "Library template created successfully.",
-            "template_uuid": template_message.uuid,
+            "template_uuid": template_translation.template.uuid,
         }
 
     def save_template_in_db(self, app: App, template_data: dict, response_data: dict):
@@ -325,7 +333,23 @@ class TemplateService:
                 phone_number=None,
             )
 
-        return found_template
+        return returned_translation
+
+    def _send_template_to_flows(
+        self, app: App, template_translation: TemplateTranslation
+    ):
+        """Sends the template data to flows."""
+        try:
+            flows_service = FlowsService(FlowsClient())
+            template_data = extract_template_data(template_translation)
+            flows_service.update_facebook_templates_webhook(
+                flow_object_uuid=str(app.flow_object_uuid),
+                template_data=template_data,
+                template_name=template_translation.template.name,
+            )
+            logger.info("Template sent to flows successfully.")
+        except Exception as e:
+            logger.error(f"Failed to send template to flows: {e}")
 
 
 class PhotoAPIService:
