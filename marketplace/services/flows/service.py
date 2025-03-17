@@ -26,10 +26,14 @@ class FlowsService:
         return True
 
     def update_facebook_templates_webhook(
-        self, flow_object_uuid, webhook, template_data, template_name
+        self,
+        flow_object_uuid: str,
+        template_data: dict,
+        template_name: str,
+        webhook: dict = None,
     ):
         return self.client.update_facebook_templates_webhook(
-            flow_object_uuid, webhook, template_data, template_name
+            flow_object_uuid, template_data, template_name, webhook
         )
 
     def _update_flows_config(self, app):
