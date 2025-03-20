@@ -657,6 +657,14 @@ class BusinessMetaRequests(
         response = self.make_request(url, method="POST", headers=headers, data=data)
         return response.json()
 
+    def sync_coexistence_history(self, phone_number_id: str) -> dict:
+        url = f"{self.get_url}/{phone_number_id}/smb_app_data"
+        data = {"messaging_product": "whatsapp", "sync_type": "smb_app_state_sync"}
+        response = self.make_request(
+            url, method="POST", headers=self._get_headers(), data=data
+        )
+        return response.json()
+
 
 class FacebookClient(
     CatalogsRequests,
