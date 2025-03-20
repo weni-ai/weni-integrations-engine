@@ -6,6 +6,9 @@ from datetime import datetime
 from marketplace.applications.models import App
 from marketplace.clients.flows.client import FlowsClient
 from marketplace.services.flows.service import FlowsService
+from marketplace.wpp_templates.usecases.template_library_status import (
+    TemplateLibraryStatusUseCase,
+)
 
 from .models import TemplateMessage
 
@@ -65,6 +68,12 @@ class WebhookEventProcessor:
                                 template_data=template_data,
                                 template_name=template_name,
                                 webhook=webhook,
+                            )
+                            TemplateLibraryStatusUseCase(
+                                app=app
+                            ).update_template_status(
+                                template_name=template_name,
+                                new_status=status,
                             )
                             logger.info("Status update of template sent to flows.")
                         except Exception as e:
