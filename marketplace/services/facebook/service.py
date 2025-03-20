@@ -326,9 +326,9 @@ class TemplateService:
                 translation=returned_translation,
                 button_type=button["type"],
                 url=button["url"]["base_url"] if "url" in button else None,
-                example=button["url"]["url_suffix_example"]
-                if "url" in button
-                else None,
+                example=(
+                    button["url"]["url_suffix_example"] if "url" in button else None
+                ),
                 text=button.get("text", ""),
                 phone_number=None,
             )
@@ -453,3 +453,6 @@ class BusinessMetaService:
             "message_template_namespace": message_template_namespace,
             "allocation_config_id": allocation_config_id,
         }
+
+    def sync_coexistence_contacts(self, phone_number_id: str) -> Dict[str, Any]:
+        return self.client.sync_coexistence_contacts(phone_number_id)

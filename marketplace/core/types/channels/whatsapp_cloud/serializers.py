@@ -24,6 +24,14 @@ class WhatsAppCloudSerializer(AppTypeBaseSerializer):
 
 
 class WhatsAppCloudConfigureSerializer(serializers.Serializer):
+    INTEGRATION_TYPE_CHOICES = (
+        ("default", "Default"),
+        ("coexistence", "Coexistence"),
+    )
+
     waba_id = serializers.CharField(required=True)
     phone_number_id = serializers.CharField(required=True)
     auth_code = serializers.CharField(required=True)
+    integration_type = serializers.ChoiceField(
+        choices=INTEGRATION_TYPE_CHOICES, default="default"
+    )

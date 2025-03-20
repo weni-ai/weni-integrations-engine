@@ -94,6 +94,7 @@ class WhatsAppCloudViewSet(
         waba_id = serializer.validated_data.get("waba_id")
         phone_number_id = serializer.validated_data.get("phone_number_id")
         auth_code = serializer.validated_data.get("auth_code")
+        integration_type = serializer.validated_data.get("integration_type", "default")
         waba_currency = "USD"
 
         whatsapp_system_user_access_token = settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
@@ -116,11 +117,6 @@ class WhatsAppCloudViewSet(
         )
         phone_number = phone_number_request.get_phone_number(phone_number_id)
 
-        # Register phone number
-        pin = get_random_string(6, string.digits)
-        data = dict(messaging_product="whatsapp", pin=pin)
-        business_service.register_phone_number(phone_number_id, user_access_token, data)
-
         config = dict(
             wa_number=phone_number.get("display_phone_number"),
             wa_verified_name=phone_number.get("verified_name"),
@@ -128,9 +124,18 @@ class WhatsAppCloudViewSet(
             wa_currency=waba_currency,
             wa_business_id=business_id,
             wa_message_template_namespace=message_template_namespace,
-            wa_pin=pin,
             wa_user_token=user_access_token,
+            integration_type=integration_type,
         )
+
+        # Register phone number if it is a default integration
+        if integration_type == "default":
+            pin = get_random_string(6, string.digits)
+            data = dict(messaging_product="whatsapp", pin=pin)
+            business_service.register_phone_number(
+                phone_number_id, user_access_token, data
+            )
+            config["wa_pin"] = pin
 
         flows_service = FlowsService(client=FlowsClient())
         channel = flows_service.create_wac_channel(
@@ -154,6 +159,9 @@ class WhatsAppCloudViewSet(
 
         celery_app.send_task(name="sync_whatsapp_cloud_wabas")
         celery_app.send_task(name="sync_whatsapp_cloud_phone_numbers")
+
+        if integration_type == "coexistence":
+            business_service.sync_coexistence_contacts(phone_number_id)
 
         response_data = {
             **serializer.validated_data,
