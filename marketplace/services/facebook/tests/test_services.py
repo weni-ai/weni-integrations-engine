@@ -169,6 +169,9 @@ class MockClient:
             "category": template_data.get("category", "UTILITY"),
         }
 
+    def sync_coexistence_contacts(self, phone_number_id):
+        return {"success": True}
+
 
 class TestFacebookService(TestCase):
     def generate_unique_facebook_catalog_id(self):
@@ -682,3 +685,7 @@ class TestBusinessMetaService(TestCase):
                 "allocation_config_id": "mock_allocation_id",
             },
         )
+
+    def test_sync_coexistence_contacts(self):
+        response = self.service.sync_coexistence_contacts("phone_number_id")
+        self.assertEqual(response, {"success": True})

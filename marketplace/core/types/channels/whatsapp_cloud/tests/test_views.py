@@ -402,6 +402,9 @@ class MockBusinessMetaService:
     def register_phone_number(self, phone_number_id, user_access_token, data):
         pass
 
+    def sync_coexistence_contacts(self, phone_number_id):
+        return {"success": True}
+
 
 class MockPhoneNumbersService:
     def get_phone_number(self, phone_number_id):
@@ -488,6 +491,41 @@ class CreateWhatsAppCloudTestCase(APIBaseTestCase):
         )
         self.assertEqual(len(app.config["wa_pin"]), 6)
         self.assertEqual(app.config["wa_user_token"], "mock_user_access_token")
+
+    def test_create_whatsapp_cloud_coexistence_success(self):
+        coexistence_payload = {
+            **self.payload,
+            "integration_type": "coexistence",
+        }
+        response = self.request.post(self.url, body=coexistence_payload)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.assertTrue(
+            App.objects.filter(
+                uuid=response.json["app_uuid"],
+                project_uuid=self.payload["project_uuid"],
+            ).exists()
+        )
+        coexistence_app = App.objects.get(
+            uuid=response.json["app_uuid"], project_uuid=self.payload["project_uuid"]
+        )
+        self.assertEqual(coexistence_app.config["integration_type"], "coexistence")
+        self.assertEqual(
+            coexistence_app.config["wa_number"], "mock_display_phone_number"
+        )
+        self.assertEqual(
+            coexistence_app.config["wa_verified_name"], "mock_verified_name"
+        )
+        self.assertEqual(coexistence_app.config["wa_waba_id"], self.payload["waba_id"])
+        self.assertEqual(coexistence_app.config["wa_currency"], "USD")
+        self.assertEqual(coexistence_app.config["wa_business_id"], "mock_business_id")
+        self.assertEqual(
+            coexistence_app.config["wa_message_template_namespace"],
+            "mock_message_template_namespace",
+        )
+        self.assertEqual(
+            coexistence_app.config["wa_user_token"], "mock_user_access_token"
+        )
 
     def test_create_whatsapp_cloud_failure_on_exchange_auth_code(self):
         self.mock_business_meta_service.configure_whatsapp_cloud = Mock(
