@@ -12,6 +12,7 @@ from .set_default_image_url import SetDefaultImageURL
 from .exclude_categories_co import ExcludeCustomizedCategoriesCO
 from .calculate_by_area import CalculateByArea
 from .currency_pt_br_round_floor import CurrencyBRLRoudingFloor
+from .currency_clp import CurrencyCLP
 
 
 """
@@ -33,4 +34,5 @@ RULE_MAPPINGS = {
     "exclude_categories_co": ExcludeCustomizedCategoriesCO,
     "calculate_by_area": CalculateByArea,
     "currency_pt_br_round_floor": CurrencyBRLRoudingFloor,
+    "currency_clp": CurrencyCLP,
 }
