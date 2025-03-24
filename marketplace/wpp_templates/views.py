@@ -20,7 +20,7 @@ from marketplace.core.types.channels.whatsapp_base.mixins import QueryParamsPars
 from marketplace.services.facebook.service import TemplateService, PhotoAPIService
 from marketplace.clients.facebook.client import FacebookClient
 from marketplace.accounts.permissions import ProjectManagePermission
-from marketplace.wpp_templates.tasks import task_create_library_templates_batch
+from marketplace.celery import app as celery_app
 
 from .models import TemplateHeader, TemplateMessage, TemplateTranslation, TemplateButton
 from .serializers import TemplateMessageSerializer, TemplateTranslationSerializer
@@ -277,8 +277,9 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         """
         app = get_object_or_404(App, uuid=app_uuid)
 
-        task_create_library_templates_batch.delay(
-            app_uuid=str(app.uuid), template_data=request.data
+        celery_app.send_task(
+            name="task_create_library_templates_batch",
+            kwargs={"app_uuid": str(app.uuid), "template_data": request.data},
         )
 
         return Response(

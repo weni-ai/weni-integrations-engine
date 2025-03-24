@@ -227,7 +227,7 @@ def update_templates_by_webhook(**kwargs):  # pragma: no cover
     logger.info("-" * 50)
 
 
-@shared_task(track_started=True, name="create_library_templates_batch")
+@shared_task(track_started=True, name="task_create_library_templates_batch")
 def task_create_library_templates_batch(app_uuid: str, template_data: dict):
     """
     Creates a library template message for the given app.
@@ -260,6 +260,7 @@ def sync_pending_templates(app_uuid: str):
 
     try:
         app = App.objects.get(uuid=app_uuid)
+        logger.info(f"Initializing TemplateLibraryStatusUseCase for app {app_uuid}")
         use_case = TemplateLibraryStatusUseCase(app=app)
 
         stored_status = use_case._get_template_statuses_from_redis()
@@ -267,29 +268,50 @@ def sync_pending_templates(app_uuid: str):
             logger.info(f"No pending templates found for app {app_uuid}")
             return
 
+        logger.info(f"Found {len(stored_status)} templates to check for app {app_uuid}")
         has_pending = False  # Flag to check if there are still pending templates
 
         # Forcing sync templates to get the latest status
+        logger.info(
+            f"Forcing template synchronization with Facebook for app {app_uuid}"
+        )
         service = FacebookTemplateSyncService(app)
         service.sync_templates()
 
         for template_name, status in stored_status.items():
+            logger.info(
+                f"Checking template '{template_name}' with status '{status}' for app {app_uuid}"
+            )
             template = app.template.filter(name=template_name).first()
             if not template:
                 logger.warning(f"Template {template_name} not found for app {app_uuid}")
                 continue
 
             # Check if any translation is still pending
-            if template.translations.filter(status="PENDING").exists():
+            pending_count = template.translations.filter(status="PENDING").count()
+            if pending_count > 0:
+                logger.info(
+                    f"Template '{template_name}' still has {pending_count} pending translations for app {app_uuid}"
+                )
                 has_pending = True
                 continue  # Don't update this template yet
 
             # If no pending translations, update the status
+            logger.info(
+                f"Updating status for template '{template_name}' to '{status}' for app {app_uuid}"
+            )
             use_case.update_template_status(template_name, status)
 
         # If no more pending templates, trigger final synchronization
         if not has_pending:
+            logger.info(
+                f"No more pending templates found, triggering final synchronization for app {app_uuid}"
+            )
             use_case.sync_all_templates()
+        else:
+            logger.info(
+                f"Some templates are still pending for app {app_uuid}, skipping final synchronization"
+            )
 
     except Exception as e:
         logger.error(f"Error syncing templates for app {app_uuid}: {str(e)}")

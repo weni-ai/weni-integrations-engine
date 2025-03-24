@@ -1,4 +1,3 @@
-from datetime import timedelta
 import logging
 import json
 
@@ -55,11 +54,17 @@ class TemplateLibraryStatusUseCase:
         Manually triggers the synchronization process for all stored templates.
         Useful for batch processing or external calls.
         """
+        logger.info(
+            f"Starting manual synchronization of all templates for app {self.app.uuid}"
+        )
         template_statuses = self._get_template_statuses_from_redis()
         if not template_statuses:
             logger.info(f"No pending templates found for app {self.app.uuid}.")
             return
 
+        logger.info(
+            f"Found {len(template_statuses)} templates to synchronize for app {self.app.uuid}"
+        )
         # Call the unified method to finalize if needed
         self._finalize_template_sync(template_statuses)
 
@@ -73,14 +78,22 @@ class TemplateLibraryStatusUseCase:
         Args:
             template_statuses (dict): The final statuses of all templates.
         """
+        logger.info(
+            f"Starting finalization of template synchronization for app {self.app.uuid}"
+        )
         has_pending = any(status == "PENDING" for status in template_statuses.values())
+        logger.info(
+            f"Template pending status for app {self.app.uuid}: has pending: {has_pending}"
+        )
 
         if not has_pending:
+            logger.info(
+                f"No pending templates found. Notifying commerce module for app {self.app.uuid}"
+            )
             self.notify_commerce_module(template_statuses)
             self.redis_conn.delete(self.redis_key)
-            self.cancel_scheduled_sync()
             logger.info(
-                f"All templates synchronized and Redis key removed for app {self.app.uuid}."
+                f"All templates synchronized and {self.redis_key} key removed for app {self.app.uuid}."
             )
 
     def _get_template_statuses_from_redis(self) -> Dict[str, str]:
@@ -118,7 +131,9 @@ class TemplateLibraryStatusUseCase:
             "template_statuses": template_statuses,
         }
         response = self.commerce_service.send_template_library_status_update(data)
-        logger.info(f"Commerce module notified for app {self.app.uuid}.")
+        logger.info(
+            f"Commerce module notified for app {self.app.uuid}. response: {response}"
+        )
         return response
 
     def store_pending_templates_status(self, templates_status: Dict[str, str]):
@@ -133,19 +148,9 @@ class TemplateLibraryStatusUseCase:
             f"Stored pending templates status for app {self.app.uuid} in Redis."
         )
 
-    def schedule_final_sync(self):
-        """
-        Schedules a final sync task to check pending templates after a defined waiting period.
-        """
-        from marketplace.wpp_templates.tasks import (
-            sync_pending_templates,
-        )  # TODO: Remove this import and fix circular import
-
-        countdown = timedelta(hours=8).total_seconds()
-        sync_pending_templates.apply_async((str(self.app.uuid),), countdown=countdown)
-        logger.info(f"Scheduled final sync task for app {self.app.uuid} in 8 hours.")
-
-    def cancel_scheduled_sync(self):
+    def cancel_scheduled_sync(
+        self,
+    ):  # TODO: adjust this method to cancel the task from the celery app
         """
         Cancels the scheduled sync task if all templates have been processed.
         """
