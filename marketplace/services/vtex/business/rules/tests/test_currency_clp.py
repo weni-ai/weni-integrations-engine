@@ -67,8 +67,8 @@ class TestCurrencyCLP(TestCase):
 
         self.rule.apply(product)
 
-        self.assertEqual(product.price, "1 CLP")  # 0.99 → 0 → 1 CLP (mínimo)
-        self.assertEqual(product.sale_price, "1 CLP")  # 0.01 → 0 → 1 CLP (mínimo)
+        self.assertEqual(product.price, "1 CLP")  # 0.99 → 0 → 1 CLP
+        self.assertEqual(product.sale_price, "1 CLP")  # 0.01 → 0 → 1 CLP
 
     def test_format_clp_price_with_large_values(self):
         product = FacebookProductDTO(
