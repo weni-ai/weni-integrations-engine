@@ -1,3 +1,7 @@
+v4.0.15
+----------
+* feat: add new rule [currency clp] for chile
+
 v4.0.14
 ----------
 * hotfix: change order of webhook parameter
