@@ -43,11 +43,13 @@ class TemplateLibraryStatusUseCase:
 
         # Update only the specific template
         if template_name in template_statuses:
+            old_status = template_statuses[template_name]
             template_statuses[template_name] = new_status
+            logger.info(
+                f"Template status updated for app {self.app.uuid}: '{template_name}' "
+                f"changed from '{old_status}' to '{new_status}'"
+            )
             self._update_redis_status(template_statuses)
-
-        # Call the unified method to finalize if needed
-        self._finalize_template_sync(template_statuses)
 
     def sync_all_templates(self):
         """
@@ -66,6 +68,7 @@ class TemplateLibraryStatusUseCase:
             f"Found {len(template_statuses)} templates to synchronize for app {self.app.uuid}"
         )
         # Call the unified method to finalize if needed
+
         self._finalize_template_sync(template_statuses)
 
     def _finalize_template_sync(self, template_statuses: Dict[str, str]):

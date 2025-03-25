@@ -1,10 +1,10 @@
 import logging
 
-from datetime import timedelta
-
 from copy import deepcopy
 
 from typing import Dict, Any, Optional
+
+from django.conf import settings
 
 from marketplace.applications.models import App
 
@@ -14,8 +14,8 @@ from marketplace.wpp_templates.usecases.template_library_status import (
 )
 from marketplace.clients.facebook.client import FacebookClient
 from marketplace.services.facebook.service import TemplateService
-
 from marketplace.celery import app as celery_app
+from marketplace.wpp_templates.usecases.template_sync import TemplateSyncUseCase
 
 
 logger = logging.getLogger(__name__)
@@ -112,7 +112,15 @@ class TemplateCreationUseCase:
             )
             self._schedule_final_sync()
         else:
-            # If all templates are approved immediately, notify commerce without using Redis
+            # If all templates are immediately approved, sync with Meta before notification
+            logger.info(
+                f"Syncing templates with Facebook after immediate approval for app {self.app.uuid}"
+            )
+            use_case = TemplateSyncUseCase(self.app)
+            use_case.sync_templates()
+            logger.info(
+                f"Templates successfully synced from Facebook for app {self.app.uuid}"
+            )
             self.status_use_case.notify_commerce_module(templates_status)
             logger.info(
                 f"All templates approved immediately for app {self.app.uuid}. Commerce module notified."
@@ -127,7 +135,7 @@ class TemplateCreationUseCase:
         """
         Schedules a final sync task to check pending templates after a defined waiting period.
         """
-        countdown = timedelta(hours=8).total_seconds()
+        countdown = settings.TEMPLATE_LIBRARY_WAIT_TIME_SYNC
 
         celery_app.send_task(
             name="sync_pending_templates",

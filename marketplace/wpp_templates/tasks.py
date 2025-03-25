@@ -2,28 +2,17 @@ import logging
 
 from celery import shared_task
 
-from sentry_sdk import capture_exception
-
 from marketplace.wpp_templates.usecases.template_library_creation import (
     TemplateCreationUseCase,
 )
 from marketplace.wpp_templates.usecases.template_library_status import (
     TemplateLibraryStatusUseCase,
 )
-
-from .models import TemplateMessage
+from marketplace.wpp_templates.usecases.template_sync import TemplateSyncUseCase
 
 from marketplace.applications.models import App
-from marketplace.wpp_templates.models import (
-    TemplateTranslation,
-    TemplateHeader,
-    TemplateButton,
-)
-from marketplace.clients.flows.client import FlowsClient
-from marketplace.clients.facebook.client import FacebookClient
-from marketplace.services.facebook.service import TemplateService
 
-from .utils import WebhookEventProcessor, handle_error_and_update_config
+from .utils import WebhookEventProcessor
 
 
 logger = logging.getLogger(__name__)
@@ -42,164 +31,11 @@ def refresh_whatsapp_templates_from_facebook():
                 )
                 continue
 
-            service = FacebookTemplateSyncService(app)
+            service = TemplateSyncUseCase(app)
             service.sync_templates()
 
         except Exception as e:
             logger.error(f"Error processing app {app.uuid}: {str(e)}")
-
-
-class FacebookTemplateSyncService:
-    def __init__(self, app):
-        self.app = app
-        try:
-            access_token = app.apptype.get_access_token(app)
-            self.template_service = TemplateService(client=FacebookClient(access_token))
-        except ValueError as e:
-            logger.error(f"Access token error for app {app.uuid}: {str(e)}")
-            raise
-
-        self.flows_client = FlowsClient()
-
-    def sync_templates(self):
-        waba_id = (
-            self.app.config.get("waba").get("id")
-            if self.app.config.get("waba")
-            else self.app.config.get("wa_waba_id")
-        )
-
-        templates = self.template_service.list_template_messages(waba_id)
-
-        if templates.get("error"):
-            template_error = templates["error"]
-            logger.error(
-                f"A error occurred with waba_id: {waba_id}. \nThe error was:  {template_error}\n"
-            )
-            handle_error_and_update_config(self.app, template_error)
-            return
-
-        templates = templates.get("data", [])
-        try:
-            self.flows_client.update_facebook_templates(
-                str(self.app.flow_object_uuid), templates
-            )
-        except Exception as error:
-            logger.error(
-                f"An error occurred when sending facebook templates to flows: "
-                f"App-{str(self.app.uuid)}, flows_object_uuid: {str(self.app.flow_object_uuid)} "
-                f"Error: {error}"
-            )
-
-        if waba_id:
-            delete_unexistent_translations(self.app, templates)
-
-        for template in templates:
-            try:
-                translation = TemplateTranslation.objects.filter(
-                    message_template_id=template.get("id"), template__app=self.app
-                )
-                if translation:
-                    translation = translation.last()
-                    found_template = translation.template
-                else:
-                    found_template, _created = TemplateMessage.objects.get_or_create(
-                        app=self.app,
-                        name=template.get("name"),
-                    )
-
-                found_template.category = template.get("category")
-                found_template.save()
-
-                body = ""
-                footer = ""
-                for translation in template.get("components"):
-                    if translation.get("type") == "BODY":
-                        body = translation.get("text", "")
-
-                    if translation.get("type") == "FOOTER":
-                        footer = translation.get("text", "")
-
-                (
-                    returned_translation,
-                    _created,
-                ) = TemplateTranslation.objects.get_or_create(
-                    template=found_template,
-                    language=template.get("language"),
-                )
-                returned_translation.body = body
-                returned_translation.footer = footer
-                returned_translation.status = template.get("status")
-                returned_translation.variable_count = 0
-                returned_translation.message_template_id = template.get("id")
-                returned_translation.save()
-
-                for translation in template.get("components"):
-                    if translation.get("type") == "HEADER":
-                        (
-                            returned_header,
-                            _created,
-                        ) = TemplateHeader.objects.get_or_create(
-                            translation=returned_translation,
-                            header_type=translation.get("format"),
-                        )
-                        returned_header.text = translation.get("text", {})
-                        returned_header.example = translation.get("example", {}).get(
-                            "header_handle"
-                        )
-                        returned_header.save()
-
-                    if translation.get("type") == "BUTTONS":
-                        for button in translation.get("buttons"):
-                            (
-                                _returned_button,
-                                _created,
-                            ) = TemplateButton.objects.get_or_create(
-                                translation=returned_translation,
-                                button_type=button.get("type"),
-                                text=button.get("text"),
-                                url=button.get("url"),
-                                phone_number=button.get("phone_number"),
-                            )
-
-            except Exception as error:
-                capture_exception(error)
-                continue
-
-        print(f"Completed template update for app {str(self.app.uuid)}")
-
-
-def delete_unexistent_translations(app, templates):
-    templates_message = app.template.all()
-    templates_ids = [item["id"] for item in templates]
-
-    for template in templates_message:
-        try:
-            template_translation = TemplateTranslation.objects.filter(template=template)
-            if not template_translation:
-                print(f"Removing template without translation: {template}")
-                template.delete()
-                continue
-
-            for translation in template_translation:
-                if translation.message_template_id not in templates_ids:
-                    translation_language = (
-                        translation.language if translation.language else "No language"
-                    )
-                    print(
-                        f"Removing translation {translation.message_template_id}: {translation_language}"
-                    )
-                    translation.delete()
-
-            if template.translations.all().count() == 0:
-                temaplte_name = template.name if template.name else "No name"
-                print(f"Removing template:{temaplte_name} after removing translations")
-                template.delete()
-
-        except Exception as e:
-            logger.error(
-                f"An error occurred 'on delete_unexistent_translations()': {e}"
-            )
-            continue
 
 
 @shared_task(track_started=True, name="update_templates_by_webhook")
@@ -260,7 +96,6 @@ def sync_pending_templates(app_uuid: str):
 
     try:
         app = App.objects.get(uuid=app_uuid)
-        logger.info(f"Initializing TemplateLibraryStatusUseCase for app {app_uuid}")
         use_case = TemplateLibraryStatusUseCase(app=app)
 
         stored_status = use_case._get_template_statuses_from_redis()
@@ -272,16 +107,12 @@ def sync_pending_templates(app_uuid: str):
         has_pending = False  # Flag to check if there are still pending templates
 
         # Forcing sync templates to get the latest status
-        logger.info(
-            f"Forcing template synchronization with Facebook for app {app_uuid}"
-        )
-        service = FacebookTemplateSyncService(app)
-        service.sync_templates()
+        logger.info(f"Fetching templates from Facebook for app {app_uuid}")
+        template_sync_use_case = TemplateSyncUseCase(app)
+        template_sync_use_case.sync_templates()
+        logger.info(f"Templates fetched from Facebook for app {app_uuid}")
 
         for template_name, status in stored_status.items():
-            logger.info(
-                f"Checking template '{template_name}' with status '{status}' for app {app_uuid}"
-            )
             template = app.template.filter(name=template_name).first()
             if not template:
                 logger.warning(f"Template {template_name} not found for app {app_uuid}")
