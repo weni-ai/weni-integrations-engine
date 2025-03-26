@@ -9,6 +9,11 @@ from django.conf import settings
 from marketplace.applications.models import App
 
 from marketplace.clients.exceptions import CustomAPIException
+from marketplace.wpp_templates.models import (
+    TemplateButton,
+    TemplateMessage,
+    TemplateTranslation,
+)
 from marketplace.wpp_templates.usecases.template_library_status import (
     TemplateLibraryStatusUseCase,
 )
@@ -31,14 +36,6 @@ class TemplateCreationUseCase:
         service: Optional[TemplateService] = None,
         status_use_case: Optional[TemplateLibraryStatusUseCase] = None,
     ):
-        """
-        Initializes the use case with optional dependency injection for easier unit testing.
-
-        Args:
-            app (App): The application instance.
-            service (TemplateService, optional): Template service instance. Defaults to None.
-            status_use_case (TemplateLibraryStatusUseCase, optional): Status tracking use case. Defaults to None.
-        """
         self.app = app
         self.service = service or TemplateService(
             client=FacebookClient(app.apptype.get_system_access_token(app))
@@ -51,20 +48,21 @@ class TemplateCreationUseCase:
         """
         Creates multiple library templates in Meta for different languages.
 
-        This method processes a batch of templates across multiple languages:
-        1. Initializes all templates with PENDING status
-        2. Attempts to create each template in each language via Meta API
-        3. Tracks status changes and handles errors
-        4. Schedules follow-up sync for pending templates
-        5. Notifies commerce module when all templates are processed
+        This method processes a batch of template messages, creating them in Meta's
+        WhatsApp Business API for each specified language. It also updates the local
+        database objects and manages status tracking in Redis.
 
         Args:
-            data: Dictionary containing library_templates and languages lists.
+            data (Dict[str, Any]): Dictionary containing 'library_templates' list and
+                'languages' list. Each template in 'library_templates' should have
+                at least a 'name' field and other required template properties.
 
         Returns:
-            A dictionary containing the template creation status and process message.
+            Dict[str, Any]: Status information for all processed templates.
+
+        Raises:
+            CustomAPIException: If there's an error communicating with Meta's API.
         """
-        # Get WhatsApp Business Account ID from app configuration
         waba_id = self.app.config["wa_waba_id"]
         templates_status = {}
         has_pending = False
@@ -92,8 +90,9 @@ class TemplateCreationUseCase:
                 template_data["language"] = lang
 
                 try:
-                    # Call Meta API to create the template
-                    response_data = self.service.create_library_template_message(
+                    # Create template in Meta API and save to local database
+                    # Returns response with template status (APPROVED, PENDING, etc.)
+                    response_data = self._create_and_save_local_template(
                         waba_id=waba_id, template_data=template_data
                     )
                     current_status = response_data["status"]
@@ -160,3 +159,96 @@ class TemplateCreationUseCase:
         )
 
         logger.info(f"Scheduled final sync task for app {self.app.uuid} in 8 hours.")
+
+    def _create_and_save_local_template(
+        self, waba_id: str, template_data: dict
+    ) -> dict:
+        """
+        Creates a template on Meta API and saves it to the local database.
+
+        This method performs the following operations:
+        1. Calls Meta API to create the template
+        2. Saves/updates the local database objects (TemplateMessage, TemplateTranslation, Buttons)
+
+        Args:
+            waba_id: The WhatsApp Business Account ID
+            template_data: Dictionary containing template configuration
+
+        Returns:
+            dict: The Meta API response data
+        """
+        # Create template on Facebook
+        response_data = self.service.create_library_template_message(
+            waba_id=waba_id, template_data=template_data
+        )
+        # Save locally in database
+        translation = self._save_template_in_db(template_data, response_data)
+        logger.info(
+            f"Template created locally: {translation.template.name} (lang={translation.language})"
+        )
+        return response_data
+
+    def _save_template_in_db(self, template_data: dict, response_data: dict):
+        """
+        Creates or updates template-related database records.
+
+        This method handles the persistence of template data by creating or updating
+        the following database entities:
+        - TemplateMessage: The base template record
+        - TemplateTranslation: Language-specific version of the template
+        - TemplateButton: Interactive buttons associated with the template
+
+        Args:
+            template_data: Dictionary containing the template configuration from request
+            response_data: Dictionary containing the API response from Meta
+
+        Returns:
+            TemplateTranslation: The created or updated template translation object
+        """
+        template_name = template_data["name"]
+        category = response_data.get("category", "UTILITY")
+        template_language = template_data["language"]
+        message_template_id = response_data["id"]
+        button_inputs = template_data.get("library_template_button_inputs", [])
+        status = response_data["status"]
+
+        # Create or update TemplateMessage
+        found_template, _ = TemplateMessage.objects.get_or_create(
+            app=self.app,
+            name=template_name,
+            defaults={"category": category, "template_type": "TEXT"},
+        )
+        found_template.category = category
+        found_template.save()
+
+        # Create or update TemplateTranslation
+        translation, _ = TemplateTranslation.objects.get_or_create(
+            template=found_template,
+            language=template_language,
+            defaults={
+                "status": status,
+                "message_template_id": message_template_id,
+                "body": "",
+                "footer": "",
+                "variable_count": 0,
+                "country": "Brazil",
+            },
+        )
+        translation.status = status
+        translation.message_template_id = message_template_id
+        translation.save()
+
+        # Create Buttons if any
+        for button in button_inputs:
+            TemplateButton.objects.get_or_create(
+                translation=translation,
+                button_type=button["type"],
+                url=button["url"]["base_url"] if "url" in button else None,
+                example=button["url"].get("url_suffix_example")
+                if "url" in button
+                else None,
+                text=button.get("text", ""),
+                phone_number=None,
+            )
+
+        return translation
