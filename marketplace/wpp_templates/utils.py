@@ -69,13 +69,17 @@ class WebhookEventProcessor:
                                 template_name=template_name,
                                 webhook=webhook,
                             )
-                            TemplateLibraryStatusUseCase(
+                            logger.info("Status update of template sent to flows.")
+
+                            template_status_use_case = TemplateLibraryStatusUseCase(
                                 app=app
-                            ).update_template_status(
+                            )
+                            template_status_use_case.update_template_status(
                                 template_name=template_name,
                                 new_status=status,
                             )
-                            logger.info("Status update of template sent to flows.")
+                            template_status_use_case.sync_all_templates()
+
                         except Exception as e:
                             logger.error(
                                 f"Fail to sends template update: {template.name}, translation: {translation.language},"
