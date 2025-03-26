@@ -6,8 +6,8 @@ from django.db.models.query import QuerySet
 
 from marketplace.wpp_templates.utils import WebhookEventProcessor
 from marketplace.wpp_templates.utils import extract_template_data
-from marketplace.wpp_templates.utils import handle_error_and_update_config
 from marketplace.applications.models import App
+from marketplace.wpp_templates.error_handlers import handle_error_and_update_config
 
 
 class TestWebhookEventProcessor(TestCase):
@@ -322,7 +322,7 @@ class TestHandleErrorAndUpdateConfig(TestCase):
         }
 
     @patch("marketplace.applications.models.App.save")
-    @patch("marketplace.wpp_templates.utils.datetime")
+    @patch("marketplace.wpp_templates.error_handlers.datetime")
     def test_handle_error_and_update_config_correct_condition(
         self, mock_datetime, mock_save
     ):

@@ -107,10 +107,7 @@ def sync_pending_templates(app_uuid: str):
         has_pending = False  # Flag to check if there are still pending templates
 
         # Forcing sync templates to get the latest status
-        logger.info(f"Fetching templates from Facebook for app {app_uuid}")
-        template_sync_use_case = TemplateSyncUseCase(app)
-        template_sync_use_case.sync_templates()
-        logger.info(f"Templates fetched from Facebook for app {app_uuid}")
+        use_case.sync_templates_from_facebook(app)
 
         for template_name, status in stored_status.items():
             template = app.template.filter(name=template_name).first()
@@ -138,7 +135,7 @@ def sync_pending_templates(app_uuid: str):
             logger.info(
                 f"No more pending templates found, triggering final synchronization for app {app_uuid}"
             )
-            use_case.sync_all_templates()
+            use_case.synchronize_all_stored_templates(skip_facebook_sync=True)
         else:
             logger.info(
                 f"Some templates are still pending for app {app_uuid}, skipping final synchronization"

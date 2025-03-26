@@ -7,6 +7,7 @@ from django_redis import get_redis_connection
 from marketplace.applications.models import App
 from marketplace.clients.commerce.client import CommerceClient
 from marketplace.services.commerce.service import CommerceService
+from marketplace.wpp_templates.usecases.template_sync import TemplateSyncUseCase
 
 
 logger = logging.getLogger(__name__)
@@ -51,10 +52,13 @@ class TemplateLibraryStatusUseCase:
             )
             self._update_redis_status(template_statuses)
 
-    def sync_all_templates(self):
+    def synchronize_all_stored_templates(self, skip_facebook_sync: bool = False):
         """
-        Manually triggers the synchronization process for all stored templates.
-        Useful for batch processing or external calls.
+        Manually triggers the synchronization process for all templates stored in Redis.
+
+        This method retrieves all template statuses from Redis and initiates the
+        synchronization process. It's particularly useful for batch operations
+        or when called from external systems that need to force a sync.
         """
         logger.info(
             f"Starting manual synchronization of all templates for app {self.app.uuid}"
@@ -65,38 +69,46 @@ class TemplateLibraryStatusUseCase:
             return
 
         logger.info(
-            f"Found {len(template_statuses)} templates to synchronize for app {self.app.uuid}"
+            f"Found {len(template_statuses)} templates in Redis to synchronize for app {self.app.uuid}"
         )
-        # Call the unified method to finalize if needed
+        # Process all templates and complete synchronization if all are ready
+        self._complete_sync_process_if_no_pending(template_statuses, skip_facebook_sync)
 
-        self._finalize_template_sync(template_statuses)
-
-    def _finalize_template_sync(self, template_statuses: Dict[str, str]):
+    def _complete_sync_process_if_no_pending(
+        self, template_statuses: Dict[str, str], skip_facebook_sync: bool
+    ):
         """
-        Finalizes the synchronization process if no pending templates remain.
+        Completes the synchronization process if no templates are pending.
 
-        If all templates have been processed, notifies the commerce module,
-        deletes the Redis key, and cancels the scheduled sync task.
+        This method checks if there are any templates with PENDING status.
+        If all templates are processed (not PENDING), it syncs with Facebook,
+        notifies the commerce module, and cleans up the Redis storage.
 
         Args:
-            template_statuses (dict): The final statuses of all templates.
+            template_statuses (Dict[str, str]): Dictionary mapping template names to their statuses.
         """
-        logger.info(
-            f"Starting finalization of template synchronization for app {self.app.uuid}"
-        )
+        logger.info(f"Starting sync completion process for app {self.app.uuid}")
         has_pending = any(status == "PENDING" for status in template_statuses.values())
         logger.info(
             f"Template pending status for app {self.app.uuid}: has pending: {has_pending}"
         )
 
         if not has_pending:
-            logger.info(
-                f"No pending templates found. Notifying commerce module for app {self.app.uuid}"
-            )
+            if not skip_facebook_sync:
+                logger.info(
+                    f"No pending templates found. Syncing from Facebook for app {self.app.uuid}"
+                )
+                self.sync_templates_from_facebook(self.app)
+
             self.notify_commerce_module(template_statuses)
             self.redis_conn.delete(self.redis_key)
             logger.info(
                 f"All templates synchronized and {self.redis_key} key removed for app {self.app.uuid}."
+            )
+
+        else:
+            logger.info(
+                f"Pending templates found. Skipping sync for app {self.app.uuid}"
             )
 
     def _get_template_statuses_from_redis(self) -> Dict[str, str]:
@@ -133,6 +145,7 @@ class TemplateLibraryStatusUseCase:
             "app_uuid": str(self.app.uuid),
             "template_statuses": template_statuses,
         }
+        logger.info(f"Notifying commerce module for app {self.app.uuid}. data: {data}")
         response = self.commerce_service.send_template_library_status_update(data)
         logger.info(
             f"Commerce module notified for app {self.app.uuid}. response: {response}"
@@ -163,3 +176,14 @@ class TemplateLibraryStatusUseCase:
         if redis_task_id:
             self.redis_conn.delete(redis_task_key)
             logger.info(f"Cancelled scheduled sync task for app {self.app.uuid}.")
+
+    def sync_templates_from_facebook(self, app: App):
+        """
+        Syncs templates from Facebook to the database.
+        """
+        logger.info(f"Syncing templates with Facebook for app {self.app.uuid}")
+        use_case = TemplateSyncUseCase(self.app)
+        use_case.sync_templates()
+        logger.info(
+            f"Templates successfully synced from Facebook for app {self.app.uuid}"
+        )

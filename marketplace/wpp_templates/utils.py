@@ -1,8 +1,6 @@
 import logging
 import ast
 
-from datetime import datetime
-
 from marketplace.applications.models import App
 from marketplace.clients.flows.client import FlowsClient
 from marketplace.services.flows.service import FlowsService
@@ -78,7 +76,7 @@ class WebhookEventProcessor:
                                 template_name=template_name,
                                 new_status=status,
                             )
-                            template_status_use_case.sync_all_templates()
+                            template_status_use_case.synchronize_all_stored_templates()
 
                         except Exception as e:
                             logger.error(
@@ -107,24 +105,6 @@ class WebhookEventProcessor:
             pass
         elif event_type == "message_template_quality_update":
             pass
-
-
-def handle_error_and_update_config(app: App, error_data):
-    error_code = error_data.get("code")
-    error_subcode = error_data.get("error_subcode")
-
-    if error_code == 100 and error_subcode == 33:
-        app.config["ignores_meta_sync"] = {
-            "last_error_date": datetime.now().isoformat(),
-            "last_error_message": error_data.get("message"),
-            "code": error_code,
-            "error_subcode": error_subcode,
-        }
-        app.save()
-
-        logger.info(
-            f"Config updated to ignore future syncs for app {app.uuid} due to persistent errors."
-        )
 
 
 def extract_template_data(translation):

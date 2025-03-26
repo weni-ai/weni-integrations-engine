@@ -9,7 +9,7 @@ from marketplace.wpp_templates.models import (
     TemplateMessage,
     TemplateTranslation,
 )
-from marketplace.wpp_templates.utils import handle_error_and_update_config
+from marketplace.wpp_templates.error_handlers import handle_error_and_update_config
 
 
 logger = logging.getLogger(__name__)
