@@ -51,12 +51,20 @@ class TemplateCreationUseCase:
         """
         Creates multiple library templates in Meta for different languages.
 
+        This method processes a batch of templates across multiple languages:
+        1. Initializes all templates with PENDING status
+        2. Attempts to create each template in each language via Meta API
+        3. Tracks status changes and handles errors
+        4. Schedules follow-up sync for pending templates
+        5. Notifies commerce module when all templates are processed
+
         Args:
             data: Dictionary containing library_templates and languages lists.
 
         Returns:
-            A dictionary containing the template creation status.
+            A dictionary containing the template creation status and process message.
         """
+        # Get WhatsApp Business Account ID from app configuration
         waba_id = self.app.config["wa_waba_id"]
         templates_status = {}
         has_pending = False
@@ -66,61 +74,77 @@ class TemplateCreationUseCase:
             f"templates in {len(data['languages'])} languages"
         )
 
-        # Iterate over each template and create it for all specified languages
+        # Initialize all templates with PENDING status
         for template_base in data["library_templates"]:
+            template_name = template_base["name"]
+            templates_status[template_name] = "PENDING"
+
+        # Store initial pending status in Redis
+        self.status_use_case.store_pending_templates_status(templates_status)
+
+        # Process each template in each language
+        for template_base in data["library_templates"]:
+            template_name = template_base["name"]
+
             for lang in data["languages"]:
-                template_data = deepcopy(
-                    template_base
-                )  # Ensure original data is not modified
+                # Create a deep copy to avoid modifying the original template data
+                template_data = deepcopy(template_base)
                 template_data["language"] = lang
 
                 try:
-                    # Call the service while keeping the loop logic in the Use Case
+                    # Call Meta API to create the template
                     response_data = self.service.create_library_template_message(
                         waba_id=waba_id, template_data=template_data
                     )
+                    current_status = response_data["status"]
 
-                    # Store the template status (only by name, ignoring language variations)
-                    templates_status[template_data["name"]] = response_data["status"]
+                    # Update template status in Redis
+                    self.status_use_case.update_template_status(
+                        template_name, current_status
+                    )
 
-                    # If any template is in "PENDING" status, mark it
-                    if response_data["status"] == "PENDING":
+                    # Track if any template is still pending
+                    if current_status == "PENDING":
                         has_pending = True
 
                     logger.info(
-                        f"Template created: name={template_data['name']}, language={lang}, "
-                        f"status={response_data['status']} for app {self.app.uuid}"
+                        f"Template created: name={template_name}, language={lang}, "
+                        f"status={current_status} for app {self.app.uuid}"
                     )
 
                 except CustomAPIException as e:
+                    # Handle API errors by marking template as ERROR
                     logger.error(
-                        f"Error creating template {template_data['name']}: {str(e)} for app {self.app.uuid}"
+                        f"Error creating template {template_name} (lang={lang}): {str(e)} "
+                        f"for app {self.app.uuid}"
                     )
-                    templates_status[template_data["name"]] = "ERROR"
+                    self.status_use_case.update_template_status(template_name, "ERROR")
                     has_pending = True
 
-        logger.info(
-            f"Template batch creation completed for app {self.app.uuid}. Status summary: {templates_status}"
-        )
+        logger.info(f"Template batch creation completed for app {self.app.uuid}.")
 
-        # If there are pending templates, store their status in Redis and schedule a final sync
+        # Handle post-creation workflow based on template statuses
         if has_pending:
-            self.status_use_case.store_pending_templates_status(templates_status)
+            # Schedule delayed sync for pending templates
             logger.info(
-                f"Pending templates detected for app {self.app.uuid}. Scheduled final sync."
+                f"Pending templates detected for app {self.app.uuid}. Scheduling final sync."
             )
             self._schedule_final_sync()
         else:
-            # If all templates are immediately approved, sync with Meta before notification
+            # If all templates are immediately approved, sync and notify
             self.status_use_case.sync_templates_from_facebook(self.app)
-            self.status_use_case.notify_commerce_module(templates_status)
+
+            final_statuses = self.status_use_case._get_template_statuses_from_redis()
+            self.status_use_case.notify_commerce_module(final_statuses)
+
             logger.info(
                 f"All templates approved immediately for app {self.app.uuid}. Commerce module notified."
             )
 
+        # Return creation status summary
         return {
             "message": "Library templates creation process initiated",
-            "templates_status": templates_status,
+            "templates_status": self.status_use_case._get_template_statuses_from_redis(),
         }
 
     def _schedule_final_sync(self):
