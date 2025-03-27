@@ -297,8 +297,9 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
             )
             return Response(data, status=status.HTTP_200_OK)
         except KeyError as ke:
+            stripped_key = str(ke).strip("'")
             raise CustomAPIException(
-                detail=f"Missing required parameter: {str(ke).strip('\'')}", 
-                code="missing_parameter", 
-                status_code=status.HTTP_400_BAD_REQUEST
+                detail=f"Missing required parameter: {stripped_key}",
+                code="missing_parameter",
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
