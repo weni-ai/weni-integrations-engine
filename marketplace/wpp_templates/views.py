@@ -25,6 +25,7 @@ from marketplace.celery import app as celery_app
 from .models import TemplateHeader, TemplateMessage, TemplateTranslation, TemplateButton
 from .serializers import TemplateMessageSerializer, TemplateTranslationSerializer
 from .languages import LANGUAGES
+from .usecases import TemplatesUseCase
 
 
 WHATSAPP_VERSION = settings.WHATSAPP_VERSION
@@ -285,3 +286,19 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         return Response(
             {"message": "Library template task created."}, status=status.HTTP_200_OK
         )
+
+    @action(detail=False, methods=["GET"])
+    def whatsappcloud(self, request):
+        try:
+            project_uuid = request.query_params["project_uuid"]
+            template_id = request.query_params["template_id"]
+            data = TemplatesUseCase.get_whatsapp_cloud_data_from_integrations(
+                project_uuid=project_uuid, template_id=template_id
+            )
+            return Response(data, status=status.HTTP_200_OK)
+        except KeyError as ke:
+            raise CustomAPIException(
+                detail=f"Missing required parameter: {str(ke).strip('\'')}", 
+                code="missing_parameter", 
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
