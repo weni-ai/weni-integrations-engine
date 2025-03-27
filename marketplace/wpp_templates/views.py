@@ -2,6 +2,7 @@ import datetime
 import re
 import base64
 import pytz
+from dataclasses import asdict
 
 from django.contrib.auth import get_user_model
 from django.conf import settings
@@ -288,14 +289,15 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         )
 
     @action(detail=False, methods=["GET"])
-    def whatsappcloud(self, request):
+    def whatsappcloud(self, request, app_uuid=None, uuid=None):
         try:
             project_uuid = request.query_params["project_uuid"]
             template_id = request.query_params["template_id"]
             data = TemplatesUseCase.get_whatsapp_cloud_data_from_integrations(
                 project_uuid=project_uuid, template_id=template_id
             )
-            return Response(data, status=status.HTTP_200_OK)
+            serialized_data = list(map(lambda data: asdict(data), data))
+            return Response(serialized_data, status=status.HTTP_200_OK)
         except KeyError as ke:
             stripped_key = str(ke).strip("'")
             raise CustomAPIException(

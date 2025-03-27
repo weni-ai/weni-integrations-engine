@@ -50,13 +50,13 @@ class TestTemplatesUseCase(TestCase):
 
         self.assertEqual(mock_template_filter.call_args_list, expected_template_calls)
         self.assertEqual(len(result), 2)
-        self.assertEqual(result[0].app_uuid, app1.uuid)
+        self.assertEqual(result[0].app_uuid, str(app1.uuid))
         self.assertEqual(len(result[0].templates_uuid), 2)
-        self.assertIn(template1_app1.uuid, result[0].templates_uuid)
-        self.assertIn(template2_app1.uuid, result[0].templates_uuid)
-        self.assertEqual(result[1].app_uuid, app2.uuid)
+        self.assertIn(str(template1_app1.uuid), result[0].templates_uuid)
+        self.assertIn(str(template2_app1.uuid), result[0].templates_uuid)
+        self.assertEqual(result[1].app_uuid, str(app2.uuid))
         self.assertEqual(len(result[1].templates_uuid), 1)
-        self.assertIn(template1_app2.uuid, result[1].templates_uuid)
+        self.assertIn(str(template1_app2.uuid), result[1].templates_uuid)
 
         for dto in result:
             self.assertIsInstance(dto, TemplatesUseCase.WhatsappCloudDTO)

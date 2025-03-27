@@ -16,6 +16,13 @@ urlpatterns = [
     path("", include(templates_router.urls)),
 ]
 
+urlpatterns.append(
+    path(
+        "templates/whatsappcloud/",
+        views.TemplateMessageViewSet.as_view({"get": "whatsappcloud"}),
+        name="app-template-whatsappcloud",
+    ),
+)
 
 urlpatterns.append(
     path(

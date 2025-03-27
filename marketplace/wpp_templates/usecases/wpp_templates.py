@@ -9,8 +9,8 @@ from marketplace.wpp_templates.models import TemplateMessage
 class TemplatesUseCase:
     @dataclass(frozen=True)
     class WhatsappCloudDTO:
-        app_uuid: UUID
-        templates_uuid: List[UUID]
+        app_uuid: str
+        templates_uuid: List[str]
 
     @staticmethod
     def get_whatsapp_cloud_data_from_integrations(
@@ -40,7 +40,9 @@ class TemplatesUseCase:
             templates = TemplateMessage.objects.filter(
                 translations__message_template_id=template_id, app=app
             )
-            templates_uuid = list(map(lambda template: template.uuid, templates))
-            dtos.append(TemplatesUseCase.WhatsappCloudDTO(app.uuid, templates_uuid))
+            templates_uuid = list(map(lambda template: str(template.uuid), templates))
+            dtos.append(
+                TemplatesUseCase.WhatsappCloudDTO(str(app.uuid), templates_uuid)
+            )
 
         return dtos
