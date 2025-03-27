@@ -10,6 +10,10 @@ from marketplace.celery import app as celery_app
 from marketplace.core.types import APPTYPES
 from marketplace.applications.models import App
 from marketplace.connect.client import ConnectProjectClient
+from marketplace.core.types.channels.whatsapp.usecases.phone_number_sync import (
+    PhoneNumberSyncUseCase,
+)
+from marketplace.core.types.channels.whatsapp.usecases.waba_sync import WABASyncUseCase
 from .apis import FacebookWABAApi, FacebookPhoneNumbersAPI
 from ..whatsapp_base.exceptions import FacebookApiException
 
@@ -165,46 +169,30 @@ def sync_whatsapp_wabas():
 
 
 @celery_app.task(name="sync_whatsapp_cloud_wabas")
-def sync_whatsapp_cloud_wabas():
-    apptype = APPTYPES.get("wpp-cloud")
-    redis = get_redis_connection()
+def sync_whatsapp_cloud_wabas():  # pragma: no cover
+    error_counts = {}
+    apps = App.objects.filter(code="wpp-cloud", configured=True)
 
-    for app in apptype.apps:
-        key = SYNC_WHATSAPP_WABA_LOCK_KEY.format(app_uuid=str(app.uuid))
+    for app in apps:
+        use_case = WABASyncUseCase(app)
+        result = use_case.sync_whatsapp_cloud_waba()
+        status_result = result.get("status")
 
-        if redis.get(key) is None:
-            config = app.config
-            wa_waba_id = config.get("wa_waba_id", None)
-
-            if wa_waba_id is None:
-                logger.info(
-                    f"Skipping the app because it doesn't contain `wa_waba_id`. UUID: {app.uuid}"
-                )
-                continue
-
-            logger.info(f"Syncing app WABA. UUID: {app.uuid}")
-
-            api = FacebookWABAApi(apptype.get_access_token(app))
-
-            try:
-                waba = api.get_waba(wa_waba_id)
-                app.config["waba"] = waba
-                app.modified_by = User.objects.get_admin_user()
-                app.save()
-
-                redis.set(
-                    key, "synced", settings.WHATSAPP_TIME_BETWEEN_SYNC_WABA_IN_HOURS
-                )
-            except FacebookApiException as error:
-                logger.error(
-                    f"An error occurred while trying to sync the app. UUID: {app.uuid}. Error: {error}"
-                )
-                continue
-
-        else:
+        if status_result == "error":
+            error_message = result.get("error", "unknown error")
+            error_counts[error_message] = error_counts.get(error_message, 0) + 1
             logger.info(
-                f"Skipping the app because it was recently synced. {redis.ttl(key)} seconds left. UUID: {app.uuid}"
+                f"sync_whatsapp_cloud_wabas: {error_message} for app {app.uuid}"
             )
+        else:
+            logger.info(f"App {app.uuid} WABA sync result: {status_result}")
+
+    if error_counts:
+        total_errors = sum(error_counts.values())
+        logger.error(
+            "Sync WABAS task encountered errors.",
+            extra={"total_errors": total_errors, "error_counts": error_counts},
+        )
 
 
 @celery_app.task(name="sync_whatsapp_phone_numbers")
@@ -312,74 +300,31 @@ def sync_whatsapp_phone_numbers():
 
 
 @celery_app.task(name="sync_whatsapp_cloud_phone_numbers")
-def sync_whatsapp_cloud_phone_numbers():
-    apptype = APPTYPES.get("wpp-cloud")
-    redis = get_redis_connection()
-
+def sync_whatsapp_cloud_phone_numbers():  # pragma: no cover
     error_counts = {}
 
-    for app in apptype.apps:
-        key = SYNC_WHATSAPP_PHONE_NUMBER_LOCK_KEY.format(app_uuid=str(app.uuid))
+    # Get all apps with code "wpp-cloud" and configured
+    apps = App.objects.filter(code="wpp-cloud", configured=True)
 
-        if redis.get(key) is None:
-            phone_number_id = app.config.get("wa_phone_number_id", None)
+    for app in apps:
+        sync_use_case = PhoneNumberSyncUseCase(app)
+        result = sync_use_case.sync_whatsapp_cloud_phone_number()
+        status_result = result.get("status")
 
-            if phone_number_id is None:
-                logger.info(
-                    f"Skipping the app because it doesn't contain `wa_phone_number_id`. UUID: {app.uuid}"
-                )
-                continue
-
-            try:
-                api = FacebookPhoneNumbersAPI(apptype.get_access_token(app))
-                phone_number = api.get_phone_number(phone_number_id)
-
-                phone_number_id = phone_number.get("id", None)
-                display_phone_number = phone_number.get("display_phone_number", None)
-                verified_name = phone_number.get("verified_name", None)
-                consent_status = phone_number.get("cert_status", None)
-                certificate = phone_number.get("certificate", None)
-
-                app.config["phone_number"] = dict(
-                    id=phone_number_id,
-                    display_phone_number=display_phone_number,
-                    display_name=verified_name,
-                )
-
-                if consent_status is not None:
-                    app.config["phone_number"]["cert_status"] = consent_status
-
-                if certificate is not None:
-                    app.config["phone_number"]["certificate"] = certificate
-
-                app.modified_by = User.objects.get_admin_user()
-
-                app.save()
-                redis.set(
-                    key,
-                    "synced",
-                    settings.WHATSAPP_TIME_BETWEEN_SYNC_PHONE_NUMBERS_IN_HOURS,
-                )
-
-            except Exception as e:
-                error_message = str(e)
-                if error_message in error_counts:
-                    error_counts[error_message] += 1
-                else:
-                    error_counts[error_message] = 1
-                logger.info(f"sync_whatsapp_cloud_phone_numbers:{e}")
-                continue
-
-        else:
+        if status_result == "error":
+            error_message = result.get("error", "unknown error")
+            error_counts[error_message] = error_counts.get(error_message, 0) + 1
             logger.info(
-                f"Skipping the app because it was recently synced. {redis.ttl(key)} seconds left. UUID: {app.uuid}"
+                f"sync_whatsapp_cloud_phone_numbers: {error_message} for app {app.uuid}"
             )
+        else:
+            logger.info(f"App {app.uuid} sync result: {status_result}")
 
     if error_counts:
         total_errors = sum(error_counts.values())
         logger.error(
-            f"Sync phone numbers task failed with {total_errors}.",
-            extra={"erros": error_counts},
+            "Sync phone numbers task encountered errors.",
+            extra={"total_errors": total_errors, "error_counts": error_counts},
         )
 
 
