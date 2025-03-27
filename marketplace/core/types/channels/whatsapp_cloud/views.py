@@ -14,10 +14,14 @@ from django.utils.crypto import get_random_string
 
 from marketplace.core.types import views
 from marketplace.applications.models import App
-from marketplace.celery import app as celery_app
+
 from marketplace.clients.flows.client import FlowsClient
 from marketplace.accounts.permissions import ProjectManagePermission, IsCRMUser
 from marketplace.clients.facebook.client import FacebookClient
+from marketplace.core.types.channels.whatsapp.usecases.phone_number_sync import (
+    PhoneNumberSyncUseCase,
+)
+from marketplace.core.types.channels.whatsapp.usecases.waba_sync import WABASyncUseCase
 from marketplace.services.facebook.service import (
     PhoneNumbersService,
     BusinessMetaService,
@@ -152,8 +156,8 @@ class WhatsAppCloudViewSet(
             configured=True,
         )
 
-        celery_app.send_task(name="sync_whatsapp_cloud_wabas")
-        celery_app.send_task(name="sync_whatsapp_cloud_phone_numbers")
+        WABASyncUseCase(app).sync_whatsapp_cloud_waba()
+        PhoneNumberSyncUseCase(app).sync_whatsapp_cloud_phone_number()
 
         response_data = {
             **serializer.validated_data,
@@ -236,7 +240,7 @@ class WhatsAppCloudInsights(APIView):
             response.append(
                 {
                     "waba_id": app.config.get("wa_waba_id", None),
-                    "phone_number": app.config.get("phone_number")
+                    "phone_number": app.config.get("phone_number"),
                 }
             )
         return Response({"data": response}, status=status.HTTP_200_OK)
