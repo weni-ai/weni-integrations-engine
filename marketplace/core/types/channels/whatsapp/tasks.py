@@ -171,7 +171,9 @@ def sync_whatsapp_wabas():
 @celery_app.task(name="sync_whatsapp_cloud_wabas")
 def sync_whatsapp_cloud_wabas():  # pragma: no cover
     error_counts = {}
+    success_count = 0
     apps = App.objects.filter(code="wpp-cloud", configured=True)
+    total_apps = apps.count()
 
     for app in apps:
         use_case = WABASyncUseCase(app)
@@ -185,6 +187,7 @@ def sync_whatsapp_cloud_wabas():  # pragma: no cover
                 f"sync_whatsapp_cloud_wabas: {error_message} for app {app.uuid}"
             )
         else:
+            success_count += 1
             logger.info(f"App {app.uuid} WABA sync result: {status_result}")
 
     if error_counts:
@@ -193,6 +196,12 @@ def sync_whatsapp_cloud_wabas():  # pragma: no cover
             "Sync WABAS task encountered errors.",
             extra={"total_errors": total_errors, "error_counts": error_counts},
         )
+
+    logger.info(
+        f"WABA sync task completed: successfully synchronized {success_count} apps, "
+        f"{total_errors} apps failed out of "
+        f"{total_apps} total apps."
+    )
 
 
 @celery_app.task(name="sync_whatsapp_phone_numbers")
@@ -302,9 +311,9 @@ def sync_whatsapp_phone_numbers():
 @celery_app.task(name="sync_whatsapp_cloud_phone_numbers")
 def sync_whatsapp_cloud_phone_numbers():  # pragma: no cover
     error_counts = {}
-
-    # Get all apps with code "wpp-cloud" and configured
+    success_count = 0
     apps = App.objects.filter(code="wpp-cloud", configured=True)
+    total_apps = apps.count()
 
     for app in apps:
         sync_use_case = PhoneNumberSyncUseCase(app)
@@ -318,6 +327,7 @@ def sync_whatsapp_cloud_phone_numbers():  # pragma: no cover
                 f"sync_whatsapp_cloud_phone_numbers: {error_message} for app {app.uuid}"
             )
         else:
+            success_count += 1
             logger.info(f"App {app.uuid} sync result: {status_result}")
 
     if error_counts:
@@ -326,6 +336,12 @@ def sync_whatsapp_cloud_phone_numbers():  # pragma: no cover
             "Sync phone numbers task encountered errors.",
             extra={"total_errors": total_errors, "error_counts": error_counts},
         )
+
+    logger.info(
+        f"Phone number sync task completed: successfully synchronized {success_count} apps, "
+        f"{sum(error_counts.values()) if error_counts else 0} apps failed out of "
+        f"{total_apps} total apps."
+    )
 
 
 def delete_inactive_apps(apps, flow_object_uuid):
