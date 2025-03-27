@@ -22,6 +22,7 @@ from marketplace.services.facebook.service import TemplateService, PhotoAPIServi
 from marketplace.clients.facebook.client import FacebookClient
 from marketplace.accounts.permissions import ProjectManagePermission
 from marketplace.celery import app as celery_app
+from marketplace.clients.exceptions import CustomAPIException
 
 from .models import TemplateHeader, TemplateMessage, TemplateTranslation, TemplateButton
 from .serializers import TemplateMessageSerializer, TemplateTranslationSerializer
