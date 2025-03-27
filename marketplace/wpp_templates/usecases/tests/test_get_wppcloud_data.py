@@ -2,7 +2,7 @@ from uuid import uuid4
 from unittest import TestCase
 from unittest.mock import patch, MagicMock, call
 
-from marketplace.wpp_templates.usecases import TemplatesUseCase
+from marketplace.wpp_templates.usecases import TemplateDetailUseCase
 
 
 class TestTemplatesUseCase(TestCase):
@@ -35,7 +35,7 @@ class TestTemplatesUseCase(TestCase):
             [template1_app2],
         ]
 
-        result = TemplatesUseCase.get_whatsapp_cloud_data_from_integrations(
+        result = TemplateDetailUseCase.get_whatsapp_cloud_data_from_integrations(
             project_uuid=project_uuid, template_id=template_id
         )
 
@@ -59,4 +59,4 @@ class TestTemplatesUseCase(TestCase):
         self.assertIn(str(template1_app2.uuid), result[1].templates_uuid)
 
         for dto in result:
-            self.assertIsInstance(dto, TemplatesUseCase.WhatsappCloudDTO)
+            self.assertIsInstance(dto, TemplateDetailUseCase.WhatsappCloudDTO)

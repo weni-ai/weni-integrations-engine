@@ -25,7 +25,7 @@ from marketplace.wpp_templates.models import TemplateMessage, TemplateTranslatio
 from marketplace.wpp_templates.views import TemplateMessageViewSet
 from marketplace.core.tests.base import APIBaseTestCase
 from marketplace.accounts.models import ProjectAuthorization
-from marketplace.wpp_templates.usecases import TemplatesUseCase
+from marketplace.wpp_templates.usecases import TemplateDetailUseCase
 
 
 User = get_user_model()
@@ -688,10 +688,10 @@ class WhatsappTemplateDetailsTestCase(APIBaseTestCase):
         return self.view_class.as_view({"get": "template_detail"})
 
     @patch(
-        "marketplace.wpp_templates.usecases.TemplatesUseCase.get_whatsapp_cloud_data_from_integrations"
+        "marketplace.wpp_templates.usecases.TemplateDetailUseCase.get_whatsapp_cloud_data_from_integrations"
     )
     def test_whatsapp_template_details_endpoint_success(self, mock_get_data):
-        mock_dto = TemplatesUseCase.WhatsappCloudDTO(
+        mock_dto = TemplateDetailUseCase.WhatsappCloudDTO(
             app_uuid=str(self.app.uuid),
             templates_uuid=[str(self.template_message.uuid)],
         )
@@ -717,19 +717,17 @@ class WhatsappTemplateDetailsTestCase(APIBaseTestCase):
         )
 
     def test_whatsapp_template_details_missing_project_uuid(self):
-        response = self.request.get(self.url, {"template_id": "test_template_id"})
+        with self.assertRaises(ValidationError) as cm:
+            self.request.get(self.url, {"template_id": "test_template_id"})
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
-            response.data["detail"], "Missing required parameter: project_uuid"
+            cm.exception.message, "Missing required parameter: project_uuid"
         )
 
     def test_whatsapp_template_details_missing_template_id(self):
-        response = self.request.get(
-            self.url, {"project_uuid": str(self.app.project_uuid)}
-        )
+        with self.assertRaises(ValidationError) as cm:
+            self.request.get(self.url, {"project_uuid": str(self.app.project_uuid)})
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
-            response.data["detail"], "Missing required parameter: template_id"
+            cm.exception.message, "Missing required parameter: template_id"
         )

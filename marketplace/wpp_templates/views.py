@@ -2,7 +2,7 @@ import datetime
 import re
 import base64
 import pytz
-from dataclasses import asdict
+import dataclasses
 
 from django.contrib.auth import get_user_model
 from django.conf import settings
@@ -22,12 +22,11 @@ from marketplace.services.facebook.service import TemplateService, PhotoAPIServi
 from marketplace.clients.facebook.client import FacebookClient
 from marketplace.accounts.permissions import ProjectManagePermission
 from marketplace.celery import app as celery_app
-from marketplace.clients.exceptions import CustomAPIException
 
 from .models import TemplateHeader, TemplateMessage, TemplateTranslation, TemplateButton
 from .serializers import TemplateMessageSerializer, TemplateTranslationSerializer
 from .languages import LANGUAGES
-from .usecases import TemplatesUseCase
+from .usecases import TemplateDetailUseCase
 
 
 WHATSAPP_VERSION = settings.WHATSAPP_VERSION
@@ -294,15 +293,14 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         try:
             project_uuid = request.query_params["project_uuid"]
             template_id = request.query_params["template_id"]
-            data = TemplatesUseCase.get_whatsapp_cloud_data_from_integrations(
+            data = TemplateDetailUseCase.get_whatsapp_cloud_data_from_integrations(
                 project_uuid=project_uuid, template_id=template_id
             )
-            serialized_data = list(map(lambda data: asdict(data), data))
+            serialized_data = list(map(lambda data: dataclasses.asdict(data), data))
             return Response(serialized_data, status=status.HTTP_200_OK)
         except KeyError as ke:
             stripped_key = str(ke).strip("'")
-            raise CustomAPIException(
-                detail=f"Missing required parameter: {stripped_key}",
+            raise ValidationError(
+                message=f"Missing required parameter: {stripped_key}",
                 code="missing_parameter",
-                status_code=status.HTTP_400_BAD_REQUEST,
             )

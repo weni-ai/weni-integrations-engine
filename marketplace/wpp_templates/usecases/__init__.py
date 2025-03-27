@@ -1,1 +1,1 @@
-from .wpp_templates import TemplatesUseCase
+from .template_detail import TemplateDetailUseCase

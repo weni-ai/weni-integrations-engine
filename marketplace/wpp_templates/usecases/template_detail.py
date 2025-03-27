@@ -6,7 +6,7 @@ from marketplace.applications.models import App
 from marketplace.wpp_templates.models import TemplateMessage
 
 
-class TemplatesUseCase:
+class TemplateDetailUseCase:
     @dataclass(frozen=True)
     class WhatsappCloudDTO:
         app_uuid: str
@@ -42,7 +42,7 @@ class TemplatesUseCase:
             )
             templates_uuid = list(map(lambda template: str(template.uuid), templates))
             dtos.append(
-                TemplatesUseCase.WhatsappCloudDTO(str(app.uuid), templates_uuid)
+                TemplateDetailUseCase.WhatsappCloudDTO(str(app.uuid), templates_uuid)
             )
 
         return dtos
