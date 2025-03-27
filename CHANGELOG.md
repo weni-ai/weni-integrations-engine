@@ -1,3 +1,8 @@
+v4.1.0
+----------
+* fix: refactor wabas sync tasks and phone number
+* fix: refactors the library template creation process 
+
 v4.0.15
 ----------
 * feat: add new rule [currency clp] for chile
