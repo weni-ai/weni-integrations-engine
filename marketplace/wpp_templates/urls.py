@@ -18,9 +18,9 @@ urlpatterns = [
 
 urlpatterns.append(
     path(
-        "templates/whatsappcloud/",
-        views.TemplateMessageViewSet.as_view({"get": "whatsappcloud"}),
-        name="app-template-whatsappcloud",
+        "project/templates/details/",
+        views.TemplateMessageViewSet.as_view({"get": "template_detail"}),
+        name="app-template-details",
     ),
 )
 

@@ -289,7 +289,7 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         )
 
     @action(detail=False, methods=["GET"])
-    def whatsappcloud(self, request, app_uuid=None, uuid=None):
+    def template_detail(self, request, app_uuid=None, uuid=None):
         try:
             project_uuid = request.query_params["project_uuid"]
             template_id = request.query_params["template_id"]

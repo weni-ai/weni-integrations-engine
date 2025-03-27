@@ -642,7 +642,7 @@ class WhatsappTemplateUpdateTestCase(APIBaseTestCase):
                         )
 
 
-class WhatsappCloudEndpointTestCase(APIBaseTestCase):
+class WhatsappTemplateDetailsTestCase(APIBaseTestCase):
     view_class = TemplateMessageViewSet
 
     def setUp(self):
@@ -681,16 +681,16 @@ class WhatsappCloudEndpointTestCase(APIBaseTestCase):
         )
         self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
 
-        self.url = reverse("app-template-whatsappcloud")
+        self.url = reverse("app-template-details")
 
     @property
     def view(self):
-        return self.view_class.as_view({"get": "whatsappcloud"})
+        return self.view_class.as_view({"get": "template_detail"})
 
     @patch(
         "marketplace.wpp_templates.usecases.TemplatesUseCase.get_whatsapp_cloud_data_from_integrations"
     )
-    def test_whatsappcloud_endpoint_success(self, mock_get_data):
+    def test_whatsapp_template_details_endpoint_success(self, mock_get_data):
         mock_dto = TemplatesUseCase.WhatsappCloudDTO(
             app_uuid=str(self.app.uuid),
             templates_uuid=[str(self.template_message.uuid)],
@@ -716,7 +716,7 @@ class WhatsappCloudEndpointTestCase(APIBaseTestCase):
             project_uuid=str(self.app.project_uuid), template_id="test_template_id"
         )
 
-    def test_whatsappcloud_endpoint_missing_project_uuid(self):
+    def test_whatsapp_template_details_missing_project_uuid(self):
         response = self.request.get(self.url, {"template_id": "test_template_id"})
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -724,7 +724,7 @@ class WhatsappCloudEndpointTestCase(APIBaseTestCase):
             response.data["detail"], "Missing required parameter: project_uuid"
         )
 
-    def test_whatsappcloud_endpoint_missing_template_id(self):
+    def test_whatsapp_template_details_missing_template_id(self):
         response = self.request.get(
             self.url, {"project_uuid": str(self.app.project_uuid)}
         )
