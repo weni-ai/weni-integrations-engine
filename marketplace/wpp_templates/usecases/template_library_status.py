@@ -45,11 +45,17 @@ class TemplateLibraryStatusUseCase:
         # Update only the specific template
         if template_name in template_statuses:
             old_status = template_statuses[template_name]
-            template_statuses[template_name] = new_status
-            logger.info(
-                f"Template status updated for app {self.app.uuid}: '{template_name}' "
-                f"changed from '{old_status}' to '{new_status}'"
-            )
+            if old_status in ["REJECTED", "ERROR"]:
+                logger.info(
+                    f"Keeping {old_status} status for template '{template_name}' (app {self.app.uuid}). "
+                    f"Attempted to change to '{new_status}'"
+                )
+            else:
+                template_statuses[template_name] = new_status
+                logger.info(
+                    f"Template status updated for app {self.app.uuid}: '{template_name}' "
+                    f"changed from '{old_status}' to '{new_status}'"
+                )
             self._update_redis_status(template_statuses)
 
     def synchronize_all_stored_templates(self, skip_facebook_sync: bool = False):
