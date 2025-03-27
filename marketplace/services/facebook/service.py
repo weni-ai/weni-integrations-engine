@@ -4,9 +4,6 @@ import requests
 
 from typing import List, Dict, Any
 
-from marketplace.applications.models import App
-from marketplace.clients.flows.client import FlowsClient
-from marketplace.services.flows.service import FlowsService
 from marketplace.wpp_products.models import Catalog
 from marketplace.interfaces.facebook.interfaces import (
     TemplatesRequestsInterface,
@@ -16,12 +13,6 @@ from marketplace.interfaces.facebook.interfaces import (
     BusinessMetaRequestsInterface,
     CatalogsRequestsInterface,
 )
-from marketplace.wpp_templates.models import (
-    TemplateButton,
-    TemplateMessage,
-    TemplateTranslation,
-)
-from marketplace.wpp_templates.utils import extract_template_data
 
 
 logger = logging.getLogger(__name__)
@@ -261,95 +252,14 @@ class TemplateService:
         return text.strip()
 
     def create_library_template_message(
-        self, app: App, template_data: dict
+        self, waba_id: str, template_data: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """Creates a library template in Meta and saves it to the database."""
-        waba_id = app.config["wa_waba_id"]
-
-        # Send the request to create the template in the Facebook API
-        response_data = self.client.create_library_template_message(
+        """
+        Calls the FacebookClient to create a single library template message.
+        """
+        return self.client.create_library_template_message(
             waba_id=waba_id, template_data=template_data
         )
-
-        # Save to the database based on the input data
-        template_translation = self.save_template_in_db(
-            app, template_data, response_data
-        )
-
-        # Send template to flows
-        self._send_template_to_flows(app, template_translation)
-
-        return {
-            "message": "Library template created successfully.",
-            "template_uuid": template_translation.template.uuid,
-        }
-
-    def save_template_in_db(self, app: App, template_data: dict, response_data: dict):
-        """Creates or updates database objects after successful external API call."""
-        template_name = template_data["name"]
-        category = response_data["category"]
-        template_language = template_data["language"]
-        message_template_id = response_data["id"]
-        button_inputs = template_data.get("library_template_button_inputs", [])
-
-        # Create or update the TemplateMessage
-        found_template, _created = TemplateMessage.objects.get_or_create(
-            app=app,
-            name=template_name,
-            defaults={"category": category, "template_type": "TEXT"},
-        )
-
-        found_template.category = category
-        found_template.save()
-
-        # Create or update the Template Translation
-        returned_translation, _created = TemplateTranslation.objects.get_or_create(
-            template=found_template,
-            language=template_language,
-            defaults={
-                "status": response_data["status"],
-                "message_template_id": message_template_id,
-                "body": "",
-                "footer": "",
-                "variable_count": 0,
-                "country": "Brazil",
-            },
-        )
-
-        returned_translation.status = response_data["status"]
-        returned_translation.message_template_id = message_template_id
-        returned_translation.save()
-
-        # Create Buttons, if they exist
-        for button in button_inputs:
-            TemplateButton.objects.get_or_create(
-                translation=returned_translation,
-                button_type=button["type"],
-                url=button["url"]["base_url"] if "url" in button else None,
-                example=button["url"]["url_suffix_example"]
-                if "url" in button
-                else None,
-                text=button.get("text", ""),
-                phone_number=None,
-            )
-
-        return returned_translation
-
-    def _send_template_to_flows(
-        self, app: App, template_translation: TemplateTranslation
-    ):
-        """Sends the template data to flows."""
-        try:
-            flows_service = FlowsService(FlowsClient())
-            template_data = extract_template_data(template_translation)
-            flows_service.update_facebook_templates_webhook(
-                flow_object_uuid=str(app.flow_object_uuid),
-                template_data=template_data,
-                template_name=template_translation.template.name,
-            )
-            logger.info("Template sent to flows successfully.")
-        except Exception as e:
-            logger.error(f"Failed to send template to flows: {e}")
 
 
 class PhotoAPIService:
