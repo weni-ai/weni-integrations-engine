@@ -251,6 +251,16 @@ class TemplateService:
         text = text.replace("\xa0", " ")
         return text.strip()
 
+    def create_library_template_message(
+        self, waba_id: str, template_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Calls the FacebookClient to create a single library template message.
+        """
+        return self.client.create_library_template_message(
+            waba_id=waba_id, template_data=template_data
+        )
+
 
 class PhotoAPIService:
     def __init__(self, client: PhotoAPIRequestsInterface):

@@ -434,10 +434,29 @@ class CreateWhatsAppCloudTestCase(APIBaseTestCase):
         self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
         self.url = reverse("wpp-cloud-app-list")
 
+        # Mock usecases
+        self.mock_waba_sync = Mock()
+        self.mock_waba_sync.sync_whatsapp_cloud_waba.return_value = {}
+
+        self.mock_phone_sync = Mock()
+        self.mock_phone_sync.sync_whatsapp_cloud_phone_number.return_value = {
+            "status": "success"
+        }
+
         # Mock services
         self.mock_business_meta_service = MockBusinessMetaService()
         self.mock_phone_numbers_service = MockPhoneNumbersService()
         self.mock_flows_service = MockFlowsService()
+
+        patcher_waba_sync = patch(
+            "marketplace.core.types.channels.whatsapp_cloud.views.WABASyncUseCase",
+            new=Mock(return_value=self.mock_waba_sync),
+        )
+
+        patcher_phone_sync = patch(
+            "marketplace.core.types.channels.whatsapp_cloud.views.PhoneNumberSyncUseCase",
+            new=Mock(return_value=self.mock_phone_sync),
+        )
 
         patcher_biz_meta = patch(
             "marketplace.core.types.channels.whatsapp_cloud.views.BusinessMetaService",
@@ -452,6 +471,12 @@ class CreateWhatsAppCloudTestCase(APIBaseTestCase):
             new=Mock(return_value=self.mock_flows_service),
         )
         patcher_celery = patch("marketplace.celery.app.send_task", new=Mock())
+
+        patcher_waba_sync.start()
+        self.addCleanup(patcher_waba_sync.stop)
+
+        patcher_phone_sync.start()
+        self.addCleanup(patcher_phone_sync.stop)
 
         patcher_biz_meta.start()
         self.addCleanup(patcher_biz_meta.stop)

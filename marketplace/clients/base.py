@@ -1,6 +1,8 @@
 import requests
 import logging
 
+from django.conf import settings
+
 from marketplace.clients.exceptions import CustomAPIException
 
 
@@ -129,6 +131,7 @@ class RequestClient:
                 "exception_details": exception_details,
             },
         )
+
 
 class InternalAuthentication(RequestClient):
     def __get_module_token(self):

@@ -1,3 +1,33 @@
+v4.1.0
+----------
+* fix: refactor wabas sync tasks and phone number
+* fix: refactors the library template creation process 
+
+v4.0.15
+----------
+* feat: add new rule [currency clp] for chile
+
+v4.0.14
+----------
+* hotfix: change order of webhook parameter
+
+v4.0.13
+----------
+* fix: sends library templates to flows
+
+v4.0.12
+----------
+* feat: create library template objects on db
+
+v4.0.11
+----------
+* feat: add logger info to update template status task 
+
+v4.0.10
+----------
+* feature: add route to create library template messages
+* Adding a view to retrieve WhatsApp Cloud app UUID and channel UUID
+
 v4.0.9
 ----------
 * feat: adding new endpoint to list the waba data and phone number of a project

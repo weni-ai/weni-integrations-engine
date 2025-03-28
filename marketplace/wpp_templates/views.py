@@ -12,6 +12,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.generics import get_object_or_404
 
 from marketplace.applications.models import App
 from marketplace.core.types import APPTYPES
@@ -19,6 +20,7 @@ from marketplace.core.types.channels.whatsapp_base.mixins import QueryParamsPars
 from marketplace.services.facebook.service import TemplateService, PhotoAPIService
 from marketplace.clients.facebook.client import FacebookClient
 from marketplace.accounts.permissions import ProjectManagePermission
+from marketplace.celery import app as celery_app
 
 from .models import TemplateHeader, TemplateMessage, TemplateTranslation, TemplateButton
 from .serializers import TemplateMessageSerializer, TemplateTranslationSerializer
@@ -256,3 +258,30 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         )
 
         return Response(response)
+
+    @action(detail=False, methods=["POST"], url_path="create-library-templates")
+    def create_library_templates(self, request, app_uuid=None, uuid=None):
+        """
+        Creates a library template message for the given app by scheduling an asynchronous task.
+
+        This endpoint queues a background task that will handle the template creation process
+        without blocking the request. The actual template creation happens asynchronously.
+
+        Args:
+            request (Request): The request object containing the template data to be created.
+            app_uuid (str): UUID of the app for which the template will be created.
+            uuid (str, optional): Not used in this function.
+
+        Returns:
+            Response: API response with HTTP 200 status indicating the task was successfully queued.
+        """
+        app = get_object_or_404(App, uuid=app_uuid)
+
+        celery_app.send_task(
+            name="task_create_library_templates_batch",
+            kwargs={"app_uuid": str(app.uuid), "template_data": request.data},
+        )
+
+        return Response(
+            {"message": "Library template task created."}, status=status.HTTP_200_OK
+        )

@@ -153,6 +153,17 @@ class MockClient:
     def get_uploads_in_progress_by_feed(self, feed_id):
         return "upload_id"
 
+    def create_library_template_message(self, waba_id, template_data):
+        """
+        Mock method for creating library template messages
+        Returns a mock response similar to the Facebook API
+        """
+        return {
+            "id": "0123456789",
+            "status": "APPROVED",
+            "category": template_data.get("category", "UTILITY"),
+        }
+
 
 class TestFacebookService(TestCase):
     def generate_unique_facebook_catalog_id(self):
@@ -355,8 +366,21 @@ class TestFacebookCreateDeleteService(TestCase):
 
 class TestTemplateService(TestCase):
     def setUp(self):
+        self.user = User.objects.create(email="template-test@example.com")
         self.client = MockClient()
         self.service = TemplateService(client=self.client)
+
+        self.app = App.objects.create(
+            code="wpp-cloud",
+            created_by=self.user,
+            project_uuid=str(uuid.uuid4()),
+            platform=App.PLATFORM_WENI_FLOWS,
+            config={
+                "wa_business_id": "business-id",
+                "wa_waba_id": "test_waba_id",
+                "wa_phone_number_id": "phone-id",
+            },
+        )
 
     def test_create_template_message(self):
         response = self.service.create_template_message(
