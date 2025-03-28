@@ -443,6 +443,11 @@ class CreateWhatsAppCloudTestCase(APIBaseTestCase):
             "status": "success"
         }
 
+        self.mock_insights_sync = Mock()
+        self.mock_insights_sync.sync_whatsapp_cloud_insights.return_value = {
+            "status": "success"
+        }
+
         # Mock services
         self.mock_business_meta_service = MockBusinessMetaService()
         self.mock_phone_numbers_service = MockPhoneNumbersService()
@@ -456,6 +461,11 @@ class CreateWhatsAppCloudTestCase(APIBaseTestCase):
         patcher_phone_sync = patch(
             "marketplace.core.types.channels.whatsapp_cloud.views.PhoneNumberSyncUseCase",
             new=Mock(return_value=self.mock_phone_sync),
+        )
+
+        patcher_insights_sync = patch(
+            "marketplace.core.types.channels.whatsapp_cloud.views.WhatsAppInsightsSyncUseCase",
+            new=Mock(return_value=self.mock_insights_sync),
         )
 
         patcher_biz_meta = patch(
@@ -473,21 +483,19 @@ class CreateWhatsAppCloudTestCase(APIBaseTestCase):
         patcher_celery = patch("marketplace.celery.app.send_task", new=Mock())
 
         patcher_waba_sync.start()
-        self.addCleanup(patcher_waba_sync.stop)
-
         patcher_phone_sync.start()
-        self.addCleanup(patcher_phone_sync.stop)
-
+        patcher_insights_sync.start()
         patcher_biz_meta.start()
-        self.addCleanup(patcher_biz_meta.stop)
-
         patcher_phone.start()
-        self.addCleanup(patcher_phone.stop)
-
         patcher_flows.start()
-        self.addCleanup(patcher_flows.stop)
-
         patcher_celery.start()
+
+        self.addCleanup(patcher_waba_sync.stop)
+        self.addCleanup(patcher_phone_sync.stop)
+        self.addCleanup(patcher_insights_sync.stop)
+        self.addCleanup(patcher_biz_meta.stop)
+        self.addCleanup(patcher_phone.stop)
+        self.addCleanup(patcher_flows.stop)
         self.addCleanup(patcher_celery.stop)
 
     @property
