@@ -717,17 +717,11 @@ class WhatsappTemplateDetailsTestCase(APIBaseTestCase):
         )
 
     def test_whatsapp_template_details_missing_project_uuid(self):
-        with self.assertRaises(ValidationError) as cm:
-            self.request.get(self.url, {"template_id": "test_template_id"})
-
-        self.assertEqual(
-            cm.exception.message, "Missing required parameter: project_uuid"
-        )
+        response = self.request.get(self.url, {"template_id": "test_template_id"})
+        self.assertEqual(response.data[0], "Missing required parameter: project_uuid")
+        self.assertEqual(response.status_code, 400)
 
     def test_whatsapp_template_details_missing_template_id(self):
-        with self.assertRaises(ValidationError) as cm:
-            self.request.get(self.url, {"project_uuid": str(self.app.project_uuid)})
-
-        self.assertEqual(
-            cm.exception.message, "Missing required parameter: template_id"
-        )
+        response = self.request.get(self.url, {"project_uuid": "test_project_uuid"})
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data[0], "Missing required parameter: template_id")

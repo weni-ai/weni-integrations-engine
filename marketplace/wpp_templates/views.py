@@ -14,6 +14,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.generics import get_object_or_404
+from rest_framework import exceptions
 
 from marketplace.applications.models import App
 from marketplace.core.types import APPTYPES
@@ -300,7 +301,7 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
             return Response(serialized_data, status=status.HTTP_200_OK)
         except KeyError as ke:
             stripped_key = str(ke).strip("'")
-            raise ValidationError(
-                message=f"Missing required parameter: {stripped_key}",
+            raise exceptions.ValidationError(
+                detail=f"Missing required parameter: {stripped_key}",
                 code="missing_parameter",
             )
