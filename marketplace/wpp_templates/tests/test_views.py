@@ -1,4 +1,4 @@
-""" Tests for the wpp_templates module """
+"""Tests for the wpp_templates module"""
 
 import uuid
 
@@ -25,6 +25,7 @@ from marketplace.wpp_templates.models import TemplateMessage, TemplateTranslatio
 from marketplace.wpp_templates.views import TemplateMessageViewSet
 from marketplace.core.tests.base import APIBaseTestCase
 from marketplace.accounts.models import ProjectAuthorization
+from marketplace.wpp_templates.usecases import TemplateDetailUseCase
 
 
 User = get_user_model()
@@ -639,3 +640,88 @@ class WhatsappTemplateUpdateTestCase(APIBaseTestCase):
                             uuid=str(self.template_message.uuid),
                             headers=self.headers,
                         )
+
+
+class WhatsappTemplateDetailsTestCase(APIBaseTestCase):
+    view_class = TemplateMessageViewSet
+
+    def setUp(self):
+        super().setUp()
+
+        self.app = App.objects.create(
+            config=dict(wa_waba_id="432321321"),
+            project_uuid=uuid.uuid4(),
+            platform=App.PLATFORM_WENI_FLOWS,
+            code="wpp-cloud",
+            configured=True,
+            created_by=self.user,
+        )
+
+        self.template_message = TemplateMessage.objects.create(
+            name="test_template",
+            app=self.app,
+            category="UTILITY",
+            created_on=datetime.now(pytz.UTC),
+            template_type="TEXT",
+            created_by=self.user,
+        )
+
+        self.template_translation = TemplateTranslation.objects.create(
+            template=self.template_message,
+            status="APPROVED",
+            body="Test body",
+            language="en_US",
+            country="US",
+            variable_count=0,
+            message_template_id="test_template_id",
+        )
+
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+
+        self.url = reverse("app-template-details")
+
+    @property
+    def view(self):
+        return self.view_class.as_view({"get": "template_detail"})
+
+    @patch(
+        "marketplace.wpp_templates.usecases.TemplateDetailUseCase.get_whatsapp_cloud_data_from_integrations"
+    )
+    def test_whatsapp_template_details_endpoint_success(self, mock_get_data):
+        mock_dto = TemplateDetailUseCase.WhatsappCloudDTO(
+            app_uuid=str(self.app.uuid),
+            templates_uuid=[str(self.template_message.uuid)],
+        )
+        mock_get_data.return_value = [mock_dto]
+
+        response = self.request.get(
+            self.url,
+            {
+                "project_uuid": str(self.app.project_uuid),
+                "template_id": "test_template_id",
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["app_uuid"], str(self.app.uuid))
+        self.assertEqual(
+            response.data[0]["templates_uuid"], [str(self.template_message.uuid)]
+        )
+
+        mock_get_data.assert_called_once_with(
+            project_uuid=str(self.app.project_uuid), template_id="test_template_id"
+        )
+
+    def test_whatsapp_template_details_missing_project_uuid(self):
+        response = self.request.get(self.url, {"template_id": "test_template_id"})
+        self.assertEqual(response.data[0], "Missing required parameter: project_uuid")
+        self.assertEqual(response.status_code, 400)
+
+    def test_whatsapp_template_details_missing_template_id(self):
+        response = self.request.get(self.url, {"project_uuid": "test_project_uuid"})
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data[0], "Missing required parameter: template_id")

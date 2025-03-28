@@ -2,6 +2,7 @@ import datetime
 import re
 import base64
 import pytz
+import dataclasses
 
 from django.contrib.auth import get_user_model
 from django.conf import settings
@@ -13,6 +14,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.generics import get_object_or_404
+from rest_framework import exceptions
 
 from marketplace.applications.models import App
 from marketplace.core.types import APPTYPES
@@ -25,6 +27,7 @@ from marketplace.celery import app as celery_app
 from .models import TemplateHeader, TemplateMessage, TemplateTranslation, TemplateButton
 from .serializers import TemplateMessageSerializer, TemplateTranslationSerializer
 from .languages import LANGUAGES
+from .usecases import TemplateDetailUseCase
 
 
 WHATSAPP_VERSION = settings.WHATSAPP_VERSION
@@ -285,3 +288,20 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         return Response(
             {"message": "Library template task created."}, status=status.HTTP_200_OK
         )
+
+    @action(detail=False, methods=["GET"])
+    def template_detail(self, request, app_uuid=None, uuid=None):
+        try:
+            project_uuid = request.query_params["project_uuid"]
+            template_id = request.query_params["template_id"]
+            data = TemplateDetailUseCase.get_whatsapp_cloud_data_from_integrations(
+                project_uuid=project_uuid, template_id=template_id
+            )
+            serialized_data = list(map(lambda data: dataclasses.asdict(data), data))
+            return Response(serialized_data, status=status.HTTP_200_OK)
+        except KeyError as ke:
+            stripped_key = str(ke).strip("'")
+            raise exceptions.ValidationError(
+                detail=f"Missing required parameter: {stripped_key}",
+                code="missing_parameter",
+            )
