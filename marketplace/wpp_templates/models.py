@@ -46,7 +46,7 @@ class TemplateMessage(models.Model):
         ("TEXT", "WhatsApp.data.templates.type.text"),
     )
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    app = models.ForeignKey(App, on_delete=models.PROTECT, related_name="template")
+    app = models.ForeignKey(App, on_delete=models.CASCADE, related_name="template")
     name = models.CharField(max_length=512)
     category = models.CharField(max_length=200, choices=CATEGORY_CHOICES)
     created_on = models.DateTimeField(
