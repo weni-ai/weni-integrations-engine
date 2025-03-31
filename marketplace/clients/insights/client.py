@@ -46,4 +46,4 @@ class InsightsClient(RequestClient, InsightsClientInterface):
             headers=self.authentication_instance.headers,
             json=whatsapp_data,
         )
-        return response.json()
+        return response
