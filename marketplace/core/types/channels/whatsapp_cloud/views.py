@@ -22,6 +22,9 @@ from marketplace.core.types.channels.whatsapp.usecases.phone_number_sync import 
     PhoneNumberSyncUseCase,
 )
 from marketplace.core.types.channels.whatsapp.usecases.waba_sync import WABASyncUseCase
+from marketplace.core.types.channels.whatsapp_cloud.usecases.whatsapp_insights_sync import (
+    WhatsAppInsightsSyncUseCase,
+)
 from marketplace.services.facebook.service import (
     PhoneNumbersService,
     BusinessMetaService,
@@ -158,6 +161,7 @@ class WhatsAppCloudViewSet(
 
         WABASyncUseCase(app).sync_whatsapp_cloud_waba()
         PhoneNumberSyncUseCase(app).sync_whatsapp_cloud_phone_number()
+        WhatsAppInsightsSyncUseCase(app).sync()
 
         response_data = {
             **serializer.validated_data,
