@@ -110,7 +110,7 @@ def sync_pending_templates(app_uuid: str):
         use_case.sync_templates_from_facebook(app)
 
         for template_name, status in stored_status.items():
-            template = app.template.filter(name=template_name).first()
+            template = app.templates.filter(name=template_name).first()
             if not template:
                 logger.warning(f"Template {template_name} not found for app {app_uuid}")
                 continue

@@ -349,9 +349,9 @@ def delete_inactive_apps(apps, flow_object_uuid):
         try:
             # Ensures that it will only delete the app linked to the uuid of the flow
             if str(app.flow_object_uuid) == flow_object_uuid:
-                templates = app.template.all()
+                templates = app.templates.all()
                 if templates:
-                    app.template.all().delete()
+                    app.templates.all().delete()
 
                 app.delete()
                 logger.info(f"Inactive app: [{app.uuid}] deleted successfully")

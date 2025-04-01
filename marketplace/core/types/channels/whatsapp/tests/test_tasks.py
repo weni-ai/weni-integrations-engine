@@ -243,20 +243,18 @@ class SyncWhatsAppAppsTaskTestCase(TestCase):
             created_by=User.objects.get_admin_user(),
         )
 
-        app_template_count = self.wpp_app.template.all().count()
+        app_template_count = self.wpp_app.templates.all().count()
         mock_redis.return_value = self.redis_mock
 
         sync_whatsapp_apps()
 
-        app_template_after_task = self.wpp_app.template.all().count()
+        app_template_after_task = self.wpp_app.templates.all().count()
         self.assertNotEqual(app_template_count, app_template_after_task)
 
     @patch("marketplace.core.types.channels.whatsapp.tasks.get_redis_connection")
     @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
-    @patch("marketplace.core.types.channels.whatsapp.tasks.logger")
-    @patch("django.db.models.query.QuerySet.delete", Exception)
-    def test_skip_inactive_channel_and_delete_exception(
-        self, logger_mock, list_channel_mock: "MagicMock", mock_redis
+    def test_skip_inactive_channel(
+        self, list_channel_mock: "MagicMock", mock_redis
     ) -> None:
         project_uuid = str(uuid4())
         flow_object_uuid = str(uuid4())
@@ -278,16 +276,15 @@ class SyncWhatsAppAppsTaskTestCase(TestCase):
             created_by=User.objects.get_admin_user(),
         )
 
-        app_template_count = self.wpp_app.template.all().count()
+        app_template_count = self.wpp_app.templates.all().count()
         mock_redis.return_value = self.redis_mock
 
         sync_whatsapp_apps()
 
-        app_template_after_task = self.wpp_app.template.all().count()
-        self.assertIn(
-            "Cannot delete some instances of model", str(logger_mock.error.call_args)
-        )
-        self.assertEqual(app_template_count, app_template_after_task)
+        app_template_after_task = self.wpp_app.templates.all().count()
+
+        self.assertNotEqual(app_template_count, app_template_after_task)
+        self.assertEqual(app_template_after_task, 0)
 
     @patch("marketplace.core.types.channels.whatsapp.tasks.get_redis_connection")
     @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
