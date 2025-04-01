@@ -34,7 +34,6 @@ from marketplace.applications.models import App
 
 from marketplace.wpp_products.utils import (
     ProductBatchUploader,
-    ProductUploader,
     RedisQueue,
     SellerSyncUtils,
     UploadManager,
@@ -205,74 +204,6 @@ def task_insert_vtex_products(**kwargs):
     print("=" * 40)
 
 
-@celery_app.task(name="task_update_vtex_products")
-def task_update_vtex_products(**kwargs):
-    start_time = datetime.now()
-    vtex_base_service = VtexServiceBase()
-
-    app_uuid = kwargs.get("app_uuid")
-    webhook = kwargs.get("webhook")
-
-    sku_id = webhook.get("IdSku")
-    seller_an = webhook.get("An")
-    seller_chain = webhook.get("SellerChain")
-    try:
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-        logger.info(
-            f"Processing product update for App UUID: {app_uuid}, "
-            f"SKU_ID: {sku_id} at {current_time}. "
-            f"'An':{seller_an}, 'SellerChain': {seller_chain}."
-        )
-        cache_key = f"app_cache_{app_uuid}"
-        vtex_app = cache.get(cache_key)
-        if not vtex_app:
-            vtex_app = App.objects.get(uuid=app_uuid, configured=True, code="vtex")
-            cache.set(cache_key, vtex_app, timeout=300)
-
-        api_credentials = vtex_base_service.get_vtex_credentials_or_raise(vtex_app)
-
-        catalog = vtex_app.vtex_catalogs.first()
-        if not catalog or not catalog.feeds.first():
-            logger.info(
-                f"No data feed found in the database. Vtex app: {vtex_app.uuid}"
-            )
-            return
-
-        product_feed = catalog.feeds.first()
-
-        vtex_update_service = ProductUpdateService(
-            api_credentials=api_credentials,
-            catalog=catalog,
-            skus_ids=[sku_id],
-            product_feed=product_feed,
-            webhook=webhook,
-        )
-        products = vtex_update_service.webhook_product_insert()
-        if products is None:
-            logger.info(
-                f"No products to process after treatment for VTEX app {app_uuid}. Task ending."
-            )
-            return
-
-    except Exception as e:
-        logger.error(
-            f"An error occurred during the updating Webhook vtex products for app {app_uuid}, {str(e)}"
-        )
-
-    end_time = datetime.now()
-    duration = (end_time - start_time).total_seconds()
-    minutes, seconds = divmod(duration, 60)
-
-    logger.info(
-        f"Finishing process update vtex product to SKU:{sku_id} App: {app_uuid}"
-    )
-    logger.info(f"Task completed in {int(minutes)} minutes and {int(seconds)} seconds.")
-
-    # Check and start upload task
-    UploadManager.check_and_start_upload(app_uuid)
-    print("=" * 40)
-
-
 @celery_app.task(name="task_upload_vtex_products")
 def task_upload_vtex_products(**kwargs):
     app_vtex_uuid = kwargs.get("app_vtex_uuid")
@@ -289,17 +220,12 @@ def task_upload_vtex_products(**kwargs):
                 print("No catalogs found.")
                 return
 
-            # Checks if the application is using Sync v2
-            if app_vtex.config.get("use_sync_v2", False):
-                for catalog in catalogs:
-                    if catalog.vtex_app:
-                        print(f"Using Sync v2 for catalog: {catalog.name}")
-                        uploader = ProductBatchUploader(catalog=catalog)
-            else:
-                for catalog in catalogs:
-                    if catalog.feeds.first():
-                        print(f"Processing upload for catalog: {catalog.name}")
-                        uploader = ProductUploader(catalog=catalog)
+            for catalog in catalogs:
+                if catalog.vtex_app:
+                    logger.info(
+                        f"[task_upload_vtex_products] Processing catalog: {catalog.name} for VTEX app: {app_vtex.uuid}"
+                    )
+                    uploader = ProductBatchUploader(catalog=catalog)
 
             uploader.process_and_upload(redis_client, lock_key, lock_expiration_time)
 
@@ -370,45 +296,33 @@ def send_sync(app_uuid: str, webhook: dict):
     if not sku_id:
         raise ValueError(f"SKU ID not provided in the request. App:{str(app.uuid)}")
 
-    # Check if the app uses the new batch sync
-    use_sync_v2 = app.config.get("use_sync_v2", False)
-
     # Check if the app uses specific queue
     celery_queue = app.config.get("celery_queue_name", "product_synchronization")
 
     # Webhook Log
     WebhookLog.objects.create(sku_id=sku_id, data=webhook, vtex_app=app)
 
-    if use_sync_v2:
-        logger.info(f"App {app_uuid} uses Sync v2. Enqueuing for batch update.")
+    logger.info(f"App {app_uuid} uses Sync v2. Enqueuing for batch update.")
 
-        # Extract seller_id from webhook
-        seller_id = _extract_sellers_ids(webhook)
-        if not seller_id:
-            raise ValueError(f"Seller ID not found in webhook. App:{str(app.uuid)}")
+    # Extract seller_id from webhook
+    seller_id = _extract_sellers_ids(webhook)
+    if not seller_id:
+        raise ValueError(f"Seller ID not found in webhook. App:{str(app.uuid)}")
 
-        # Enqueue the seller and SKU in the task_enqueue_webhook
-        celery_app.send_task(
-            "task_enqueue_webhook",
-            kwargs={"app_uuid": app_uuid, "seller": seller_id, "sku_id": sku_id},
-            queue=celery_queue,
-            ignore_result=True,
-        )
-        # Dequeue
-        celery_app.send_task(
-            "task_dequeue_webhooks",
-            kwargs={"app_uuid": app_uuid, "celery_queue": celery_queue},
-            queue=celery_queue,
-            ignore_result=True,
-        )
-    else:
-        logger.info(f"App {app_uuid} uses legacy sync. Forwarding to update task.")
-        celery_app.send_task(
-            "task_update_vtex_products",
-            kwargs={"app_uuid": app_uuid, "webhook": webhook},
-            queue=celery_queue,
-            ignore_result=True,
-        )
+    # Enqueue the seller and SKU in the task_enqueue_webhook
+    celery_app.send_task(
+        "task_enqueue_webhook",
+        kwargs={"app_uuid": app_uuid, "seller": seller_id, "sku_id": sku_id},
+        queue=celery_queue,
+        ignore_result=True,
+    )
+    # Dequeue
+    celery_app.send_task(
+        "task_dequeue_webhooks",
+        kwargs={"app_uuid": app_uuid, "celery_queue": celery_queue},
+        queue=celery_queue,
+        ignore_result=True,
+    )
 
 
 def _extract_sellers_ids(webhook: dict):

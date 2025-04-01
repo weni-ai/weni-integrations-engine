@@ -121,13 +121,6 @@ class PrivateProductsServiceTestCase(TestCase):
             {"sku_id": "sku1", "seller_id": "seller1", "domain": "valid.domain.com"},
         )
 
-    def test_update_webhook_product_info(self):
-        self.service.webhook_data_processor.process_product_data = Mock(return_value=[])
-        updated_products = self.service.update_webhook_product_info(
-            "valid.domain.com", ["sku1"], ["seller1"], self.mock_catalog
-        )
-        self.assertIsInstance(updated_products, list)
-
     def test_get_product_specification(self):
         specification = self.service.get_product_specification(
             "product1", "valid.domain.com"

@@ -134,7 +134,6 @@ class DataProcessor:
         self.use_sku_sellers = self.catalog.vtex_app.config.get(
             "use_sku_sellers", False
         )
-        self.use_sync_v2 = self.vtex_app.config.get("use_sync_v2", False)
         self.sync_specific_sellers = sync_specific_sellers
 
         print("Initiated process of product treatment.")
@@ -183,14 +182,14 @@ class DataProcessor:
         """
         Processes items from the queue.
 
-        - For v2 (`use_sync_v2`) with `update_product=True`
-        (e.g., batch uploads without specific sellers), processes items as `seller_id` and `sku_id` pairs.
+        This worker handles two processing scenarios:
+        - For batch uploads (update_product=True) without specific sellers: processes items as
+          seller_id and sku_id pairs extracted from the queue item.
+        - For initial sync (update_product=False) or when sync_specific_sellers=True:
+          processes each queue item as a single sku_id.
 
-        - For v1 or initial sync (`update_product=False`), or when `sync_specific_sellers=True`,
-        processes only `sku_id` with default seller combinations.
-
-        The method dynamically determines the appropriate processing logic
-        based on the `use_sync_v2`, `update_product`, and `sync_specific_sellers` flags.
+        The method dynamically determines the appropriate processing logic based on
+        the update_product and sync_specific_sellers flags.
         """
         while not self.queue.empty():
             try:
@@ -198,16 +197,15 @@ class DataProcessor:
                 item = self.queue.get()
 
                 # Determine conditions for processing
-                is_v2_batch_upload = self.use_sync_v2 and self.update_product
 
-                if is_v2_batch_upload and not self.sync_specific_sellers:
+                if self.update_product and not self.sync_specific_sellers:
                     # Parse and process `seller_id` and `sku_id` for v2 batch uploads
                     seller_id, sku_id = self._parse_seller_sku(item)
                     processing_result = self.process_seller_sku(
                         seller_id=seller_id, sku_id=sku_id
                     )
                 else:
-                    # Process `sku_id` for v1 or first sync
+                    # Process `sku_id` for first sync
                     processing_result = self.process_single_sku(sku_id=item)
 
                 # Handle the processing result (e.g., add to results, update progress bar)
@@ -430,7 +428,6 @@ class DataProcessor:
         self.catalog = catalog
         self.vtex_app = self.catalog.vtex_app
         self.upload_on_sync = upload_on_sync
-        self.use_sync_v2 = self.vtex_app.config.get("use_sync_v2", False)
         self.sku_validator = SKUValidator(service, domain, MockZeroShotClient())
         self.sent_to_db_count = 0  # Tracks the number of items sent to the database.
         self.update_product = True
