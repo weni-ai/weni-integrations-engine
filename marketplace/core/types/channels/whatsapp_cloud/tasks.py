@@ -22,10 +22,10 @@ SYNC_WHATSAPP_CLOUD_LOCK_KEY = "sync-whatsapp-cloud-lock"
 
 @celery_app.task(name="sync_whatsapp_cloud_apps")
 def sync_whatsapp_cloud_apps():
+    """Synchronize WhatsApp Cloud apps with Flows channels."""
     apptype = APPTYPES.get("wpp-cloud")
     client = FlowsClient()
     channels = client.list_channels(apptype.flows_type_code)
-
     redis = get_redis_connection()
 
     if redis.get(SYNC_WHATSAPP_CLOUD_LOCK_KEY):
@@ -34,68 +34,74 @@ def sync_whatsapp_cloud_apps():
 
     for channel in channels:
         try:
-            project_uuid = channel.get("project_uuid")
-            uuid = channel.get("uuid")
-            address = channel.get("address")
-            is_active = channel.get("is_active")
-            user = User.objects.get_admin_user()
-
-            if project_uuid is None:
-                logger.info(f"The channel {uuid} does not have a project_uuid.")
-                continue
-
-            config = channel.get("config")
-            config["title"] = config.get("wa_number")
-            config["wa_phone_number_id"] = address
-
-            apps = App.objects.filter(flow_object_uuid=uuid)
-
-            if apps.exists():
-                app = apps.first()
-
-                if is_active is False:
-                    try:
-                        app.delete()
-                        WhatsAppInsightsDeleteSyncUseCase(app).sync()
-                    except Exception as e:
-                        logger.error(str(e))
-                    finally:
-                        continue
-
-                if app.code != apptype.code:
-                    logger.info(
-                        f"Migrating an {app.code} to WhatsApp Cloud Type. App: {app.uuid}"
-                    )
-                    app.code = apptype.code
-                    config["config_before_migration"] = app.config
-                    app.config = config
-                else:
-                    app.config = config
-
-                app.modified_by = user
-                app.save()
-
-            else:
-                if not is_active:
-                    print(
-                        f"Skipping creation of WhatsApp Cloud app for the flow_object_uuid: {uuid} (is_active=False)"
-                    )
-                    continue
-
-                logger.info(
-                    f"Creating a new WhatsApp Cloud app for the flow_object_uuid: {uuid}"
-                )
-                apptype.create_app(
-                    created_by=user,
-                    project_uuid=project_uuid,
-                    flow_object_uuid=uuid,
-                    config=config,
-                )
+            _process_channel(channel, apptype)
         except Exception as e:
             logger.error(
-                f"Error on processing sync_whatsapp_cloud_apps for channel {uuid}: {e}"
+                f"Error on processing sync_whatsapp_cloud_apps for channel {channel.get('uuid')}: {e}"
             )
-            continue
+
+
+def _process_channel(channel, apptype):
+    """Process a single WhatsApp Cloud channel."""
+    project_uuid = channel.get("project_uuid")
+    uuid = channel.get("uuid")
+    address = channel.get("address")
+    is_active = channel.get("is_active")
+    user = User.objects.get_admin_user()
+
+    if project_uuid is None:
+        logger.info(f"The channel {uuid} does not have a project_uuid.")
+        return
+
+    config = channel.get("config")
+    config["title"] = config.get("wa_number")
+    config["wa_phone_number_id"] = address
+
+    apps = App.objects.filter(flow_object_uuid=uuid)
+
+    if apps.exists():
+        _handle_existing_app(apps.first(), is_active, apptype, config, user)
+    else:
+        _handle_new_app(is_active, uuid, project_uuid, config, apptype, user)
+
+
+def _handle_existing_app(app, is_active, apptype, config, user):
+    """Handle an existing app - update or delete."""
+    if is_active is False:
+        try:
+            app.delete()
+            WhatsAppInsightsDeleteSyncUseCase(app).sync()
+        except Exception as e:
+            logger.error(str(e))
+        return
+
+    if app.code != apptype.code:
+        logger.info(f"Migrating an {app.code} to WhatsApp Cloud Type. App: {app.uuid}")
+        app.code = apptype.code
+        config["config_before_migration"] = app.config
+        app.config = config
+    else:
+        app.config = config
+
+    app.modified_by = user
+    app.save()
+
+
+def _handle_new_app(is_active, uuid, project_uuid, config, apptype, user):
+    """Handle creation of a new app if needed."""
+    if is_active is False:
+        logger.info(
+            f"Skipping creation of WhatsApp Cloud app for the flow_object_uuid: {uuid} (is_active=False)"
+        )
+        return
+
+    logger.info(f"Creating a new WhatsApp Cloud app for the flow_object_uuid: {uuid}")
+    apptype.create_app(
+        created_by=user,
+        project_uuid=project_uuid,
+        flow_object_uuid=uuid,
+        config=config,
+    )
 
 
 @celery_app.task(name="check_apps_uncreated_on_flow")
