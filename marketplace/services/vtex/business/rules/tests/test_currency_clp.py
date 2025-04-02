@@ -48,3 +48,108 @@ class TestCurrencyCLP(TestCase):
 
         self.assertEqual(product.price, "0 CLP")
         self.assertEqual(product.sale_price, "0 CLP")
+
+    def test_format_clp_price_less_than_one(self):
+        product = FacebookProductDTO(
+            id="test_clp_small",
+            title="Produto com preço mínimo",
+            description="Preço menor que 1 peso chileno",
+            availability="in stock",
+            status="active",
+            condition="new",
+            price=50,
+            sale_price=25,
+            link="http://example.com/product",
+            image_link="http://example.com/image.jpg",
+            brand="ExampleBrand",
+            product_details={},
+        )
+
+        self.rule.apply(product)
+
+        self.assertEqual(product.price, "0 CLP")
+        self.assertEqual(product.sale_price, "0 CLP")
+
+    def test_format_clp_price_zero(self):
+        product = FacebookProductDTO(
+            id="test_clp_zero",
+            title="Produto gratuito",
+            description="Preço zero",
+            availability="in stock",
+            status="active",
+            condition="new",
+            price=0,
+            sale_price=0,
+            link="http://example.com/product",
+            image_link="http://example.com/image.jpg",
+            brand="ExampleBrand",
+            product_details={},
+        )
+
+        self.rule.apply(product)
+
+        self.assertEqual(product.price, "0 CLP")
+        self.assertEqual(product.sale_price, "0 CLP")
+
+    def test_format_clp_price_exact_thousands(self):
+        product = FacebookProductDTO(
+            id="test_clp_exact",
+            title="Produto com preço exato",
+            description="Preço em valor exato de milhares",
+            availability="in stock",
+            status="active",
+            condition="new",
+            price=1000000,
+            sale_price=2000000,
+            link="http://example.com/product",
+            image_link="http://example.com/image.jpg",
+            brand="ExampleBrand",
+            product_details={},
+        )
+
+        self.rule.apply(product)
+
+        self.assertEqual(product.price, "10.000 CLP")
+        self.assertEqual(product.sale_price, "20.000 CLP")
+
+    def test_format_clp_price_decimal_values(self):
+        product = FacebookProductDTO(
+            id="test_clp_decimal",
+            title="Produto com preço decimal",
+            description="Preço com valores decimais",
+            availability="in stock",
+            status="active",
+            condition="new",
+            price=1234567,
+            sale_price=9876543,
+            link="http://example.com/product",
+            image_link="http://example.com/image.jpg",
+            brand="ExampleBrand",
+            product_details={},
+        )
+
+        self.rule.apply(product)
+
+        self.assertEqual(product.price, "12.345 CLP")
+        self.assertEqual(product.sale_price, "98.765 CLP")
+
+    def test_format_clp_price_large_values(self):
+        product = FacebookProductDTO(
+            id="test_clp_large",
+            title="Produto com preço alto",
+            description="Preço com valor muito alto",
+            availability="in stock",
+            status="active",
+            condition="new",
+            price=1000000000,
+            sale_price=2147483647,
+            link="http://example.com/product",
+            image_link="http://example.com/image.jpg",
+            brand="ExampleBrand",
+            product_details={},
+        )
+
+        self.rule.apply(product)
+
+        self.assertEqual(product.price, "10000.000 CLP")
+        self.assertEqual(product.sale_price, "21474.836 CLP")
