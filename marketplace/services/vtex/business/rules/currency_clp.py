@@ -18,7 +18,7 @@ class CurrencyCLP(Rule):
         - If < 1 CLP and > 0 CLP, return "1 CLP"
         - If None or empty or 0, return "0 CLP"
         """
-        if price is None:
+        if price is None or price == 0:
             return "0 CLP"
 
         price_in_units = int(price / 100)
@@ -27,7 +27,7 @@ class CurrencyCLP(Rule):
             return "1 CLP"
 
         if price_in_units == 0:
-            return "0 CLP"
+            return f"{float(price / 100):.2f} CLP"
 
         final_price = price_in_units / 1000
 
