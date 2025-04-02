@@ -47,3 +47,21 @@ class InsightsClient(RequestClient, InsightsClientInterface):
             json=whatsapp_data,
         )
         return response
+
+    def delete_whatsapp_integration(self, project_uuid: str, waba_id: str) -> None:
+        """
+        Delete a WhatsApp integration.
+
+        Args:
+            project_uuid (UUID): The UUID of the project.
+            waba_id (str): The Waba's id.
+        """
+        url = f"{self.base_url}/v1/metrics/meta/internal/whatsapp-integration/"
+        data = {"project_uuid": project_uuid, "waba_id": waba_id}
+        response = self.make_request(
+            url,
+            method="DELETE",
+            headers=self.authentication_instance.headers,
+            json=data,
+        )
+        return response
