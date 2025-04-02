@@ -1,3 +1,11 @@
+v4.2.0
+----------
+* Sync delete whatsapp apps with insights
+* fix: clp currency format 
+* fix: Delete templates when an app is deleted
+* Feature/get wppcloud info
+* created client and service to get whatsapp data for pass to insights
+
 v4.1.0
 ----------
 * fix: refactor wabas sync tasks and phone number
