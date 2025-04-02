@@ -109,8 +109,8 @@ class TestCurrencyCLP(TestCase):
 
         self.rule.apply(product)
 
-        self.assertEqual(product.price, "10.000 CLP")
-        self.assertEqual(product.sale_price, "20.000 CLP")
+        self.assertEqual(product.price, "10.990 CLP")
+        self.assertEqual(product.sale_price, "20.990 CLP")
 
     def test_format_clp_price_decimal_values(self):
         product = FacebookProductDTO(
@@ -130,8 +130,8 @@ class TestCurrencyCLP(TestCase):
 
         self.rule.apply(product)
 
-        self.assertEqual(product.price, "12.345 CLP")
-        self.assertEqual(product.sale_price, "98.765 CLP")
+        self.assertEqual(product.price, "12.990 CLP")
+        self.assertEqual(product.sale_price, "98.990 CLP")
 
     def test_format_clp_price_large_values(self):
         product = FacebookProductDTO(
@@ -151,5 +151,5 @@ class TestCurrencyCLP(TestCase):
 
         self.rule.apply(product)
 
-        self.assertEqual(product.price, "10000.000 CLP")
-        self.assertEqual(product.sale_price, "21474.836 CLP")
+        self.assertEqual(product.price, "10000.990 CLP")
+        self.assertEqual(product.sale_price, "21474.990 CLP")

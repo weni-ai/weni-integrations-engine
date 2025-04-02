@@ -17,6 +17,7 @@ class CurrencyCLP(Rule):
         - Round down to nearest whole number
         - If < 1 CLP and > 0 CLP, return "1 CLP"
         - If None or empty or 0, return "0 CLP"
+        - Ensure last three decimals are always "990" when not naturally "990"
         """
         if price is None or price == 0:
             return "0 CLP"
@@ -30,5 +31,10 @@ class CurrencyCLP(Rule):
             return f"{float(price / 100):.2f} CLP"
 
         final_price = price_in_units / 1000
+
+        decimal_part = int((final_price * 1000) % 1000)
+
+        if decimal_part != 990:
+            final_price = int(final_price) + 0.990
 
         return f"{final_price:.3f} CLP"
