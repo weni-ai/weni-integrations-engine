@@ -15,8 +15,8 @@ class TestCurrencyCLP(TestCase):
             availability="in stock",
             status="active",
             condition="new",
-            price=25345,  # 253.45 units
-            sale_price=10050,  # 100.50 units
+            price=11299000,
+            sale_price=8399000,
             link="http://example.com/product",
             image_link="http://example.com/image.jpg",
             brand="ExampleBrand",
@@ -25,142 +25,14 @@ class TestCurrencyCLP(TestCase):
 
         self.rule.apply(product)
 
-        self.assertEqual(product.price, "253.990 CLP")  # 253.45 → 253 → 253.990
-        self.assertEqual(product.sale_price, "100.990 CLP")  # 100.50 → 100 → 100.990
+        self.assertEqual(product.price, "112.990 CLP")
+        self.assertEqual(product.sale_price, "83.990 CLP")
 
-    def test_format_clp_price_with_zero_cents(self):
+    def test_format_clp_price_none(self):
         product = FacebookProductDTO(
-            id="test_clp_zero_cents",
+            id="test_clp",
             title="Produto em CLP",
             description="Preço em pesos chilenos",
-            availability="in stock",
-            status="active",
-            condition="new",
-            price=25300,  # 253.00 units
-            sale_price=10000,  # 100.00 units
-            link="http://example.com/product",
-            image_link="http://example.com/image.jpg",
-            brand="ExampleBrand",
-            product_details={},
-        )
-
-        self.rule.apply(product)
-
-        self.assertEqual(product.price, "253.990 CLP")  # 253.00 → 253 → 253.990
-        self.assertEqual(product.sale_price, "100.990 CLP")  # 100.00 → 100 → 100.990
-
-    def test_format_clp_price_with_small_values(self):
-        product = FacebookProductDTO(
-            id="test_clp_small_values",
-            title="Produto em CLP",
-            description="Preço em pesos chilenos",
-            availability="in stock",
-            status="active",
-            condition="new",
-            price=99,  # 0.99 units
-            sale_price=1,  # 0.01 units
-            link="http://example.com/product",
-            image_link="http://example.com/image.jpg",
-            brand="ExampleBrand",
-            product_details={},
-        )
-
-        self.rule.apply(product)
-
-        self.assertEqual(product.price, "1 CLP")  # 0.99 → 0 → 1 CLP
-        self.assertEqual(product.sale_price, "1 CLP")  # 0.01 → 0 → 1 CLP
-
-    def test_format_clp_price_with_large_values(self):
-        product = FacebookProductDTO(
-            id="test_clp_large_values",
-            title="Produto em CLP",
-            description="Preço em pesos chilenos",
-            availability="in stock",
-            status="active",
-            condition="new",
-            price=1000000,  # 10000.00 units
-            sale_price=9999999,  # 99999.99 units
-            link="http://example.com/product",
-            image_link="http://example.com/image.jpg",
-            brand="ExampleBrand",
-            product_details={},
-        )
-
-        self.rule.apply(product)
-
-        self.assertEqual(product.price, "10000.990 CLP")  # 10000.00 → 10000 → 10000.990
-        self.assertEqual(
-            product.sale_price, "99999.990 CLP"
-        )  # 99999.99 → 99999 → 99999.990
-
-    def test_format_clp_price_with_odd_values(self):
-        product = FacebookProductDTO(
-            id="test_clp_odd_values",
-            title="Produto em CLP",
-            description="Preço em pesos chilenos",
-            availability="in stock",
-            status="active",
-            condition="new",
-            price=12350.87,  # 123.5087 units
-            sale_price=67890,  # 678.90 units
-            link="http://example.com/product",
-            image_link="http://example.com/image.jpg",
-            brand="ExampleBrand",
-            product_details={},
-        )
-
-        self.rule.apply(product)
-
-        self.assertEqual(product.price, "123.990 CLP")  # 123.5087 → 123 → 123.990
-        self.assertEqual(product.sale_price, "678.990 CLP")  # 678.90 → 678 → 678.990
-
-    def test_format_clp_price_with_decimal_values(self):
-        product = FacebookProductDTO(
-            id="test_clp_decimal_values",
-            title="Produto em CLP",
-            description="Preço em pesos chilenos com decimais",
-            availability="in stock",
-            status="active",
-            condition="new",
-            price=12345.67,  # 123.4567 units
-            sale_price=9876.54,  # 98.7654 units
-            link="http://example.com/product",
-            image_link="http://example.com/image.jpg",
-            brand="ExampleBrand",
-            product_details={},
-        )
-
-        self.rule.apply(product)
-
-        self.assertEqual(product.price, "123.990 CLP")  # 123.4567 → 123 → 123.990
-        self.assertEqual(product.sale_price, "98.990 CLP")  # 98.7654 → 98 → 98.990
-
-    def test_format_clp_price_with_rounding_edge_cases(self):
-        product = FacebookProductDTO(
-            id="test_clp_rounding_edge",
-            title="Produto em CLP",
-            description="Casos de borda para arredondamento",
-            availability="in stock",
-            status="active",
-            condition="new",
-            price=9999,  # 99.99 units
-            sale_price=10001,  # 100.01 units
-            link="http://example.com/product",
-            image_link="http://example.com/image.jpg",
-            brand="ExampleBrand",
-            product_details={},
-        )
-
-        self.rule.apply(product)
-
-        self.assertEqual(product.price, "99.990 CLP")  # 99.99 → 99 → 99.990
-        self.assertEqual(product.sale_price, "100.990 CLP")  # 100.01 → 100 → 100.990
-
-    def test_format_clp_price_with_none_values(self):
-        product = FacebookProductDTO(
-            id="test_clp_none_values",
-            title="Produto em CLP",
-            description="Preços nulos",
             availability="in stock",
             status="active",
             condition="new",
@@ -177,16 +49,16 @@ class TestCurrencyCLP(TestCase):
         self.assertEqual(product.price, "0 CLP")
         self.assertEqual(product.sale_price, "0 CLP")
 
-    def test_format_clp_price_with_very_large_values(self):
+    def test_format_clp_price_less_than_one(self):
         product = FacebookProductDTO(
-            id="test_clp_very_large_values",
-            title="Produto em CLP",
-            description="Preços muito grandes",
+            id="test_clp_small",
+            title="Produto com preço mínimo",
+            description="Preço menor que 1 peso chileno",
             availability="in stock",
             status="active",
             condition="new",
-            price=1000000000,  # 10.000.000,00 units
-            sale_price=999999999,  # 9.999.999,99 units
+            price=50,
+            sale_price=25,
             link="http://example.com/product",
             image_link="http://example.com/image.jpg",
             brand="ExampleBrand",
@@ -195,9 +67,89 @@ class TestCurrencyCLP(TestCase):
 
         self.rule.apply(product)
 
-        self.assertEqual(
-            product.price, "10000000.990 CLP"
-        )  # 10.000.000,00 → 10.000.000 → 10.000.000,990
-        self.assertEqual(
-            product.sale_price, "9999999.990 CLP"
-        )  # 9.999.999,99 → 9.999.999 → 9.999.999,990
+        self.assertEqual(product.price, "0.50 CLP")
+        self.assertEqual(product.sale_price, "0.25 CLP")
+
+    def test_format_clp_price_zero(self):
+        product = FacebookProductDTO(
+            id="test_clp_zero",
+            title="Produto gratuito",
+            description="Preço zero",
+            availability="in stock",
+            status="active",
+            condition="new",
+            price=0,
+            sale_price=0,
+            link="http://example.com/product",
+            image_link="http://example.com/image.jpg",
+            brand="ExampleBrand",
+            product_details={},
+        )
+
+        self.rule.apply(product)
+
+        self.assertEqual(product.price, "0 CLP")
+        self.assertEqual(product.sale_price, "0 CLP")
+
+    def test_format_clp_price_exact_thousands(self):
+        product = FacebookProductDTO(
+            id="test_clp_exact",
+            title="Produto com preço exato",
+            description="Preço em valor exato de milhares",
+            availability="in stock",
+            status="active",
+            condition="new",
+            price=1000000,
+            sale_price=2000000,
+            link="http://example.com/product",
+            image_link="http://example.com/image.jpg",
+            brand="ExampleBrand",
+            product_details={},
+        )
+
+        self.rule.apply(product)
+
+        self.assertEqual(product.price, "10.990 CLP")
+        self.assertEqual(product.sale_price, "20.990 CLP")
+
+    def test_format_clp_price_decimal_values(self):
+        product = FacebookProductDTO(
+            id="test_clp_decimal",
+            title="Produto com preço decimal",
+            description="Preço com valores decimais",
+            availability="in stock",
+            status="active",
+            condition="new",
+            price=1234567,
+            sale_price=9876543,
+            link="http://example.com/product",
+            image_link="http://example.com/image.jpg",
+            brand="ExampleBrand",
+            product_details={},
+        )
+
+        self.rule.apply(product)
+
+        self.assertEqual(product.price, "12.990 CLP")
+        self.assertEqual(product.sale_price, "98.990 CLP")
+
+    def test_format_clp_price_large_values(self):
+        product = FacebookProductDTO(
+            id="test_clp_large",
+            title="Produto com preço alto",
+            description="Preço com valor muito alto",
+            availability="in stock",
+            status="active",
+            condition="new",
+            price=1000000000,
+            sale_price=2147483647,
+            link="http://example.com/product",
+            image_link="http://example.com/image.jpg",
+            brand="ExampleBrand",
+            product_details={},
+        )
+
+        self.rule.apply(product)
+
+        self.assertEqual(product.price, "10000.990 CLP")
+        self.assertEqual(product.sale_price, "21474.990 CLP")
