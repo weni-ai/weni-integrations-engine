@@ -9,6 +9,12 @@ from typing import Optional, List
 from dataclasses import dataclass
 
 from marketplace.applications.models import App
+from marketplace.core.types.ecommerce.vtex.usecases.sync_all_products import (
+    SyncAllProductsUseCase,
+)
+from marketplace.core.types.ecommerce.vtex.usecases.sync_product_by_webhook import (
+    SyncProductByWebhookUseCase,
+)
 from marketplace.services.vtex.private.products.service import (
     PrivateProductsService,
 )
@@ -115,18 +121,23 @@ class VtexServiceBase:
         )
         return pvt_service.list_active_sellers(credentials.domain)
 
-    def synchronized_sellers(self, app: App, sellers_id: List):
+    def synchronized_sellers(
+        self, app: App, sellers_id: List = None, sync_all_sellers: bool = False
+    ):
         try:
             sync_service = CatalogInsertionBySeller()
-            sync_service.start_insertion_by_seller(vtex_app=app, sellers=sellers_id)
+            sync_service.start_insertion_by_seller(
+                vtex_app=app, sellers=sellers_id, sync_all_sellers=sync_all_sellers
+            )
         except Exception as e:
             logger.error(
                 f"Error on synchronized_sellers: {str(e)}",
                 exc_info=True,
-                stack_info=True,
+                stack_info=False,
                 extra={
                     "App": str(app.uuid),
                     "Sellers": sellers_id,
+                    "SyncAllSellers": sync_all_sellers,
                 },
             )
             return False
@@ -142,21 +153,27 @@ class ProductInsertionService(VtexServiceBase):
         sellers: Optional[List[str]] = None,
     ):
         """
-        Handles the first product insert process.
+        Handles the first product insert process using the SyncAllProductsUseCase.
         """
+        # Initialize the private service with API credentials.
         pvt_service = self.get_private_service(
             credentials.app_key, credentials.app_token
         )
-        # TODO: calculate whether there was any success in sending to return
-        products = pvt_service.list_all_products(
+
+        # Instantiate the sync use case with the private service.
+        sync_use_case = SyncAllProductsUseCase(products_service=pvt_service)
+
+        # Execute the use case with the required parameters.
+        success = sync_use_case.execute(
             domain=credentials.domain,
             catalog=catalog,
             sellers=sellers,
-            upload_on_sync=True,  # Enable upload during synchronization
+            update_product=False,
+            sync_specific_sellers=False,
         )
         print(f"First product sync completed for Catalog: {catalog.name}")
         self.app_manager.initial_sync_products_completed(catalog.vtex_app)
-        return products
+        return success
 
 
 class ProductUpdateService(VtexServiceBase):
@@ -193,8 +210,11 @@ class ProductUpdateService(VtexServiceBase):
             self.api_credentials.app_key, self.api_credentials.app_token
         )
 
-        # Fetch product data
-        all_success = pvt_service.update_batch_webhook(
+        # Create and execute the webhook sync use case
+        sync_use_case = SyncProductByWebhookUseCase(products_service=pvt_service)
+
+        # Execute the use case with the required parameters
+        all_success = sync_use_case.execute(
             domain=self.api_credentials.domain,
             sellers_skus=self.sellers_skus,
             catalog=self.catalog,
@@ -360,17 +380,10 @@ class CatalogProductInsertion:
 
 class ProductInsertionBySellerService(VtexServiceBase):  # pragma: no cover
     """
-    Service for inserting products by seller into the UploadProduct model.
+    Service for inserting products by seller.
 
-    This service handles the fetching and processing of products from specific sellers,
-    preparing them for database insertion and synchronization with Meta platforms.
-
-    Attributes:
-        None
-
-    Requirements:
-        - A feed must be properly configured both in the local database and on Meta platform
-        - The service supports both v1 and v2 synchronization methods
+    This service fetches and processes products for specific sellers using the
+    SyncAllProductsUseCase.
     """
 
     def insertion_products_by_seller(
@@ -378,57 +391,64 @@ class ProductInsertionBySellerService(VtexServiceBase):  # pragma: no cover
         credentials: APICredentials,
         catalog: Catalog,
         sellers: List[str],
+        sync_all_sellers: bool = False,
     ):
         """
         Fetches and processes products from specific sellers for insertion.
 
-        This method retrieves products from the VTEX platform for the specified sellers,
-        processes them according to configured rules, and prepares them for database insertion.
-
         Args:
-            credentials: API credentials for accessing the VTEX platform
-            catalog: The catalog associated with the products
-            sellers: List of seller IDs to fetch products for
-
-        Raises:
-            ValueError: If the sellers parameter is empty or None
-            Exception: If an error occurs during the product processing
+            credentials: API credentials for accessing the VTEX platform.
+            catalog: The catalog associated with the products.
+            sellers: List of seller IDs to fetch products for.
 
         Returns:
-            List[FacebookProductDTO]: Processed product DTOs ready for synchronization
-            None: If no products are returned after processing
+            True if the sync was successful, otherwise raises an exception or returns False.
         """
-        if not sellers:
-            raise ValueError("'sellers' is required")
+        if not sellers and not sync_all_sellers:
+            raise ValueError("'sellers' or 'sync_all_sellers' is required")
 
-        # Initialize private service
+        # Initialize the private service.
         pvt_service = self.get_private_service(
             credentials.app_key, credentials.app_token
         )
 
-        # Fetch product data from the VTEX platform
-        products_dto = pvt_service.list_all_products(
+        # Instantiate the sync use case with the private service.
+        sync_use_case = SyncAllProductsUseCase(products_service=pvt_service)
+        # Execute the use case with update flags enabled for seller-specific sync.
+        success = sync_use_case.execute(
             domain=credentials.domain,
             catalog=catalog,
             sellers=sellers,
-            upload_on_sync=True,
             update_product=True,
             sync_specific_sellers=True,
+            sync_all_sellers=sync_all_sellers,
         )
 
         logger.info(f"Finished synchronizing products for specific sellers: {sellers}.")
 
-        return products_dto
+        return success
 
 
 class CatalogInsertionBySeller:  # pragma: no cover
     @classmethod
-    def start_insertion_by_seller(cls, vtex_app: App, sellers: List[str]):
-        if not vtex_app:
-            raise ValueError("'vtex_app' is required.")
+    def start_insertion_by_seller(
+        cls, vtex_app: App, sellers: List[str] = None, sync_all_sellers: bool = False
+    ):
+        """
+        Starts the insertion process for products by seller.
 
-        if not sellers:
-            raise ValueError("'sellers' is required.")
+        Args:
+            vtex_app: The VTEX app instance
+            sellers: Optional list of seller IDs to synchronize
+            sync_all_sellers: Flag to synchronize all active sellers
+
+        Raises:
+            ValueError: If required parameters are missing or validation fails
+        """
+        if not sellers and not sync_all_sellers:
+            raise ValueError(
+                "Either 'sellers' list or 'sync_all_sellers' must be provided."
+            )
 
         wpp_cloud_uuid = cls._get_wpp_cloud_uuid(vtex_app)
         credentials = cls._get_credentials(vtex_app)
@@ -438,7 +458,7 @@ class CatalogInsertionBySeller:  # pragma: no cover
 
         cls._validate_sync_status(vtex_app)
         cls._validate_connected_catalog_flag(vtex_app)
-        cls._send_task(credentials, catalog, sellers)
+        cls._send_task(credentials, catalog, sellers, sync_all_sellers)
 
     @staticmethod
     def _get_wpp_cloud_uuid(vtex_app) -> str:
@@ -521,7 +541,12 @@ class CatalogInsertionBySeller:  # pragma: no cover
         print("validate_catalog_feed - Ok")
 
     @staticmethod
-    def _send_task(credentials, catalog, sellers: Optional[List[str]] = None) -> None:
+    def _send_task(
+        credentials,
+        catalog,
+        sellers: Optional[List[str]] = None,
+        sync_all_sellers: bool = False,
+    ) -> None:
         from marketplace.celery import app as celery_app
 
         """Sends the insert task to the task queue."""
@@ -531,6 +556,7 @@ class CatalogInsertionBySeller:  # pragma: no cover
                 "credentials": credentials,
                 "catalog_uuid": str(catalog.uuid),
                 "sellers": sellers,
+                "sync_all_sellers": sync_all_sellers,
             },
             queue="product_first_synchronization",
         )

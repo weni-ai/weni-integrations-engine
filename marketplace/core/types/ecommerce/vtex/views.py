@@ -113,15 +113,23 @@ class VtexViewSet(views.BaseAppTypeViewSet):
         validated_data = serializer.validated_data
 
         sellers_id = validated_data.get("sellers")
+        sync_all_sellers = validated_data.get("sync_all_sellers", False)
+
         app = self.get_object()
-        success = self.service.synchronized_sellers(app=app, sellers_id=sellers_id)
+        success = self.service.synchronized_sellers(
+            app=app, sellers_id=sellers_id, sync_all_sellers=sync_all_sellers
+        )
+
         if not success:
             return Response(
                 data={"message": "failure to start synchronization"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        return Response(status=status.HTTP_200_OK)
+        return Response(
+            data={"message": "synchronization started successfully"},
+            status=status.HTTP_200_OK,
+        )
 
     @action(detail=True, methods=["GET"], url_path="active-vtex-sellers")
     def active_sellers(self, request, uuid=None, *args, **kwargs):
