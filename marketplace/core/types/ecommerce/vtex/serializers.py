@@ -77,3 +77,10 @@ class VtexSyncSellerSerializer(serializers.Serializer):
 
 class VtexAdsSerializer(serializers.Serializer):
     vtex_ads = serializers.BooleanField(required=True)
+
+
+class FirstProductInsertSerializer(serializers.Serializer):
+    catalog_id = serializers.CharField(
+        required=True,
+        help_text="The catalog identifier to be linked with the VTEX app.",
+    )

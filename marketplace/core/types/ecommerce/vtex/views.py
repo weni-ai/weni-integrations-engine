@@ -4,12 +4,16 @@ from rest_framework.decorators import action
 from rest_framework.views import APIView
 
 from marketplace.core.types.ecommerce.vtex.serializers import (
+    FirstProductInsertSerializer,
     VtexAdsSerializer,
     VtexSerializer,
     VtexAppSerializer,
     VtexSyncSellerSerializer,
 )
 from marketplace.core.types import views
+from marketplace.core.types.ecommerce.vtex.usecases.link_catalog_start_sync import (
+    LinkCatalogAndStartSyncUseCase,
+)
 from marketplace.core.types.ecommerce.vtex.usecases.vtex_integration import (
     VtexIntegration,
 )
@@ -169,6 +173,49 @@ class VtexViewSet(views.BaseAppTypeViewSet):
 
         self.flows_service.update_vtex_ads_status(app, vtex_ads, action="POST")
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=["POST"], url_path="link-catalog")
+    def link_catalog(self, request, uuid=None, *args, **kwargs):
+        """
+        Link a catalog to the VTEX app and trigger product synchronization.
+
+        Expected payload:
+            {
+                "catalog_id": "<catalog identifier>"
+            }
+
+        Returns:
+            200 OK if the task is dispatched successfully, or 400 Bad Request on error.
+        """
+        serializer = FirstProductInsertSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        validated_data = serializer.validated_data
+
+        catalog_id = validated_data.get("catalog_id")
+
+        # self.get_object() returns the VTEX app instance
+        try:
+            vtex_app = self.get_object()
+        except Exception:
+            return Response(
+                {"error": "VTEX app not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Instantiate the use case for linking catalog and synchronizing products.
+        use_case = LinkCatalogAndStartSyncUseCase()
+        success = use_case.execute(vtex_app=vtex_app, catalog_id=catalog_id)
+
+        if not success:
+            return Response(
+                {"error": "Failed to link catalog and start product synchronization"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(
+            {
+                "message": "Catalog linked and synchronization task dispatched successfully"
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class VtexIntegrationDetailsView(APIView):

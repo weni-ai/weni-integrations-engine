@@ -1,4 +1,3 @@
-import time
 import logging
 import requests
 
@@ -90,34 +89,6 @@ class FacebookService:  # TODO: Change the name to CatalogService
         )
         return self.client.get_wpp_commerce_settings(business_phone_number_id)
 
-    def create_product_feed(self, product_catalog_id, name):
-        return self.client.create_product_feed(product_catalog_id, name)
-
-    def upload_product_feed(
-        self, feed_id, file, file_name, file_content_type, update_only=False
-    ):
-        return self.client.upload_product_feed(
-            feed_id, file, file_name, file_content_type, update_only
-        )
-
-    def get_upload_status_by_feed(self, feed_id, upload_id) -> bool:
-        return self.client.get_upload_status_by_feed(feed_id, upload_id)
-
-    def get_in_process_uploads_by_feed(self, feed_id) -> str:
-        return self.client.get_uploads_in_progress_by_feed(feed_id)
-
-    def update_product_feed(self, feed_id, csv_file, file_name):
-        response = self.upload_product_feed(
-            feed_id, csv_file, file_name, "text/csv", update_only=True
-        )
-        if "id" not in response:
-            return None
-        return response["id"]
-
-    def uploads_in_progress(self, feed_id):
-        upload_id = self.get_in_process_uploads_by_feed(feed_id)
-        return upload_id if upload_id else False
-
     # ================================
     # Private Methods
     # ================================
@@ -149,32 +120,6 @@ class FacebookService:  # TODO: Change the name to CatalogService
     def _update_connected_catalog_flag(self, app) -> None:
         app.config["connected_catalog"] = True
         app.save()
-
-    def _wait_for_upload_completion(self, feed_id, upload_id):
-        wait_time = 5
-        max_wait_time = 15 * 60
-        total_wait_time = 0
-        attempt = 1
-
-        while total_wait_time < max_wait_time:
-            upload_complete = self.get_upload_status_by_feed(feed_id, upload_id)
-            if upload_complete:
-                return True
-
-            print(
-                f"Attempt {attempt}: Waiting {wait_time} seconds "
-                f"to get feed: {feed_id} upload {upload_id} status."
-            )
-            time.sleep(wait_time)
-            total_wait_time += wait_time
-            wait_time = min(wait_time * 2, 20)
-            attempt += 1
-
-        logger.error(
-            f"Exceeded max wait time for upload completion. "
-            f"Feed ID: {feed_id}, Upload ID: {upload_id}"
-        )
-        return False
 
     def upload_batch(self, catalog_id: str, payload: dict):
         """

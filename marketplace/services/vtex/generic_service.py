@@ -26,7 +26,7 @@ from marketplace.services.facebook.service import (
     FacebookService,
 )
 from marketplace.clients.facebook.client import FacebookClient
-from marketplace.wpp_products.models import ProductFeed
+
 from marketplace.wpp_products.models import Catalog
 from marketplace.services.product.product_facebook_manage import ProductFacebookManager
 from marketplace.services.vtex.app_manager import AppVtexManager
@@ -184,7 +184,6 @@ class ProductUpdateService(VtexServiceBase):
         skus_ids: list[str] = None,
         webhook: Optional[dict] = None,
         sellers_ids: list[str] = None,
-        product_feed: Optional[ProductFeed] = None,
         sellers_skus: list[str] = None,
     ):
         """
@@ -194,7 +193,6 @@ class ProductUpdateService(VtexServiceBase):
         self.api_credentials = api_credentials
         self.catalog = catalog
         self.skus_ids = skus_ids
-        self.product_feed = product_feed
         self.app = self.catalog.app
         self.webhook = webhook
         self.sellers_ids = sellers_ids if sellers_ids else []
@@ -263,7 +261,6 @@ class CatalogProductInsertion:
         wpp_cloud = cls._get_wpp_cloud(wpp_cloud_uuid)
 
         catalog = cls._get_or_sync_catalog(wpp_cloud, catalog_id)
-        cls._delete_existing_feeds_ifexists(catalog)
         cls._update_app_connected_catalog_flag(vtex_app)
         cls._link_catalog_to_vtex_app_if_needed(catalog, vtex_app)
 
@@ -331,22 +328,6 @@ class CatalogProductInsertion:
             print(
                 f"Catalog {catalog.name} successfully linked to VTEX app: {vtex_app.uuid}."
             )
-
-    @staticmethod
-    def _delete_existing_feeds_ifexists(catalog) -> None:
-        """Deletes existing feeds linked to the catalog and logs their IDs."""
-        feeds = catalog.feeds.all()
-        total = feeds.count()
-        if total > 0:
-            print(f"Deleting {total} feed(s) linked to catalog {catalog.name}.")
-            for feed in feeds:
-                print(f"Deleting feed with ID {feed.facebook_feed_id}.")
-                feed.delete()
-            print(
-                f"All feeds linked to catalog {catalog.name} have been successfully deleted."
-            )
-        else:
-            print(f"No feeds linked to catalog {catalog.name} to delete.")
 
     @staticmethod
     def _update_app_connected_catalog_flag(app) -> None:  # Vtex app
@@ -532,13 +513,6 @@ class CatalogInsertionBySeller:  # pragma: no cover
             )
 
         print("validate_connected_catalog_flag - Ok")
-
-    @staticmethod
-    def _validate_catalog_feed(catalog) -> ProductFeed:
-        if not catalog.feeds.first():
-            raise ValueError("At least 1 feed created is required")
-
-        print("validate_catalog_feed - Ok")
 
     @staticmethod
     def _send_task(

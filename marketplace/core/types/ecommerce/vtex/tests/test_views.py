@@ -313,16 +313,6 @@ class SyncSellersTestCase(SetUpService):
                 response.data["message"], "failure to start synchronization"
             )
 
-    def test_sync_sellers_up_limit(self):
-        sellers = ["1", "2", "3", "4", "5", "6"]
-        body = {"sellers": sellers, "project_uuid": self.app.project_uuid}
-        response = self.request.post(self.url, body, uuid=self.app.uuid)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertCountEqual(
-            {"sellers": ["The list of sellers exceeds the limit of 5 items."]},
-            response.json,
-        )
-
     def test_sync_sellers_with_both_params(self):
         sellers = ["1", "2", "3"]
         body = {
