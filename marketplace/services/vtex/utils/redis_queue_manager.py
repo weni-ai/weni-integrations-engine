@@ -3,8 +3,10 @@ import json
 from typing import Any, List, Optional
 from django_redis import get_redis_connection
 
+from marketplace.interfaces.redis.interfaces import AbstractQueue
 
-class BaseRedisQueue:
+
+class BaseRedisQueue(AbstractQueue[Any]):
     """
     Base class for Redis-based queues implementing common functionality.
 

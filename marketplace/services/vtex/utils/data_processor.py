@@ -4,11 +4,12 @@ import concurrent.futures
 
 import logging
 from tqdm import tqdm
-from typing import List, Optional, Protocol, TypeVar, Generic
+from typing import List, Optional
 
 from queue import Queue
 
 
+from marketplace.interfaces.redis.interfaces import AbstractQueue
 from marketplace.services.product.product_facebook_manage import ProductFacebookManager
 from marketplace.services.vtex.utils.facebook_product_dto import FacebookProductDTO
 from marketplace.services.vtex.utils.redis_queue_manager import TempRedisQueueManager
@@ -18,45 +19,6 @@ from marketplace.clients.zeroshot.client import MockZeroShotClient
 from marketplace.wpp_products.utils import UploadManager
 
 logger = logging.getLogger(__name__)
-
-T = TypeVar("T")
-
-
-# -----------------------------
-# Queue interface (for allowing Redis or Queue usage)
-# -----------------------------
-class AbstractQueue(Protocol, Generic[T]):
-    """
-    Protocol defining the interface for queue implementations.
-    Allows interchangeable use of different queue backends (in-memory, Redis, etc.)
-    """
-
-    def put(self, item: T) -> None:
-        """
-        Add an item to the queue
-
-        Args:
-            item: The item to add to the queue
-        """
-        ...
-
-    def get(self) -> T:
-        """
-        Remove and return an item from the queue
-
-        Returns:
-            The next item from the queue
-        """
-        ...
-
-    def empty(self) -> bool:
-        """
-        Check if the queue is empty
-
-        Returns:
-            True if the queue is empty, False otherwise
-        """
-        ...
 
 
 # --------------------------------------------------
