@@ -1,4 +1,3 @@
-import io
 import logging
 import json
 import time
@@ -12,8 +11,6 @@ from django.db.models import QuerySet
 from django_redis import get_redis_connection
 
 from redis import exceptions
-
-from sentry_sdk import configure_scope
 
 from marketplace.clients.facebook.client import FacebookClient
 from marketplace.clients.rapidpro.client import RapidproClient
@@ -78,23 +75,6 @@ class ProductBatchFetcher(ProductUploadManager):
             latest_products.values_list("facebook_product_id", flat=True)
         )
         return latest_products, facebook_product_ids
-
-
-def generate_log_with_file(csv_content: io.BytesIO, data, exception: Exception):
-    """Generates a detailed log entry with the file content for debugging."""
-    with configure_scope() as scope:
-        scope.add_attachment(
-            bytes=csv_content.getvalue(),
-            filename=data.get("file_name", "upload.csv"),
-            content_type="text/csv",
-        )
-        # Log the error with details
-        logger.error(
-            f"Error on upload feed to Meta: {exception}",
-            exc_info=True,
-            stack_info=True,
-            extra=data,
-        )
 
 
 class SellerSyncUtils:

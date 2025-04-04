@@ -1,9 +1,13 @@
 import time
+import logging
 
 from django.conf import settings
 
 from marketplace.clients.base import RequestClient
 from marketplace.clients.decorators import retry_on_exception
+
+
+logger = logging.getLogger(__name__)
 
 
 class VtexAuthorization(RequestClient):
@@ -62,24 +66,45 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
         except Exception:
             return False
 
-    @retry_on_exception()
     def list_all_products_sku_ids(self, domain, page_size=100000):
+        """Retrieves all SKU IDs of active products from VTEX with progress tracking."""
         all_skus = []
         page = 1
+        total_processed = 0
+        print_interval = 10_000  # Interval for progress updates
+
+        headers = self._get_headers()
 
         while True:
-            url = f"https://{domain}/api/catalog_system/pvt/sku/stockkeepingunitids?page={page}&pagesize={page_size}"
-            headers = self._get_headers()
-            response = self.make_request(url, method="GET", headers=headers)
+            # Fetch product batch with retry mechanism
+            sku_ids = self._fetch_sku_batch_with_retry(domain, page, page_size, headers)
 
-            sku_ids = response.json()
             if not sku_ids:
                 break
 
+            batch_sku_count = len(sku_ids)
+            total_processed += batch_sku_count
             all_skus.extend(sku_ids)
+
+            # Progress tracking
+            if (total_processed // print_interval) > (
+                (total_processed - batch_sku_count) // print_interval
+            ):
+                logger.info(
+                    f"Processed {print_interval * (total_processed // print_interval):,} SKUs..."
+                )
+
             page += 1
 
+        logger.info(f"Total SKUs processed: {total_processed:,}")
         return all_skus
+
+    @retry_on_exception()
+    def _fetch_sku_batch_with_retry(self, domain, page, page_size, headers):
+        """Fetches a batch of product SKUs from VTEX with automatic retries in case of failure."""
+        url = f"https://{domain}/api/catalog_system/pvt/sku/stockkeepingunitids?page={page}&pagesize={page_size}"
+        response = self.make_request(url, method="GET", headers=headers)
+        return response.json()
 
     @retry_on_exception()
     def list_active_sellers(self, domain):
@@ -173,7 +198,7 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
             if (total_processed // print_interval) > (
                 (total_processed - batch_sku_count) // print_interval
             ):
-                print(
+                logger.info(
                     f"Processed {print_interval * (total_processed // print_interval):,} SKUs..."
                 )
 
@@ -182,7 +207,7 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
 
             current_from += step  # Move to the next batch
 
-        print(f"Total SKUs processed: {total_processed:,}")
+        logger.info(f"Total SKUs processed: {total_processed:,}")
         return list(unique_skus)
 
     @retry_on_exception()

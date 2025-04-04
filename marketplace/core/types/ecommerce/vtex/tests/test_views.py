@@ -39,7 +39,7 @@ class MockVtexService:
     def active_sellers(self, app):
         return ["1", "2", "3", "4", "5"]
 
-    def synchronized_sellers(self, app, sellers_id):
+    def synchronized_sellers(self, app, sellers_id, sync_all_sellers=False):
         return True
 
 
@@ -295,6 +295,11 @@ class SyncSellersTestCase(SetUpService):
         response = self.request.post(self.url, body, uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
+    def test_sync_all_sellers_success(self):
+        body = {"sync_all_sellers": True, "project_uuid": self.app.project_uuid}
+        response = self.request.post(self.url, body, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
     def test_sync_sellers_failure(self):
         sellers = ["1", "2", "3", "4", "5"]
         body = {"sellers": sellers, "project_uuid": self.app.project_uuid}
@@ -308,14 +313,21 @@ class SyncSellersTestCase(SetUpService):
                 response.data["message"], "failure to start synchronization"
             )
 
-    def test_sync_sellers_up_limit(self):
-        sellers = ["1", "2", "3", "4", "5", "6"]
-        body = {"sellers": sellers, "project_uuid": self.app.project_uuid}
+    def test_sync_sellers_with_both_params(self):
+        sellers = ["1", "2", "3"]
+        body = {
+            "sellers": sellers,
+            "sync_all_sellers": True,
+            "project_uuid": self.app.project_uuid,
+        }
         response = self.request.post(self.url, body, uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertCountEqual(
-            {"sellers": ["The list of sellers exceeds the limit of 5 items."]},
-            response.json,
+        self.assertIn("non_field_errors", response.json)
+        self.assertEqual(
+            response.json["non_field_errors"],
+            [
+                "Cannot provide both 'sellers' list and 'sync_all_sellers' at the same time."
+            ],
         )
 
 

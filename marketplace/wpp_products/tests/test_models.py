@@ -4,7 +4,7 @@ from django.test import TestCase
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 
-from marketplace.wpp_products.models import UploadProduct, Catalog, ProductFeed
+from marketplace.wpp_products.models import UploadProduct, Catalog
 from marketplace.applications.models import App
 
 
@@ -28,15 +28,11 @@ class UploadProductTestCase(TestCase):
             name="Test Catalog", facebook_catalog_id="123", app=self.app
         )
 
-        # Create a product feed using the correct field "name"
-        self.feed = ProductFeed.objects.create(name="Test Feed", catalog=self.catalog)
-
     def test_remove_duplicates_single_record(self):
         # Test when there is only one record, nothing should be deleted
         UploadProduct.objects.create(
             facebook_product_id="prod_1",
             catalog=self.catalog,
-            feed=self.feed,
             data={"name": "Test Product"},
         )
 
@@ -53,14 +49,12 @@ class UploadProductTestCase(TestCase):
         UploadProduct.objects.create(
             facebook_product_id="prod_2",
             catalog=self.catalog,
-            feed=self.feed,
             data={"name": "Test Product 2"},
             modified_on=timezone.now() - timezone.timedelta(days=2),
         )
         UploadProduct.objects.create(
             facebook_product_id="prod_2",
             catalog=self.catalog,
-            feed=self.feed,
             data={"name": "Test Product 2 Updated"},
             modified_on=timezone.now() - timezone.timedelta(days=1),
         )
@@ -83,21 +77,18 @@ class UploadProductTestCase(TestCase):
         UploadProduct.objects.create(
             facebook_product_id="prod_3",
             catalog=self.catalog,
-            feed=self.feed,
             data={"name": "Test Product 3"},
             modified_on=timezone.now() - timezone.timedelta(days=3),
         )
         UploadProduct.objects.create(
             facebook_product_id="prod_3",
             catalog=self.catalog,
-            feed=self.feed,
             data={"name": "Test Product 3 Updated"},
             modified_on=timezone.now() - timezone.timedelta(days=2),
         )
         UploadProduct.objects.create(
             facebook_product_id="prod_3",
             catalog=self.catalog,
-            feed=self.feed,
             data={"name": "Test Product 3 Newest"},
             modified_on=timezone.now() - timezone.timedelta(days=1),
         )
@@ -120,13 +111,11 @@ class UploadProductTestCase(TestCase):
         UploadProduct.objects.create(
             facebook_product_id="prod_4",
             catalog=self.catalog,
-            feed=self.feed,
             data={"name": "Test Product 4"},
         )
         UploadProduct.objects.create(
             facebook_product_id="prod_5",
             catalog=self.catalog,
-            feed=self.feed,
             data={"name": "Test Product 5"},
         )
 
@@ -157,14 +146,11 @@ class GetLatestProductsTestCase(TestCase):
             name="Test Catalog", facebook_catalog_id="123", app=self.app
         )
 
-        self.feed = ProductFeed.objects.create(name="Test Feed", catalog=self.catalog)
-
     def test_get_latest_products_single_record(self):
         # Create a single product
         product = UploadProduct.objects.create(
             facebook_product_id="prod_1",
             catalog=self.catalog,
-            feed=self.feed,
             data={"name": "Test Product 1"},
             modified_on=timezone.now(),
             status="pending",
@@ -182,7 +168,6 @@ class GetLatestProductsTestCase(TestCase):
         product_older = UploadProduct.objects.create(
             facebook_product_id="prod_2",
             catalog=self.catalog,
-            feed=self.feed,
             data={"name": "Test Product 2"},
             modified_on=timezone.now() - timezone.timedelta(days=2),
             status="pending",
@@ -190,7 +175,6 @@ class GetLatestProductsTestCase(TestCase):
         product_newer = UploadProduct.objects.create(
             facebook_product_id="prod_2",
             catalog=self.catalog,
-            feed=self.feed,
             data={"name": "Test Product 2 Updated"},
             modified_on=timezone.now() - timezone.timedelta(days=1),
             status="pending",
@@ -209,7 +193,6 @@ class GetLatestProductsTestCase(TestCase):
         product1 = UploadProduct.objects.create(
             facebook_product_id="prod_3",
             catalog=self.catalog,
-            feed=self.feed,
             data={"name": "Test Product 3"},
             modified_on=timezone.now() - timezone.timedelta(days=1),
             status="pending",
@@ -217,7 +200,6 @@ class GetLatestProductsTestCase(TestCase):
         product2 = UploadProduct.objects.create(
             facebook_product_id="prod_4",
             catalog=self.catalog,
-            feed=self.feed,
             data={"name": "Test Product 4"},
             modified_on=timezone.now(),
             status="pending",
@@ -237,7 +219,6 @@ class GetLatestProductsTestCase(TestCase):
             UploadProduct.objects.create(
                 facebook_product_id=f"prod_{i}",
                 catalog=self.catalog,
-                feed=self.feed,
                 data={"name": f"Test Product {i}"},
                 modified_on=timezone.now(),
                 status="pending",
@@ -254,7 +235,6 @@ class GetLatestProductsTestCase(TestCase):
         product_pending = UploadProduct.objects.create(
             facebook_product_id="prod_5",
             catalog=self.catalog,
-            feed=self.feed,
             data={"name": "Test Product 5"},
             modified_on=timezone.now(),
             status="pending",
@@ -262,7 +242,6 @@ class GetLatestProductsTestCase(TestCase):
         UploadProduct.objects.create(
             facebook_product_id="prod_5",
             catalog=self.catalog,
-            feed=self.feed,
             data={"name": "Test Product 5 Processed"},
             modified_on=timezone.now() - timezone.timedelta(days=1),
             status="processing",

@@ -19,13 +19,11 @@ from marketplace.clients.flows.client import FlowsClient
 
 from marketplace.wpp_products.serializers import (
     CatalogSerializer,
-    ProductSerializer,
     ToggleVisibilitySerializer,
     TresholdSerializer,
     CatalogListSerializer,
 )
 from marketplace.services.vtex.generic_service import VtexServiceBase
-from marketplace.celery import app as celery_app
 from marketplace.accounts.permissions import ProjectManagePermission
 
 
@@ -101,34 +99,13 @@ class CatalogViewSet(BaseViewSet):
         )
 
     def create(self, request, app_uuid, *args, **kwargs):
-        app = get_object_or_404(App, uuid=app_uuid, code="wpp-cloud")
-        serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        vtex_app = self.vtex_service.app_manager.get_vtex_app_or_error(app.project_uuid)
-        service = self.fb_service(app)
-        catalog, _fba_catalog_id = service.create_vtex_catalog(
-            serializer.validated_data, app, vtex_app, self.request.user
+        """
+        This method has been disabled. Catalog creation is no longer allowed.
+        """
+        return Response(
+            {"detail": "Catalog creation is not allowed."},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED,
         )
-        if not catalog:
-            return Response(
-                {"detail": "Failed to create catalog on Facebook."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        credentials = {
-            "app_key": vtex_app.config.get("api_credentials", {}).get("app_key"),
-            "app_token": vtex_app.config.get("api_credentials", {}).get("app_token"),
-            "domain": vtex_app.config.get("api_credentials", {}).get("domain"),
-        }
-
-        celery_app.send_task(
-            name="task_insert_vtex_products",
-            kwargs={"credentials": credentials, "catalog_uuid": str(catalog.uuid)},
-            queue="product_first_synchronization",
-        )
-
-        return Response(CatalogSerializer(catalog).data, status=status.HTTP_201_CREATED)
 
     def retrieve(self, request, *args, **kwargs):
         catalog = self.get_object()
@@ -156,12 +133,13 @@ class CatalogViewSet(BaseViewSet):
 
     @action(detail=True, methods=["GET"], url_path="list-products")
     def list_products(self, request, app_uuid, catalog_uuid, *args, **kwargs):
-        catalog = self._get_catalog(catalog_uuid, app_uuid)
-        queryset = catalog.products.all()
-        page_data = self.paginate_queryset(queryset)
-        serializer = ProductSerializer(page_data, many=True)
-
-        return self.get_paginated_response(serializer.data)
+        """
+        This method has been disabled. Product listing is no longer allowed.
+        """
+        return Response(
+            {"detail": "Product listing is not allowed."},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED,
+        )
 
     def destroy(self, request, *args, **kwargs):
         catalog = self.get_object()

@@ -156,54 +156,9 @@ class CatalogsRequestsInterface(ABC):
         pass
 
     @abstractmethod
-    def create_product_feed(self, product_catalog_id: str, name: str) -> Dict[str, Any]:
-        pass
-
-    @abstractmethod
-    def upload_product_feed(
-        self,
-        feed_id: str,
-        file: Any,
-        file_name: str,
-        file_content_type: str,
-        update_only: bool = False,
-    ) -> Dict[str, Any]:
-        pass
-
-    @abstractmethod
-    def create_product_feed_by_url(
-        self,
-        product_catalog_id: str,
-        name: str,
-        feed_url: str,
-        file_type: str,
-        interval: str,
-        hour: int,
-    ) -> Dict[str, Any]:
-        pass
-
-    @abstractmethod
-    def get_all_upload_status(
-        self, feed_id: str, max_attempts: int = 10, wait_time: int = 30
-    ) -> Any:
-        pass
-
-    @abstractmethod
-    def list_products_by_feed(self, feed_id: str) -> Dict[str, Any]:
-        pass
-
-    @abstractmethod
-    def list_all_products_by_feed(self, feed_id: str) -> List[Dict[str, Any]]:
-        pass
-
-    @abstractmethod
     def list_all_catalogs(
         self, wa_business_id: str
     ) -> Tuple[List[str], List[Dict[str, Any]]]:
-        pass
-
-    @abstractmethod
-    def destroy_feed(self, feed_id: str) -> bool:
         pass
 
     @abstractmethod
@@ -236,14 +191,6 @@ class CatalogsRequestsInterface(ABC):
 
     @abstractmethod
     def get_wpp_commerce_settings(self, wa_phone_number_id: str) -> Dict[str, Any]:
-        pass
-
-    @abstractmethod
-    def get_upload_status_by_feed(self, feed_id: str, upload_id: str) -> bool:
-        pass
-
-    @abstractmethod
-    def get_uploads_in_progress_by_feed(self, feed_id: str) -> Any:
         pass
 
     @abstractmethod

@@ -4,7 +4,7 @@ from django.test import TestCase
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 
-from marketplace.wpp_products.models import UploadProduct, Catalog, ProductFeed
+from marketplace.wpp_products.models import UploadProduct, Catalog
 from marketplace.wpp_products.utils import ProductBatchFetcher
 from marketplace.applications.models import App
 
@@ -27,14 +27,11 @@ class ProductBatchFetcherTestCase(TestCase):
             name="Test Catalog", facebook_catalog_id="123", app=self.app
         )
 
-        self.feed = ProductFeed.objects.create(name="Test Feed", catalog=self.catalog)
-
     def test_fetch_most_recent_products(self):
         # Create duplicate products with different modified_on dates
         product_older = UploadProduct.objects.create(
             facebook_product_id="prod_1",
             catalog=self.catalog,
-            feed=self.feed,
             data={"name": "Product 1"},
             modified_on=timezone.now() - timezone.timedelta(days=2),
             status="pending",
@@ -42,7 +39,6 @@ class ProductBatchFetcherTestCase(TestCase):
         product_newer = UploadProduct.objects.create(
             facebook_product_id="prod_1",
             catalog=self.catalog,
-            feed=self.feed,
             data={"name": "Product 1 Updated"},
             modified_on=timezone.now() - timezone.timedelta(days=1),
             status="pending",
@@ -52,7 +48,6 @@ class ProductBatchFetcherTestCase(TestCase):
         product_2 = UploadProduct.objects.create(
             facebook_product_id="prod_2",
             catalog=self.catalog,
-            feed=self.feed,
             data={"name": "Product 2"},
             modified_on=timezone.now(),
             status="pending",
@@ -78,7 +73,6 @@ class ProductBatchFetcherTestCase(TestCase):
         UploadProduct.objects.create(
             facebook_product_id="prod_1",
             catalog=self.catalog,
-            feed=self.feed,
             data={"name": "Product 1"},
             modified_on=timezone.now(),
             status="processing",

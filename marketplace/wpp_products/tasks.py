@@ -7,8 +7,7 @@ from datetime import datetime, timedelta
 from celery import shared_task
 
 from django_redis import get_redis_connection
-from django.db import reset_queries, close_old_connections
-from django.db.models import Exists, OuterRef
+from django.db import close_old_connections
 from django.core.cache import cache
 from django.utils import timezone
 
@@ -16,7 +15,6 @@ from marketplace.clients.facebook.client import FacebookClient
 
 from marketplace.wpp_products.models import (
     Catalog,
-    ProductFeed,
     ProductUploadLog,
     UploadProduct,
     WebhookLog,
@@ -172,12 +170,6 @@ def task_insert_vtex_products(**kwargs):
         return
 
     try:
-        # Reset queries and close old connections for a clean state and performance.
-        # Prevents memory leak from stored queries and unstable database connections
-        # before further operations.
-        reset_queries()
-        close_old_connections()
-
         catalog = Catalog.objects.get(uuid=catalog_uuid)
         api_credentials = APICredentials(
             app_key=credentials["app_key"],
@@ -282,6 +274,9 @@ def send_sync(app_uuid: str, webhook: dict):
 
     sku_id = webhook.get("IdSku")
 
+    # Get specific sellers to sync from app config
+    # This configuration is used for clients who need to synchronize only fixed set of
+    # one or more specific sellers, instead of all available sellers
     sync_specific_sellers = app.config.get("sync_specific_sellers", [])
 
     if sync_specific_sellers:
@@ -346,10 +341,11 @@ def task_insert_vtex_products_by_sellers(**kwargs):
     credentials = kwargs.get("credentials")
     catalog_uuid = kwargs.get("catalog_uuid")
     sellers = kwargs.get("sellers")
+    sync_all_sellers = kwargs.get("sync_all_sellers", False)
 
-    if not sellers:
+    if not sellers and not sync_all_sellers:
         logger.error(
-            "Missing required parameters [sellers] for task_insert_vtex_products_by_sellers"
+            "Missing required parameters [sellers or sync_all_sellers] for task_insert_vtex_products_by_sellers"
         )
         return
 
@@ -373,14 +369,15 @@ def task_insert_vtex_products_by_sellers(**kwargs):
         lock_key = SellerSyncUtils.create_lock(vtex_app_uuid, sellers)
 
         if lock_key:
-            products = vtex_service.insertion_products_by_seller(
-                api_credentials, catalog, sellers
+            sync_success = vtex_service.insertion_products_by_seller(
+                api_credentials, catalog, sellers, sync_all_sellers
             )
-            if products is None:
+            if not sync_success:
                 print("There are no products to be shipped after processing the rules.")
                 return
 
-            # Check and start upload task
+            # Even though the saver already triggers the upload process during batch saves,
+            # this call acts as a double-check to ensure that any remaining pending tasks are started.
             UploadManager.check_and_start_upload(vtex_app_uuid)
 
         else:
@@ -408,13 +405,16 @@ def task_sync_product_policies():
     print("Starting synchronization of product policies")
 
     try:
-        # Filter catalogs that have an associated ProductFeed
-        catalogs_with_feeds = Catalog.objects.annotate(
-            has_feed=Exists(ProductFeed.objects.filter(catalog=OuterRef("pk")))
-        ).filter(has_feed=True)
-        for catalog in catalogs_with_feeds:
-            product_sync_service = ProductSyncMetaPolices(catalog)
-            product_sync_service.sync_products_polices()
+        # Filter VTEX apps that have completed the initial sync
+        vtex_apps = App.objects.filter(
+            code="vtex", config__initial_sync_completed=True, configured=True
+        )
+
+        for app in vtex_apps:
+            catalogs = app.vtex_catalogs.all()
+            for catalog in catalogs:
+                product_sync_service = ProductSyncMetaPolices(catalog)
+                product_sync_service.sync_products_polices()
 
     except Exception as e:
         logger.exception(
@@ -424,76 +424,6 @@ def task_sync_product_policies():
 
     print("finishing 'task_sync_product_policies'")
     print("=" * 40)
-
-
-@celery_app.task(name="task_update_batch_products")
-def task_update_batch_products(app_uuid: str, seller: str, sku_id: str):
-    """
-    Processes product updates for a VTEX app based on a seller and SKU.
-    """
-    start_time = datetime.now()
-    vtex_base_service = VtexServiceBase()
-
-    try:
-        logger.info(
-            f"Processing product update for App UUID: {app_uuid}, SKU_ID: {sku_id}, Seller: {seller}."
-        )
-
-        # Fetch app configuration from cache or database
-        cache_key = f"app_cache_{app_uuid}"
-        vtex_app = cache.get(cache_key)
-        if not vtex_app:
-            vtex_app = App.objects.get(uuid=app_uuid, configured=True, code="vtex")
-            cache.set(cache_key, vtex_app, timeout=300)
-
-        # Ensure synchronization is enabled for the app
-        if not vtex_app.config.get("initial_sync_completed", False):
-            logger.info(f"Initial sync not completed for App: {app_uuid}. Task ending.")
-            return
-
-        # Get VTEX credentials
-        api_credentials = vtex_base_service.get_vtex_credentials_or_raise(vtex_app)
-
-        # Fetch catalog
-        catalog = vtex_app.vtex_catalogs.first()
-        if not catalog:
-            logger.info(f"No catalog found for VTEX app: {vtex_app.uuid}")
-            return
-
-        # Initialize ProductUpdateService
-        vtex_update_service = ProductUpdateService(
-            api_credentials=api_credentials,
-            catalog=catalog,
-            skus_ids=[sku_id],
-            sellers_ids=[seller],
-        )
-
-        # Process product updates in batch
-        products = vtex_update_service.process_batch_sync()
-        if products is None:
-            logger.info(
-                f"No products to process for App: {app_uuid}, SKU: {sku_id}. Task ending."
-            )
-            return
-
-    except Exception as e:
-        logger.error(
-            f"An error occurred during the processing of SKU: {sku_id} for App: {app_uuid}. Error: {e}"
-        )
-
-    finally:
-        # Log task duration
-        end_time = datetime.now()
-        duration = (end_time - start_time).total_seconds()
-        minutes, seconds = divmod(duration, 60)
-
-        logger.info(
-            f"Finished processing update for SKU: {sku_id}, App: {app_uuid}. "
-            f"Task completed in {int(minutes)} minutes and {int(seconds)} seconds."
-        )
-
-        # Start upload task
-        UploadManager.check_and_start_upload(app_uuid)
 
 
 @celery_app.task(name="task_enqueue_webhook")
