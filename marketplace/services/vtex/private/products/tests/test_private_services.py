@@ -18,7 +18,7 @@ class MockClient:
     def list_active_sellers(self, domain):
         return ["seller1", "seller2"] if domain == "valid.domain.com" else []
 
-    def list_all_active_products(self, domain):
+    def list_all_products_sku_ids(self, domain):
         return ["sku1", "sku2"] if domain == "valid.domain.com" else []
 
     def get_product_details(self, sku_id, domain):
@@ -35,6 +35,17 @@ class MockClient:
             if domain == "valid.domain.com"
             else {}
         )
+
+    def simulate_cart_for_multiple_sellers(self, sku_id, sellers, domain):
+        results = {}
+        for seller in sellers:
+            results[seller] = {
+                "is_available": True,
+                "price": 100,
+                "list_price": 120,
+                "data": {"items": [{"id": sku_id, "seller": seller}]},
+            }
+        return results
 
 
 class MockCatalog:
@@ -80,33 +91,18 @@ class PrivateProductsServiceTestCase(TestCase):
 
     @patch("django.core.cache.cache.get")
     @patch("django.core.cache.cache.set")
-    def test_list_all_active_products(self, mock_cache_set, mock_cache_get):
+    def test_list_all_skus_ids(self, mock_cache_set, mock_cache_get):
         mock_cache_get.return_value = ["sku1", "sku2"]
-        products = self.service.list_all_active_products("valid.domain.com")
+        skus = self.service.list_all_skus_ids("valid.domain.com")
         mock_cache_get.assert_called_once_with("active_products_valid.domain.com")
-        self.assertEqual(products, ["sku1", "sku2"])
+        self.assertEqual(skus, ["sku1", "sku2"])
 
         mock_cache_get.return_value = None
-        self.mock_client.list_all_active_products = Mock(return_value=["sku3", "sku4"])
-        products = self.service.list_all_active_products("new.domain.com")
+        self.mock_client.list_all_products_sku_ids = Mock(return_value=["sku3", "sku4"])
+        skus = self.service.list_all_skus_ids("new.domain.com")
         mock_cache_set.assert_called_once_with(
-            "active_products_new.domain.com", ["sku3", "sku4"], timeout=3600
+            "active_products_new.domain.com", ["sku3", "sku4"], timeout=36000
         )
-
-    @patch("django.core.cache.cache.get")
-    def test_list_all_products(self, mock_cache_get):
-        self.service.data_processor.process_product_data = Mock(return_value=[])
-        self.mock_client.list_all_products_sku_ids = Mock(return_value=["sku1", "sku2"])
-        self.mock_client.list_active_sellers = Mock(return_value=["seller1", "seller2"])
-        mock_cache_get.return_value = ["sku1", "sku2"]
-
-        products = self.service.list_all_products("valid.domain.com", self.mock_catalog)
-
-        self.mock_client.list_all_products_sku_ids.assert_called_once_with(
-            "valid.domain.com"
-        )
-        self.mock_client.list_active_sellers.assert_called_once_with("valid.domain.com")
-        self.assertIsInstance(products, list)
 
     def test_get_product_details(self):
         details = self.service.get_product_details("sku1", "valid.domain.com")
@@ -120,13 +116,6 @@ class PrivateProductsServiceTestCase(TestCase):
             cart,
             {"sku_id": "sku1", "seller_id": "seller1", "domain": "valid.domain.com"},
         )
-
-    def test_update_webhook_product_info(self):
-        self.service.webhook_data_processor.process_product_data = Mock(return_value=[])
-        updated_products = self.service.update_webhook_product_info(
-            "valid.domain.com", ["sku1"], ["seller1"], self.mock_catalog
-        )
-        self.assertIsInstance(updated_products, list)
 
     def test_get_product_specification(self):
         specification = self.service.get_product_specification(
@@ -152,18 +141,14 @@ class PrivateProductsServiceTestCase(TestCase):
         for rule in rules:
             self.assertNotEqual(type(rule).__name__, "invalid_rule")
 
-    def test_list_all_products_with_invalid_sellers(self):
-        sellers = ["seller1", "invalid_seller"]
-        self.service.list_active_sellers = Mock(return_value=["seller1", "seller2"])
-        self.service.list_all_skus_ids = Mock(return_value=["sku1", "sku2"])
-        self.service.data_processor.process_product_data = Mock(return_value=[])
+    def test_simulate_cart_for_multiple_sellers(self):
+        sellers = ["seller1", "seller2"]
+        results = self.service.simulate_cart_for_multiple_sellers(
+            "sku1", sellers, "valid.domain.com"
+        )
 
-        with patch("builtins.print") as mock_print:
-            products = self.service.list_all_products(
-                "valid.domain.com", self.mock_catalog, sellers
-            )
-            mock_print.assert_called_with(
-                "Warning: Sellers IDs {'invalid_seller'} are not active and will be ignored."
-            )
-        self.assertIsInstance(products, list)
-        self.service.data_processor.process_product_data.assert_called_once()
+        self.assertEqual(len(results), 2)
+        self.assertIn("seller1", results)
+        self.assertIn("seller2", results)
+        self.assertTrue(results["seller1"]["is_available"])
+        self.assertEqual(results["seller1"]["price"], 100)

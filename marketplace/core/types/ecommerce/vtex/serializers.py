@@ -55,15 +55,32 @@ class VtexAppSerializer(AppTypeBaseSerializer):
 
 
 class VtexSyncSellerSerializer(serializers.Serializer):
-    sellers = serializers.ListField(required=True)
+    sellers = serializers.ListField(required=False)
+    sync_all_sellers = serializers.BooleanField(required=False, default=False)
 
-    def validate_sellers(self, value):
-        if len(value) > 5:
+    def validate(self, data):
+        """
+        Validate that either sellers list or sync_all_sellers is provided.
+        """
+        if not data.get("sellers") and not data.get("sync_all_sellers"):
             raise serializers.ValidationError(
-                "The list of sellers exceeds the limit of 5 items."
+                "Either 'sellers' list or 'sync_all_sellers' must be provided."
             )
-        return value
+
+        if data.get("sellers") and data.get("sync_all_sellers"):
+            raise serializers.ValidationError(
+                "Cannot provide both 'sellers' list and 'sync_all_sellers' at the same time."
+            )
+
+        return data
 
 
 class VtexAdsSerializer(serializers.Serializer):
     vtex_ads = serializers.BooleanField(required=True)
+
+
+class FirstProductInsertSerializer(serializers.Serializer):
+    catalog_id = serializers.CharField(
+        required=True,
+        help_text="The catalog identifier to be linked with the VTEX app.",
+    )
