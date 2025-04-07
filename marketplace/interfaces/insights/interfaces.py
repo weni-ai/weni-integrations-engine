@@ -27,3 +27,28 @@ class InsightsClientInterface(Protocol):
             Dict[str, Any]: The response from the insights API.
         """
         ...
+
+    def delete_whatsapp_integration(self, project_uuid: str, waba_id: str) -> None:
+        """
+        Delete a WhatsApp integration.
+
+        Args:
+            project_uuid (UUID): The UUID of the project.
+            waba_id (str): The Waba's id.
+        """
+
+
+class InsightsUseCaseSyncInterface(Protocol):
+    """
+    Interface for the Insights sync.
+
+    This protocol defines that UseCases that integrates with insights must sync.
+    """
+
+    def sync(self) -> None:
+        """
+        Sync with insights.
+
+        Returns:
+            None.
+        """

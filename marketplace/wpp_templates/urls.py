@@ -16,6 +16,13 @@ urlpatterns = [
     path("", include(templates_router.urls)),
 ]
 
+urlpatterns.append(
+    path(
+        "project/templates/details/",
+        views.TemplateMessageViewSet.as_view({"get": "template_detail"}),
+        name="app-template-details",
+    ),
+)
 
 urlpatterns.append(
     path(

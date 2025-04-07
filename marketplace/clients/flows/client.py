@@ -180,3 +180,23 @@ class FlowsClient(RequestClient):
         )
 
         return response.json()
+
+    def list_channels(self, channeltype_code: str, exclude_wpp_demo=None) -> list:
+        params = {"channel_type": channeltype_code}
+        if exclude_wpp_demo:
+            params["exclude_wpp_demo"] = "true"
+
+        url = f"{self.base_url}/api/v2/internals/channel/"
+
+        response = self.make_request(
+            url,
+            method="GET",
+            headers=self.authentication_instance.headers,
+            params=params,
+        )
+
+        def map_org_to_project_uuid(channel: dict) -> dict:
+            channel["project_uuid"] = channel.pop("org")
+            return channel
+
+        return list(map(map_org_to_project_uuid, response.json()))

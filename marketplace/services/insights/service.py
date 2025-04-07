@@ -38,3 +38,13 @@ class InsightsService:  # pragma: no cover
             Dict[str, Any]: The response from the insights API.
         """
         return self.client.create_whatsapp_integration(whatsapp_data)
+
+    def delete_whatsapp_integration(self, project_uuid: str, waba_id: str) -> None:
+        """
+        Delete a WhatsApp integration.
+
+        Args:
+            project_uuid (UUID): The UUID of the project.
+            waba_id (str): The Waba's id.
+        """
+        return self.client.delete_whatsapp_integration(project_uuid, waba_id)

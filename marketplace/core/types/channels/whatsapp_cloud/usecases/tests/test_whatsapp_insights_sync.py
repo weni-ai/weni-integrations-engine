@@ -1,9 +1,12 @@
 from unittest import TestCase
-from unittest.mock import Mock
-from uuid import UUID
+from unittest.mock import Mock, patch
+from uuid import UUID, uuid4
 
 from marketplace.core.types.channels.whatsapp_cloud.usecases.whatsapp_insights_sync import (
     WhatsAppInsightsSyncUseCase,
+)
+from marketplace.core.types.channels.whatsapp_cloud.usecases.whatsapp_insights_delete_sync import (
+    WhatsAppInsightsDeleteSyncUseCase,
 )
 from marketplace.applications.models import App
 from marketplace.services.insights.service import InsightsService
@@ -116,3 +119,58 @@ class TestWhatsAppInsightsSyncUseCase(TestCase):
         """Test that insights service is automatically created when not provided."""
         use_case = WhatsAppInsightsSyncUseCase(app=self.app)
         self.assertIsInstance(use_case._insights_service, InsightsService)
+
+
+class TestWhatsAppInsightsDeleteSyncUseCase(TestCase):
+    """Test case for WhatsAppInsightsDeleteSyncUseCase to verify proper integration with Insights service."""
+
+    def setUp(self):
+        self.template_uuid = uuid4()
+        self.project_uuid = uuid4()
+        self.waba_id = "123456789"
+
+        self.app = Mock(spec=App)
+        self.app.project_uuid = self.project_uuid
+        self.app.config = {"wa_waba_id": self.waba_id}
+
+        self.insights_service = Mock(spec=InsightsService)
+        self.use_case = WhatsAppInsightsDeleteSyncUseCase(
+            app=self.app,
+            insights_service=self.insights_service,
+        )
+
+    def test_collect_template_data(self):
+        expected_data = {
+            "project_uuid": str(self.project_uuid),
+            "waba_id": self.waba_id,
+        }
+
+        result = self.use_case._collect_template_data()
+        self.assertEqual(result, expected_data)
+
+    def test_sync_calls_delete_whatsapp_integration(self):
+        self.use_case.sync()
+
+        self.insights_service.delete_whatsapp_integration.assert_called_once_with(
+            str(self.project_uuid), self.waba_id
+        )
+
+    @patch(
+        "marketplace.core.types.channels.whatsapp_cloud.usecases.whatsapp_insights_delete_sync.InsightsService"
+    )
+    @patch(
+        "marketplace.core.types.channels.whatsapp_cloud.usecases.whatsapp_insights_delete_sync.InsightsClient"
+    )
+    def test_insights_service_initialization_when_none_is_provided(
+        self, mock_client_class, mock_service_class
+    ):
+        mock_client_class.return_value = Mock()
+        mock_service_class.return_value = Mock()
+
+        use_case = WhatsAppInsightsDeleteSyncUseCase(app=self.app)
+
+        mock_client_class.assert_called_once()
+
+        mock_service_class.assert_called_once()
+
+        self.assertEqual(use_case._insights_service, mock_service_class.return_value)

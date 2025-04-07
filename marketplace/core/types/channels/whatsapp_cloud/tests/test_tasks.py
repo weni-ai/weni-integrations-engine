@@ -10,6 +10,9 @@ from marketplace.core.types import APPTYPES
 from ..tasks import sync_whatsapp_cloud_apps, check_apps_uncreated_on_flow
 from marketplace.applications.models import App
 from marketplace.accounts.models import ProjectAuthorization
+from marketplace.core.types.channels.whatsapp_cloud.usecases.whatsapp_cloud_sync import (
+    SyncWhatsAppCloudAppsUseCase,
+)
 
 
 User = get_user_model()
@@ -19,11 +22,6 @@ class SyncWhatsAppCloudAppsTaskTestCase(TestCase):
     def setUp(self) -> None:
         self.redis_mock = MagicMock()
         self.redis_mock.get.return_value = None
-
-        lock_mock = MagicMock()
-        lock_mock.__enter__.return_value = None
-        lock_mock.__exit__.return_value = False
-        self.redis_mock.lock.return_value = lock_mock
 
         wpp_type = APPTYPES.get("wpp")
         wpp_cloud_type = APPTYPES.get("wpp-cloud")
@@ -54,11 +52,14 @@ class SyncWhatsAppCloudAppsTaskTestCase(TestCase):
                     "wa_number": "wa_number_value",
                     "have_to_stay": "some_value",
                 },
+                "is_active": True,
             }
         ]
 
-    @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.get_redis_connection")
-    @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
+    @patch(
+        "marketplace.core.types.channels.whatsapp_cloud.usecases.whatsapp_cloud_sync.get_redis_connection"
+    )
+    @patch("marketplace.clients.flows.client.FlowsClient.list_channels")
     def test_whatsapp_app_that_already_exists_is_migrated_correctly(
         self, list_channel_mock: MagicMock, mock_redis: MagicMock
     ) -> None:
@@ -75,8 +76,10 @@ class SyncWhatsAppCloudAppsTaskTestCase(TestCase):
         self.assertIn("config_before_migration", app.config)
         self.assertIn("have_to_stay", app.config.get("config_before_migration"))
 
-    @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.get_redis_connection")
-    @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
+    @patch(
+        "marketplace.core.types.channels.whatsapp_cloud.usecases.whatsapp_cloud_sync.get_redis_connection"
+    )
+    @patch("marketplace.clients.flows.client.FlowsClient.list_channels")
     def test_sync_for_non_migrated_channels(
         self, list_channel_mock: MagicMock, mock_redis: MagicMock
     ) -> None:
@@ -93,8 +96,10 @@ class SyncWhatsAppCloudAppsTaskTestCase(TestCase):
         self.assertEqual(app.code, "wpp-cloud")
         self.assertIn("have_to_stay", app.config)
 
-    @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.get_redis_connection")
-    @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
+    @patch(
+        "marketplace.core.types.channels.whatsapp_cloud.usecases.whatsapp_cloud_sync.get_redis_connection"
+    )
+    @patch("marketplace.clients.flows.client.FlowsClient.list_channels")
     def test_create_new_whatsapp_cloud(
         self, list_channel_mock: "MagicMock", mock_redis
     ) -> None:
@@ -112,19 +117,21 @@ class SyncWhatsAppCloudAppsTaskTestCase(TestCase):
         self.assertTrue(App.objects.filter(flow_object_uuid=flow_object_uuid).exists())
         self.assertTrue(App.objects.filter(project_uuid=project_uuid).exists())
 
-    @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.get_redis_connection")
-    @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
-    def test_sync_already_in_progress(self, list_channel_mock, mock_redis):
+    @patch(
+        "marketplace.core.types.channels.whatsapp_cloud.usecases.whatsapp_cloud_sync.get_redis_connection"
+    )
+    def test_sync_already_in_progress(self, mock_redis):
         self.redis_mock.get.return_value = True
         mock_redis.return_value = self.redis_mock
 
         result = sync_whatsapp_cloud_apps()
 
         self.assertIsNone(result)
-        list_channel_mock.assert_called_once()
 
-    @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.get_redis_connection")
-    @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
+    @patch(
+        "marketplace.core.types.channels.whatsapp_cloud.usecases.whatsapp_cloud_sync.get_redis_connection"
+    )
+    @patch("marketplace.clients.flows.client.FlowsClient.list_channels")
     def test_sync_with_missing_project_uuid(
         self, list_channel_mock, mock_redis
     ) -> None:
@@ -144,12 +151,15 @@ class SyncWhatsAppCloudAppsTaskTestCase(TestCase):
         self.assertEqual(app.code, "wpp-cloud")
         self.assertIn("have_to_stay", app.config)
 
-    @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.get_redis_connection")
-    @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
-    @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.logger")
-    @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.APPTYPES.get")
+    @patch(
+        "marketplace.core.types.channels.whatsapp_cloud.usecases.whatsapp_cloud_sync.get_redis_connection"
+    )
+    @patch("marketplace.clients.flows.client.FlowsClient.list_channels")
+    @patch(
+        "marketplace.core.types.channels.whatsapp_cloud.usecases.whatsapp_cloud_sync.logger"
+    )
     def test_app_cloud_creation_error(
-        self, apptype_mock, logger_mock, list_channel_mock: "MagicMock", mock_redis
+        self, logger_mock, list_channel_mock: "MagicMock", mock_redis
     ) -> None:
         project_uuid = str(uuid4())
         flow_object_uuid = str(uuid4())
@@ -159,10 +169,14 @@ class SyncWhatsAppCloudAppsTaskTestCase(TestCase):
 
         list_channel_mock.return_value = channel_value
 
-        apptype_mock.return_value.create_app.side_effect = Exception("Test exception")
-        mock_redis.return_value = self.redis_mock
-
-        sync_whatsapp_cloud_apps()
+        # Mock the _create_new_app method to raise an exception
+        with patch.object(
+            SyncWhatsAppCloudAppsUseCase,
+            "_create_new_app",
+            side_effect=Exception("Test exception"),
+        ):
+            mock_redis.return_value = self.redis_mock
+            sync_whatsapp_cloud_apps()
 
         logger_mock.error.assert_called_with(
             f"Error on processing sync_whatsapp_cloud_apps for channel {flow_object_uuid}: Test exception"
@@ -188,7 +202,7 @@ class CheckAppsUncreatedOnFlowTaskTestCase(TestCase):
             project_uuid=self.project_uuid,
         )
 
-    @patch("marketplace.connect.client.ConnectProjectClient")
+    @patch("marketplace.clients.flows.client.FlowsClient")
     def test_wa_phone_number_id_missing(self, ConnectProjectClientMock):
         self.app.config = {}
         self.app.save()
@@ -196,7 +210,7 @@ class CheckAppsUncreatedOnFlowTaskTestCase(TestCase):
 
         ConnectProjectClientMock.assert_not_called()
 
-    @patch("marketplace.connect.client.ConnectProjectClient")
+    @patch("marketplace.clients.flows.client.FlowsClient")
     def test_user_no_project_access(self, ConnectProjectClientMock):
         self.app.config = {"wa_phone_number_id": "123456789"}
         self.app.save()
@@ -205,7 +219,7 @@ class CheckAppsUncreatedOnFlowTaskTestCase(TestCase):
 
         ConnectProjectClientMock.assert_not_called()
 
-    @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.ConnectProjectClient")
+    @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.FlowsClient")
     def test_channel_created_successfully(self, ConnectProjectClientMock):
         self.create_project_authorization()
         self.app.config = {"wa_phone_number_id": "123456789"}
@@ -221,7 +235,7 @@ class CheckAppsUncreatedOnFlowTaskTestCase(TestCase):
         app = App.objects.get(id=self.app.id)
         self.assertEqual(app.flow_object_uuid, data["uuid"])
 
-    @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.ConnectProjectClient")
+    @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.FlowsClient")
     def test_channel_creation_exception(self, ConnectProjectClientMock):
         self.create_project_authorization()
         self.app.config = {"wa_phone_number_id": "0123456789"}
@@ -237,7 +251,7 @@ class CheckAppsUncreatedOnFlowTaskTestCase(TestCase):
         app = App.objects.get(uuid=self.app.uuid)
         self.assertIsNone(app.flow_object_uuid)
 
-    @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.ConnectProjectClient")
+    @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.FlowsClient")
     def test_channel_without_uuid(self, ConnectProjectClientMock):
         self.create_project_authorization()
         self.app.config = {"wa_phone_number_id": "0123456789"}

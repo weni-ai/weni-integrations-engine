@@ -191,7 +191,7 @@ class TemplateSyncUseCase:
         Args:
             templates: List of templates from Meta API
         """
-        templates_message = self.app.template.all()
+        templates_message = self.app.templates.all()
         templates_ids = [item["id"] for item in templates]
 
         for template in templates_message:

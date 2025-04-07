@@ -5,12 +5,13 @@ from typing import Dict, Optional
 from marketplace.services.insights.service import InsightsService
 from marketplace.clients.insights.client import InsightsClient
 from marketplace.applications.models import App
+from marketplace.interfaces.insights.interfaces import InsightsUseCaseSyncInterface
 
 
 logger = logging.getLogger(__name__)
 
 
-class WhatsAppInsightsSyncUseCase:
+class WhatsAppInsightsSyncUseCase(InsightsUseCaseSyncInterface):
     """
     UseCase responsible for syncing WhatsApp data with Insights service.
     """
