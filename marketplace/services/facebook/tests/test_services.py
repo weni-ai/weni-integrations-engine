@@ -1,7 +1,7 @@
 import uuid
 import random
 
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 from django.test import TestCase
 from django.contrib.auth import get_user_model
@@ -139,20 +139,6 @@ class MockClient:
     def register_phone_number(self, phone_number_id, user_access_token, data):
         return {"success": True}
 
-    def create_product_feed(self, product_catalog_id, name):
-        return {"id": "mock_feed_id"}
-
-    def upload_product_feed(
-        self, feed_id, file, file_name, file_content_type, update_only=False
-    ):
-        return {"id": "upload_id"}
-
-    def get_upload_status_by_feed(self, feed_id, upload_id):
-        return True
-
-    def get_uploads_in_progress_by_feed(self, feed_id):
-        return "upload_id"
-
     def create_library_template_message(self, waba_id, template_data):
         """
         Mock method for creating library template messages
@@ -283,54 +269,6 @@ class TestFacebookService(TestCase):
         self.catalog.facebook_catalog_id = "invalid-id"
         success = self.service.catalog_deletion(self.catalog)
         self.assertFalse(success)
-
-    def test_create_product_feed(self):
-        response = self.service.create_product_feed("product_catalog_id", "name")
-        self.assertEqual(response, {"id": "mock_feed_id"})
-
-    def test_upload_product_feed(self):
-        response = self.service.upload_product_feed(
-            "feed_id", "file", "file_name", "file_content_type"
-        )
-        self.assertEqual(response, {"id": "upload_id"})
-
-    def test_get_upload_status_by_feed(self):
-        status = self.service.get_upload_status_by_feed("feed_id", "upload_id")
-        self.assertTrue(status)
-
-    def test_get_in_process_uploads_by_feed(self):
-        upload_id = self.service.get_in_process_uploads_by_feed("feed_id")
-        self.assertEqual(upload_id, "upload_id")
-
-    def test_update_product_feed(self):
-        response = self.service.update_product_feed("feed_id", "csv_file", "file_name")
-        self.assertEqual(response, "upload_id")
-
-    def test_uploads_in_progress(self):
-        upload_id = self.service.uploads_in_progress("feed_id")
-        self.assertEqual(upload_id, "upload_id")
-
-    def test_uploads_in_progress_no_uploads(self):
-        with patch.object(
-            self.mock_client, "get_uploads_in_progress_by_feed", return_value=None
-        ):
-            upload_id = self.service.uploads_in_progress("feed_id")
-            self.assertFalse(upload_id)
-
-    def test_wait_for_upload_completion(self):
-        with patch.object(self.service, "get_upload_status_by_feed", return_value=True):
-            result = self.service._wait_for_upload_completion("feed_id", "upload_id")
-            self.assertTrue(result)
-
-    def test_wait_for_upload_completion_timeout(self):
-        with patch.object(
-            self.service, "get_upload_status_by_feed", return_value=False
-        ):
-            with patch("time.sleep", return_value=None):
-                result = self.service._wait_for_upload_completion(
-                    "feed_id", "upload_id"
-                )
-                self.assertFalse(result)
 
 
 class TestFacebookCreateDeleteService(TestCase):
