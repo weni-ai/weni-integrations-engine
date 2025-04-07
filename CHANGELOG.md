@@ -1,3 +1,8 @@
+v4.3.0
+----------
+* fix: refactor the dataprocessor class and fix bugs
+* fix: remove dependencies with sync v1 for uploads with meta
+
 v4.2.0
 ----------
 * Sync delete whatsapp apps with insights
