@@ -363,6 +363,10 @@ USE_GRPC = env.bool("USE_GRPC", default=False)
 CELERY_BEAT_SCHEDULE = {
     "sync-whatsapp-apps": {
         "task": "sync_whatsapp_apps",
+        "schedule": timedelta(hours=3),
+    },
+    "sync-whatsapp-cloud-apps": {
+        "task": "sync_whatsapp_cloud_apps",
         "schedule": timedelta(hours=2),
     },
     "sync-whatsapp-wabas": {
