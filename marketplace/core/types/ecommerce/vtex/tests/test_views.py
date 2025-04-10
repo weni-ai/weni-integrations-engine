@@ -98,22 +98,12 @@ class CreateVtexAppTestCase(SetUpService):
 
     def setUp(self):
         super().setUp()
-        self.project_uuid = str(uuid.uuid4())
 
-        self.wpp_cloud = App.objects.create(
-            code="wpp-cloud",
-            created_by=self.user,
-            project_uuid=self.project_uuid,
-            platform=App.PLATFORM_WENI_FLOWS,
-        )
+        self.project_uuid = str(uuid.uuid4())
         self.body = {
             "project_uuid": self.project_uuid,
-            "app_key": "valid-app-key",
-            "app_token": "valid-app-token",
-            "domain": "valid.domain.com",
-            "wpp_cloud_uuid": str(self.wpp_cloud.uuid),
-            "uuid": str(uuid.uuid4()),
-            "store_domain": "www.test.com.br",
+            "account": "store",
+            "store_type": "type",
         }
         self.user_authorization = self.user.authorizations.create(
             project_uuid=self.project_uuid, role=ProjectAuthorization.ROLE_CONTRIBUTOR
@@ -130,52 +120,11 @@ class CreateVtexAppTestCase(SetUpService):
     def test_create_app_without_project_uuid(self):
         self.body.pop("project_uuid")
         response = self.request.post(self.url, self.body)
-
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_create_app_platform(self):
         response = self.request.post(self.url, self.body)
         self.assertEqual(response.json["platform"], App.PLATFORM_VTEX)
-
-    # TODO: Fix this test broken due to PR #594.
-    # def test_create_app_without_permission(self):
-    #     self.user_authorization.delete()
-    #     response = self.request.post(self.url, self.body)
-    #     self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    def test_create_app_without_valid_wpp_cloud_app(self):
-        not_wpp_cloud = App.objects.create(
-            code="wpp",
-            created_by=self.user,
-            project_uuid=self.project_uuid,
-            platform=App.PLATFORM_WENI_FLOWS,
-        )
-        body = {
-            "project_uuid": self.project_uuid,
-            "app_key": "valid-app-key",
-            "app_token": "valid-app-token",
-            "domain": "valid.domain.com",
-            "wpp_cloud_uuid": str(not_wpp_cloud.uuid),
-            "store_domain": "www.test.com.br",
-        }
-        response = self.request.post(self.url, body)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("wpp_cloud_uuid", response.data)
-        self.assertIn(
-            "does not correspond to a valid 'wpp-cloud' App",
-            str(response.data["wpp_cloud_uuid"]),
-        )
-
-    def test_create_app_configuration_exception(self):
-        original_configure = self.mock_service.configure
-        self.mock_service.configure = Mock(side_effect=Exception("Configuration error"))
-
-        response = self.request.post(self.url, self.body)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("error", response.data)
-        self.assertEqual(response.data["error"], "Configuration error")
-
-        self.mock_service.configure = original_configure
 
     def test_create_app_with_no_app(self):
         with patch.object(self.view_class, "get_app", return_value=None):
@@ -470,3 +419,90 @@ class VtexIntegrationDetailsViewTest(APIBaseTestCase):
         Returns the view that will be used in the test.
         """
         return self.view_class.as_view()
+
+
+class LinkCatalogTestCase(SetUpService):
+    def setUp(self):
+        super().setUp()
+        self.app = apptype.create_app(
+            created_by=self.user, project_uuid=str(uuid.uuid4())
+        )
+        self.wpp_cloud_app = App.objects.create(
+            code="wpp-cloud", created_by=self.user, project_uuid=self.app.project_uuid
+        )
+
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+
+        self.url = reverse("vtex-app-link-catalog", kwargs={"uuid": self.app.uuid})
+        self.body = {
+            "catalog_id": "catalog123",
+            "domain": "test.vtex.com",
+            "store_domain": "store.vtex.com",
+            "app_key": "test_app_key",
+            "app_token": "test_app_token",
+            "wpp_cloud_uuid": str(self.wpp_cloud_app.uuid),
+            "project_uuid": self.app.project_uuid,
+        }
+
+    @property
+    def view(self):
+        return self.view_class.as_view({"post": "link_catalog"})
+
+    @patch(
+        "marketplace.core.types.ecommerce.vtex.usecases.link_catalog_start_sync.LinkCatalogAndStartSyncUseCase.link_catalog",  # noqa: E501
+        return_value=True,
+    )
+    def test_link_catalog_success(self, mock_link_catalog):
+        # Fazer a requisição
+        response = self.request.post(self.url, self.body, uuid=self.app.uuid)
+
+        # Verificar a resposta
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            response.json["message"],
+            "Catalog linked and synchronization task dispatched successfully",
+        )
+
+        # Verificar que o método foi chamado corretamente
+        mock_link_catalog.assert_called_once_with(catalog_id=self.body["catalog_id"])
+
+    @patch(
+        "marketplace.core.types.ecommerce.vtex.usecases.link_catalog_start_sync.LinkCatalogAndStartSyncUseCase"
+    )
+    def test_link_catalog_failure(self, mock_use_case_class):
+        mock_use_case_instance = Mock()
+        mock_use_case_instance.link_catalog.return_value = False
+        mock_use_case_class.return_value = mock_use_case_instance
+
+        response = self.request.post(self.url, self.body, uuid=self.app.uuid)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.json["error"],
+            "Failed to link catalog and start product synchronization",
+        )
+
+    def test_link_catalog_invalid_data(self):
+        invalid_body = self.body.copy()
+        invalid_body.pop("catalog_id")
+
+        response = self.request.post(self.url, invalid_body, uuid=self.app.uuid)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("catalog_id", response.json)
+
+    def test_link_catalog_app_not_found(self):
+        invalid_url = reverse(
+            "vtex-app-link-catalog", kwargs={"uuid": str(uuid.uuid4())}
+        )
+
+        with patch.object(
+            self.view_class, "get_object", side_effect=Exception("App not found")
+        ):
+            response = self.request.post(invalid_url, self.body)
+
+            self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+            self.assertEqual(response.json["error"], "VTEX app not found")
