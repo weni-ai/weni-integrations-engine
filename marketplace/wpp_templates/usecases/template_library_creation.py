@@ -158,7 +158,9 @@ class TemplateCreationUseCase:
             countdown=countdown,
         )
 
-        logger.info(f"Scheduled final sync task for app {self.app.uuid} in 8 hours.")
+        logger.info(
+            f"Scheduled final sync task for app {self.app.uuid} in {countdown} seconds."
+        )
 
     def _create_and_save_local_template(
         self, waba_id: str, template_data: dict

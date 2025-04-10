@@ -437,7 +437,6 @@ class CatalogInsertionBySeller:  # pragma: no cover
 
         catalog = cls._validate_link_apps(wpp_cloud, vtex_app)
 
-        cls._validate_sync_status(vtex_app)
         cls._validate_connected_catalog_flag(vtex_app)
         cls._send_task(credentials, catalog, sellers, sync_all_sellers)
 
@@ -460,14 +459,6 @@ class CatalogInsertionBySeller:  # pragma: no cover
         ):
             raise ValueError("Missing one or more API credentials.")
         return api_credentials
-
-    @staticmethod
-    def _validate_sync_status(vtex_app) -> None:
-        can_synchronize = vtex_app.config.get("initial_sync_completed", False)
-        if not can_synchronize:
-            raise ValueError("Initial synchronization not completed.")
-
-        print("validate_sync_status - Ok")
 
     @staticmethod
     def _get_wpp_cloud(wpp_cloud_uuid) -> App:
