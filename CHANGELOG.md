@@ -1,3 +1,8 @@
+v4.3.1
+----------
+* hotfix: remove thread from webhook and fix None values in simulate cart
+* fix: Whatsapp cloud sync beat
+
 v4.3.0
 ----------
 * fix: remove dependencies with sync v1 for uploads with meta
