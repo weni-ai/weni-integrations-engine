@@ -26,6 +26,9 @@ from marketplace.accounts.permissions import ProjectManagePermission
 from marketplace.core.types.ecommerce.vtex.usecases.create_vtex_integration import (
     CreateVtexIntegrationUseCase,
 )
+from marketplace.core.types.ecommerce.vtex.publisher.vtex_app_created_publisher import (
+    VtexAppCreatedPublisher,
+)
 
 
 class VtexViewSet(views.BaseAppTypeViewSet):
@@ -76,8 +79,19 @@ class VtexViewSet(views.BaseAppTypeViewSet):
             app, serializer.validated_data
         )
 
+        serialized_app = self.get_serializer(configured_app)
+
+        publisher = VtexAppCreatedPublisher()
+        success = publisher.create_event(serialized_app.data)
+
+        if not success:
+            return Response(
+                {"error": "Faile to publish Vtex app creation."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
         return Response(
-            data=self.get_serializer(configured_app).data,
+            data=serialized_app.data,
             status=status.HTTP_201_CREATED,
         )
 

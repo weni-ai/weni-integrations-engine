@@ -19,7 +19,7 @@ from marketplace.core.types.ecommerce.vtex.type import VtexType
 from marketplace.clients.flows.client import FlowsClient
 from marketplace.services.vtex.app_manager import AppVtexManager
 from marketplace.wpp_products.utils import SellerSyncUtils
-
+from marketplace.event_driven.publishers import EDAPublisher
 
 apptype = VtexType()
 
@@ -108,6 +108,11 @@ class CreateVtexAppTestCase(SetUpService):
         self.user_authorization = self.user.authorizations.create(
             project_uuid=self.project_uuid, role=ProjectAuthorization.ROLE_CONTRIBUTOR
         )
+
+        self.publisher_patcher = patch.object(
+            EDAPublisher, "publish", return_value=True
+        )
+        self.mock_publisher = self.publisher_patcher.start()
 
     def test_request_ok(self):
         response = self.request.post(self.url, self.body)
