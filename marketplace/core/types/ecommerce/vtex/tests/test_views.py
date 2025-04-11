@@ -1,12 +1,13 @@
 import uuid
 
 from unittest.mock import patch
-from unittest.mock import Mock
+from unittest.mock import Mock, MagicMock
 from unittest.mock import PropertyMock
 
 from django.urls import reverse
 
 from rest_framework import status
+from rest_framework.exceptions import APIException
 
 from marketplace.core.tests.base import APIBaseTestCase
 from marketplace.accounts.models import ProjectAuthorization
@@ -19,7 +20,13 @@ from marketplace.core.types.ecommerce.vtex.type import VtexType
 from marketplace.clients.flows.client import FlowsClient
 from marketplace.services.vtex.app_manager import AppVtexManager
 from marketplace.wpp_products.utils import SellerSyncUtils
-from marketplace.event_driven.publishers import EDAPublisher
+from marketplace.core.types.ecommerce.vtex.usecases.create_vtex_integration import (
+    CreateVtexIntegrationUseCase,
+)
+from marketplace.core.types.ecommerce.vtex.publisher.vtex_app_created_publisher import (
+    VtexAppCreatedPublisher,
+)
+from marketplace.services.flows.service import FlowsService
 
 apptype = VtexType()
 
@@ -109,10 +116,42 @@ class CreateVtexAppTestCase(SetUpService):
             project_uuid=self.project_uuid, role=ProjectAuthorization.ROLE_CONTRIBUTOR
         )
 
-        self.publisher_patcher = patch.object(
-            EDAPublisher, "publish", return_value=True
+        self.mock_flows_service = MagicMock(spec=FlowsService)
+        self.mock_publisher = MagicMock(spec=VtexAppCreatedPublisher)
+
+        self.mock_flows_service.update_vtex_integration_status.return_value = True
+        self.mock_publisher.create_event.return_value = True
+
+        self.use_case_patcher = patch(
+            "marketplace.core.types.ecommerce.vtex.views.CreateVtexIntegrationUseCase",
+            autospec=True,
         )
-        self.mock_publisher = self.publisher_patcher.start()
+        self.MockUseCase = self.use_case_patcher.start()
+
+        self.mock_use_case = MagicMock(spec=CreateVtexIntegrationUseCase)
+        self.MockUseCase.return_value = self.mock_use_case
+
+        self.mock_use_case.configure_app.side_effect = lambda app, data: app
+        self.mock_use_case.notify_flows.return_value = True
+        self.mock_use_case.publish_to_queue.return_value = None
+
+        self.flows_service_patcher = patch(
+            "marketplace.core.types.ecommerce.vtex.views.FlowsService",
+            return_value=self.mock_flows_service,
+        )
+        self.flows_service_mock = self.flows_service_patcher.start()
+
+        self.publisher_patcher = patch(
+            "marketplace.core.types.ecommerce.vtex.views.VtexAppCreatedPublisher",
+            return_value=self.mock_publisher,
+        )
+        self.publisher_mock = self.publisher_patcher.start()
+
+    def tearDown(self):
+        super().tearDown()
+        self.use_case_patcher.stop()
+        self.flows_service_patcher.stop()
+        self.publisher_patcher.stop()
 
     def test_request_ok(self):
         response = self.request.post(self.url, self.body)
@@ -135,6 +174,28 @@ class CreateVtexAppTestCase(SetUpService):
         with patch.object(self.view_class, "get_app", return_value=None):
             response = self.request.post(self.url, self.body)
             self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+            self.mock_use_case.configure_app.assert_not_called()
+            self.mock_use_case.notify_flows.assert_not_called()
+            self.mock_use_case.publish_to_queue.assert_not_called()
+
+    def test_notify_flows_called(self):
+        response = self.request.post(self.url, self.body)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.mock_use_case.notify_flows.assert_called_once()
+
+    def test_publish_to_queue_called(self):
+        response = self.request.post(self.url, self.body)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.mock_use_case.publish_to_queue.assert_called_once()
+
+    def test_publish_to_queue_failure(self):
+        self.mock_use_case.publish_to_queue.side_effect = APIException(
+            detail={"error": "Failed to publish Vtex app creation."}
+        )
+
+        response = self.request.post(self.url, self.body)
+        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class RetrieveVtexAppTestCase(APIBaseTestCase):

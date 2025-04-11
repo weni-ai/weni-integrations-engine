@@ -75,20 +75,15 @@ class VtexViewSet(views.BaseAppTypeViewSet):
         if not app:
             return response
 
-        configured_app = CreateVtexIntegrationUseCase.configure_app(
-            app, serializer.validated_data
-        )
+        publisher = VtexAppCreatedPublisher()
+        use_case = CreateVtexIntegrationUseCase(self.flows_service, publisher)
+
+        configured_app = use_case.configure_app(app, serializer.validated_data)
+        use_case.notify_flows(configured_app)
 
         serialized_app = self.get_serializer(configured_app)
 
-        publisher = VtexAppCreatedPublisher()
-        success = publisher.create_event(serialized_app.data)
-
-        if not success:
-            return Response(
-                {"error": "Faile to publish Vtex app creation."},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+        use_case.publish_to_queue(serialized_app.data)
 
         return Response(
             data=serialized_app.data,
