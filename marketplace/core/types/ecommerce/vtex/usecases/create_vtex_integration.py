@@ -11,7 +11,9 @@ from typing import TypedDict, Optional, Union, Dict, Any
 
 
 class CreateVtexIntegrationUseCase:
-    def __init__(self, flows_service: FlowsService, publisher: VtexAppCreatedPublisher):
+    def __init__(
+        self, flows_service: FlowsService, publisher: VtexAppCreatedPublisher = None
+    ):
         self.flows_service = flows_service
         self.publisher = publisher or VtexAppCreatedPublisher()
 
