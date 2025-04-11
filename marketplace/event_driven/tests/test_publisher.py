@@ -233,11 +233,30 @@ class EDAPublisherTestCase(TestCase):
 
 
 class PublishEventTestCase(TestCase):
+    @override_settings(
+        USE_EDA=True,
+        EDA_CONNECTION_BACKEND="path.to.backend",
+        EDA_BROKER_HOST="localhost",
+        EDA_BROKER_PORT=5672,
+        EDA_BROKER_USER="guest",
+        EDA_BROKER_PASSWORD="guest",
+        EDA_VIRTUAL_HOST="/",
+    )
     def test_publish_event_valid_publisher(self):
+        mock_backend = mock.MagicMock()
+
+        def side_effect(arg):
+            if arg == "path.to.ConcretePublisher":
+                return ConcretePublisher
+            elif arg == "path.to.backend":
+                return lambda: mock_backend
+            return None
+
         with mock.patch(
             "marketplace.event_driven.publishers.import_string"
         ) as mock_import_string:
-            mock_import_string.return_value = ConcretePublisher
+            mock_import_string.side_effect = side_effect
+
             data = {"test": "data"}
 
             with mock.patch.object(
@@ -246,9 +265,18 @@ class PublishEventTestCase(TestCase):
                 result = publish_event("path.to.ConcretePublisher", data)
 
                 self.assertTrue(result)
-                mock_import_string.assert_called_once_with("path.to.ConcretePublisher")
+                mock_import_string.assert_any_call("path.to.ConcretePublisher")
                 mock_publish.assert_called_once_with(data, None, None)
 
+    @override_settings(
+        USE_EDA=True,
+        EDA_CONNECTION_BACKEND="path.to.backend",
+        EDA_BROKER_HOST="localhost",
+        EDA_BROKER_PORT=5672,
+        EDA_BROKER_USER="guest",
+        EDA_BROKER_PASSWORD="guest",
+        EDA_VIRTUAL_HOST="/",
+    )
     def test_publish_event_invalid_publisher(self):
         with mock.patch(
             "marketplace.event_driven.publishers.import_string"
@@ -265,11 +293,30 @@ class PublishEventTestCase(TestCase):
 
             self.assertIn("is not a valid EDAPublisher", str(context.exception))
 
+    @override_settings(
+        USE_EDA=True,
+        EDA_CONNECTION_BACKEND="path.to.backend",
+        EDA_BROKER_HOST="localhost",
+        EDA_BROKER_PORT=5672,
+        EDA_BROKER_USER="guest",
+        EDA_BROKER_PASSWORD="guest",
+        EDA_VIRTUAL_HOST="/",
+    )
     def test_publish_event_with_custom_params(self):
+        mock_backend = mock.MagicMock()
+
+        def side_effect(arg):
+            if arg == "path.to.ConcretePublisher":
+                return ConcretePublisher
+            elif arg == "path.to.backend":
+                return lambda: mock_backend
+            return None
+
         with mock.patch(
             "marketplace.event_driven.publishers.import_string"
         ) as mock_import_string:
-            mock_import_string.return_value = ConcretePublisher
+            mock_import_string.side_effect = side_effect
+
             data = {"test": "data"}
             routing_key = "custom-key"
             properties = {"priority": 5}
