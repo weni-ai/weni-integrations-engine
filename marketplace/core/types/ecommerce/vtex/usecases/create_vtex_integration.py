@@ -13,7 +13,7 @@ from typing import TypedDict, Optional, Union, Dict, Any
 class CreateVtexIntegrationUseCase:
     def __init__(self, flows_service: FlowsService, publisher: VtexAppCreatedPublisher):
         self.flows_service = flows_service
-        self.publisher = publisher
+        self.publisher = publisher or VtexAppCreatedPublisher()
 
     class CreateVtexData(TypedDict):
         account: str

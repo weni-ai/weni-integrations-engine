@@ -20,12 +20,6 @@ from marketplace.core.types.ecommerce.vtex.type import VtexType
 from marketplace.clients.flows.client import FlowsClient
 from marketplace.services.vtex.app_manager import AppVtexManager
 from marketplace.wpp_products.utils import SellerSyncUtils
-from marketplace.core.types.ecommerce.vtex.usecases.create_vtex_integration import (
-    CreateVtexIntegrationUseCase,
-)
-from marketplace.core.types.ecommerce.vtex.publisher.vtex_app_created_publisher import (
-    VtexAppCreatedPublisher,
-)
 from marketplace.services.flows.service import FlowsService
 
 apptype = VtexType()
@@ -117,18 +111,14 @@ class CreateVtexAppTestCase(SetUpService):
         )
 
         self.mock_flows_service = MagicMock(spec=FlowsService)
-        self.mock_publisher = MagicMock(spec=VtexAppCreatedPublisher)
-
         self.mock_flows_service.update_vtex_integration_status.return_value = True
-        self.mock_publisher.create_event.return_value = True
 
         self.use_case_patcher = patch(
-            "marketplace.core.types.ecommerce.vtex.views.CreateVtexIntegrationUseCase",
-            autospec=True,
+            "marketplace.core.types.ecommerce.vtex.views.CreateVtexIntegrationUseCase"
         )
         self.MockUseCase = self.use_case_patcher.start()
 
-        self.mock_use_case = MagicMock(spec=CreateVtexIntegrationUseCase)
+        self.mock_use_case = MagicMock()
         self.MockUseCase.return_value = self.mock_use_case
 
         self.mock_use_case.configure_app.side_effect = lambda app, data: app
@@ -141,17 +131,10 @@ class CreateVtexAppTestCase(SetUpService):
         )
         self.flows_service_mock = self.flows_service_patcher.start()
 
-        self.publisher_patcher = patch(
-            "marketplace.core.types.ecommerce.vtex.views.VtexAppCreatedPublisher",
-            return_value=self.mock_publisher,
-        )
-        self.publisher_mock = self.publisher_patcher.start()
-
     def tearDown(self):
         super().tearDown()
         self.use_case_patcher.stop()
         self.flows_service_patcher.stop()
-        self.publisher_patcher.stop()
 
     def test_request_ok(self):
         response = self.request.post(self.url, self.body)
@@ -522,17 +505,14 @@ class LinkCatalogTestCase(SetUpService):
         return_value=True,
     )
     def test_link_catalog_success(self, mock_link_catalog):
-        # Fazer a requisição
         response = self.request.post(self.url, self.body, uuid=self.app.uuid)
 
-        # Verificar a resposta
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(
             response.json["message"],
             "Catalog linked and synchronization task dispatched successfully",
         )
 
-        # Verificar que o método foi chamado corretamente
         mock_link_catalog.assert_called_once_with(catalog_id=self.body["catalog_id"])
 
     @patch(

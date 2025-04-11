@@ -26,9 +26,6 @@ from marketplace.accounts.permissions import ProjectManagePermission
 from marketplace.core.types.ecommerce.vtex.usecases.create_vtex_integration import (
     CreateVtexIntegrationUseCase,
 )
-from marketplace.core.types.ecommerce.vtex.publisher.vtex_app_created_publisher import (
-    VtexAppCreatedPublisher,
-)
 
 
 class VtexViewSet(views.BaseAppTypeViewSet):
@@ -75,8 +72,7 @@ class VtexViewSet(views.BaseAppTypeViewSet):
         if not app:
             return response
 
-        publisher = VtexAppCreatedPublisher()
-        use_case = CreateVtexIntegrationUseCase(self.flows_service, publisher)
+        use_case = CreateVtexIntegrationUseCase(self.flows_service)
 
         configured_app = use_case.configure_app(app, serializer.validated_data)
         use_case.notify_flows(configured_app)
