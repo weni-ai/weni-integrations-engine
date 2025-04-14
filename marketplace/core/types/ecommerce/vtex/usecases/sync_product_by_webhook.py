@@ -2,6 +2,8 @@ import logging
 
 from typing import List
 
+from django.conf import settings
+
 from marketplace.services.vtex.private.products.service import PrivateProductsService
 from marketplace.services.vtex.utils.data_processor import DataProcessor
 from marketplace.services.vtex.utils.facebook_product_dto import FacebookProductDTO
@@ -17,7 +19,7 @@ class SyncProductByWebhookUseCase:
 
     This use case is responsible for:
       - Processing product updates received through webhooks
-      - Using non-threaded processing for webhook updates
+      - Using threading configuration from Django settings
       - Delegating the actual processing to the DataProcessor
 
     The use case follows the same pattern as SyncAllProductsUseCase but is
@@ -35,10 +37,12 @@ class SyncProductByWebhookUseCase:
         Args:
             products_service: An instance of PrivateProductsService that handles product synchronization.
             data_processor: An instance of DataProcessor for processing product data. If None, creates a
-            non-threaded processor by default.
+            processor with threading configuration from Django settings.
         """
         self.products_service = products_service
-        self.data_processor = data_processor or DataProcessor(use_threads=False)
+        self.data_processor = data_processor or DataProcessor(
+            use_threads=settings.VTEX_WEBHOOK_USE_THREADS
+        )
 
     def execute(
         self, domain: str, sellers_skus: list, catalog: Catalog
