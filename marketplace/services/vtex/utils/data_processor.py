@@ -3,6 +3,7 @@ import re
 import concurrent.futures
 
 import logging
+from django.db import close_old_connections
 from tqdm import tqdm
 from typing import List, Optional
 
@@ -528,6 +529,8 @@ class BatchProcessor:
                     with self.progress_lock:
                         self.invalid += 1
                         progress_bar.update(1)
+                finally:
+                    close_old_connections()
 
         try:
             # If threading is enabled, process items concurrently

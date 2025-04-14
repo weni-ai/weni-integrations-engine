@@ -17,8 +17,7 @@ from marketplace.core.types.ecommerce.vtex.usecases.link_catalog_start_sync impo
 from marketplace.core.types.ecommerce.vtex.usecases.vtex_integration import (
     VtexIntegration,
 )
-from marketplace.services.vtex.generic_service import VtexServiceBase
-from marketplace.services.vtex.generic_service import APICredentials
+
 from marketplace.services.flows.service import FlowsService
 from marketplace.clients.flows.client import FlowsClient
 from marketplace.services.vtex.app_manager import AppVtexManager
@@ -28,7 +27,6 @@ from marketplace.accounts.permissions import ProjectManagePermission
 
 class VtexViewSet(views.BaseAppTypeViewSet):
     serializer_class = VtexAppSerializer
-    service_class = VtexServiceBase
     flows_service_class = FlowsService
     flows_client = FlowsClient
     app_manager_class = AppVtexManager
@@ -41,8 +39,11 @@ class VtexViewSet(views.BaseAppTypeViewSet):
 
     @property
     def service(self):  # pragma: no cover
+        # TODO: Fix circular import error in the future
         if not self._service:
-            self._service = self.service_class()
+            from marketplace.services.vtex.generic_service import VtexServiceBase
+
+            self._service = VtexServiceBase()
         return self._service
 
     @property
@@ -61,6 +62,9 @@ class VtexViewSet(views.BaseAppTypeViewSet):
         serializer.save(code=self.type_class.code, uuid=serializer.initial_data["uuid"])
 
     def create(self, request, *args, **kwargs):
+        # TODO: Fix circular import error in the future
+        from marketplace.services.vtex.generic_service import APICredentials
+
         serializer = VtexSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         validated_data = serializer.validated_data

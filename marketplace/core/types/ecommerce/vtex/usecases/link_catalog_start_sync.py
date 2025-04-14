@@ -1,7 +1,6 @@
 import logging
 
 from marketplace.applications.models import App
-from marketplace.services.vtex.generic_service import CatalogProductInsertion
 
 
 logger = logging.getLogger(__name__)
@@ -18,9 +17,15 @@ class LinkCatalogAndStartSyncUseCase:
     """
 
     def __init__(self, catalog_product_insertion=None):
-        self.catalog_product_insertion = (
-            catalog_product_insertion or CatalogProductInsertion
-        )
+        if catalog_product_insertion is None:
+            # TODO: Fix circular import error in the future
+            from marketplace.services.vtex.generic_service import (
+                CatalogProductInsertion,
+            )
+
+            self.catalog_product_insertion = CatalogProductInsertion
+        else:
+            self.catalog_product_insertion = catalog_product_insertion
 
     def execute(self, vtex_app: App, catalog_id: str) -> bool:
         """
