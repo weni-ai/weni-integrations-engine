@@ -1,3 +1,7 @@
+v4.3.2
+----------
+* hotfix: active use threads and close old connections on process webhook
+
 v4.3.1
 ----------
 * hotfix: remove thread from webhook and fix None values in simulate cart
