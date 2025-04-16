@@ -3,6 +3,7 @@ import re
 import concurrent.futures
 
 import logging
+from django.db import close_old_connections
 from tqdm import tqdm
 from typing import List, Optional
 
@@ -92,8 +93,9 @@ class ProductExtractor:
         Returns:
             FacebookProductDTO with formatted product data
         """
-        price = availability_details.get("price", 0)
-        list_price = availability_details.get("list_price", 0)
+        # Ensure price and list_price are always numbers, even when None
+        price = availability_details.get("price", 0) or 0
+        list_price = availability_details.get("list_price", 0) or 0
 
         # Check if 'Images' exists and is a non-empty list; if not, fallback to 'ImageUrl'
         images = product_details.get("Images")
@@ -527,6 +529,8 @@ class BatchProcessor:
                     with self.progress_lock:
                         self.invalid += 1
                         progress_bar.update(1)
+                finally:
+                    close_old_connections()
 
         try:
             # If threading is enabled, process items concurrently

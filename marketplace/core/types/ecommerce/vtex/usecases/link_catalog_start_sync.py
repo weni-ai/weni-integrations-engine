@@ -1,7 +1,6 @@
 import logging
 
 from marketplace.applications.models import App
-from marketplace.services.vtex.generic_service import CatalogProductInsertion
 
 from typing import TypedDict
 
@@ -27,9 +26,16 @@ class LinkCatalogAndStartSyncUseCase:
 
     def __init__(self, vtex_app: App, catalog_product_insertion=None):
         self.vtex_app = vtex_app
-        self.catalog_product_insertion = (
-            catalog_product_insertion or CatalogProductInsertion
-        )
+
+        if catalog_product_insertion is None:
+            # TODO: Fix circular import error in the future
+            from marketplace.services.vtex.generic_service import (
+                CatalogProductInsertion,
+            )
+
+            self.catalog_product_insertion = CatalogProductInsertion
+        else:
+            self.catalog_product_insertion = catalog_product_insertion
 
     def configure_catalog(self, data: CatalogSetupData) -> None:
         """

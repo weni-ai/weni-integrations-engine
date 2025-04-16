@@ -1,3 +1,5 @@
+import json
+
 from django.test import TestCase, override_settings
 
 from unittest import mock
@@ -9,8 +11,6 @@ from marketplace.event_driven.publishers import (
     EDAPublisher,
     publish_event,
 )
-
-import json
 
 
 class ContentTypesTestCase(TestCase):
