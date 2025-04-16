@@ -244,7 +244,7 @@ class WhatsAppCloudInsights(APIView):
             response.append(
                 {
                     "waba_id": app.config.get("wa_waba_id", None),
-                    "phone_number": app.config.get("phone_number"),
+                    "phone_number": app.config.get("wa_number"),
                 }
             )
         return Response({"data": response}, status=status.HTTP_200_OK)
