@@ -82,6 +82,25 @@ class VtexServiceBase:
 
         return True
 
+    def configure(
+        self, app, credentials: APICredentials, wpp_cloud_uuid, store_domain
+    ) -> App:
+        app.config["api_credentials"] = credentials.to_dict()
+        app.config["wpp_cloud_uuid"] = wpp_cloud_uuid
+        app.config["initial_sync_completed"] = False
+        app.config["title"] = credentials.domain
+        app.config["connected_catalog"] = False
+        app.config["rules"] = [
+            "exclude_alcoholic_drinks",
+            "calculate_by_weight",
+            "currency_pt_br",
+            "unifies_id_with_seller",
+        ]
+        app.config["store_domain"] = store_domain
+        app.configured = True
+        app.save()
+        return app
+
     def get_vtex_credentials_or_raise(self, app: App) -> APICredentials:
         domain = app.config["api_credentials"]["domain"]
         app_key = app.config["api_credentials"]["app_key"]

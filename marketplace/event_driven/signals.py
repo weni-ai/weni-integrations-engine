@@ -4,7 +4,6 @@ from django.db import reset_queries, close_old_connections
 
 message_started = Signal()
 message_finished = Signal()
-message_published = Signal()
 
 # db connection state managed similarly to the wsgi handler
 message_started.connect(reset_queries)

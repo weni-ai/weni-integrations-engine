@@ -5,10 +5,26 @@ from marketplace.core.serializers import AppTypeBaseSerializer
 from marketplace.applications.models import App
 
 
-class CreateVtexSerializer(serializers.Serializer):
+class VtexSerializer(serializers.Serializer):
+    domain = serializers.CharField(required=True)
+    app_key = serializers.CharField(required=True)
+    app_token = serializers.CharField(required=True)
+    wpp_cloud_uuid = serializers.UUIDField(required=True)
+    uuid = serializers.UUIDField(required=True)
     project_uuid = serializers.UUIDField(required=True)
-    account = serializers.CharField(required=True)
-    store_type = serializers.CharField(required=False)
+    store_domain = serializers.CharField(required=True)
+
+    def validate_wpp_cloud_uuid(self, value):
+        """
+        Check that the wpp_cloud_uuid corresponds to an existing App with code 'wpp-cloud'.
+        """
+        try:
+            App.objects.get(uuid=value, code="wpp-cloud")
+        except App.DoesNotExist:
+            raise ValidationError(
+                "The wpp_cloud_uuid does not correspond to a valid 'wpp-cloud' App."
+            )
+        return str(value)
 
 
 class VtexAppSerializer(AppTypeBaseSerializer):
@@ -64,21 +80,7 @@ class VtexAdsSerializer(serializers.Serializer):
 
 
 class FirstProductInsertSerializer(serializers.Serializer):
-    catalog_id = serializers.CharField(required=True)
-    domain = serializers.CharField(required=True)
-    store_domain = serializers.CharField(required=True)
-    app_key = serializers.CharField(required=True)
-    app_token = serializers.CharField(required=True)
-    wpp_cloud_uuid = serializers.UUIDField(required=True)
-
-    def validate_wpp_cloud_uuid(self, value):
-        """wpp_cloud_uuid
-        Check that the wpp_cloud_uuid corresponds to an existing App with code 'wpp-cloud'.
-        """
-        try:
-            App.objects.get(uuid=value, code="wpp-cloud")
-        except App.DoesNotExist:
-            raise ValidationError(
-                "The wpp_cloud_uuid does not correspond to a valid 'wpp-cloud' App."
-            )
-        return str(value)
+    catalog_id = serializers.CharField(
+        required=True,
+        help_text="The catalog identifier to be linked with the VTEX app.",
+    )
