@@ -105,6 +105,21 @@ class VtexServiceTestCase(TestCase):
         with self.assertRaises(CredentialsValidationError):
             self.service.check_is_valid_credentials(credentials)
 
+    def test_configure(self):
+        credentials = APICredentials(
+            domain="valid.domain.com", app_key="key", app_token="token"
+        )
+        wpp_cloud_uuid = str(self.wpp_cloud.uuid)
+        configured_app = self.service.configure(
+            self.app, credentials, wpp_cloud_uuid, "www.test.com.br"
+        )
+
+        self.assertTrue(configured_app.configured)
+        self.assertEqual(
+            configured_app.config["api_credentials"], credentials.to_dict()
+        )
+        self.assertEqual(configured_app.config["wpp_cloud_uuid"], wpp_cloud_uuid)
+
     def test_initial_sync_products_completed(self):
         response = self.service.app_manager.initial_sync_products_completed(self.app)
         self.assertEqual(response, True)

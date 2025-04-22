@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from marketplace.core.types.ecommerce.vtex.serializers import (
     FirstProductInsertSerializer,
     VtexAdsSerializer,
-    CreateVtexSerializer,
+    VtexSerializer,
     VtexAppSerializer,
     VtexSyncSellerSerializer,
 )
@@ -17,14 +17,12 @@ from marketplace.core.types.ecommerce.vtex.usecases.link_catalog_start_sync impo
 from marketplace.core.types.ecommerce.vtex.usecases.vtex_integration import (
     VtexIntegration,
 )
+
 from marketplace.services.flows.service import FlowsService
 from marketplace.clients.flows.client import FlowsClient
 from marketplace.services.vtex.app_manager import AppVtexManager
 from marketplace.wpp_products.utils import SellerSyncUtils
 from marketplace.accounts.permissions import ProjectManagePermission
-from marketplace.core.types.ecommerce.vtex.usecases.create_vtex_integration import (
-    CreateVtexIntegrationUseCase,
-)
 
 
 class VtexViewSet(views.BaseAppTypeViewSet):
@@ -61,31 +59,47 @@ class VtexViewSet(views.BaseAppTypeViewSet):
         return self._app_manager
 
     def perform_create(self, serializer):
-        serializer.save(code=self.type_class.code)
+        serializer.save(code=self.type_class.code, uuid=serializer.initial_data["uuid"])
 
     def create(self, request, *args, **kwargs):
-        serializer = CreateVtexSerializer(data=request.data)
+        # TODO: Fix circular import error in the future
+        from marketplace.services.vtex.generic_service import APICredentials
+
+        serializer = VtexSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        validated_data = serializer.validated_data
+        # Validate before starting creation
+        credentials = APICredentials(
+            app_key=validated_data.get("app_key"),
+            app_token=validated_data.get("app_token"),
+            domain=validated_data.get("domain"),
+        )
+        wpp_cloud_uuid = validated_data["wpp_cloud_uuid"]
+        store_domain = validated_data["store_domain"]
+
+        self.service.check_is_valid_credentials(credentials)
+
+        # Calls the create method of the base class to create the App object
         response = super().create(request, *args, **kwargs)
-
         app = self.get_app()
-
         if not app:
             return response
 
-        use_case = CreateVtexIntegrationUseCase(self.flows_service)
+        try:
+            updated_app = self.service.configure(
+                app, credentials, wpp_cloud_uuid, store_domain
+            )
+            self.flows_service.update_vtex_integration_status(
+                app.project_uuid, app.created_by.email, action="POST"
+            )
+            return Response(
+                data=self.get_serializer(updated_app).data,
+                status=status.HTTP_201_CREATED,
+            )
 
-        configured_app = use_case.configure_app(app, serializer.validated_data)
-        use_case.notify_flows(configured_app)
-
-        serialized_app = self.get_serializer(configured_app)
-
-        use_case.publish_to_queue(serialized_app.data)
-
-        return Response(
-            data=serialized_app.data,
-            status=status.HTTP_201_CREATED,
-        )
+        except Exception as e:
+            app.delete()  # if there are exceptions, remove the created instance
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -172,11 +186,6 @@ class VtexViewSet(views.BaseAppTypeViewSet):
         Expected payload:
             {
                 "catalog_id": "<catalog identifier>"
-                "domain": "<catalog domain>"
-                "store_domain": "<store domain>"
-                "app_key": "<app key>"
-                "app_token": "<app token>"
-                "wpp_cloud_uuid": "<wpp cloud identifier>"
             }
 
         Returns:
@@ -188,6 +197,7 @@ class VtexViewSet(views.BaseAppTypeViewSet):
 
         catalog_id = validated_data.get("catalog_id")
 
+        # self.get_object() returns the VTEX app instance
         try:
             vtex_app = self.get_object()
         except Exception:
@@ -195,9 +205,9 @@ class VtexViewSet(views.BaseAppTypeViewSet):
                 {"error": "VTEX app not found"}, status=status.HTTP_404_NOT_FOUND
             )
 
-        use_case = LinkCatalogAndStartSyncUseCase(vtex_app)
-        use_case.configure_catalog(validated_data)
-        success = use_case.link_catalog(catalog_id=catalog_id)
+        # Instantiate the use case for linking catalog and synchronizing products.
+        use_case = LinkCatalogAndStartSyncUseCase()
+        success = use_case.execute(vtex_app=vtex_app, catalog_id=catalog_id)
 
         if not success:
             return Response(
