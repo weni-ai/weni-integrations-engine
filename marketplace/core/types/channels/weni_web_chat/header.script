@@ -1,16 +1,16 @@
-let j = document.createElement("div");
-j.id = "<APPTYPE_CODE>";
-document.body.appendChild(j);
+let weni_j = document.createElement("div");
+weni_j.id = "<APPTYPE_CODE>";
+document.body.appendChild(weni_j);
 
-let s = document.createElement("link");
-s.rel = "stylesheet";
-s.href = "<CUSTOM_CSS>";
-document.head.appendChild(s);
+let weni_s = document.createElement("link");
+weni_s.rel = "stylesheet";
+weni_s.href = "<CUSTOM_CSS>";
+document.head.appendChild(weni_s);
 
-let p = <FIELDS>;
+let weni_p = <FIELDS>;
 
-p["customMessageDelay"] = message => {
+weni_p["customMessageDelay"] = message => {
     return <CUSTOM-MESSAGE-DELAY> * 1000;
 }
 
-WebChat.default.init(p);
+WebChat.default.init(weni_p);
