@@ -1,3 +1,9 @@
+v4.3.3
+----------
+* fix: wpp cloud insights view returning null phone_numbers
+* feature: Currency rule for ARS
+* fix: changed weni web chat vars name to user prefix weni_
+
 v4.3.2
 ----------
 * hotfix: active use threads and close old connections on process webhook
