@@ -13,6 +13,7 @@ from .exclude_categories_co import ExcludeCustomizedCategoriesCO
 from .calculate_by_area import CalculateByArea
 from .currency_pt_br_round_floor import CurrencyBRLRoudingFloor
 from .currency_clp import CurrencyCLP
+from .currency_ars import CurrencyARS
 
 
 """
@@ -35,4 +36,5 @@ RULE_MAPPINGS = {
     "calculate_by_area": CalculateByArea,
     "currency_pt_br_round_floor": CurrencyBRLRoudingFloor,
     "currency_clp": CurrencyCLP,
+    "currency_ars": CurrencyARS,
 }
