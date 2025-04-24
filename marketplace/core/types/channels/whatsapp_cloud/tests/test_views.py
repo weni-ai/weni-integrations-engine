@@ -12,6 +12,7 @@ from django.contrib.auth import get_user_model
 from marketplace.core.tests.base import APIBaseTestCase
 from marketplace.applications.models import App
 from marketplace.accounts.models import ProjectAuthorization
+from marketplace.core.tests.mixis.permissions import PermissionTestCaseMixin
 from marketplace.core.types.channels.whatsapp_base.exceptions import (
     FacebookApiException,
 )
@@ -324,7 +325,9 @@ class WhatsAppCloudConversationsTestCase(APIBaseTestCase):
         )
 
 
-class WhatsAppCloudConversationsPermissionTestCase(APIBaseTestCase):
+class WhatsAppCloudConversationsPermissionTestCase(
+    PermissionTestCaseMixin, APIBaseTestCase
+):
     view_class = WhatsAppCloudViewSet
 
     def setUp(self):
@@ -348,17 +351,6 @@ class WhatsAppCloudConversationsPermissionTestCase(APIBaseTestCase):
         return self.view_class.as_view({"get": "conversations"})
 
     @patch(FACEBOOK_CONVERSATION_API_PATH)
-    def test_get_conversations_without_authorization(self, mock_conversations):
-        mock_conversations.return_value = MockConversation()
-
-        params = {
-            "start": self.start_date,
-            "end": self.end_date,
-        }
-        response = self.request.get(self.url, params=params, uuid=self.app.uuid)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    @patch(FACEBOOK_CONVERSATION_API_PATH)
     @override_settings(
         ALLOW_CRM_ACCESS=True, CRM_EMAILS_LIST=["otheremail@marketplace.ai"]
     )
@@ -367,6 +359,9 @@ class WhatsAppCloudConversationsPermissionTestCase(APIBaseTestCase):
     ):
         mock_conversations.return_value = MockConversation()
 
+        # Use PermissionTestCaseMixin to revoke permission
+        self.revoke_permission(self.user, "can_communicate_internally")
+
         params = {
             "start": self.start_date,
             "end": self.end_date,
@@ -375,16 +370,33 @@ class WhatsAppCloudConversationsPermissionTestCase(APIBaseTestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     @patch(FACEBOOK_CONVERSATION_API_PATH)
-    @override_settings(ALLOW_CRM_ACCESS=True, CRM_EMAILS_LIST=["user@marketplace.ai"])
-    def test_get_conversations_with_crm_user(self, mock_conversations):
+    def test_get_conversations_without_authorization(self, mock_conversations):
         mock_conversations.return_value = MockConversation()
+
+        # Use PermissionTestCaseMixin to revoke permission
+        self.revoke_permission(self.user, "can_communicate_internally")
 
         params = {
             "start": self.start_date,
             "end": self.end_date,
         }
         response = self.request.get(self.url, params=params, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    @patch(FACEBOOK_CONVERSATION_API_PATH)
+    def test_get_conversations_with_internal_communication_permission(
+        self, mock_conversations
+    ):
+        mock_conversations.return_value = MockConversation()
+
+        # Use PermissionTestCaseMixin to grant permission
+        self.grant_permission(self.user, "can_communicate_internally")
+
+        params = {
+            "start": self.start_date,
+            "end": self.end_date,
+        }
+        response = self.request.get(self.url, params=params, uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
 

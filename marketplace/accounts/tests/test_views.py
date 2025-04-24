@@ -1,5 +1,6 @@
 import uuid
 
+
 from django.urls import reverse
 from rest_framework import status
 
@@ -10,9 +11,10 @@ from marketplace.accounts.views import (
 )
 from marketplace.core.tests.base import APIBaseTestCase
 from marketplace.accounts.models import User, ProjectAuthorization
+from marketplace.core.tests.mixis.permissions import PermissionTestCaseMixin
 
 
-class UserPermissionViewTestCase(APIBaseTestCase):
+class UserPermissionViewTestCase(PermissionTestCaseMixin, APIBaseTestCase):
     project_uuid = uuid.uuid4()
     url = reverse("user_permission-detail", args=[project_uuid])
 
@@ -26,6 +28,13 @@ class UserPermissionViewTestCase(APIBaseTestCase):
         return self.view_class.as_view({"patch": "partial_update"})
 
     def test_update_user_permission_patch(self):
+        self.grant_permission(self.user, "can_communicate_internally")
+
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+
         data = {
             "user": "test",
             "project_uuid": str(self.project_uuid),
@@ -33,16 +42,18 @@ class UserPermissionViewTestCase(APIBaseTestCase):
             "channeltype_code": "test",
             "role": 3,
         }
+
         self.request.patch(url=self.url, project_uuid=self.project_uuid, body=data)
 
-        user = ProjectAuthorization.objects.get(project_uuid=self.project_uuid)
-
+        user = ProjectAuthorization.objects.get(
+            project_uuid=self.project_uuid, user__email="test"
+        )
         self.assertEqual(str(user.user), "test")
         self.assertEqual(user.project_uuid, self.project_uuid)
         self.assertEqual(user.role, 3)
 
 
-class UserViewTestCase(APIBaseTestCase):
+class UserViewTestCase(PermissionTestCaseMixin, APIBaseTestCase):
     project_uuid = uuid.uuid4()
     url = reverse("user-list")
 
@@ -56,6 +67,12 @@ class UserViewTestCase(APIBaseTestCase):
         return self.view_class.as_view({"post": "create"})
 
     def test_update_user_patch(self):
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+        self.grant_permission(self.user, "can_communicate_internally")
+
         test_user = User.objects.create(
             email="test@weni.ai", first_name="User", last_name="Test"
         )
