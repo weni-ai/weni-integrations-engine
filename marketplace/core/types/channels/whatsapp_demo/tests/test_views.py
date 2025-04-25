@@ -5,6 +5,7 @@ from django.urls import reverse
 from rest_framework import status
 
 from marketplace.core.tests.base import APIBaseTestCase
+from marketplace.core.tests.mixis.permissions import PermissionTestCaseMixin
 from ..views import WhatsAppDemoViewSet
 from marketplace.applications.models import App
 from marketplace.accounts.models import ProjectAuthorization
@@ -19,17 +20,17 @@ class CeleryResponse:
         ...
 
 
-class CreateWhatsAppDemoAppTestCase(APIBaseTestCase):
+class CreateWhatsAppDemoAppTestCase(PermissionTestCaseMixin, APIBaseTestCase):
     url = reverse("wpp-demo-app-list")
     view_class = WhatsAppDemoViewSet
 
     def setUp(self):
         super().setUp()
-        project_uuid = str(uuid.uuid4())
-        self.body = {"project_uuid": project_uuid}
+        self.project_uuid = str(uuid.uuid4())
+        self.body = {"project_uuid": self.project_uuid}
 
         self.user_authorization = self.user.authorizations.create(
-            project_uuid=project_uuid, role=ProjectAuthorization.ROLE_CONTRIBUTOR
+            project_uuid=self.project_uuid, role=ProjectAuthorization.ROLE_CONTRIBUTOR
         )
 
     @property
@@ -44,13 +45,13 @@ class CreateWhatsAppDemoAppTestCase(APIBaseTestCase):
         create_channel_request.side_effect = [
             dict(name="WhatsApp: +559999998888", uuid=channel_uuid)
         ]
-
         get_channel_token_request.side_effect = [
             "WhatsApp:+559999998888-whatsapp-demo-v5ciobe7te"
         ]
 
         response = self.request.post(self.url, self.body)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
         app = App.objects.get(uuid=response.json.get("uuid"))
         self.assertEqual(str(app.uuid), response.json["uuid"])
         self.assertEqual(app.config["title"], "WhatsApp: +559999998888")
@@ -68,7 +69,6 @@ class CreateWhatsAppDemoAppTestCase(APIBaseTestCase):
     def test_create_app_without_project_uuid(self):
         self.body.pop("project_uuid")
         response = self.request.post(self.url, self.body)
-
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     @patch("marketplace.connect.client.WPPRouterChannelClient.get_channel_token")
@@ -82,7 +82,6 @@ class CreateWhatsAppDemoAppTestCase(APIBaseTestCase):
         create_channel_request.side_effect = [
             dict(name="WhatsApp: +559999998888", uuid=channel_uuid)
         ]
-
         get_channel_token_request.side_effect = [
             "WhatsApp:+559999998888-whatsapp-demo-v5ciobe7te"
         ]
@@ -101,7 +100,6 @@ class CreateWhatsAppDemoAppTestCase(APIBaseTestCase):
         create_channel_request.side_effect = [
             dict(name="WhatsApp: +559999998888", uuid=channel_uuid)
         ]
-
         get_channel_token_request.side_effect = [
             "WhatsApp:+559999998888-whatsapp-demo-v5ciobe7te"
         ]
@@ -109,11 +107,36 @@ class CreateWhatsAppDemoAppTestCase(APIBaseTestCase):
         self.request.post(self.url, self.body)
         App.objects.get(project_uuid=self.body.get("project_uuid"))
 
-    # TODO: Fix this test broken due to PR #594.
-    # def test_create_app_without_permission(self):
-    #     self.user_authorization.delete()
-    #     response = self.request.post(self.url, self.body)
-    #     self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+    def test_create_app_without_permission(self):
+        """Should return 403 if only project authorization is missing"""
+        self.user_authorization.delete()
+        response = self.request.post(self.url, self.body)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    @patch("marketplace.connect.client.WPPRouterChannelClient.get_channel_token")
+    @patch("marketplace.connect.client.ConnectProjectClient.create_channel")
+    def test_create_app_with_internal_permission_only(
+        self, create_channel_request, get_channel_token_request
+    ):
+        self.user_authorization.delete()
+        self.grant_permission(self.user, "can_communicate_internally")
+
+        create_channel_request.return_value = dict(
+            name="WhatsApp: +559999998888", uuid=str(uuid.uuid4())
+        )
+        get_channel_token_request.return_value = (
+            "WhatsApp:+559999998888-whatsapp-demo-token"
+        )
+
+        response = self.request.post(self.url, self.body)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_create_app_without_permission_and_authorization(self):
+        self.user_authorization.delete()
+        self.clear_permissions(self.user)
+
+        response = self.request.post(self.url, self.body)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
 class RetrieveWhatsAppDemoAppTestCase(APIBaseTestCase):
@@ -151,7 +174,7 @@ class RetrieveWhatsAppDemoAppTestCase(APIBaseTestCase):
         self.assertEqual(response.json["config"], {})
 
 
-class DestroyWhatsAppDemoAppTestCase(APIBaseTestCase):
+class DestroyWhatsAppDemoAppTestCase(PermissionTestCaseMixin, APIBaseTestCase):
     view_class = WhatsAppDemoViewSet
 
     def setUp(self):
@@ -188,6 +211,22 @@ class DestroyWhatsAppDemoAppTestCase(APIBaseTestCase):
 
     def test_destroy_with_authorization_not_setted(self):
         self.user_authorization.set_role(ProjectAuthorization.ROLE_NOT_SETTED)
+        response = self.request.delete(self.url, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_destroy_with_internal_permission_only(self):
+        """Should allow deletion if the user only has internal permission"""
+        self.user_authorization.delete()
+        self.grant_permission(self.user, "can_communicate_internally")
+
+        response = self.request.delete(self.url, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_destroy_without_permission_and_authorization(self):
+        """Should return 403 if the user has neither internal permission nor project authorization"""
+        self.user_authorization.delete()
+        self.clear_permissions(self.user)
+
         response = self.request.delete(self.url, uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
