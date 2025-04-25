@@ -87,9 +87,22 @@ class CreateGenericEmailAppTestCase(SetUpTestBase):
         response = self.request.post(self.url, self.body)
         self.assertEqual(response.json["platform"], App.PLATFORM_WENI_FLOWS)
 
-    # TODO: Fix this test broken due to PR #594.
     def test_create_app_without_permission(self):
         self.user_authorization.delete()
+        response = self.request.post(self.url, self.body)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_create_app_with_internal_permission_only(self):
+        self.user_authorization.delete()
+        self.grant_permission(self.user, "can_communicate_internally")
+
+        response = self.request.post(self.url, self.body)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_create_app_without_permission_and_authorization(self):
+        self.user_authorization.delete()
+        self.clear_permissions(self.user)
+
         response = self.request.post(self.url, self.body)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 

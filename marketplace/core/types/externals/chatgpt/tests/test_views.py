@@ -7,6 +7,7 @@ from rest_framework import status
 from marketplace.core.tests.base import APIBaseTestCase
 from marketplace.accounts.models import ProjectAuthorization
 from marketplace.applications.models import App
+from marketplace.core.tests.mixis.permissions import PermissionTestCaseMixin
 from ..views import ChatGPTViewSet
 from ..type import ChatGPTType
 
@@ -15,7 +16,7 @@ APPTYPE = ChatGPTType()
 PROMPTS = str(uuid.uuid4())
 
 
-class CreateChatGPTAppTestCase(APIBaseTestCase):
+class CreateChatGPTAppTestCase(PermissionTestCaseMixin, APIBaseTestCase):
     url = reverse("chatgpt-app-list")
     view_class = ChatGPTViewSet
 
@@ -26,7 +27,13 @@ class CreateChatGPTAppTestCase(APIBaseTestCase):
     def setUp(self):
         super().setUp()
         self.project_uuid = str(uuid.uuid4())
-        self.body = {"project_uuid": self.project_uuid}
+        self.body = {
+            "user": str(self.user),
+            "project_uuid": self.project_uuid,
+            "name": "ChatGPT Test",
+            "api_key": str(uuid.uuid4()),
+            "ai_model": "gpt-3.5-turbo",
+        }
 
         self.user_authorization = self.user.authorizations.create(
             project_uuid=self.project_uuid, role=ProjectAuthorization.ROLE_ADMIN
@@ -35,37 +42,55 @@ class CreateChatGPTAppTestCase(APIBaseTestCase):
     def test_create_app_without_project_uuid(self):
         self.body.pop("project_uuid")
         response = self.request.post(self.url, self.body)
-
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     @patch(
         "marketplace.core.types.externals.chatgpt.views.FlowsClient.create_external_service"
     )
-    def test_create_chatgpt(self, mock_create_external_service):
-        data = {
-            "channelUuid": str(uuid.uuid4()),
-            "title": "ChatGPT Test",
-        }
-        mock_response = Mock()
-        mock_response.json.return_value = data
-        mock_response.status_code = 200
-        mock_create_external_service.return_value = mock_response
-
-        payload = {
-            "user": str(self.user),
-            "project_uuid": self.project_uuid,
-            "name": "ChatGPT Test",
-            "api_key": str(uuid.uuid4()),
-            "ai_model": "gpt-3.5-turbo",
-        }
-        response = self.request.post(self.url, payload)
+    def test_create_chatgpt_success(self, mock_create_external_service):
+        mock_create_external_service.return_value = Mock(
+            status_code=200,
+            json=lambda: {
+                "channelUuid": str(uuid.uuid4()),
+                "title": "ChatGPT Test",
+            },
+        )
+        response = self.request.post(self.url, self.body)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-    # TODO: Fix this test broken due to PR #594.
-    # def test_create_app_without_permission(self):
-    #     self.user_authorization.delete()
-    #     response = self.request.post(self.url, self.body)
-    #     self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+    @patch(
+        "marketplace.core.types.externals.chatgpt.views.FlowsClient.create_external_service"
+    )
+    def test_create_chatgpt_without_permission_and_authorization(
+        self, mock_create_external_service
+    ):
+        self.user_authorization.delete()
+        self.clear_permissions(self.user)
+
+        mock_create_external_service.return_value = Mock(
+            status_code=200, json=lambda: {}
+        )
+        response = self.request.post(self.url, self.body)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    @patch(
+        "marketplace.core.types.externals.chatgpt.views.FlowsClient.create_external_service"
+    )
+    def test_create_chatgpt_with_internal_permission_only(
+        self, mock_create_external_service
+    ):
+        self.user_authorization.delete()
+        self.grant_permission(self.user, "can_communicate_internally")
+
+        mock_create_external_service.return_value = Mock(
+            status_code=200,
+            json=lambda: {
+                "channelUuid": str(uuid.uuid4()),
+                "title": "ChatGPT Test",
+            },
+        )
+        response = self.request.post(self.url, self.body)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
 
 class RetrieveChatGPTAppTestCase(APIBaseTestCase):

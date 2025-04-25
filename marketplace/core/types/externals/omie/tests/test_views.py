@@ -7,6 +7,7 @@ from rest_framework import status
 from marketplace.core.tests.base import APIBaseTestCase
 from marketplace.accounts.models import ProjectAuthorization
 from marketplace.applications.models import App
+from marketplace.core.tests.mixis.permissions import PermissionTestCaseMixin
 from ..views import OmieViewSet
 from ..type import OmieType
 
@@ -14,7 +15,7 @@ from ..type import OmieType
 apptype = OmieType()
 
 
-class CreateOmieAppTestCase(APIBaseTestCase):
+class CreateOmieAppTestCase(PermissionTestCaseMixin, APIBaseTestCase):
     url = reverse("omie-app-list")
     view_class = OmieViewSet
 
@@ -24,11 +25,12 @@ class CreateOmieAppTestCase(APIBaseTestCase):
 
     def setUp(self):
         super().setUp()
-        project_uuid = str(uuid.uuid4())
-        self.body = {"project_uuid": project_uuid}
+        self.project_uuid = str(uuid.uuid4())
+        self.body = {"project_uuid": self.project_uuid}
 
         self.user_authorization = self.user.authorizations.create(
-            project_uuid=project_uuid, role=ProjectAuthorization.ROLE_CONTRIBUTOR
+            project_uuid=self.project_uuid,
+            role=ProjectAuthorization.ROLE_CONTRIBUTOR,
         )
 
     def test_request_ok(self):
@@ -38,18 +40,23 @@ class CreateOmieAppTestCase(APIBaseTestCase):
     def test_create_app_without_project_uuid(self):
         self.body.pop("project_uuid")
         response = self.request.post(self.url, self.body)
-
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_create_app_platform(self):
         response = self.request.post(self.url, self.body)
         self.assertEqual(response.json["platform"], App.PLATFORM_WENI_FLOWS)
 
-    # TODO: Fix this test broken due to PR #594.
-    # def test_create_app_without_permission(self):
-    #     self.user_authorization.delete()
-    #     response = self.request.post(self.url, self.body)
-    #     self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+    def test_create_app_without_permission_and_authorization(self):
+        self.user_authorization.delete()
+        self.clear_permissions(self.user)
+        response = self.request.post(self.url, self.body)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_create_app_with_internal_permission_only(self):
+        self.user_authorization.delete()
+        self.grant_permission(self.user, "can_communicate_internally")
+        response = self.request.post(self.url, self.body)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
 
 class RetrieveOmieAppTestCase(APIBaseTestCase):
