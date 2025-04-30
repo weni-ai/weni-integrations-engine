@@ -2,6 +2,9 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.views import APIView
+from rest_framework.permissions import AllowAny
+
+from uuid import UUID
 
 from marketplace.core.types.ecommerce.vtex.serializers import (
     FirstProductInsertSerializer,
@@ -9,6 +12,7 @@ from marketplace.core.types.ecommerce.vtex.serializers import (
     VtexSerializer,
     VtexAppSerializer,
     VtexSyncSellerSerializer,
+    SyncOnDemandSerializer,
 )
 from marketplace.core.types import views
 from marketplace.core.types.ecommerce.vtex.usecases.link_catalog_start_sync import (
@@ -16,6 +20,9 @@ from marketplace.core.types.ecommerce.vtex.usecases.link_catalog_start_sync impo
 )
 from marketplace.core.types.ecommerce.vtex.usecases.vtex_integration import (
     VtexIntegration,
+)
+from marketplace.core.types.ecommerce.vtex.usecases.sync_on_demand import (
+    SyncOnDemandUseCase,
 )
 
 from marketplace.services.flows.service import FlowsService
@@ -230,3 +237,15 @@ class VtexIntegrationDetailsView(APIView):
             project_uuid=project_uuid
         )
         return Response(status=status.HTTP_200_OK, data=integration_details)
+
+
+class VtexSyncOnDemandView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, app_uuid: UUID, *args, **kwargs) -> Response:
+        data = SyncOnDemandSerializer(data=request.data)
+        use_case = SyncOnDemandUseCase()
+        use_case.execute(data, str(app_uuid))
+        return Response(
+            {"message": "Products sent to sync."}, status=status.HTTP_200_OK
+        )

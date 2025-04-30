@@ -84,3 +84,9 @@ class FirstProductInsertSerializer(serializers.Serializer):
         required=True,
         help_text="The catalog identifier to be linked with the VTEX app.",
     )
+
+
+class SyncOnDemandSerializer(serializers.Serializer):
+    id_sku = serializers.CharField(source="IdSku", required=True)
+    seller_an = serializers.CharField(source="An", required=False)
+    seller_chain = serializers.CharField(source="SellerChain", required=False)
