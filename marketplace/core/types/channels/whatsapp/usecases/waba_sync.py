@@ -118,5 +118,5 @@ class WABASyncUseCase:
         self.redis_conn.set(
             key,
             "synced",
-            settings.WHATSAPP_TIME_BETWEEN_SYNC_WABA_IN_HOURS,
+            ex=settings.WHATSAPP_TIME_BETWEEN_SYNC_WABA_IN_HOURS,
         )
