@@ -323,6 +323,19 @@ class ProductProcessor:
         Returns:
             List of processed products (0 or 1)
         """
+        # Input validation
+        if not seller_id or not isinstance(seller_id, str):
+            logger.error(
+                f"Invalid seller_id: {seller_id}. Expected non-empty string. Received: {seller_id}"
+            )
+            return []
+
+        if not sku_id or not isinstance(sku_id, str):
+            logger.error(
+                f"Invalid sku_id: {sku_id}. Expected non-empty string. Received: {sku_id}"
+            )
+            return []
+
         try:
             product_details = self.validator_service.validate_product_details(
                 sku_id, self.catalog
@@ -365,6 +378,25 @@ class ProductProcessor:
         Returns:
             List of processed products (0 or more).
         """
+        # Input validation
+        if not sku_id or not isinstance(sku_id, str):
+            logger.error(
+                f"Invalid sku_id: {sku_id}. Expected non-empty string. Received: {sku_id}"
+            )
+            return []
+
+        if not sellers or not isinstance(sellers, list):
+            logger.error(
+                f"Invalid sellers: {sellers}. Expected non-empty list. Received: {sellers}"
+            )
+            return []
+
+        if not all(isinstance(seller, str) and seller for seller in sellers):
+            logger.error(
+                f"Invalid seller values in sellers list. All sellers must be non-empty strings. Received: {sellers}"
+            )
+            return []
+
         try:
             product_details = self.validator_service.validate_product_details(
                 sku_id, self.catalog
