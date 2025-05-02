@@ -535,6 +535,12 @@ class BatchProcessor:
         def worker_job():
             while not self.queue.empty():
                 item = self.queue.get()
+
+                # In a multi-threaded context, Redis queue may return None
+                # when another thread has already consumed the last item.
+                # We skip None values to avoid unnecessary processing or crashes.
+                if item is None:
+                    continue
                 try:
                     if mode == "seller_sku":
                         seller_id, sku_id = item.split("#")
