@@ -326,13 +326,15 @@ class ProductProcessor:
         # Input validation
         if not seller_id or not isinstance(seller_id, str):
             logger.error(
-                f"Invalid seller_id: {seller_id}. Expected non-empty string. Received: {seller_id}"
+                f"Invalid seller_id: {seller_id}. Expected non-empty string. "
+                f"Received: {seller_id} (type: {type(seller_id).__name__})"
             )
             return []
 
         if not sku_id or not isinstance(sku_id, str):
             logger.error(
-                f"Invalid sku_id: {sku_id}. Expected non-empty string. Received: {sku_id}"
+                f"Invalid sku_id: {sku_id}. Expected non-empty string. "
+                f"Received: {sku_id} (type: {type(sku_id).__name__})"
             )
             return []
 
@@ -381,19 +383,22 @@ class ProductProcessor:
         # Input validation
         if not sku_id or not isinstance(sku_id, str):
             logger.error(
-                f"Invalid sku_id: {sku_id}. Expected non-empty string. Received: {sku_id}"
+                f"Invalid sku_id: {sku_id}. Expected non-empty string. "
+                f"Received: {sku_id} (type: {type(sku_id).__name__})"
             )
             return []
 
         if not sellers or not isinstance(sellers, list):
             logger.error(
-                f"Invalid sellers: {sellers}. Expected non-empty list. Received: {sellers}"
+                f"Invalid sellers: {sellers}. Expected non-empty list. "
+                f"Received: {sellers} (type: {type(sellers).__name__})"
             )
             return []
 
         if not all(isinstance(seller, str) and seller for seller in sellers):
             logger.error(
-                f"Invalid seller values in sellers list. All sellers must be non-empty strings. Received: {sellers}"
+                f"Invalid seller values in sellers list. All sellers must be non-empty strings. "
+                f"Received: {sellers} (types: {[type(seller).__name__ for seller in sellers]})"
             )
             return []
 
