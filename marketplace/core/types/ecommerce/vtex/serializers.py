@@ -87,6 +87,5 @@ class FirstProductInsertSerializer(serializers.Serializer):
 
 
 class SyncOnDemandSerializer(serializers.Serializer):
-    id_sku = serializers.CharField(source="IdSku", required=True)
-    seller_an = serializers.CharField(source="An", required=False)
-    seller_chain = serializers.CharField(source="SellerChain", required=False)
+    sku_ids = serializers.ListField(child=serializers.CharField(), required=True)
+    seller = serializers.CharField(required=False)

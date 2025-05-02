@@ -10,7 +10,7 @@ urlpatterns = [
         name="integration-details",
     ),
     path(
-        "sync-on-demand/<uuid:app_uuid>/",
+        "sync-on-demand/<uuid:flow_uuid>/",
         VtexSyncOnDemandView.as_view(),
         name="sync-on-demand",
     ),
