@@ -540,7 +540,8 @@ class BatchProcessor:
                         seller_id, sku_id = item.split("#")
                         result = processor.process_seller_sku(seller_id, sku_id)
                     else:  # mode "single"
-                        result = processor.process_single_sku(item, sellers)
+                        sku_id = str(item)
+                        result = processor.process_single_sku(sku_id, sellers)
                         if self.temp_queue:
                             self.temp_queue.put(item)
                     with self.progress_lock:

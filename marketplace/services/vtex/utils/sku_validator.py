@@ -2,7 +2,7 @@ import logging
 
 from django_redis import get_redis_connection
 from django.core.cache import cache
-from marketplace.wpp_products.models import ProductValidation
+from marketplace.wpp_products.models import Catalog, ProductValidation
 
 
 logger = logging.getLogger(__name__)
@@ -16,14 +16,15 @@ class SKUValidator:
         self.redis_client = get_redis_connection()
         self.default_timeout = 3600
 
-    def validate_product_details(self, sku_id, catalog):
-        if not sku_id or not catalog:
+    def validate_product_details(self, sku_id: str, catalog: Catalog):
+        # Ensure SKU ID is a non-empty string
+        if not isinstance(sku_id, str) or not sku_id.strip():
             logger.error(
-                f"SKU ID or catalog is missing. SKU ID: {sku_id}, Catalog: {catalog}"
+                f"Invalid sku_id: Expected non-empty string, got {sku_id} (type: {type(sku_id).__name__})"
             )
             return None
 
-        cache_key = f"{catalog.uuid}:{sku_id}"
+        cache_key = f"{str(catalog.uuid)}:{sku_id}"
         cached_validation = cache.get(cache_key)
 
         if cached_validation is not None:
