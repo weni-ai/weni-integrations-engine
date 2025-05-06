@@ -243,9 +243,10 @@ class VtexSyncOnDemandView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request, project_uuid: UUID, *args, **kwargs) -> Response:
-        data = SyncOnDemandSerializer(data=request.data)
+        serializer = SyncOnDemandSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         use_case = SyncOnDemandUseCase()
-        use_case.execute(data, str(project_uuid))
+        use_case.execute(serializer.data, str(project_uuid))
         return Response(
             {"message": "Products sent to sync."}, status=status.HTTP_200_OK
         )

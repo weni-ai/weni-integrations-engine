@@ -22,7 +22,7 @@ class SyncOnDemandUseCase:
 
     def _get_vtex_app(self, project_uuid: str) -> App:
         try:
-            return App.objects.filter(project_uuid=project_uuid, code="vtex").first()
+            return App.objects.get(project_uuid=project_uuid, code="vtex")
         except App.DoesNotExist:
             raise NotFound(
                 f"No VTEX App configured with the provided project: {project_uuid}"
