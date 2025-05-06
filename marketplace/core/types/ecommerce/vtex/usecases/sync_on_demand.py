@@ -20,12 +20,12 @@ class SyncOnDemandUseCase:
     def __init__(self, celery_app: Optional[Celery] = None):
         self.celery_app = celery_app or _celery_app
 
-    def _get_vtex_app(self, flow_uuid: str) -> App:
+    def _get_vtex_app(self, project_uuid: str) -> App:
         try:
-            return App.objects.filter(flow_object_uuid=flow_uuid, code="vtex").first()
+            return App.objects.filter(project_uuid=project_uuid, code="vtex").first()
         except App.DoesNotExist:
             raise NotFound(
-                f"No VTEX App configured with the provided flow UUID: {flow_uuid}"
+                f"No VTEX App configured with the provided project: {project_uuid}"
             )
 
     def _is_product_valid(self, sku_id: str, catalog: Catalog) -> None:
@@ -49,10 +49,10 @@ class SyncOnDemandUseCase:
             ignore_result=True,
         )
 
-    def execute(self, data: SyncOnDemandData, flow_uuid: str) -> None:
+    def execute(self, data: SyncOnDemandData, project_uuid: str) -> None:
         seller = data.get("seller")
         sku_ids = data.get("sku_ids")
-        vtex_app = self._get_vtex_app(flow_uuid)
+        vtex_app = self._get_vtex_app(project_uuid)
         catalog = vtex_app.vtex_catalogs.first()
         celery_queue = vtex_app.config.get(
             "celery_queue_name", "product_synchronization"
