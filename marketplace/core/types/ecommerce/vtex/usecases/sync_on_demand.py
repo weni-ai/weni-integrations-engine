@@ -1,4 +1,4 @@
-from rest_framework.exceptions import NotFound, ValidationError
+from rest_framework.exceptions import NotFound
 
 from marketplace.applications.models import App
 from marketplace.wpp_products.models import ProductValidation, Catalog
@@ -28,10 +28,13 @@ class SyncOnDemandUseCase:
                 f"No VTEX App configured with the provided project: {project_uuid}"
             )
 
-    def _is_product_valid(self, sku_id: str, catalog: Catalog) -> None:
+    def _is_product_valid(self, sku_id: str, catalog: Catalog) -> bool:
         return ProductValidation.objects.filter(
             sku_id=sku_id, is_valid=True, catalog=catalog
         ).exists()
+
+    def _product_exists(self, sku_id: str, catalog: Catalog) -> bool:
+        return ProductValidation.objects.filter(sku_id=sku_id, catalog=catalog).exists()
 
     def _trigger_tasks(
         self, app_uuid: str, seller: str, sku_id: str, celery_queue: str
@@ -60,8 +63,15 @@ class SyncOnDemandUseCase:
 
         app_uuid = str(vtex_app.uuid)
 
-        for sku_id in sku_ids:
-            if not self._is_product_valid(sku_id, catalog):
-                raise ValidationError(f"Informed product is not valid: {sku_id}")
+        invalid_skus = []
 
+        for sku_id in sku_ids:
+            if self._product_exists(sku_id, catalog) and not self._is_product_valid(
+                sku_id, catalog
+            ):
+                invalid_skus.append[sku_id]
+
+        valid_skus = [sku_id for sku_id in sku_ids if sku_id not in invalid_skus]
+
+        for sku_id in valid_skus:
             self._trigger_tasks(app_uuid, seller, sku_id, celery_queue)
