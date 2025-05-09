@@ -22,3 +22,12 @@ class CommerceClientInterface(ABC):
             Dictionary with the API response
         """
         pass
+
+    @abstractmethod
+    def send_template_version(
+        self, template_version_uuid: str, data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Send template version to Commerce API.
+        """
+        pass

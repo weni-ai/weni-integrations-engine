@@ -18,3 +18,11 @@ class CommerceClient(RequestClient, CommerceClientInterface):
             url, method="POST", headers=self.authentication_instance.headers, json=data
         )
         return response.json()
+
+    def send_template_version(self, template_version_uuid: str, data: dict):
+        url = f"{self.base_url}/api/versions/{template_version_uuid}"
+
+        response = self.make_request(
+            url, method="POST", headers=self.authentication_instance.headers, json=data
+        )
+        return response.json()
