@@ -131,7 +131,7 @@ class APIBaseTestCase(TestCase):
         super().setUp()
 
         self.super_user = User.objects.create_superuser(email="admin@marketplace.ai")
-        self.user = User.objects.create_superuser(email="user@marketplace.ai")
+        self.user = User.objects.create_user(email="user@marketplace.ai")
 
         self.request = self._get_request()
 

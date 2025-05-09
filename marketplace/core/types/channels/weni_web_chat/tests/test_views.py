@@ -8,6 +8,7 @@ from django.test import override_settings
 from rest_framework import status
 
 from marketplace.core.tests.base import APIBaseTestCase
+from marketplace.core.tests.mixis.permissions import PermissionTestCaseMixin
 from ..views import WeniWebChatViewSet
 from marketplace.applications.models import App
 from marketplace.accounts.models import ProjectAuthorization
@@ -17,7 +18,7 @@ from ..type import WeniWebChatType
 apptype = WeniWebChatType()
 
 
-class CreateWeniWebChatAppTestCase(APIBaseTestCase):
+class CreateWeniWebChatAppTestCase(PermissionTestCaseMixin, APIBaseTestCase):
     url = reverse("wwc-app-list")
     view_class = WeniWebChatViewSet
 
@@ -48,11 +49,26 @@ class CreateWeniWebChatAppTestCase(APIBaseTestCase):
         response = self.request.post(self.url, self.body)
         self.assertEqual(response.json["platform"], App.PLATFORM_WENI_FLOWS)
 
-    # TODO: Fix this test broken due to PR #594.
-    # def test_create_app_without_permission(self):
-    #     self.user_authorization.delete()
-    #     response = self.request.post(self.url, self.body)
-    #     self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+    def test_create_app_without_permission(self):
+        self.user_authorization.delete()
+        response = self.request.post(self.url, self.body)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_create_app_with_internal_permission_only(self):
+        # Remove authorization but ensure system permission
+        self.user_authorization.delete()
+        self.grant_permission(self.user, "can_communicate_internally")
+
+        response = self.request.post(self.url, self.body)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_create_app_without_permission_and_authorization(self):
+        # Remove authorization and permissions
+        self.user_authorization.delete()
+        self.clear_permissions(self.user)
+
+        response = self.request.post(self.url, self.body)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
 class RetrieveWeniWebChatAppTestCase(APIBaseTestCase):
@@ -143,7 +159,7 @@ class MockAppStorage(MagicMock):
         return f"https://weni-test.invalidurl.com/apptypes/{str(uuid.uuid4)}/{str(uuid.uuid4)}/{name}"
 
 
-class ConfigureWeniWebChatTestCase(APIBaseTestCase):
+class ConfigureWeniWebChatTestCase(PermissionTestCaseMixin, APIBaseTestCase):
     view_class = WeniWebChatViewSet
 
     def setUp(self):
@@ -151,10 +167,6 @@ class ConfigureWeniWebChatTestCase(APIBaseTestCase):
         self.app = WeniWebChatType().create_app(
             created_by=self.user, project_uuid=str(uuid.uuid4())
         )
-        self.user_authorization = self.user.authorizations.create(
-            project_uuid=self.app.project_uuid
-        )
-        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
         self.url = reverse("wwc-app-configure", kwargs={"uuid": self.app.uuid})
         self.body = {
             "config": {
@@ -176,19 +188,55 @@ class ConfigureWeniWebChatTestCase(APIBaseTestCase):
         "marketplace.core.types.channels.weni_web_chat.serializers.AppStorage",
         MockAppStorage,
     )
-    def test_configure_weniwebchat_success(self, mock_connect_project_client):
-        data = {
+    def test_configure_with_project_authorization(self, mock_connect_project_client):
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+
+        mock_connect_project_client.return_value.create_channel.return_value = {
             "uuid": str(uuid.uuid4()),
             "mainColor": "#009E96",
             "keepHistory": True,
             "timeBetweenMessages": 1,
             "customCss": "body { background-color: red; }",
         }
-        mock_connect_project_client.return_value.create_channel.return_value = data
-        response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
 
+        response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-    def test_configure_weniwebchat_missing_fields(self):
-        response = self.request.patch(self.url, {}, uuid=self.app.uuid)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+    def test_configure_without_permission_or_authorization(self):
+        ProjectAuthorization.objects.filter(user=self.user).delete()
+        self.clear_permissions(self.user)
+
+        response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    @patch(
+        "marketplace.core.types.channels.weni_web_chat.serializers.ConnectProjectClient"
+    )
+    @patch(
+        "marketplace.core.types.channels.weni_web_chat.serializers.AppStorage",
+        MockAppStorage,
+    )
+    def test_configure_with_internal_permission_only(self, mock_connect_project_client):
+        self.grant_permission(self.user, "can_communicate_internally")
+        ProjectAuthorization.objects.filter(user=self.user).delete()
+
+        mock_connect_project_client.return_value.create_channel.return_value = {
+            "uuid": str(uuid.uuid4()),
+            "mainColor": "#009E96",
+            "keepHistory": True,
+            "timeBetweenMessages": 1,
+            "customCss": "body { background-color: red; }",
+        }
+
+        response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_configure_denied_without_permission_and_authorization(self):
+        self.clear_permissions(self.user)
+        ProjectAuthorization.objects.filter(user=self.user).delete()
+
+        response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

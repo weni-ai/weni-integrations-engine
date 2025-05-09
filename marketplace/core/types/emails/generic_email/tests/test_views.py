@@ -1,13 +1,19 @@
 import uuid
+
 from unittest.mock import patch
 
 from django.urls import reverse
+
 from rest_framework import status
+
 from marketplace.core.tests.base import APIBaseTestCase
 from marketplace.applications.models import App
 from marketplace.accounts.models import ProjectAuthorization
+
+from marketplace.core.tests.mixis.permissions import PermissionTestCaseMixin
 from marketplace.core.types.emails.generic_email.views import GenericEmailViewSet
 from marketplace.core.types.emails.generic_email.type import GenericEmailType
+
 
 apptype = GenericEmailType()
 
@@ -20,7 +26,7 @@ class MockFlowsService:
         return {"uuid": str(uuid.uuid4()), "name": "Test Email Channel"}
 
 
-class SetUpTestBase(APIBaseTestCase):
+class SetUpTestBase(APIBaseTestCase, PermissionTestCaseMixin):
     current_view_mapping = {}
     view_class = GenericEmailViewSet
 
@@ -81,11 +87,24 @@ class CreateGenericEmailAppTestCase(SetUpTestBase):
         response = self.request.post(self.url, self.body)
         self.assertEqual(response.json["platform"], App.PLATFORM_WENI_FLOWS)
 
-    # TODO: Fix this test broken due to PR #594.
-    # def test_create_app_without_permission(self):
-    #     self.user_authorization.delete()
-    #     response = self.request.post(self.url, self.body)
-    #     self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+    def test_create_app_without_permission(self):
+        self.user_authorization.delete()
+        response = self.request.post(self.url, self.body)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_create_app_with_internal_permission_only(self):
+        self.user_authorization.delete()
+        self.grant_permission(self.user, "can_communicate_internally")
+
+        response = self.request.post(self.url, self.body)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_create_app_without_permission_and_authorization(self):
+        self.user_authorization.delete()
+        self.clear_permissions(self.user)
+
+        response = self.request.post(self.url, self.body)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
 class ConfigureGenericEmailAppTestCase(SetUpTestBase):
@@ -113,8 +132,16 @@ class ConfigureGenericEmailAppTestCase(SetUpTestBase):
 
     def test_configure_email_without_permission(self):
         self.user_authorization.delete()
+
         response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_configure_email_with_internal_permission(self):
+        self.user_authorization.delete()
+        self.grant_permission(self.user, "can_communicate_internally")
+
+        response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
 
 class RetrieveGenericEmailAppTestCase(SetUpTestBase):

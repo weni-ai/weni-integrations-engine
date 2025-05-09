@@ -6,8 +6,10 @@ from rest_framework import status
 from marketplace.core.tests.base import APIBaseTestCase
 from marketplace.applications.models import App
 from marketplace.accounts.models import ProjectAuthorization
+from marketplace.core.tests.mixis.permissions import PermissionTestCaseMixin
 from marketplace.core.types.emails.gmail.views import GmailViewSet
 from marketplace.core.types.emails.gmail.type import GmailType
+
 
 apptype = GmailType()
 
@@ -20,7 +22,7 @@ class MockFlowsService:
         return {"uuid": str(uuid.uuid4()), "name": "Test Gmail Channel"}
 
 
-class SetUpTestBase(APIBaseTestCase):
+class SetUpTestBase(PermissionTestCaseMixin, APIBaseTestCase):
     current_view_mapping = {}
     view_class = GmailViewSet
 
@@ -60,71 +62,63 @@ class CreateGmailAppTestCase(SetUpTestBase):
         super().setUp()
         self.body = {
             "project_uuid": self.project_uuid,
-            "username": "gmail@example.com",
-            "password": "123456",
-            "smtp_host": "smtp.gmail.com",
-            "smtp_port": 587,
-            "imap_host": "imap.gmail.com",
-            "imap_port": 993,
             "access_token": "mock-access_token",
             "refresh_token": "mock-refresh-token",
         }
 
-    # TODO: Fix: This test is breaking when there is no internet
-    # def test_request_ok(self):
-    #     response = self.request.post(self.url, self.body)
-    #     self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+    @property
+    def view(self):
+        return self.view_class.as_view(self.current_view_mapping)
+
+    @patch("marketplace.core.types.emails.gmail.serializers.requests.get")
+    def test_request_ok(self, mock_requests_get):
+        mock_requests_get.return_value.json.return_value = {
+            "emailAddress": "gmail@example.com"
+        }
+        response = self.request.post(self.url, self.body)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    @patch("marketplace.core.types.emails.gmail.serializers.requests.get")
+    def test_create_app_platform(self, mock_requests_get):
+        mock_requests_get.return_value.json.return_value = {
+            "emailAddress": "gmail@example.com"
+        }
+        response = self.request.post(self.url, self.body)
+        self.assertEqual(response.json["platform"], App.PLATFORM_WENI_FLOWS)
 
     def test_create_app_without_project_uuid(self):
         self.body.pop("project_uuid")
         response = self.request.post(self.url, self.body)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    # TODO: Fix: This test is breaking when there is no internet
-    # def test_create_app_platform(self):
-    #     response = self.request.post(self.url, self.body)
-    #     self.assertEqual(response.json["platform"], App.PLATFORM_WENI_FLOWS)
+    @patch("marketplace.core.types.emails.gmail.serializers.requests.get")
+    def test_create_app_without_permission(self, mock_requests_get):
+        self.user_authorization.delete()
+        mock_requests_get.return_value.json.return_value = {
+            "emailAddress": "gmail@example.com"
+        }
+        response = self.request.post(self.url, self.body)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    # TODO: Fix this test broken due to PR #594.
-    # def test_create_app_without_permission(self):
-    #     self.user_authorization.delete()
-    #     response = self.request.post(self.url, self.body)
-    #     self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+    @patch("marketplace.core.types.emails.gmail.serializers.requests.get")
+    def test_create_app_with_internal_permission_only(self, mock_requests_get):
+        self.user_authorization.delete()
+        self.grant_permission(self.user, "can_communicate_internally")
+        mock_requests_get.return_value.json.return_value = {
+            "emailAddress": "gmail@example.com"
+        }
+        response = self.request.post(self.url, self.body)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-    # TODO: Fix this tests below
-    # def test_invalid_smtp_port(self):
-    #     # Invalid SMTP port
-    #     self.body["smtp_port"] = 123  # Porta inválida
-    #     response = self.request.post(self.url, self.body)
-    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-    #     self.assertIn("SMTP port must be 465 (SSL) or 587 (TLS).", str(response.data))
-
-    # def test_invalid_imap_port(self):
-    #     # Invalid IMAP port
-    #     self.body["imap_port"] = 123  # Porta inválida
-    #     response = self.request.post(self.url, self.body)
-    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-    #     self.assertIn("IMAP port must be 993 (SSL/TLS) or 143.", str(response.data))
-
-    # def test_invalid_smtp_host(self):
-    #     # Invalid SMTP host
-    #     self.body["smtp_host"] = "invalid_host"
-    #     response = self.request.post(self.url, self.body)
-    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-    #     self.assertIn("Invalid SMTP host format.", str(response.data))
-
-    # def test_invalid_imap_host(self):
-    #     # Invalid IMAP host
-    #     self.body["imap_host"] = "invalid_host"
-    #     response = self.request.post(self.url, self.body)
-    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-    #     self.assertIn("Invalid IMAP host format.", str(response.data))
-
-    # TODO: Fix: This test is breaking when there is no internet
-    # def test_valid_ports_and_hosts(self):
-    #     # Testing with valid SMTP and IMAP data
-    #     response = self.request.post(self.url, self.body)
-    #     self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+    @patch("marketplace.core.types.emails.gmail.serializers.requests.get")
+    def test_create_app_without_permission_and_authorization(self, mock_requests_get):
+        self.user_authorization.delete()
+        self.clear_permissions(self.user)
+        mock_requests_get.return_value.json.return_value = {
+            "emailAddress": "gmail@example.com"
+        }
+        response = self.request.post(self.url, self.body)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
 class RetrieveGmailAppTestCase(SetUpTestBase):

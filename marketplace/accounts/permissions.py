@@ -60,7 +60,10 @@ class ProjectManagePermission(permissions.IsAuthenticated):
                 is_contributor = authorization.is_contributor
                 is_viewer = authorization.is_viewer
             except ProjectAuthorization.DoesNotExist:
-                return False
+                if request.user.has_perm("accounts.can_communicate_internally"):
+                    return True
+
+                is_admin = is_contributor = is_viewer = False
 
             if request.method in MODIFY_METHODS:
                 return is_contributor or is_admin
