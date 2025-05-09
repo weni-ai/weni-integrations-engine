@@ -28,8 +28,8 @@ class CommerceService:
         """
         return self.client.send_template_library_status_update(data)
 
-    def send_template_version(self, template_version_uuid: str, data: dict):
+    def send_gallery_template_version(self, gallery_version_uuid: str, status: str):
         """
         Send template version to Commerce API.
         """
-        return self.client.send_template_version(template_version_uuid, data)
+        return self.client.send_gallery_template_version(gallery_version_uuid, status)

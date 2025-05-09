@@ -71,16 +71,17 @@ class TemplateStatusUpdateHandler:
         # Always notify Commerce if gallery version is defined
         if template.gallery_version:
             try:
-                self.commerce_service.send_template_version(
-                    str(template.gallery_version), raw_data
+                self.commerce_service.send_gallery_template_version(
+                    gallery_version_uuid=str(template.gallery_version), status=status
                 )
                 self.logger.info(
-                    f"[Commerce] Template version {template.gallery_version} sent successfully."
+                    f"[Commerce] Gallery version {template.gallery_version} for template: {template.name}, "
+                    f"translation: {translation.language}, status: {status} sent successfully."
                 )
             except Exception as e:
                 self.logger.error(
-                    f"[Commerce] Failed to send template version: {template.name}, "
-                    f"translation: {translation.language}, error: {e}"
+                    f"[Commerce] Failed to send gallery version for template: {template.name}, "
+                    f"translation: {translation.language}, status: {status}, error: {e}"
                 )
 
         # Always notify Flows

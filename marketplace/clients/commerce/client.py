@@ -19,10 +19,17 @@ class CommerceClient(RequestClient, CommerceClientInterface):
         )
         return response.json()
 
-    def send_template_version(self, template_version_uuid: str, data: dict):
-        url = f"{self.base_url}/api/versions/{template_version_uuid}"
+    def send_gallery_template_version(self, gallery_version_uuid: str, status: str):
+        url = f"{self.base_url}/api/v3/templates/status/"
+        payload = {
+            "version_uuid": gallery_version_uuid,
+            "status": status,
+        }
 
         response = self.make_request(
-            url, method="POST", headers=self.authentication_instance.headers, json=data
+            url,
+            method="PATCH",
+            headers=self.authentication_instance.headers,
+            json=payload,
         )
-        return response.json()
+        return response

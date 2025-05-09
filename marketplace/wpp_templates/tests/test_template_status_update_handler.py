@@ -45,7 +45,7 @@ class TestTemplateStatusUpdateHandler(TestCase):
             raw_data={"raw": "data"},
         )
         self.translation.save.assert_called_once()
-        self.mock_commerce.send_template_version.assert_called_once()
+        self.mock_commerce.send_gallery_template_version.assert_called_once()
         self.mock_flows.update_facebook_templates_webhook.assert_called_once()
         self.mock_use_case.update_template_status.assert_called_once()
         self.mock_use_case.synchronize_all_stored_templates.assert_called_once()
@@ -65,7 +65,7 @@ class TestTemplateStatusUpdateHandler(TestCase):
             raw_data={"raw": "data"},
         )
         self.translation.save.assert_not_called()
-        self.mock_commerce.send_template_version.assert_called_once()
+        self.mock_commerce.send_gallery_template_version.assert_called_once()
         self.mock_flows.update_facebook_templates_webhook.assert_called_once()
         self.mock_use_case.update_template_status.assert_called_once()
 
@@ -74,15 +74,15 @@ class TestTemplateStatusUpdateHandler(TestCase):
         return_value={"mocked": "data"},
     )
     def test_commerce_fails_but_others_continue(self, mock_extract):
-        self.mock_commerce.send_template_version.side_effect = Exception(
+        self.mock_commerce.send_gallery_template_version.side_effect = Exception(
             "Commerce error"
         )
         self.handler.handle(
             self.app, self.template, self.translation, "APPROVED", {}, {}
         )
         self.mock_logger.error.assert_any_call(
-            f"[Commerce] Failed to send template version: {self.template.name}, "
-            f"translation: {self.translation.language}, error: Commerce error"
+            f"[Commerce] Failed to send gallery version for template: {self.template.name}, "
+            f"translation: {self.translation.language}, status: APPROVED, error: Commerce error"
         )
 
     @patch(

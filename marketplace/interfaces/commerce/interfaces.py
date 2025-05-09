@@ -24,10 +24,17 @@ class CommerceClientInterface(ABC):
         pass
 
     @abstractmethod
-    def send_template_version(
-        self, template_version_uuid: str, data: Dict[str, Any]
+    def send_gallery_template_version(
+        self, gallery_version_uuid: str, status: str
     ) -> Dict[str, Any]:
         """
-        Send template version to Commerce API.
+        Send gallery template version to Commerce API.
+
+        Args:
+            gallery_version_uuid: The UUID of the gallery version to be sent.
+            status: The status of the gallery template version.
+
+        Returns:
+            Dictionary with the API response.
         """
         pass
