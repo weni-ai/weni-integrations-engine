@@ -191,6 +191,7 @@ class TemplateMessageSerializer(serializers.Serializer):
     app_uuid = serializers.CharField(write_only=True)
     text_preview = serializers.CharField(required=False, read_only=True)
     translations = TemplateTranslationSerializer(many=True, read_only=True)
+    gallery_version = serializers.UUIDField(required=False, allow_null=True)
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -209,6 +210,7 @@ class TemplateMessageSerializer(serializers.Serializer):
             created_on=datetime.now(),
             template_type="TEXT",
             created_by_id=User.objects.get_admin_user().id,
+            gallery_version=validated_data.get("gallery_version"),
         )
         try:
             template_message.full_clean()

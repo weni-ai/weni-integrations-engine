@@ -206,6 +206,7 @@ class TemplateTranslationSerializerTestCase(TestCase):
             "name": template_message.name,
             "created_on": template_message.created_on.strftime("%Y-%m-%d %H:%M:%S.%f"),
             "category": template_message.category,
+            "gallery_version": None,
             "translations": [
                 {
                     "uuid": str(template_translation.uuid),
@@ -256,6 +257,7 @@ class TemplateTranslationSerializerTestCase(TestCase):
             "name": template_message.name,
             "created_on": template_message.created_on.strftime("%Y-%m-%d %H:%M:%S.%f"),
             "category": template_message.category,
+            "gallery_version": None,
             "translations": [
                 TemplateTranslationSerializer(template_translation_1).data,
                 TemplateTranslationSerializer(template_translation_2).data,
