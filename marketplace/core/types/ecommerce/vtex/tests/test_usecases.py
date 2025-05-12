@@ -3,9 +3,15 @@ import uuid
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 
+from unittest.mock import Mock, patch
+
 from rest_framework.exceptions import NotFound
 
 from marketplace.applications.models import App
+from marketplace.wpp_products.models import Catalog
+from marketplace.core.types.ecommerce.vtex.usecases.sync_on_demand import (
+    SyncOnDemandUseCase,
+)
 from marketplace.core.types.ecommerce.vtex.usecases.vtex_integration import (
     VtexIntegration,
 )
@@ -87,3 +93,68 @@ class VtexIntegrationTest(TestCase):
             str(context.exception.detail),
             "The operator_token was not found for the provided project UUID.",
         )
+
+
+class SyncOnDemandUseCaseTest(TestCase):
+    def setUp(self):
+        self.mock_celery_app = Mock()
+        self.use_case = SyncOnDemandUseCase(celery_app=self.mock_celery_app)
+
+        self.mock_catalog = Mock(spec=Catalog)
+        self.mock_app = Mock(spec=App)
+        self.mock_app.vtex_catalogs.first.return_value = self.mock_catalog
+        self.mock_app.config = {"celery_queue_name": "test_queue"}
+        self.mock_app.uuid = "fake-uuid"
+
+    @patch(
+        "marketplace.core.types.ecommerce.vtex.usecases.sync_on_demand.SyncOnDemandUseCase._get_vtex_app"
+    )
+    @patch(
+        "marketplace.core.types.ecommerce.vtex.usecases.sync_on_demand.SyncOnDemandUseCase._is_product_valid"
+    )
+    def test_execute_triggers_tasks_for_valid_products(
+        self, mock_is_valid, mock_get_app
+    ):
+        mock_get_app.return_value = self.mock_app
+        mock_is_valid.return_value = True
+
+        data = {"seller": "seller1", "sku_ids": ["sku1", "sku2"]}
+        flow_uuid = "flow-uuid"
+
+        self.use_case.execute(data, flow_uuid)
+
+        self.assertEqual(self.mock_celery_app.send_task.call_count, 4)
+        self.mock_celery_app.send_task.assert_any_call(
+            "task_enqueue_webhook",
+            kwargs={"app_uuid": "fake-uuid", "seller": "seller1", "sku_id": "sku1"},
+            queue="test_queue",
+            ignore_result=True,
+        )
+        self.mock_celery_app.send_task.assert_any_call(
+            "task_dequeue_webhooks",
+            kwargs={"app_uuid": "fake-uuid", "celery_queue": "test_queue"},
+            queue="test_queue",
+            ignore_result=True,
+        )
+
+    @patch(
+        "marketplace.core.types.ecommerce.vtex.usecases.sync_on_demand.SyncOnDemandUseCase._get_vtex_app"
+    )
+    @patch(
+        "marketplace.core.types.ecommerce.vtex.usecases.sync_on_demand.SyncOnDemandUseCase._is_product_valid"
+    )
+    def test_execute_raises_validation_error_for_invalid_product(
+        self, mock_is_valid, mock_get_app
+    ):
+        mock_get_app.return_value = self.mock_app
+        mock_is_valid.side_effect = [True, False]
+
+        data = {"seller": "seller1", "sku_ids": ["sku1", "sku2"]}
+        flow_uuid = "flow-uuid"
+
+        from rest_framework.exceptions import ValidationError
+
+        with self.assertRaises(ValidationError):
+            self.use_case.execute(data, flow_uuid)
+
+        self.assertEqual(self.mock_celery_app.send_task.call_count, 2)
