@@ -158,3 +158,46 @@ class SyncOnDemandUseCaseTest(TestCase):
             self.use_case.execute(data, flow_uuid)
 
         self.assertEqual(self.mock_celery_app.send_task.call_count, 2)
+
+    @patch("marketplace.applications.models.App.objects.filter")
+    def test_get_vtex_app_returns_app(self, mock_filter):
+        mock_app = Mock()
+        mock_filter.return_value.first.return_value = mock_app
+
+        result = self.use_case._get_vtex_app("some-uuid")
+
+        mock_filter.assert_called_once_with(flow_object_uuid="some-uuid", code="vtex")
+        self.assertEqual(result, mock_app)
+
+    @patch("marketplace.applications.models.App.objects.filter")
+    def test_get_vtex_app_raises_not_found(self, mock_filter):
+        mock_filter.return_value.first.side_effect = App.DoesNotExist
+
+        with self.assertRaises(NotFound) as cm:
+            self.use_case._get_vtex_app("some-uuid")
+
+        self.assertIn(
+            "No VTEX App configured with the provided flow UUID", str(cm.exception)
+        )
+
+    @patch("marketplace.wpp_products.models.ProductValidation.objects.filter")
+    def test_is_product_valid_returns_true(self, mock_filter):
+        mock_filter.return_value.exists.return_value = True
+
+        result = self.use_case._is_product_valid("sku1", "mock_catalog")
+
+        mock_filter.assert_called_once_with(
+            sku_id="sku1", is_valid=True, catalog="mock_catalog"
+        )
+        self.assertTrue(result)
+
+    @patch("marketplace.wpp_products.models.ProductValidation.objects.filter")
+    def test_is_product_valid_returns_false(self, mock_filter):
+        mock_filter.return_value.exists.return_value = False
+
+        result = self.use_case._is_product_valid("sku2", "mock_catalog")
+
+        mock_filter.assert_called_once_with(
+            sku_id="sku2", is_valid=True, catalog="mock_catalog"
+        )
+        self.assertFalse(result)
