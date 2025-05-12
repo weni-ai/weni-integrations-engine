@@ -9,6 +9,7 @@ from rest_framework import status
 
 from marketplace.core.tests.base import APIBaseTestCase
 
+from marketplace.core.tests.mixis.permissions import PermissionTestCaseMixin
 from marketplace.core.types.channels.generic.views import GenericChannelViewSet
 from marketplace.core.types.channels.generic.views import DetailChannelType
 from marketplace.core.types.channels.generic.views import GetIcons
@@ -34,7 +35,7 @@ class FakeRequestsResponse:
         self.status_code = status_code
 
 
-class CreateGenericAppTestCase(APIBaseTestCase):
+class CreateGenericAppTestCase(PermissionTestCaseMixin, APIBaseTestCase):
     url = "/api/v1/apptypes/generic/apps/"
     view_class = GenericChannelViewSet
     channels_code = ["twt", "sl", "tm"]
@@ -45,38 +46,18 @@ class CreateGenericAppTestCase(APIBaseTestCase):
 
     def setUp(self):
         super().setUp()
-        project_uuid = str(uuid.uuid4())
-        self.body = {"project_uuid": project_uuid}
+        self.project_uuid = str(uuid.uuid4())
+        self.body = {"project_uuid": self.project_uuid}
 
         self.user_authorization = self.user.authorizations.create(
-            project_uuid=project_uuid, role=ProjectAuthorization.ROLE_CONTRIBUTOR
+            project_uuid=self.project_uuid, role=ProjectAuthorization.ROLE_CONTRIBUTOR
         )
 
     @patch("marketplace.core.types.channels.generic.views.search_icon")
     @patch("marketplace.flows.client.FlowsClient.list_channel_types")
     def test_create_list_of_channels(self, mock_list_channel_types, mock_search_icon):
         """Testing list of channels"""
-        response_data = {
-            "attributes": {
-                "code": "TEST",
-                "slug": "slack",
-                "name": "Teste",
-                "icon": "icon-cord",
-                "courier_url": "^sl/(?P<uuid>[a-z0-9\\-]+)/receive$",
-                "claim_blurb": "Test.",
-            },
-            "form": [
-                {
-                    "name": "user_token",
-                    "type": "text",
-                },
-            ],
-        }
-        mock_response = Mock()
-        mock_response.json.return_value = response_data
-        mock_response.status_code = 200
-        mock_list_channel_types.return_value = mock_response
-
+        mock_list_channel_types.return_value = self._mock_channel_response()
         mock_search_icon.return_value = "https://url.test.com.br/icon.jpg"
 
         for channel in self.channels_code:
@@ -100,7 +81,59 @@ class CreateGenericAppTestCase(APIBaseTestCase):
     @patch("marketplace.flows.client.FlowsClient.list_channel_types")
     def test_create_app_platform(self, mock_list_channel_types, mock_search_icon):
         """Testing if create channels have platform"""
-        response_data = {
+        mock_list_channel_types.return_value = self._mock_channel_response()
+        mock_search_icon.return_value = "https://url.test.com.br/icon.jpg"
+
+        for channel in self.channels_code:
+            self.body["channel_code"] = channel
+            response = self.request.post(self.url, self.body, code=channel)
+            self.assertEqual(response.json["platform"], App.PLATFORM_WENI_FLOWS)
+
+    @patch("marketplace.core.types.channels.generic.views.search_icon")
+    @patch("marketplace.flows.client.FlowsClient.list_channel_types")
+    def test_create_app_without_permission(
+        self, mock_list_channel_types, mock_search_icon
+    ):
+        """Testing create generic channels without permission"""
+        self.user_authorization.delete()
+        mock_list_channel_types.return_value = self._mock_channel_response()
+        mock_search_icon.return_value = "https://url.test.com.br/icon.jpg"
+
+        for channel in self.channels_code:
+            self.body["channel_code"] = channel
+            response = self.request.post(self.url, self.body, code=channel)
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    @patch("marketplace.core.types.channels.generic.views.search_icon")
+    @patch("marketplace.flows.client.FlowsClient.list_channel_types")
+    def test_create_app_with_internal_permission_only(
+        self, mock_list_channel_types, mock_search_icon
+    ):
+        """Testing create generic channels with system permission only"""
+        self.user_authorization.delete()
+        self.grant_permission(self.user, "can_communicate_internally")
+
+        mock_list_channel_types.return_value = self._mock_channel_response()
+        mock_search_icon.return_value = "https://url.test.com.br/icon.jpg"
+
+        for channel in self.channels_code:
+            self.body["channel_code"] = channel
+            response = self.request.post(self.url, self.body, code=channel)
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_create_app_without_permission_and_authorization(self):
+        """Testing create generic channels with no permission and no auth"""
+        self.user_authorization.delete()
+        self.clear_permissions(self.user)
+
+        for channel in self.channels_code:
+            self.body["channel_code"] = channel
+            response = self.request.post(self.url, self.body, code=channel)
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def _mock_channel_response(self):
+        mock_response = Mock()
+        mock_response.json.return_value = {
             "attributes": {
                 "code": "TEST",
                 "slug": "slack",
@@ -109,34 +142,10 @@ class CreateGenericAppTestCase(APIBaseTestCase):
                 "courier_url": "^sl/(?P<uuid>[a-z0-9\\-]+)/receive$",
                 "claim_blurb": "Test.",
             },
-            "form": [
-                {
-                    "name": "user_token",
-                    "type": "text",
-                },
-            ],
+            "form": [{"name": "user_token", "type": "text"}],
         }
-        mock_response = Mock()
-        mock_response.json.return_value = response_data
         mock_response.status_code = 200
-        mock_list_channel_types.return_value = mock_response
-
-        mock_search_icon.return_value = "https://url.test.com.br/icon.jpg"
-
-        response = self.request.post(self.url, self.body)
-        for channel in self.channels_code:
-            self.body["channel_code"] = channel
-            response = self.request.post(self.url, self.body, code=channel)
-            self.assertEqual(response.json["platform"], App.PLATFORM_WENI_FLOWS)
-
-    # TODO: Fix this test broken due to PR #594.
-    # def test_create_app_without_permission(self):
-    #     """Testing create generic channels without permission"""
-    #     self.user_authorization.delete()
-    #     for channel in self.channels_code:
-    #         url = f"{self.url}/apps/"
-    #         response = self.request.post(url, self.body, code=channel)
-    #         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        return mock_response
 
 
 class RetrieveGenericAppTestCase(APIBaseTestCase):
@@ -175,7 +184,7 @@ class RetrieveGenericAppTestCase(APIBaseTestCase):
         self.assertEqual(response.json["config"], {})
 
 
-class ConfigureGenericAppTestCase(APIBaseTestCase):
+class ConfigureGenericAppTestCase(PermissionTestCaseMixin, APIBaseTestCase):
     view_class = GenericChannelViewSet
 
     def setUp(self):
@@ -196,10 +205,6 @@ class ConfigureGenericAppTestCase(APIBaseTestCase):
             platform=App.PLATFORM_WENI_FLOWS,
             flow_object_uuid=str(uuid.uuid4()),
         )
-        self.user_authorization = self.user.authorizations.create(
-            project_uuid=self.app.project_uuid
-        )
-        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
         self.url = reverse("generic-app-configure", kwargs={"uuid": self.app.uuid})
 
     @property
@@ -210,6 +215,11 @@ class ConfigureGenericAppTestCase(APIBaseTestCase):
         "marketplace.core.types.channels.generic.serializers.ConnectProjectClient.create_channel"
     )
     def test_configure_channel_success(self, mock_configure):
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+
         mock_configure.return_value = {"uuid": str(uuid.uuid4()), "name": "Test"}
         keys_values = {
             "api_key": str(uuid.uuid4()),
@@ -220,7 +230,7 @@ class ConfigureGenericAppTestCase(APIBaseTestCase):
         }
         payload = {
             "user": str(self.user),
-            "project_uuid": str(uuid.uuid4()),
+            "project_uuid": self.app.project_uuid,
             "config": {"auth_token": keys_values},
         }
 
@@ -229,14 +239,74 @@ class ConfigureGenericAppTestCase(APIBaseTestCase):
 
     def test_configure_channel_without_config(self):
         """Request without config field"""
-        response_data = {"config": ["This field is required."]}
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+
         payload = {
             "user": str(self.user),
-            "project_uuid": str(uuid.uuid4()),
+            "project_uuid": self.app.project_uuid,
         }
+
         response = self.request.patch(self.url, payload, uuid=self.app.uuid)
-        self.assertEqual(response_data, response.json)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json, {"config": ["This field is required."]})
+
+    def test_configure_channel_without_permission_and_authorization(self):
+        """Should return 403 when user has no permission and no auth"""
+        ProjectAuthorization.objects.filter(user=self.user).delete()
+        self.clear_permissions(self.user)
+
+        payload = {
+            "user": str(self.user),
+            "project_uuid": self.app.project_uuid,
+            "config": {"auth_token": {}},
+        }
+
+        response = self.request.patch(self.url, payload, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    @patch(
+        "marketplace.core.types.channels.generic.serializers.ConnectProjectClient.create_channel"
+    )
+    def test_configure_channel_with_internal_permission_only(self, mock_create_channel):
+        """Should succeed with only internal permission"""
+        ProjectAuthorization.objects.filter(user=self.user).delete()
+        self.grant_permission(self.user, "can_communicate_internally")
+
+        mock_create_channel.return_value = {"uuid": str(uuid.uuid4()), "name": "Test"}
+
+        payload = {
+            "user": str(self.user),
+            "project_uuid": self.app.project_uuid,
+            "config": {
+                "auth_token": {
+                    "api_key": "k",
+                    "api_secret": "s",
+                    "access_token": "t",
+                    "access_token_secret": "ts",
+                    "env_name": "test",
+                }
+            },
+        }
+
+        response = self.request.patch(self.url, payload, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_configure_channel_forbidden_without_permission_and_auth(self):
+        """Confirm denial if user lacks both permission and project auth"""
+        ProjectAuthorization.objects.filter(user=self.user).delete()
+        self.clear_permissions(self.user)
+
+        payload = {
+            "user": str(self.user),
+            "project_uuid": self.app.project_uuid,
+            "config": {"auth_token": {}},
+        }
+
+        response = self.request.patch(self.url, payload, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
 class DetailChannelAppTestCase(APIBaseTestCase):
@@ -284,7 +354,7 @@ class DetailChannelAppTestCase(APIBaseTestCase):
 
 
 @override_settings(USE_GRPC=False)
-class DestroyTelegramAppTestCase(APIBaseTestCase):
+class DestroyGenericAppTestCase(PermissionTestCaseMixin, APIBaseTestCase):
     view_class = GenericChannelViewSet
 
     def setUp(self):
@@ -322,6 +392,22 @@ class DestroyTelegramAppTestCase(APIBaseTestCase):
 
     def test_destroy_generic_channel_with_authorization_not_setted(self):
         self.user_authorization.set_role(ProjectAuthorization.ROLE_NOT_SETTED)
+        response = self.request.delete(self.url, uuid=self.app.uuid, code=self.code)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_destroy_generic_channel_with_internal_permission_only(self):
+        """Should allow destroy if user has can_communicate_internally"""
+        self.user_authorization.delete()
+        self.grant_permission(self.user, "can_communicate_internally")
+
+        response = self.request.delete(self.url, uuid=self.app.uuid, code=self.code)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_destroy_generic_channel_without_permission_and_authorization(self):
+        """Should return 403 if user has neither permission nor authorization"""
+        self.user_authorization.delete()
+        self.clear_permissions(self.user)
+
         response = self.request.delete(self.url, uuid=self.app.uuid, code=self.code)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
