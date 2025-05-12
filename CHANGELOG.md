@@ -1,3 +1,11 @@
+v4.4.0
+----------
+* fix: adjust internall permissions for communicate internally
+* fix: permissions tests cases
+* fix: Missing TTL on Redis sync lock for WhatsApp phone number and Waba
+* feat: add validations for sellers and skus
+* Feature/meta sync on demand 
+
 v4.3.3
 ----------
 * fix: wpp cloud insights view returning null phone_numbers
