@@ -159,19 +159,19 @@ class SyncOnDemandUseCaseTest(TestCase):
 
         self.assertEqual(self.mock_celery_app.send_task.call_count, 2)
 
-    @patch("marketplace.applications.models.App.objects.filter")
-    def test_get_vtex_app_returns_app(self, mock_filter):
+    @patch("marketplace.applications.models.App.objects.get")
+    def test_get_vtex_app_returns_app(self, mock_get):
         mock_app = Mock()
-        mock_filter.return_value.first.return_value = mock_app
+        mock_get.return_value = mock_app
 
         result = self.use_case._get_vtex_app("some-uuid")
 
-        mock_filter.assert_called_once_with(flow_object_uuid="some-uuid", code="vtex")
+        mock_get.assert_called_once_with(flow_object_uuid="some-uuid", code="vtex")
         self.assertEqual(result, mock_app)
 
-    @patch("marketplace.applications.models.App.objects.filter")
-    def test_get_vtex_app_raises_not_found(self, mock_filter):
-        mock_filter.return_value.first.side_effect = App.DoesNotExist
+    @patch("marketplace.applications.models.App.objects.get")
+    def test_get_vtex_app_raises_not_found(self, mock_get):
+        mock_get.side_effect = App.DoesNotExist
 
         with self.assertRaises(NotFound) as cm:
             self.use_case._get_vtex_app("some-uuid")

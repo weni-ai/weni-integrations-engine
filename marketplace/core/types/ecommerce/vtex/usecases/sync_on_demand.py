@@ -22,7 +22,7 @@ class SyncOnDemandUseCase:
 
     def _get_vtex_app(self, flow_uuid: str) -> App:
         try:
-            return App.objects.filter(flow_object_uuid=flow_uuid, code="vtex").first()
+            return App.objects.get(flow_object_uuid=flow_uuid, code="vtex")
         except App.DoesNotExist:
             raise NotFound(
                 f"No VTEX App configured with the provided flow UUID: {flow_uuid}"
