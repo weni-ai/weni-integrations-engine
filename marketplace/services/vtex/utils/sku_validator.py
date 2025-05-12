@@ -1,8 +1,11 @@
+import logging
+
 from django_redis import get_redis_connection
-
 from django.core.cache import cache
+from marketplace.wpp_products.models import Catalog, ProductValidation
 
-from marketplace.wpp_products.models import ProductValidation
+
+logger = logging.getLogger(__name__)
 
 
 class SKUValidator:
@@ -13,14 +16,23 @@ class SKUValidator:
         self.redis_client = get_redis_connection()
         self.default_timeout = 3600
 
-    def validate_product_details(self, sku_id, catalog):
-        cache_key = f"{catalog.uuid}:{sku_id}"
+    def validate_product_details(self, sku_id: str, catalog: Catalog):
+        # Ensure SKU ID is a non-empty string
+        if not isinstance(sku_id, str) or not sku_id.strip():
+            logger.error(
+                f"Invalid sku_id: Expected non-empty string, got {sku_id} (type: {type(sku_id).__name__})"
+            )
+            return None
+
+        cache_key = f"{str(catalog.uuid)}:{sku_id}"
         cached_validation = cache.get(cache_key)
 
         if cached_validation is not None:
             is_valid, classification = cached_validation
             if not is_valid:
-                print(f"SKU:{sku_id} is invalid in cache for catalog: {catalog.name}")
+                logger.info(
+                    f"SKU:{sku_id} is invalid in cache for catalog: {catalog.name}"
+                )
                 return None
             return self.service.get_product_details(sku_id, self.domain)
 
@@ -32,7 +44,7 @@ class SKUValidator:
 
         if is_valid is not None:
             if not is_valid:
-                print(
+                logger.info(
                     f"SKU:{sku_id} is invalid in the database for catalog: {catalog.name}"
                 )
                 cache.set(
@@ -74,7 +86,7 @@ class SKUValidator:
                 classification=classification,
                 description=product_description,
             )
-            print(f"{classification} is not a valid category")
+            logger.info(f"{classification} is not a valid category")
             return None
 
         cache.set(cache_key, (is_valid, classification), timeout=self.default_timeout)
@@ -85,10 +97,10 @@ class SKUValidator:
             response = self.zeroshot_client.validate_product_policy(product_description)
             response = response["output"]
             classification = response["classification"]
-            # if ither comes false it means that the product is within some goal exclusion rule
+            # if other comes false it means that the product is within some goal exclusion rule
             is_valid = response["other"]
         except Exception as e:
-            print(f"An error ocurred on get policy on zeroshot {e}")
+            logger.info(f"An error occurred on get policy on zeroshot {e}")
             is_valid = True
             classification = "Valid because exception"
             return is_valid, classification

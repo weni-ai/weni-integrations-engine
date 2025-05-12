@@ -323,6 +323,21 @@ class ProductProcessor:
         Returns:
             List of processed products (0 or 1)
         """
+        # Input validation
+        if not seller_id or not isinstance(seller_id, str):
+            logger.error(
+                f"Invalid seller_id: {seller_id}. Expected non-empty string. "
+                f"Received: {seller_id} (type: {type(seller_id).__name__})"
+            )
+            return []
+
+        if not sku_id or not isinstance(sku_id, str):
+            logger.error(
+                f"Invalid sku_id: {sku_id}. Expected non-empty string. "
+                f"Received: {sku_id} (type: {type(sku_id).__name__})"
+            )
+            return []
+
         try:
             product_details = self.validator_service.validate_product_details(
                 sku_id, self.catalog
@@ -365,6 +380,28 @@ class ProductProcessor:
         Returns:
             List of processed products (0 or more).
         """
+        # Input validation
+        if not sku_id or not isinstance(sku_id, str):
+            logger.error(
+                f"Invalid sku_id: {sku_id}. Expected non-empty string. "
+                f"Received: {sku_id} (type: {type(sku_id).__name__})"
+            )
+            return []
+
+        if not sellers or not isinstance(sellers, list):
+            logger.error(
+                f"Invalid sellers: {sellers}. Expected non-empty list. "
+                f"Received: {sellers} (type: {type(sellers).__name__})"
+            )
+            return []
+
+        if not all(isinstance(seller, str) and seller for seller in sellers):
+            logger.error(
+                f"Invalid seller values in sellers list. All sellers must be non-empty strings. "
+                f"Received: {sellers} (types: {[type(seller).__name__ for seller in sellers]})"
+            )
+            return []
+
         try:
             product_details = self.validator_service.validate_product_details(
                 sku_id, self.catalog
@@ -498,12 +535,19 @@ class BatchProcessor:
         def worker_job():
             while not self.queue.empty():
                 item = self.queue.get()
+
+                # In a multi-threaded context, Redis queue may return None
+                # when another thread has already consumed the last item.
+                # We skip None values to avoid unnecessary processing or crashes.
+                if item is None:
+                    continue
                 try:
                     if mode == "seller_sku":
                         seller_id, sku_id = item.split("#")
                         result = processor.process_seller_sku(seller_id, sku_id)
                     else:  # mode "single"
-                        result = processor.process_single_sku(item, sellers)
+                        sku_id = str(item)
+                        result = processor.process_single_sku(sku_id, sellers)
                         if self.temp_queue:
                             self.temp_queue.put(item)
                     with self.progress_lock:
