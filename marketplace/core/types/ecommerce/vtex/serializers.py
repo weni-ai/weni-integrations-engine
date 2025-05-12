@@ -84,3 +84,8 @@ class FirstProductInsertSerializer(serializers.Serializer):
         required=True,
         help_text="The catalog identifier to be linked with the VTEX app.",
     )
+
+
+class SyncOnDemandSerializer(serializers.Serializer):
+    sku_ids = serializers.ListField(child=serializers.CharField(), required=True)
+    seller = serializers.CharField(required=False)
