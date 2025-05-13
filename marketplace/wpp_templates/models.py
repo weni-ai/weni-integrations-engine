@@ -57,6 +57,8 @@ class TemplateMessage(models.Model):
     )
     template_type = models.CharField(max_length=100, choices=TEMPLATE_TYPES_CHOICES)
 
+    gallery_version = models.UUIDField(null=True, blank=True, unique=True)
+
     def verify_namespace():
         pass  # pragma: no cover
 

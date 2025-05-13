@@ -2,6 +2,7 @@ import logging
 
 from celery import shared_task
 
+from marketplace.wpp_templates.factories import create_webhook_event_processor
 from marketplace.wpp_templates.usecases.template_library_creation import (
     TemplateCreationUseCase,
 )
@@ -11,8 +12,6 @@ from marketplace.wpp_templates.usecases.template_library_status import (
 from marketplace.wpp_templates.usecases.template_sync import TemplateSyncUseCase
 
 from marketplace.applications.models import App
-
-from .utils import WebhookEventProcessor
 
 
 logger = logging.getLogger(__name__)
@@ -40,11 +39,56 @@ def refresh_whatsapp_templates_from_facebook():
 
 @shared_task(track_started=True, name="update_templates_by_webhook")
 def update_templates_by_webhook(**kwargs):  # pragma: no cover
-    allowed_event_types = [
-        "message_template_status_update",
-    ]
+    """
+    Celery task to handle WhatsApp webhook events related to message template status updates.
+
+    This task processes events from the WhatsApp Business API when a template status changes
+    (e.g., to APPROVED, REJECTED, etc.). It reads all webhook entries and delegates the
+    handling of supported events to the WebhookEventProcessor.
+
+    Args:
+        **kwargs: Expected to contain a key `webhook_data` with the webhook payload.
+
+    Example:
+        webhook_data = {
+            "object": "whatsapp_business_account",
+            "entry": [
+                {
+                    "id": "123456789012345",
+                    "time": 1715100000,
+                    "changes": [
+                        {
+                            "field": "message_template_status_update",
+                            "value": {
+                                "event": "APPROVED",
+                                "message_template_id": 9988776655443322,
+                                "message_template_name": "order_confirmation",
+                                "message_template_language": "en_US",
+                                "reason": None
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+
+    Notes:
+        - Only events with `field` equal to "message_template_status_update" are processed.
+        - If the `reason` field is null, it is defaulted to an empty string.
+        - The processor handles each app linked to the provided WABA ID.
+
+    Logs:
+        - Full incoming webhook payload.
+        - Mapped and unmapped event types.
+        - Processing results for each app/template.
+    """
+    allowed_event_types = ["message_template_status_update"]
     webhook_data = kwargs.get("webhook_data")
+
     logger.info(f"Update templates by webhook data received: {webhook_data}")
+
+    processor = create_webhook_event_processor()
+
     for entry in webhook_data.get("entry", []):
         whatsapp_business_account_id = entry.get("id")
         for change in entry.get("changes", []):
@@ -54,7 +98,7 @@ def update_templates_by_webhook(**kwargs):  # pragma: no cover
                 value["reason"] = ""
 
             if field in allowed_event_types:
-                WebhookEventProcessor.process_event(
+                processor.process_event(
                     whatsapp_business_account_id, value, field, webhook_data
                 )
             else:
