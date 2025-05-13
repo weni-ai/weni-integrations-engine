@@ -1,3 +1,7 @@
+v4.4.1
+----------
+* feat: inject handler into WebhookEventProcessor and support gallery version
+
 v4.4.0
 ----------
 * fix: adjust internall permissions for communicate internally
