@@ -8,7 +8,9 @@ from django.conf import settings
 
 from marketplace.applications.models import App
 
+from marketplace.clients.commerce.client import CommerceClient
 from marketplace.clients.exceptions import CustomAPIException
+from marketplace.services.commerce.service import CommerceService
 from marketplace.wpp_templates.models import (
     TemplateButton,
     TemplateMessage,
@@ -35,11 +37,13 @@ class TemplateCreationUseCase:
         app: App,
         service: Optional[TemplateService] = None,
         status_use_case: Optional[TemplateLibraryStatusUseCase] = None,
+        commerce_service: Optional[CommerceService] = None,
     ):
         self.app = app
         self.service = service or TemplateService(
             client=FacebookClient(app.apptype.get_system_access_token(app))
         )
+        self.commerce_service = commerce_service or CommerceService(CommerceClient())
         self.status_use_case = status_use_case or TemplateLibraryStatusUseCase(app)
 
     def create_library_template_messages_batch(
@@ -144,6 +148,65 @@ class TemplateCreationUseCase:
         return {
             "message": "Library templates creation process initiated",
             "templates_status": self.status_use_case._get_template_statuses_from_redis(),
+        }
+
+    def create_library_template_single(
+        self, template_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Create a single library template and optionally link a gallery version.
+
+        This method performs the following operations:
+        - Sends the template to Meta to create a single-language template.
+        - Saves the resulting TemplateMessage and TemplateTranslation locally.
+        - Optionally associates a gallery_template_version to the template.
+        - Notifies Commerce if the status is not 'PENDING' and gallery_version is defined.
+
+        Args:
+            template_data (Dict[str, Any]): A dictionary containing template information,
+            including an optional 'gallery_version'.
+
+        Returns:
+            Dict[str, Any]: A response summary with the creation status.
+        """
+        waba_id = self.app.config["wa_waba_id"]
+
+        # Extract and remove gallery_version if present
+        gallery_version = template_data.pop("gallery_version", None)
+
+        # Send to Meta and persist locally
+        response_data = self.service.create_library_template_message(
+            waba_id=waba_id,
+            template_data=template_data,
+        )
+        translation = self._save_template_in_db(template_data, response_data)
+
+        # Associate gallery version if defined
+        if gallery_version:
+            translation.template.gallery_version = gallery_version
+            translation.template.save()
+
+            # Notify Commerce if the template is not pending and a gallery version is defined
+            status = response_data.get("status")
+            if status != "PENDING":
+                try:
+                    self.commerce_service.send_gallery_template_version(
+                        gallery_version_uuid=str(gallery_version),
+                        status=response_data["status"],
+                    )
+                    logger.info(
+                        f"[Commerce] Gallery version {gallery_version} for template: {translation.template.name}, "
+                        f"translation: {translation.language}, status: {translation.status} sent successfully."
+                    )
+                except Exception as e:
+                    logger.error(
+                        f"[Commerce] Failed to send gallery version for template: {translation.template.name}, "
+                        f"translation: {translation.language}, status: {translation.status}, error: {e}"
+                    )
+
+        return {
+            "message": "Template created successfully.",
+            "template_response": response_data,
         }
 
     def _schedule_final_sync(self):
