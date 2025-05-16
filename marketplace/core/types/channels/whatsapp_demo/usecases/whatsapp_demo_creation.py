@@ -19,11 +19,9 @@ class EnsureWhatsAppDemoAppUseCase:
         if app:
             return app
 
-        app = App.objects.create(
+        app = WhatsAppDemoType().create_app(
             project_uuid=self.project_uuid,
-            code=WhatsAppDemoType.code,
-            flows_type_code=WhatsAppDemoType.flows_type_code,
-            platform=WhatsAppDemoType.platform,
+            created_by=self.user,
         )
 
         # TODO: We should change this to use the FlowsClient in the future
