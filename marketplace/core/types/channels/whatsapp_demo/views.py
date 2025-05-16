@@ -6,7 +6,14 @@ from rest_framework.response import Response
 from rest_framework.exceptions import NotFound, ValidationError, PermissionDenied
 
 from marketplace.core.types import views
-from .serializers import WhatsAppDemoSerializer
+from marketplace.core.types.channels.whatsapp_demo.usecases.whatsapp_demo_creation import (
+    EnsureWhatsAppDemoAppUseCase,
+)
+from .serializers import (
+    GetOrCreateWppDemoSerializer,
+    ReadWppDemoSerializer,
+    WhatsAppDemoSerializer,
+)
 from marketplace.connect.client import ConnectProjectClient, WPPRouterChannelClient
 from marketplace.accounts.models import ProjectAuthorization
 
@@ -60,3 +67,19 @@ class WhatsAppDemoViewSet(views.BaseAppTypeViewSet):
         redirect_url = app.config.get("redirect_url")
 
         return Response(dict(url=redirect_url))
+
+    @action(detail=False, methods=["POST"], url_path="get-or-create")
+    def get_or_create(self, request: "Request", **kwargs):
+        serializer = GetOrCreateWppDemoSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        project_uuid = serializer.validated_data.get("project_uuid")
+
+        use_case = EnsureWhatsAppDemoAppUseCase(
+            project_uuid=project_uuid,
+            user=request.user,
+        )
+        app = use_case.get_or_create()
+
+        response_serializer = ReadWppDemoSerializer(app)
+        return Response(response_serializer.data)
