@@ -29,6 +29,10 @@ from .serializers import TemplateMessageSerializer, TemplateTranslationSerialize
 from .languages import LANGUAGES
 from .usecases import TemplateDetailUseCase
 
+from marketplace.wpp_templates.usecases.template_library_creation import (
+    TemplateCreationUseCase,
+)
+
 
 WHATSAPP_VERSION = settings.WHATSAPP_VERSION
 
@@ -288,6 +292,15 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         return Response(
             {"message": "Library template task created."}, status=status.HTTP_200_OK
         )
+
+    @action(detail=False, methods=["POST"], url_path="create-library-template")
+    def create_library_template(self, request, app_uuid=None, uuid=None):
+        app = get_object_or_404(App, uuid=app_uuid)
+
+        use_case = TemplateCreationUseCase(app=app)
+        response = use_case.create_library_template_single(request.data)
+
+        return Response(response, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["GET"])
     def template_detail(self, request, app_uuid=None, uuid=None):
