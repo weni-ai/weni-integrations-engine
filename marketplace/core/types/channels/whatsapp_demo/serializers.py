@@ -36,7 +36,7 @@ class GetOrCreateWppDemoSerializer(serializers.Serializer):
 
 class ReadWppDemoSerializer(serializers.Serializer):
     uuid = serializers.UUIDField()
-    flows_object_uuid = serializers.UUIDField()
+    flow_object_uuid = serializers.UUIDField()
     project_uuid = serializers.UUIDField()
     config = serializers.SerializerMethodField()
 
