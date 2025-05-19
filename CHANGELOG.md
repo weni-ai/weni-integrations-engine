@@ -1,3 +1,8 @@
+v4.4.2
+----------
+* feat: get or create wpp-demo by project uuid
+* feat: create library template with gallery version
+
 v4.4.1
 ----------
 * feat: inject handler into WebhookEventProcessor and support gallery version
