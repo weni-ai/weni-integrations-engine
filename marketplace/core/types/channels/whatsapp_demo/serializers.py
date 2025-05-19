@@ -28,3 +28,17 @@ class WhatsAppDemoSerializer(AppTypeBaseSerializer):
 
     def get_redirect_url(self, instance) -> str:
         return instance.config.get("redirect_url")
+
+
+class GetOrCreateWppDemoSerializer(serializers.Serializer):
+    project_uuid = serializers.UUIDField()
+
+
+class ReadWppDemoSerializer(serializers.Serializer):
+    uuid = serializers.UUIDField()
+    flow_object_uuid = serializers.UUIDField()
+    project_uuid = serializers.UUIDField()
+    config = serializers.SerializerMethodField()
+
+    def get_config(self, instance) -> str:
+        return instance.config
