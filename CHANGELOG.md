@@ -1,3 +1,7 @@
+v4.4.3
+----------
+* fix: force sync app templates on update template version 
+
 v4.4.2
 ----------
 * feat: get or create wpp-demo by project uuid
