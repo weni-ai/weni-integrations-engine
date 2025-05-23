@@ -6,6 +6,8 @@ from typing import Callable, Optional, TYPE_CHECKING
 from marketplace.applications.models import App
 from .models import TemplateMessage, TemplateTranslation
 
+from marketplace.wpp_templates.usecases.template_sync import TemplateSyncUseCase
+
 
 if TYPE_CHECKING:  # pragma: no cover
     from marketplace.services.flows.service import FlowsService
@@ -35,7 +37,6 @@ class TemplateStatusUpdateHandler:
         translation: TemplateTranslation,
         status: str,
         webhook: dict,
-        raw_data: dict,
     ) -> None:
         """
         Handles the processing of a single template translation status update.
@@ -65,12 +66,12 @@ class TemplateStatusUpdateHandler:
                 f"Proceeding with external notifications."
             )
 
-        # Prepare template data for external systems
-        template_data = extract_template_data(translation)
-
         # Always notify Commerce if gallery version is defined
         if template.gallery_version:
             try:
+                # Sync templates to ensure the latest version is used
+                TemplateSyncUseCase(app).sync_templates()
+
                 self.commerce_service.send_gallery_template_version(
                     gallery_version_uuid=str(template.gallery_version), status=status
                 )
@@ -83,21 +84,23 @@ class TemplateStatusUpdateHandler:
                     f"[Commerce] Failed to send gallery version for template: {template.name}, "
                     f"translation: {translation.language}, status: {status}, error: {e}"
                 )
-
-        # Always notify Flows
-        try:
-            self.flows_service.update_facebook_templates_webhook(
-                flow_object_uuid=str(app.flow_object_uuid),
-                template_data=template_data,
-                template_name=template.name,
-                webhook=webhook,
-            )
-            self.logger.info("[Flows] Template update sent to Flows.")
-        except Exception as e:
-            self.logger.error(
-                f"[Flows] Failed to send template update: {template.name}, "
-                f"translation: {translation.language}, error: {e}"
-            )
+        else:
+            try:
+                # Prepare template data for Flows
+                template_data = extract_template_data(translation)
+                # Notify Flows
+                self.flows_service.update_facebook_templates_webhook(
+                    flow_object_uuid=str(app.flow_object_uuid),
+                    template_data=template_data,
+                    template_name=template.name,
+                    webhook=webhook,
+                )
+                self.logger.info("[Flows] Template update sent to Flows.")
+            except Exception as e:
+                self.logger.error(
+                    f"[Flows] Failed to send template update: {template.name}, "
+                    f"translation: {translation.language}, error: {e}"
+                )
 
         # Always update local use case (even if status didn't change)
         try:
@@ -161,7 +164,11 @@ class WebhookEventProcessor:
                 )
                 for translation in translations:
                     self.handler.handle(
-                        app, template, translation, status, webhook, value
+                        app=app,
+                        template=template,
+                        translation=translation,
+                        status=status,
+                        webhook=webhook,
                     )
             except Exception as e:
                 self.logger.error(
