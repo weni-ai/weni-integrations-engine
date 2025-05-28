@@ -103,33 +103,38 @@ class MyAppViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class CheckAppIsIntegrated(views.APIView):
-
     permission_classes = [CanCommunicateInternally]
 
     def get(self, request):
         project_uuid = request.query_params.get("project_uuid", None)
 
         if not project_uuid:
-            return Response({"error": "project_uuid is required on query params"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "project_uuid is required on query params"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         apps = App.objects.filter(code="wpp-cloud", project_uuid=project_uuid)
 
         if not apps.exists():
-            return Response({
-                "message": "Project with whatsapp integrations not exists",
-                "data": {
-                    "has_whatsapp": False
+            return Response(
+                {
+                    "message": "Project with whatsapp integrations not exists",
+                    "data": {"has_whatsapp": False},
                 }
-            })
+            )
 
         app = apps.first()
 
         return Response(
-                {
-                    "message": "Project with whatsapp integrations exists",
-                    "data": {
-                        "has_whatsapp": True,
-                        "wpp_cloud_app_uuid": str(app.uuid),
-                        "flows_channel_uuid": str(app.flow_object_uuid)
-                    }
-                }, status=status.HTTP_200_OK)
+            {
+                "message": "Project with whatsapp integrations exists",
+                "data": {
+                    "has_whatsapp": True,
+                    "wpp_cloud_app_uuid": str(app.uuid),
+                    "flows_channel_uuid": str(app.flow_object_uuid),
+                    "phone_number": app.config.get("wa_number"),
+                },
+            },
+            status=status.HTTP_200_OK,
+        )
