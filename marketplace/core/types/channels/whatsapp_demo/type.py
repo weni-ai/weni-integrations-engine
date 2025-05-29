@@ -2,8 +2,10 @@ from typing import TYPE_CHECKING, Any
 
 from decouple import config
 
+from marketplace.clients.flows.client import FlowsClient
 from marketplace.core.types.base import AppType
 from marketplace.applications.models import App
+from marketplace.services.flows.service import FlowsService
 from .views import WhatsAppDemoViewSet
 
 
@@ -17,14 +19,14 @@ class WhatsAppDemoType(AppType):
     view_class = WhatsAppDemoViewSet
 
     NUMBER = config("ROUTER_NUMBER")
-    COUNTRY = config("ROUTER_COUNTRY", "BR")
-    BASE_URL = config("ROUTER_BASE_URL")
-    USERNAME = config("ROUTER_USERNAME")
-    PASSWORD = config("ROUTER_PASSWORD")
+    WABA_ID = config("ROUTER_WABA_ID")
+    BUSINESS_ID = config("ROUTER_BUSINESS_ID")
+    VERIFIED_NAME = config("ROUTER_VERIFIED_NAME")
+    PHONE_NUMBER_ID = config("ROUTER_PHONE_NUMBER_ID")
     FACEBOOK_NAMESPACE = config("ROUTER_FACEBOOK_NAMESPACE")
 
     code = "wpp-demo"
-    flows_type_code = "WA"
+    flows_type_code = "WAC"
     name = "WhatsApp Demo"
     description = "WhatsAppDemo.data.description"
     summary = "WhatsAppDemo.data.summary"
@@ -44,32 +46,33 @@ class WhatsAppDemoType(AppType):
 
     @classmethod
     def configure_app(
-        cls, app: App, user: "User", channel_client: Any, channel_token_client: Any
+        cls, app: App, user: "User", channel_token_client: Any
     ) -> App:
-        data = dict(
-            number=cls.NUMBER,
-            country=cls.COUNTRY,
-            base_url=cls.BASE_URL,
-            username=cls.USERNAME,
-            password=cls.PASSWORD,
-            facebook_namespace=cls.FACEBOOK_NAMESPACE,
-            facebook_template_list_domain="graph.facebook.com",
-            facebook_business_id="null",
-            facebook_access_token="null",
+        config = dict(
+            wa_number=cls.NUMBER,
+            wa_verified_name=cls.VERIFIED_NAME,
+            wa_waba_id=cls.WABA_ID,
+            wa_currency="USD",
+            wa_business_id=cls.BUSINESS_ID,
+            wa_message_template_namespace=cls.FACEBOOK_NAMESPACE,
+            wa_pin=None,
         )
 
-        channel = channel_client.create_channel(
-            user.email, str(app.project_uuid), data, app.flows_type_code
+        flows_service = FlowsService(client=FlowsClient())
+        channel = flows_service.create_wac_channel(
+            user.email, str(app.project_uuid), cls.PHONE_NUMBER_ID, config
         )
 
         app.config["title"] = channel.get("name")
         app.flow_project_uuid = channel.get("uuid")
+        app.config["wa_phone_number_id"] = cls.PHONE_NUMBER_ID
+        app.config["has_insights"] = False
 
         channel_token = channel_token_client.get_channel_token(
             channel.get("uuid"), channel.get("name")
         )
 
-        app.config["routerToken"] = channel_token
+        app.config["router_token"] = channel_token
         app.config["redirect_url"] = f"https://wa.me/{cls.NUMBER}?text={channel_token}"
         app.modified_by = user
         app.configured = True

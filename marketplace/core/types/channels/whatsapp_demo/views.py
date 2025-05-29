@@ -14,7 +14,7 @@ from .serializers import (
     ReadWppDemoSerializer,
     WhatsAppDemoSerializer,
 )
-from marketplace.connect.client import ConnectProjectClient, WPPRouterChannelClient
+from marketplace.connect.client import WPPRouterChannelClient
 from marketplace.accounts.models import ProjectAuthorization
 
 
@@ -33,10 +33,9 @@ class WhatsAppDemoViewSet(views.BaseAppTypeViewSet):
         type_class = self.type_class
         app = serializer.save(code=self.type_class.code)
 
-        channel_client = ConnectProjectClient()
         channel_token_client = WPPRouterChannelClient()
 
-        type_class.configure_app(app, user, channel_client, channel_token_client)
+        type_class.configure_app(app, user, channel_token_client)
 
     @action(detail=False, methods=["GET"])
     def url(self, request: "Request", **kwargs):

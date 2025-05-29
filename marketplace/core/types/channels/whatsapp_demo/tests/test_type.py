@@ -1,5 +1,5 @@
 import uuid
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 
@@ -29,10 +29,17 @@ class ConfigureWhatsAppDemoTypeTestCase(TestCase):
             created_by=self.user, project_uuid=uuid.uuid4()
         )
 
-        self.channel_client = self._get_channel_client_mock("Test App Name", "1234")
         self.channel_token_client = self._get_channel_token_client_mock(
             "Test App Name", "1234"
         )
+
+        self.create_wac_channel_patcher = patch("marketplace.services.flows.service.FlowsService.create_wac_channel")
+        self.mock_create_wac_channel = self.create_wac_channel_patcher.start()
+        self.mock_create_wac_channel.return_value = {
+            "uuid": str(uuid.uuid4()),
+            "name": "Test App Name",
+        }
+        self.addCleanup(self.create_wac_channel_patcher.stop)
 
     def _get_channel_client_mock(self, name: str, uuid: str) -> MagicMock:
         channel_client_mock = MagicMock()
@@ -48,19 +55,19 @@ class ConfigureWhatsAppDemoTypeTestCase(TestCase):
 
     def test_app_config_title_equals_channel_name(self):
         app = self.apptype_class.configure_app(
-            self.app, self.user, self.channel_client, self.channel_token_client
+            self.app, self.user, self.channel_token_client
         )
         self.assertEqual(app.config.get("title"), "Test App Name")
 
     def test_app_config_router_token_equals_channel_token(self):
         app = self.apptype_class.configure_app(
-            self.app, self.user, self.channel_client, self.channel_token_client
+            self.app, self.user, self.channel_token_client
         )
-        self.assertEqual(app.config.get("routerToken"), "fake-token")
+        self.assertEqual(app.config.get("router_token"), "fake-token")
 
     def test_app_config_redirect_url_has_channel_token(self):
         redirect_url = f"https://wa.me/{self.apptype_class.NUMBER}?text=fake-token"
         app = self.apptype_class.configure_app(
-            self.app, self.user, self.channel_client, self.channel_token_client
+            self.app, self.user, self.channel_token_client
         )
         self.assertEqual(app.config.get("redirect_url"), redirect_url)

@@ -33,19 +33,27 @@ class CreateWhatsAppDemoAppTestCase(PermissionTestCaseMixin, APIBaseTestCase):
             project_uuid=self.project_uuid, role=ProjectAuthorization.ROLE_CONTRIBUTOR
         )
 
+        # Patch for FlowsService.create_wac_channel
+        self.create_wac_channel_patcher = patch("marketplace.services.flows.service.FlowsService.create_wac_channel")
+        self.mock_create_wac_channel = self.create_wac_channel_patcher.start()
+        self.addCleanup(self.create_wac_channel_patcher.stop)
+
+        # Patch for WPPRouterChannelClient.get_channel_token
+        self.get_channel_token_patcher = patch("marketplace.connect.client.WPPRouterChannelClient.get_channel_token")
+        self.mock_get_channel_token = self.get_channel_token_patcher.start()
+        self.addCleanup(self.get_channel_token_patcher.stop)
+
     @property
     def view(self):
         return self.view_class.as_view(APIBaseTestCase.ACTION_CREATE)
 
-    @patch("marketplace.connect.client.WPPRouterChannelClient.get_channel_token")
-    @patch("marketplace.connect.client.ConnectProjectClient.create_channel")
-    def test_request_ok(self, create_channel_request, get_channel_token_request):
+    def test_request_ok(self):
         channel_uuid = str(uuid.uuid4())
 
-        create_channel_request.side_effect = [
+        self.mock_create_wac_channel.side_effect = [
             dict(name="WhatsApp: +559999998888", uuid=channel_uuid)
         ]
-        get_channel_token_request.side_effect = [
+        self.mock_get_channel_token.side_effect = [
             "WhatsApp:+559999998888-whatsapp-demo-v5ciobe7te"
         ]
 
@@ -56,7 +64,7 @@ class CreateWhatsAppDemoAppTestCase(PermissionTestCaseMixin, APIBaseTestCase):
         self.assertEqual(str(app.uuid), response.json["uuid"])
         self.assertEqual(app.config["title"], "WhatsApp: +559999998888")
         self.assertEqual(
-            app.config["routerToken"], "WhatsApp:+559999998888-whatsapp-demo-v5ciobe7te"
+            app.config["router_token"], "WhatsApp:+559999998888-whatsapp-demo-v5ciobe7te"
         )
         self.assertEqual(
             app.config["redirect_url"],
@@ -71,36 +79,28 @@ class CreateWhatsAppDemoAppTestCase(PermissionTestCaseMixin, APIBaseTestCase):
         response = self.request.post(self.url, self.body)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    @patch("marketplace.connect.client.WPPRouterChannelClient.get_channel_token")
-    @patch("marketplace.connect.client.ConnectProjectClient.create_channel")
-    def test_create_app_platform(
-        self, create_channel_request, get_channel_token_request
-    ):
+    def test_create_app_platform(self):
         self.view_class.type_class.NUMBER = "+559999998888"
         channel_uuid = str(uuid.uuid4())
 
-        create_channel_request.side_effect = [
+        self.mock_create_wac_channel.side_effect = [
             dict(name="WhatsApp: +559999998888", uuid=channel_uuid)
         ]
-        get_channel_token_request.side_effect = [
+        self.mock_get_channel_token.side_effect = [
             "WhatsApp:+559999998888-whatsapp-demo-v5ciobe7te"
         ]
 
         response = self.request.post(self.url, self.body)
         self.assertEqual(response.json["platform"], App.PLATFORM_WENI_FLOWS)
 
-    @patch("marketplace.connect.client.WPPRouterChannelClient.get_channel_token")
-    @patch("marketplace.connect.client.ConnectProjectClient.create_channel")
-    def test_get_app_with_respective_project_uuid(
-        self, create_channel_request, get_channel_token_request
-    ):
+    def test_get_app_with_respective_project_uuid(self):
         self.view_class.type_class.NUMBER = "+559999998888"
         channel_uuid = str(uuid.uuid4())
 
-        create_channel_request.side_effect = [
+        self.mock_create_wac_channel.side_effect = [
             dict(name="WhatsApp: +559999998888", uuid=channel_uuid)
         ]
-        get_channel_token_request.side_effect = [
+        self.mock_get_channel_token.side_effect = [
             "WhatsApp:+559999998888-whatsapp-demo-v5ciobe7te"
         ]
 
@@ -113,18 +113,14 @@ class CreateWhatsAppDemoAppTestCase(PermissionTestCaseMixin, APIBaseTestCase):
         response = self.request.post(self.url, self.body)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    @patch("marketplace.connect.client.WPPRouterChannelClient.get_channel_token")
-    @patch("marketplace.connect.client.ConnectProjectClient.create_channel")
-    def test_create_app_with_internal_permission_only(
-        self, create_channel_request, get_channel_token_request
-    ):
+    def test_create_app_with_internal_permission_only(self):
         self.user_authorization.delete()
         self.grant_permission(self.user, "can_communicate_internally")
 
-        create_channel_request.return_value = dict(
+        self.mock_create_wac_channel.return_value = dict(
             name="WhatsApp: +559999998888", uuid=str(uuid.uuid4())
         )
-        get_channel_token_request.return_value = (
+        self.mock_get_channel_token.return_value = (
             "WhatsApp:+559999998888-whatsapp-demo-token"
         )
 
