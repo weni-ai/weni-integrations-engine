@@ -1,6 +1,10 @@
+v4.4.4
+----------
+* feat: add phone number to CheckAppIsIntegrated response
+
 v4.4.3
 ----------
-* fix: force sync app templates on update template version 
+* fix: force sync app templates on update template version
 
 v4.4.2
 ----------
