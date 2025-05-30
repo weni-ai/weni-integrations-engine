@@ -51,10 +51,10 @@ class WhatsAppDemoType(AppType):
         config = dict(
             wa_number=cls.NUMBER,
             wa_verified_name=cls.VERIFIED_NAME,
-            wa_waba_id=cls.WABA_ID,
+            wa_waba_id=None,
             wa_currency="USD",
             wa_business_id=cls.BUSINESS_ID,
-            wa_message_template_namespace=cls.FACEBOOK_NAMESPACE,
+            wa_message_template_namespace=None,
             wa_pin=None,
         )
 
