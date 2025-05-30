@@ -1,3 +1,7 @@
+v4.5.0
+----------
+* feat: refactor WhatsApp Demo to use WAC
+
 v4.4.4
 ----------
 * feat: add phone number to CheckAppIsIntegrated response
