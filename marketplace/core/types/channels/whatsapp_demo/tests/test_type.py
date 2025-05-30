@@ -39,7 +39,12 @@ class ConfigureWhatsAppDemoTypeTestCase(TestCase):
             "uuid": str(uuid.uuid4()),
             "name": "Test App Name",
         }
+
+        self.update_config_patcher = patch("marketplace.services.flows.service.FlowsService.update_config")
+        self.mock_update_config = self.update_config_patcher.start()
+
         self.addCleanup(self.create_wac_channel_patcher.stop)
+        self.addCleanup(self.update_config_patcher.stop)
 
     def _get_channel_client_mock(self, name: str, uuid: str) -> MagicMock:
         channel_client_mock = MagicMock()

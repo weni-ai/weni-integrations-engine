@@ -78,3 +78,6 @@ class FlowsService:
         return self.client.create_channel(
             user_email, project_uuid, data, channeltype_code
         )
+
+    def update_config(self, config: dict, flow_object_uuid: str):
+        return self.client.update_config(config, flow_object_uuid)

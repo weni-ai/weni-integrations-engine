@@ -64,7 +64,7 @@ class WhatsAppDemoType(AppType):
         )
 
         app.config["title"] = channel.get("name")
-        app.flow_project_uuid = channel.get("uuid")
+        app.flow_object_uuid = channel.get("uuid")
         app.config["wa_phone_number_id"] = cls.PHONE_NUMBER_ID
         app.config["has_insights"] = False
 
@@ -77,5 +77,8 @@ class WhatsAppDemoType(AppType):
         app.modified_by = user
         app.configured = True
         app.save()
+
+        config["router_token"] = channel_token
+        flows_service.update_config(config, app.flow_object_uuid)
 
         return app

@@ -36,11 +36,18 @@ class CreateWhatsAppDemoAppTestCase(PermissionTestCaseMixin, APIBaseTestCase):
         # Patch for FlowsService.create_wac_channel
         self.create_wac_channel_patcher = patch("marketplace.services.flows.service.FlowsService.create_wac_channel")
         self.mock_create_wac_channel = self.create_wac_channel_patcher.start()
-        self.addCleanup(self.create_wac_channel_patcher.stop)
+
+        # Patch for FlowsService.update_config
+        self.update_config_patcher = patch("marketplace.services.flows.service.FlowsService.update_config")
+        self.mock_update_config = self.update_config_patcher.start()
 
         # Patch for WPPRouterChannelClient.get_channel_token
         self.get_channel_token_patcher = patch("marketplace.connect.client.WPPRouterChannelClient.get_channel_token")
         self.mock_get_channel_token = self.get_channel_token_patcher.start()
+
+        # Add cleanup for all patches
+        self.addCleanup(self.create_wac_channel_patcher.stop)
+        self.addCleanup(self.update_config_patcher.stop)
         self.addCleanup(self.get_channel_token_patcher.stop)
 
     @property
