@@ -236,3 +236,14 @@ class FlowsServiceTestCase(TestCase):
 
         # Assert that the result matches the mock return value
         self.assertEqual(result, {"uuid": "mock_uuid", "name": "Test Channel"})
+
+    def test_update_config(self):
+        config = {"key": "value"}
+        flow_object_uuid = "123456789"
+
+        with patch.object(self.mock_client, "update_config") as mock_method:
+            mock_method.return_value = "Mocked Result"
+            result = self.flows_service.update_config(config, flow_object_uuid)
+
+        mock_method.assert_called_once_with(config, flow_object_uuid)
+        self.assertEqual(result, "Mocked Result")
