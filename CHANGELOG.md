@@ -1,3 +1,7 @@
+v4.5.2
+----------
+* fix: wpp demo usecase
+
 v4.5.1
 ----------
 * fix: set wa_waba_id and wa_message_template_namespace to None in wpp-demo
