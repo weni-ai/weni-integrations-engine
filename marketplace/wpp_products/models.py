@@ -1,6 +1,7 @@
 from django.db import models
 from django.core.exceptions import ValidationError
-from django.db.models import JSONField, Max, QuerySet
+from django.db.models import JSONField, QuerySet, Subquery, OuterRef
+
 
 from typing import Optional
 
@@ -143,6 +144,7 @@ class UploadProduct(models.Model):
     )
     status = models.CharField(max_length=20, default="pending", choices=STATUS_CHOICES)
     modified_on = models.DateTimeField(auto_now=True)
+    priority = models.IntegerField(default=0)
 
     class Meta:
         indexes = [
@@ -186,18 +188,45 @@ class UploadProduct(models.Model):
     def get_latest_products(
         cls, catalog: Catalog, status: str = "pending", batch_size: Optional[int] = None
     ) -> QuerySet:
-        """Fetches the most recent product for each facebook_product_id."""
-        query = (
+        """
+        Fetches the most relevant product for each unique `facebook_product_id`,
+        prioritizing entries with higher `priority`, and within the same priority,
+        selecting the most recently modified entry.
+
+        This ensures:
+        - Only one product is returned per `facebook_product_id`
+        - Preference is given to `priority=1` over `priority=0`
+        - Among entries with the same priority, the latest `modified_on` is chosen
+
+        Args:
+            catalog (Catalog): The catalog to filter products for.
+            status (str, optional): The processing status to filter on. Default is "pending".
+            batch_size (int, optional): Limits the number of products returned.
+
+        Returns:
+            QuerySet: A queryset of the most relevant UploadProduct instances.
+        """
+        inner_query = (
+            cls.objects.filter(
+                catalog=catalog,
+                status=status,
+                facebook_product_id=OuterRef("facebook_product_id"),
+            )
+            .order_by("-priority", "-modified_on")
+            .values("id")[:1]
+        )
+
+        ids = (
             cls.objects.filter(catalog=catalog, status=status)
             .values("facebook_product_id")
-            .annotate(latest_id=Max("id"))
-            .values_list("latest_id", flat=True)
+            .annotate(best_id=Subquery(inner_query))
+            .values_list("best_id", flat=True)
         )
-        if batch_size:
-            query = query[:batch_size]
 
-        product_ids = list(query)
-        return cls.objects.filter(id__in=product_ids)
+        if batch_size:
+            ids = ids[:batch_size]
+
+        return cls.objects.filter(id__in=list(ids))
 
 
 class WebhookLog(models.Model):

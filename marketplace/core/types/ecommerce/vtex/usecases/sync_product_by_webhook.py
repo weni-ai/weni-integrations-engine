@@ -45,7 +45,7 @@ class SyncProductByWebhookUseCase:
         )
 
     def execute(
-        self, domain: str, sellers_skus: list, catalog: Catalog
+        self, domain: str, sellers_skus: list, catalog: Catalog, priority: int = 0
     ) -> List[FacebookProductDTO]:
         """
         Execute the sync process for products received via webhook.
@@ -78,6 +78,7 @@ class SyncProductByWebhookUseCase:
             sync_specific_sellers=False,
             mode="seller_sku",
             sellers=None,  # Not needed in this mode, as each item already includes the seller
+            priority=priority,
         )
 
         return result
