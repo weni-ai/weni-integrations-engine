@@ -14,43 +14,26 @@ User = get_user_model()
 
 
 class ProductFacebookManager:
-    def save_batch_product_data(
-        self,
-        products_dto: List[FacebookProductDTO],
-        catalog: Catalog,
-    ):
-        """
-        Save or update products in batch format for the new process.
+    """
+    Manages Facebook product operations, including batch processing and priority handling.
 
-        This method processes each product individually, updating existing records
-        or creating new ones as needed. It handles exceptions for each product
-        separately to ensure partial success is possible.
+    This class is responsible for managing the operations related to Facebook products,
+    such as setting batch sizes for processing and handling priority levels for product
+    operations.
+    """
+
+    def __init__(self, batch_size: int = 10_000, priority: int = 0):
+        """
+        Initialize the ProductFacebookManager with specified batch size and priority.
 
         Args:
-            products_dto: List of FacebookProductDTO objects containing product data
-            catalog: The Catalog object to associate with the products
-
-        Returns:
-            bool: True if all products were saved successfully, False otherwise
+            batch_size: The number of products to process in each batch. This determines
+                        how many items will be handled at a time during operations.
+            priority: The priority level for processing products. This can be used to
+                      order the products during processing.
         """
-        all_success = True
-        print(
-            f"Starting insertion process for {len(products_dto)} products (Batch). Catalog: {catalog.name}"
-        )
-        for product in products_dto:
-            facebook_product_id = product.id
-            try:
-                UploadProduct.objects.update_or_create(
-                    facebook_product_id=facebook_product_id,
-                    catalog=catalog,
-                    defaults={"data": product.to_meta_payload(), "status": "pending"},
-                )
-            except Exception as e:
-                print(f"Failed to save or update product: {str(e)}")
-                all_success = False
-
-        UploadProduct.remove_duplicates(catalog)
-        return all_success
+        self.batch_size = batch_size
+        self.priority = priority
 
     def bulk_save_initial_product_data(
         self, products_dto: List[FacebookProductDTO], catalog: Catalog
@@ -80,13 +63,16 @@ class ProductFacebookManager:
                 catalog=catalog,
                 data=product.to_meta_payload(),
                 status="pending",
+                priority=self.priority,
             )
             for product in products_dto
         ]
 
         try:
             with transaction.atomic():
-                UploadProduct.objects.bulk_create(new_products, batch_size=5000)
+                UploadProduct.objects.bulk_create(
+                    new_products, batch_size=self.batch_size
+                )
             print(
                 f"All {len(products_dto)} products were saved successfully in the database."
             )
