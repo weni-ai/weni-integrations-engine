@@ -15,19 +15,18 @@ from marketplace.core.types.ecommerce.vtex.serializers import (
     SyncOnDemandSerializer,
 )
 from marketplace.core.types import views
+from marketplace.core.types.ecommerce.vtex.tasks import task_sync_on_demand
 from marketplace.core.types.ecommerce.vtex.usecases.link_catalog_start_sync import (
     LinkCatalogAndStartSyncUseCase,
 )
 from marketplace.core.types.ecommerce.vtex.usecases.vtex_integration import (
     VtexIntegration,
 )
-from marketplace.core.types.ecommerce.vtex.usecases.sync_on_demand import (
-    SyncOnDemandUseCase,
-)
 
 from marketplace.services.flows.service import FlowsService
 from marketplace.clients.flows.client import FlowsClient
 from marketplace.services.vtex.app_manager import AppVtexManager
+
 from marketplace.wpp_products.utils import SellerSyncUtils
 from marketplace.accounts.permissions import ProjectManagePermission
 
@@ -245,8 +244,14 @@ class VtexSyncOnDemandView(APIView):
     def post(self, request, project_uuid: UUID, *args, **kwargs) -> Response:
         serializer = SyncOnDemandSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        use_case = SyncOnDemandUseCase()
-        use_case.execute(serializer.data, str(project_uuid))
+
+        sku_ids = serializer.validated_data.get("sku_ids")
+        seller = serializer.validated_data.get("seller")
+
+        task_sync_on_demand.apply_async(
+            args=[str(project_uuid), sku_ids, seller],
+            queue="vtex-sync-on-demand",
+        )
         return Response(
-            {"message": "Products sent to sync."}, status=status.HTTP_200_OK
+            {"message": "Products sent to sync on demand."}, status=status.HTTP_200_OK
         )
