@@ -1,3 +1,7 @@
+v4.5.3
+----------
+* fix: remove wpp demo from cloud app sync tasks
+
 v4.5.2
 ----------
 * fix: wpp demo usecase
