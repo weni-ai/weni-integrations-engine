@@ -157,6 +157,6 @@ class SyncOnDemandUseCase:
         valid_skus = sku_ids - invalid_skus
 
         for sku_id in valid_skus:
-            self._enqueue_skus(app_uuid, seller, sku_id, celery_queue)
+            self._enqueue_skus(app_uuid, seller, sku_id)
 
         self._dequeue_skus(app_uuid, celery_queue)
