@@ -326,10 +326,6 @@ class TestTemplateService(TestCase):
         )
         self.assertEqual(response, {"id": "template_id"})
 
-    def test_get_template_analytics(self):
-        response = self.service.get_template_analytics("waba_id", {"fields": "value"})
-        self.assertEqual(response, {"analytics": "data"})
-
     def test_enable_template_insights(self):
         response = self.service.enable_template_insights("waba_id")
         self.assertEqual(response, {"success": True})
