@@ -8,8 +8,6 @@ from typing import Optional, TypedDict, List
 
 from celery import Celery
 
-from marketplace.wpp_products.tasks import task_enqueue_webhook
-
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +26,7 @@ class SyncOnDemandUseCase:
     Use case for handling on-demand synchronization of products.
 
     This class manages the process of enqueuing SKU IDs for synchronization and
-    dequeuing them for processing. It ensures that only valid products are enqueued
+    dispatching them for processing. It ensures that only valid products are enqueued
     and manages the interaction with the VTEX application and Celery tasks.
     """
 
@@ -42,7 +40,7 @@ class SyncOnDemandUseCase:
         """
         self.celery_app = celery_app or _celery_app
 
-    def _get_vtex_app(self, project_uuid: str) -> App:
+    def _get_vtex_app(self, project_uuid: str) -> Optional[App]:
         """
         Retrieve the VTEX App associated with the given project UUID.
 
@@ -50,10 +48,7 @@ class SyncOnDemandUseCase:
             project_uuid: The UUID of the project to retrieve the VTEX App for.
 
         Returns:
-            The VTEX App instance.
-
-        Raises:
-            NotFound: If no VTEX App is configured with the provided project UUID.
+            The VTEX App instance or None if not found.
         """
         try:
             return App.objects.get(project_uuid=project_uuid, code="vtex")
@@ -91,35 +86,33 @@ class SyncOnDemandUseCase:
         """
         return ProductValidation.objects.filter(sku_id=sku_id, catalog=catalog).exists()
 
-    def _enqueue_skus(self, app_uuid: str, seller: str, sku_id: str):
+    def _build_batch(self, seller: str, sku_ids: List[str]) -> List[str]:
         """
-        Enqueue SKU IDs for processing in a Redis queue.
-
-        This method adds SKU IDs to a Redis queue for processing. The queue is populated
-        by various means and consumed by the dequeue process for further handling and
-        uploading results to Meta.
+        Build a batch of SKU IDs prefixed with the seller information.
 
         Args:
-            app_uuid: The UUID of the application.
-            seller: The seller associated with the SKU.
-            sku_id: The SKU ID to enqueue.
-        """
-        logger.info(f"Enqueuing sku {sku_id} for seller {seller}")
-        task_enqueue_webhook(app_uuid, seller, sku_id)
+            seller: The seller's identifier.
+            sku_ids: List of SKU IDs to be processed.
 
-    def _dequeue_skus(self, app_uuid: str, celery_queue: str):
+        Returns:
+            A list of strings combining seller and SKU IDs.
         """
-        Dequeue SKU IDs for processing.
+        return [f"{seller}#{sku_id}" for sku_id in sku_ids]
 
-        This method sends a task to dequeue SKU IDs from the Redis queue for processing.
+    def _dispatch_skus(
+        self, app_uuid: str, celery_queue: str, skus_batch: List[str]
+    ) -> None:
+        """
+        Dispatch SKU IDs for processing by sending a task to Celery.
 
         Args:
             app_uuid: The UUID of the application.
             celery_queue: The name of the Celery queue to use.
+            skus_batch: The batch of SKU IDs to process.
         """
         self.celery_app.send_task(
-            "task_dequeue_webhooks",
-            kwargs={"app_uuid": app_uuid, "celery_queue": celery_queue, "priority": 1},
+            "task_update_webhook_batch_products",
+            kwargs={"app_uuid": app_uuid, "batch": skus_batch, "priority": 1},
             queue=celery_queue,
             ignore_result=True,
         )
@@ -129,7 +122,7 @@ class SyncOnDemandUseCase:
         Execute the on-demand synchronization process.
 
         This method processes the provided SKU IDs, enqueues valid ones, and
-        initiates the dequeue process.
+        initiates the dispatch process.
 
         Args:
             data: The SyncOnDemandData containing SKU IDs and seller information.
@@ -138,12 +131,12 @@ class SyncOnDemandUseCase:
         seller = data.get("seller")
         sku_ids = set(data.get("sku_ids"))
         vtex_app = self._get_vtex_app(project_uuid)
-        catalog = vtex_app.vtex_catalogs.first()
-        celery_queue = "vtex-sync-on-demand"
 
         if not vtex_app:
             return
 
+        catalog = vtex_app.vtex_catalogs.first()
+        celery_queue = "vtex-sync-on-demand"
         app_uuid = str(vtex_app.uuid)
 
         invalid_skus = set()
@@ -156,7 +149,6 @@ class SyncOnDemandUseCase:
 
         valid_skus = sku_ids - invalid_skus
 
-        for sku_id in valid_skus:
-            self._enqueue_skus(app_uuid, seller, sku_id, celery_queue)
+        skus_batch = self._build_batch(seller, valid_skus)
 
-        self._dequeue_skus(app_uuid, celery_queue)
+        self._dispatch_skus(app_uuid, celery_queue, skus_batch)
