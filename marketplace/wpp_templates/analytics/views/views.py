@@ -7,7 +7,6 @@ from django.conf import settings
 from marketplace.clients.facebook.client import FacebookClient
 from marketplace.wpp_templates.services.facebook import FacebookService
 from marketplace.applications.models import App
-from marketplace.wpp_templates.analytics.serializers import AnalyticsSerializer
 
 
 class TemplateAnalyticsViewSet(viewsets.ViewSet):
@@ -36,12 +35,7 @@ class TemplateAnalyticsViewSet(viewsets.ViewSet):
 
     @action(detail=True, methods=["POST"])
     def template_analytics(self, request, **kwargs):
-        app = self.get_object()
-        service = self.get_app_service(app)
-        serializer = AnalyticsSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        response = service.template_analytics(app, serializer.validated_data)
-        return Response(response)
+        return Response({"detail": "This route has been moved"}, status=400)
 
     @action(detail=True, methods=["POST"])
     def enable_template_analytics(self, request, **kwargs):

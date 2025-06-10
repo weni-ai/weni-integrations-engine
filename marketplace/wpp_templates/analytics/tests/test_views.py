@@ -81,25 +81,6 @@ class MockServices(SetUpTestBase):
         patcher.start()
 
 
-class TemplateAnalyticsViewSetTestCase(MockServices):
-    current_view_mapping = {"post": "template_analytics"}
-
-    def test_get_template_analytics(self):
-        url = reverse(
-            "template-analytics",
-            kwargs={"app_uuid": self.app.uuid},
-        )
-        body = {
-            "start": "9-27-2023",
-            "end": "9-28-2023",
-            "fba_template_ids": [831797345020910, 1515371305882507, 768404021753348],
-        }
-        response = self.request.post(url, body=body, app_uuid=self.app.uuid)
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.json["data"]), 2)
-
-
 class EnableTemplateAnalyticsViewSetTestCase(MockServices):
     current_view_mapping = {"post": "enable_template_analytics"}
 

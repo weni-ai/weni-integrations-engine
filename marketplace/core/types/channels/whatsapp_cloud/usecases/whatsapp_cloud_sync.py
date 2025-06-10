@@ -1,6 +1,8 @@
 import logging
 from typing import Dict, List, Optional
 
+from decouple import config
+
 from django_redis import get_redis_connection
 from django.contrib.auth import get_user_model
 
@@ -60,6 +62,10 @@ class SyncWhatsAppCloudAppsUseCase:
     def _process_channels(self, channels: List[Dict]) -> None:
         """Process all channels from the API."""
         for channel in channels:
+            # Skipping WhatsApp demo channels
+            if channel.get("address") == config("ROUTER_PHONE_NUMBER_ID"):
+                continue
+
             try:
                 self._process_single_channel(channel)
             except Exception as e:

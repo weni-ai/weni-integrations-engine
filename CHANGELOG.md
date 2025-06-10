@@ -1,3 +1,11 @@
+v4.5.4
+----------
+* fix: disable template_analytics route and update response message
+
+v4.5.3
+----------
+* fix: remove wpp demo from cloud app sync tasks
+
 v4.5.2
 ----------
 * fix: wpp demo usecase
