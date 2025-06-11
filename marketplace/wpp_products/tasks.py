@@ -446,7 +446,9 @@ def task_enqueue_webhook(app_uuid: str, seller: str, sku_id: str):
 
 
 @celery_app.task(name="task_dequeue_webhooks")
-def task_dequeue_webhooks(app_uuid: str, celery_queue: str, batch_size: int = 5000):
+def task_dequeue_webhooks(
+    app_uuid: str, celery_queue: str, priority: int = 0, batch_size: int = 5000
+):
     """
     Dequeues webhooks from Redis and dispatches them in batches.
     """
@@ -478,7 +480,7 @@ def task_dequeue_webhooks(app_uuid: str, celery_queue: str, batch_size: int = 50
 
             celery_app.send_task(
                 "task_update_webhook_batch_products",
-                kwargs={"app_uuid": app_uuid, "batch": batch},
+                kwargs={"app_uuid": app_uuid, "batch": batch, "priority": priority},
                 queue=celery_queue,
                 ignore_result=True,
             )
@@ -497,7 +499,7 @@ def task_dequeue_webhooks(app_uuid: str, celery_queue: str, batch_size: int = 50
 
 
 @celery_app.task(name="task_update_webhook_batch_products")
-def task_update_webhook_batch_products(app_uuid: str, batch: list):
+def task_update_webhook_batch_products(app_uuid: str, batch: list, priority: int = 0):
     """
     Processes product updates in batches for a VTEX app.
     """
@@ -527,7 +529,10 @@ def task_update_webhook_batch_products(app_uuid: str, batch: list):
 
         # Initialize ProductUpdateService
         vtex_update_service = ProductUpdateService(
-            api_credentials=api_credentials, catalog=catalog, sellers_skus=batch
+            api_credentials=api_credentials,
+            catalog=catalog,
+            sellers_skus=batch,
+            priority=priority,
         )
 
         success = vtex_update_service.process_batch_sync()

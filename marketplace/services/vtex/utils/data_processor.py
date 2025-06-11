@@ -214,18 +214,27 @@ class ProductValidator:
 # --------------------------------------------------
 class ProductSaver:
     """
-    Handles batch saving of products to the database
+    Manages the batch saving of products to the database.
+
+    This class is responsible for handling the persistence of product data in batches.
+    It ensures that products are saved efficiently by grouping them into batches of a specified size.
+    Additionally, it manages the priority of product processing, which can be used to determine
+    the order in which products are handled.
     """
 
-    def __init__(self, batch_size: int = 5000):
+    def __init__(self, batch_size: int = 10_000, priority: int = 0):
         """
-        Initialize the product saver
+        Initialize the ProductSaver with specified batch size and priority.
 
         Args:
-            batch_size: Number of products to save in each batch
+            batch_size: The number of products to save in each batch. This determines how many items
+                        will be written to the database at a time.
+            priority: The priority level for processing products. This can be used to order the
+                      products during processing.
         """
         self.batch_size = batch_size
         self.sent_to_db = 0
+        self.priority = priority
 
     def save_batch(
         self, products: List[FacebookProductDTO], catalog
@@ -251,8 +260,10 @@ class ProductSaver:
             return products
         batch = products[: self.batch_size]
         try:
-            product_manager = ProductFacebookManager()
-            if product_manager.bulk_save_initial_product_data(batch, catalog):
+            product_manager = ProductFacebookManager(priority=self.priority)
+            if product_manager.bulk_save_initial_product_data(
+                products_dto=batch, catalog=catalog
+            ):
                 self.sent_to_db += len(batch)
                 UploadManager.check_and_start_upload(catalog.vtex_app.uuid)
 
@@ -625,7 +636,7 @@ class DataProcessor:
         queue: AbstractQueue = None,
         temp_queue: Optional[TempRedisQueueManager] = None,
         use_threads: bool = True,
-        batch_size: int = 5000,
+        batch_size: int = 10_000,
         max_workers: int = 100,
     ):
         """
@@ -655,6 +666,7 @@ class DataProcessor:
         sync_specific_sellers: bool = False,
         mode: str = "single",
         sellers: List[str] = None,
+        priority: int = 0,
     ) -> List[FacebookProductDTO]:
         """
         Process a list of items
@@ -677,7 +689,7 @@ class DataProcessor:
         # Create components
         extractor = ProductExtractor(store_domain or domain)
         validator = ProductValidator(rules or [])
-        saver = ProductSaver(batch_size=self.batch_size)
+        saver = ProductSaver(batch_size=self.batch_size, priority=priority)
         processor = ProductProcessor(
             catalog=catalog,
             domain=domain,
