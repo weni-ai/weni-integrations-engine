@@ -1,3 +1,7 @@
+v4.6.0
+----------
+* feat: add task_sync_on_demand for on-demand product synchronization
+
 v4.5.4
 ----------
 * fix: disable template_analytics route and update response message
