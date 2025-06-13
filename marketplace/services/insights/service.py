@@ -16,12 +16,13 @@ class InsightsService:  # pragma: no cover
     such as creating WhatsApp integrations.
     """
 
-    def __init__(self, client: InsightsClientInterface):
+    def __init__(self, client: InsightsClientInterface = None):
         """
         Initialize the InsightsService with a client.
 
         Args:
-            client: The client instance used to make API requests.
+            client: The client instance used to make API requests. If not provided,
+            a default InsightsClient will be instantiated.
         """
         self.client = client or InsightsClient()
 
@@ -48,3 +49,27 @@ class InsightsService:  # pragma: no cover
             waba_id (str): The Waba's id.
         """
         return self.client.delete_whatsapp_integration(project_uuid, waba_id)
+
+    def get_template_insights(self, params: dict, payload: dict) -> dict:
+        """
+        Sends a request to the Insights API to retrieve template metrics.
+
+        Args:
+            params (dict): Query parameters to send in the request.
+                Example:
+                    {
+                        "waba_id": "123456789012345",
+                        "start_date": "2025-06-12T00:00:00+00:00",
+                        "end_date": "2025-06-13T23:59:59+00:00"
+                    }
+
+            payload (dict): JSON body for the POST request.
+                Example:
+                    {
+                        "template_ids": ["23873358355610585"]
+                    }
+
+        Returns:
+            dict: JSON response from the Insights API.
+        """
+        return self.client.get_template_insights(params, payload)
