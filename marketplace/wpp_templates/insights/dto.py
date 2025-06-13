@@ -1,15 +1,11 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date
 from typing import List
 
 
 @dataclass(frozen=True)
 class TemplateInsightsDTO:
-    """
-    Data Transfer Object for insight request parameters.
-    """
-
     template_versions: List[str]
-    start: datetime
-    end: datetime
+    start: date
+    end: date
     app_uuid: str

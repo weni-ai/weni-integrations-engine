@@ -24,11 +24,11 @@ class TemplateVersionDataView(APIView):
             app_uuid (str): UUID of the application
 
         Expected body:
-        {
-            "template_versions": [...],
-            "start": "YYYY-MM-DDTHH:MM:SSZ",
-            "end": "YYYY-MM-DDTHH:MM:SSZ"
-        }
+            {
+                "template_versions": [...],
+                "start": "YYYY-MM-DD",
+                "end": "YYYY-MM-DD"
+            }
 
         Returns:
             Response with status 200 and insight data.
