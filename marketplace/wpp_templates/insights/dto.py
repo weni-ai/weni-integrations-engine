@@ -4,7 +4,7 @@ from typing import List
 
 
 @dataclass(frozen=True)
-class TemplateInsightsDTO:
+class TemplateMetricsDTO:
     template_versions: List[str]
     start: date
     end: date

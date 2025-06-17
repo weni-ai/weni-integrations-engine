@@ -50,7 +50,7 @@ class InsightsService:  # pragma: no cover
         """
         return self.client.delete_whatsapp_integration(project_uuid, waba_id)
 
-    def get_template_insights(self, params: dict, payload: dict) -> dict:
+    def get_template_metrics(self, params: dict, payload: dict) -> dict:
         """
         Sends a request to the Insights API to retrieve template metrics.
 
@@ -72,4 +72,4 @@ class InsightsService:  # pragma: no cover
         Returns:
             dict: JSON response from the Insights API.
         """
-        return self.client.get_template_insights(params, payload)
+        return self.client.get_template_metrics(params, payload)

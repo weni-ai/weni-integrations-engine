@@ -66,7 +66,7 @@ class InsightsClient(RequestClient, InsightsClientInterface):
         )
         return response
 
-    def get_template_insights(self, params: dict, payload: dict) -> dict:
+    def get_template_metrics(self, params: dict, payload: dict) -> dict:
         """
         Performs a POST request to the Insights API to retrieve metrics
         for the provided WhatsApp message templates within a time range.

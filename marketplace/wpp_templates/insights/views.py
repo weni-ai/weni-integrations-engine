@@ -3,10 +3,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
 
-from marketplace.wpp_templates.insights.dto import TemplateInsightsDTO
+from marketplace.wpp_templates.insights.dto import TemplateMetricsDTO
 from marketplace.wpp_templates.insights.serializers import TemplateVersionDataSerializer
-from marketplace.wpp_templates.insights.usecases.template_insights import (
-    TemplateInsightsUseCase,
+from marketplace.wpp_templates.insights.usecases.template_metrics import (
+    TemplateMetricsUseCase,
 )
 
 
@@ -36,9 +36,9 @@ class TemplateVersionDataView(APIView):
         serializer = TemplateVersionDataSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        dto = TemplateInsightsDTO(app_uuid=app_uuid, **serializer.validated_data)
+        dto = TemplateMetricsDTO(app_uuid=app_uuid, **serializer.validated_data)
 
-        use_case = TemplateInsightsUseCase()
+        use_case = TemplateMetricsUseCase()
         result = use_case.execute(dto)
 
         return Response(result, status=status.HTTP_200_OK)

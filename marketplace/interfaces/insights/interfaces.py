@@ -37,7 +37,7 @@ class InsightsClientInterface(Protocol):
             waba_id (str): The Waba's id.
         """
 
-    def get_template_insights(self, params: dict, payload: dict) -> dict:
+    def get_template_metrics(self, params: dict, payload: dict) -> dict:
         """
         Fetches insights metrics for the given templates within the specified period.
 
