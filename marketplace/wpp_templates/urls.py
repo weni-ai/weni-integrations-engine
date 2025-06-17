@@ -40,6 +40,6 @@ urlpatterns.append(
 urlpatterns.append(
     path(
         "apptypes/wpp-cloud/apps/",
-        include("marketplace.wpp_templates.insights.urls"),
+        include("marketplace.wpp_templates.metrics.urls"),
     ),
 )

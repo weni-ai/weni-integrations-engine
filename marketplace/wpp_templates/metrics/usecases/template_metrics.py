@@ -4,7 +4,7 @@ from typing import List, Dict
 from marketplace.services.insights.service import InsightsService
 from marketplace.applications.models import App
 from marketplace.wpp_templates.models import TemplateTranslation
-from marketplace.wpp_templates.insights.dto import TemplateMetricsDTO
+from marketplace.wpp_templates.metrics.dto import TemplateMetricsDTO
 
 
 class TemplateMetricsUseCase:
