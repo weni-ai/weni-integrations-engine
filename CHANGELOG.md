@@ -1,3 +1,7 @@
+v4.6.1
+----------
+* feat: add template insights 
+
 v4.6.0
 ----------
 * feat: add task_sync_on_demand for on-demand product synchronization
