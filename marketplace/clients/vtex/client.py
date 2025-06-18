@@ -143,28 +143,35 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
         return response.json()
 
     @retry_on_exception()
-    def pub_simulate_cart_for_seller(self, sku_id, seller_id, domain):
+    def pub_simulate_cart_for_seller(
+        self, sku_id, seller_id, domain, salles_channel=None
+    ):
         cart_simulation_url = f"https://{domain}/api/checkout/pub/orderForms/simulation"
         payload = {"items": [{"id": sku_id, "quantity": 1, "seller": seller_id}]}
 
         time.sleep(1)  # The best performance needed this 'sleep'
-        response = self.make_request(cart_simulation_url, method="POST", json=payload)
+
+        params = {"sc": salles_channel} if salles_channel else None
+
+        response = self.make_request(
+            cart_simulation_url, method="POST", json=payload, params=params
+        )
         simulation_data = response.json()
 
-        if simulation_data["items"]:
-            item_data = simulation_data["items"][0]
-            return {
-                "is_available": item_data["availability"] == "available",
-                "price": item_data["price"],
-                "list_price": item_data["listPrice"],
-                "data": simulation_data,
-            }
-        else:
+        if not simulation_data.get("items"):
             return {
                 "is_available": False,
                 "price": 0,
                 "list_price": 0,
             }
+
+        item = simulation_data["items"][0]
+        return {
+            "is_available": item["availability"] == "available",
+            "price": item.get("price", 0),
+            "list_price": item.get("listPrice", 0),
+            "data": simulation_data,
+        }
 
     def list_all_active_products(self, domain):
         """Retrieves all active product SKUs from VTEX catalog with progress tracking."""

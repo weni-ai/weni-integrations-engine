@@ -186,6 +186,7 @@ class ProductUpdateService(VtexServiceBase):
         sellers_ids: list[str] = None,
         sellers_skus: list[str] = None,
         priority: int = 0,
+        salles_channel: Optional[str] = None,
     ):
         """
         Service for processing product updates via VTEX webhooks.
@@ -200,6 +201,7 @@ class ProductUpdateService(VtexServiceBase):
         self.sellers_skus = sellers_skus if sellers_skus else []
         self.product_manager = ProductFacebookManager()
         self.priority = priority
+        self.salles_channel = salles_channel
 
     def process_batch_sync(self):
         """
@@ -219,6 +221,7 @@ class ProductUpdateService(VtexServiceBase):
             sellers_skus=self.sellers_skus,
             catalog=self.catalog,
             priority=self.priority,
+            salles_channel=self.salles_channel,
         )
 
         if not all_success:

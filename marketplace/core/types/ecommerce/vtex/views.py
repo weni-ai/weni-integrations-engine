@@ -247,9 +247,10 @@ class VtexSyncOnDemandView(APIView):
 
         sku_ids = serializer.validated_data.get("sku_ids")
         seller = serializer.validated_data.get("seller")
+        salles_channel = serializer.validated_data.get("salles_channel")
 
         task_sync_on_demand.apply_async(
-            args=[str(project_uuid), sku_ids, seller],
+            args=[str(project_uuid), sku_ids, seller, salles_channel],
             queue="vtex-sync-on-demand",
         )
         return Response(
