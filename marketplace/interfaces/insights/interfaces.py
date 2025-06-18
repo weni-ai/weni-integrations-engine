@@ -37,6 +37,25 @@ class InsightsClientInterface(Protocol):
             waba_id (str): The Waba's id.
         """
 
+    def get_template_metrics(self, params: dict, payload: dict) -> dict:
+        """
+        Fetches insights metrics for the given templates within the specified period.
+
+        Args:
+            params (dict): Query parameters to send to the Insights API.
+                Expected keys:
+                    - "waba_id" (str): WhatsApp Business Account ID.
+                    - "start_date" (str): Start datetime in ISO 8601 UTC format (e.g., "2025-06-12T00:00:00+00:00").
+                    - "end_date" (str): End datetime in ISO 8601 UTC format (e.g., "2025-06-13T23:59:59+00:00").
+
+            payload (dict): JSON body for the POST request.
+                Expected keys:
+                    - "template_ids" (List[str]): List of message_template_id strings.
+
+        Returns:
+            dict: Parsed JSON response from the Insights API.
+        """
+
 
 class InsightsUseCaseSyncInterface(Protocol):
     """

@@ -37,3 +37,9 @@ urlpatterns.append(
         include("marketplace.wpp_templates.analytics.urls"),
     ),
 )
+urlpatterns.append(
+    path(
+        "apptypes/wpp-cloud/apps/",
+        include("marketplace.wpp_templates.metrics.urls"),
+    ),
+)
