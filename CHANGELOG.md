@@ -1,3 +1,7 @@
+v4.6.2
+----------
+* feat: add raise exceptions to template metrics
+
 v4.6.1
 ----------
 * feat: add template insights 
