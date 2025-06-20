@@ -9,7 +9,7 @@ class TemplateVersionDataSerializer(serializers.Serializer):
     )
 
     def validate(self, data):
-        if data["end"] <= data["start"]:
+        if data["end"] < data["start"]:
             raise serializers.ValidationError(
                 "End datetime must be after start datetime."
             )
