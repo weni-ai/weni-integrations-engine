@@ -26,7 +26,9 @@ class MockClient:
             {"sku_id": sku_id, "domain": domain} if domain == "valid.domain.com" else {}
         )
 
-    def pub_simulate_cart_for_seller(self, sku_id, seller_id, domain):
+    def pub_simulate_cart_for_seller(
+        self, sku_id, seller_id, domain, salles_channel=None
+    ):
         return {"sku_id": sku_id, "seller_id": seller_id, "domain": domain}
 
     def get_product_specification(self, product_id, domain):

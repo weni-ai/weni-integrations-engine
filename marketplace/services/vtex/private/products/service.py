@@ -33,7 +33,7 @@ Example:
 """
 import logging
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from django.core.cache import cache
 
@@ -79,10 +79,15 @@ class PrivateProductsService:
         return self.client.get_product_details(sku_id, domain)
 
     def simulate_cart_for_seller(
-        self, sku_id: str, seller_id: str, domain: str
+        self,
+        sku_id: str,
+        seller_id: str,
+        domain: str,
+        salles_channel: Optional[str] = None,
     ) -> Dict[str, Any]:
-        return self.client.pub_simulate_cart_for_seller(sku_id, seller_id, domain)
-        # TODO: Change to pvt_simulate_cart_for_seller
+        return self.client.pub_simulate_cart_for_seller(
+            sku_id, seller_id, domain, salles_channel
+        )
 
     def simulate_cart_for_multiple_sellers(
         self, sku_id: str, sellers: List[str], domain: str

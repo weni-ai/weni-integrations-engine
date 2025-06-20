@@ -187,7 +187,12 @@ class ProductValidator:
         return True
 
     def apply_rules(
-        self, product_dto: FacebookProductDTO, seller_id: str, service, domain
+        self,
+        product_dto: FacebookProductDTO,
+        seller_id: str,
+        service,
+        domain,
+        salles_channel: str = None,
     ) -> bool:
         """
         Apply business rules to a product.
@@ -197,12 +202,17 @@ class ProductValidator:
             seller_id: The seller ID.
             service: The service to use for rule application.
             domain: The domain to use for rule application.
-
+            salles_channel: VTEX sales channel identifier
         Returns:
             True if the product passes all rules, False otherwise.
         """
         # Build a parameters dictionary to be passed to each rule.
-        params = {"seller_id": seller_id, "service": service, "domain": domain}
+        params = {
+            "seller_id": seller_id,
+            "service": service,
+            "domain": domain,
+            "salles_channel": salles_channel,
+        }
         for rule in self.rules:
             if not rule.apply(product_dto, **params):
                 return False
@@ -295,6 +305,7 @@ class ProductProcessor:
         validator: ProductValidator,
         update_product: bool = False,
         sync_specific_sellers: bool = False,
+        salles_channel: str = None,
     ):
         """
         Initialize the product processor
@@ -307,6 +318,7 @@ class ProductProcessor:
             validator: ProductValidator to use for validation
             update_product: Whether to update existing products
             sync_specific_sellers: Whether this is a seller-specific sync
+            salles_channel: VTEX sales channel identifier
         """
         self.catalog = catalog
         self.domain = domain
@@ -320,6 +332,7 @@ class ProductProcessor:
         self.use_sku_sellers = getattr(catalog.vtex_app, "config", {}).get(
             "use_sku_sellers", False
         )
+        self.salles_channel = salles_channel
 
     def process_seller_sku(
         self, seller_id: str, sku_id: str
@@ -359,7 +372,7 @@ class ProductProcessor:
                 return []
 
             availability = self.service.simulate_cart_for_seller(
-                sku_id, seller_id, self.domain
+                sku_id, seller_id, self.domain, self.salles_channel
             )
             if not availability.get("is_available") and not self.update_product:
                 return []
@@ -368,7 +381,7 @@ class ProductProcessor:
             if not self.validator.is_valid(dto):
                 return []
             if not self.validator.apply_rules(
-                dto, seller_id, self.service, self.domain
+                dto, seller_id, self.service, self.domain, self.salles_channel
             ):
                 return []
             return [dto]
@@ -667,6 +680,7 @@ class DataProcessor:
         mode: str = "single",
         sellers: List[str] = None,
         priority: int = 0,
+        salles_channel: str = None,
     ) -> List[FacebookProductDTO]:
         """
         Process a list of items
@@ -682,7 +696,8 @@ class DataProcessor:
             sync_specific_sellers: Whether this is a seller-specific sync
             mode: Processing mode ("single" or "seller_sku")
             sellers: List of seller IDs to process (for "single" mode)
-
+            priority: Priority level for processing
+            salles_channel: VTEX sales channel identifier
         Returns:
             List of processed products
         """
@@ -698,6 +713,7 @@ class DataProcessor:
             validator=validator,
             update_product=update_product,
             sync_specific_sellers=sync_specific_sellers,
+            salles_channel=salles_channel,
         )
         batch_processor = BatchProcessor(
             queue=self.queue,

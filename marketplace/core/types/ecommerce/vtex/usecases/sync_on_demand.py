@@ -19,6 +19,7 @@ class SyncOnDemandData(TypedDict):
 
     sku_ids: List[str]
     seller: str
+    salles_channel: Optional[str]
 
 
 class SyncOnDemandUseCase:
@@ -100,7 +101,11 @@ class SyncOnDemandUseCase:
         return [f"{seller}#{sku_id}" for sku_id in sku_ids]
 
     def _dispatch_skus(
-        self, app_uuid: str, celery_queue: str, skus_batch: List[str]
+        self,
+        app_uuid: str,
+        celery_queue: str,
+        skus_batch: List[str],
+        salles_channel: Optional[str] = None,
     ) -> None:
         """
         Dispatch SKU IDs for processing by sending a task to Celery.
@@ -110,9 +115,23 @@ class SyncOnDemandUseCase:
             celery_queue: The name of the Celery queue to use.
             skus_batch: The batch of SKU IDs to process.
         """
+
+        if salles_channel:
+            kwargs = {
+                "app_uuid": app_uuid,
+                "batch": skus_batch,
+                "priority": 1,
+                "salles_channel": salles_channel,
+            }
+        else:
+            kwargs = {"app_uuid": app_uuid, "batch": skus_batch, "priority": 1}
+
+        logger.info(
+            f"Dispatching skus: {skus_batch} to {celery_queue} - sync on demand"
+        )
         self.celery_app.send_task(
             "task_update_webhook_batch_products",
-            kwargs={"app_uuid": app_uuid, "batch": skus_batch, "priority": 1},
+            kwargs=kwargs,
             queue=celery_queue,
             ignore_result=True,
         )
@@ -130,6 +149,7 @@ class SyncOnDemandUseCase:
         """
         seller = data.get("seller")
         sku_ids = set(data.get("sku_ids"))
+        salles_channel = data.get("salles_channel")
         vtex_app = self._get_vtex_app(project_uuid)
 
         if not vtex_app:
@@ -151,4 +171,4 @@ class SyncOnDemandUseCase:
 
         skus_batch = self._build_batch(seller, valid_skus)
 
-        self._dispatch_skus(app_uuid, celery_queue, skus_batch)
+        self._dispatch_skus(app_uuid, celery_queue, skus_batch, salles_channel)

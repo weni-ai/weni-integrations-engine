@@ -89,3 +89,4 @@ class FirstProductInsertSerializer(serializers.Serializer):
 class SyncOnDemandSerializer(serializers.Serializer):
     sku_ids = serializers.ListField(child=serializers.CharField(), required=True)
     seller = serializers.CharField(required=False)
+    salles_channel = serializers.CharField(required=False)

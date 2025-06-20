@@ -499,7 +499,9 @@ def task_dequeue_webhooks(
 
 
 @celery_app.task(name="task_update_webhook_batch_products")
-def task_update_webhook_batch_products(app_uuid: str, batch: list, priority: int = 0):
+def task_update_webhook_batch_products(
+    app_uuid: str, batch: list, priority: int = 0, salles_channel: str = None
+):
     """
     Processes product updates in batches for a VTEX app.
     """
@@ -533,6 +535,7 @@ def task_update_webhook_batch_products(app_uuid: str, batch: list, priority: int
             catalog=catalog,
             sellers_skus=batch,
             priority=priority,
+            salles_channel=salles_channel,
         )
 
         success = vtex_update_service.process_batch_sync()
