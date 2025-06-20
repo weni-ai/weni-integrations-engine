@@ -3,6 +3,7 @@ from typing import List, Dict
 
 from marketplace.services.insights.service import InsightsService
 from marketplace.applications.models import App
+from marketplace.wpp_templates.metrics.exceptions import TemplateMetricsException
 from marketplace.wpp_templates.models import TemplateTranslation
 from marketplace.wpp_templates.metrics.dto import TemplateMetricsDTO
 
@@ -74,6 +75,9 @@ class TemplateMetricsUseCase:
 
         Returns:
             List[str]: Distinct list of message_template_ids.
+
+        Raises:
+            TemplateMetricsException: If no templates are found for the provided gallery versions.
         """
         template_ids = list(
             TemplateTranslation.objects.filter(
@@ -83,7 +87,9 @@ class TemplateMetricsUseCase:
             .distinct()
         )
         if not template_ids:
-            raise ValueError("No templates found for the provided gallery versions.")
+            raise TemplateMetricsException(
+                "No templates found for the provided gallery versions."
+            )
 
         return template_ids
 
@@ -98,10 +104,12 @@ class TemplateMetricsUseCase:
             str: The WABA ID.
 
         Raises:
-            ValueError: If the WABA ID is not found in the app config.
+            TemplateMetricsException: If the WABA ID is not found in the app config.
         """
         app = App.objects.get(uuid=app_uuid)
         waba_id = app.config.get("wa_waba_id")
         if not waba_id:
-            raise ValueError(f"WABA ID not found in app config for app_uuid={app_uuid}")
+            raise TemplateMetricsException(
+                f"WABA ID not found in app config for app_uuid={app_uuid}"
+            )
         return waba_id
