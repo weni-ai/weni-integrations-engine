@@ -3,10 +3,8 @@ from rest_framework.exceptions import APIException
 
 class TemplateMetricsException(APIException):
     status_code = 400
-    default_code = "template_metrics_error"
+    default_detail = "A template metrics error occurred."
+    default_code = "bad_request"
 
-    def __init__(self, detail=None):
-        super().__init__(detail)
-
-    def __str__(self):
-        return str(self.detail)
+    def __init__(self, detail: str):
+        super().__init__(detail=str(detail))

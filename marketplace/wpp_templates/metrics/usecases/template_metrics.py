@@ -1,3 +1,5 @@
+import logging
+
 from datetime import date, datetime, timezone
 from typing import List, Dict
 
@@ -6,6 +8,9 @@ from marketplace.applications.models import App
 from marketplace.wpp_templates.metrics.exceptions import TemplateMetricsException
 from marketplace.wpp_templates.models import TemplateTranslation
 from marketplace.wpp_templates.metrics.dto import TemplateMetricsDTO
+
+
+logger = logging.getLogger(__name__)
 
 
 class TemplateMetricsUseCase:
@@ -35,8 +40,14 @@ class TemplateMetricsUseCase:
             "end_date": self.isoformat_z(end_dt),
         }
 
+        template_ids = self._get_template_versions(metrics_dto.template_versions)
+
+        if not template_ids:
+            logger.info("No templates found for the provided gallery versions.")
+            return []
+
         payload = {
-            "template_ids": self._get_template_versions(metrics_dto.template_versions),
+            "template_ids": template_ids,
         }
 
         return self.insights_service.get_template_metrics(
@@ -76,8 +87,6 @@ class TemplateMetricsUseCase:
         Returns:
             List[str]: Distinct list of message_template_ids.
 
-        Raises:
-            TemplateMetricsException: If no templates are found for the provided gallery versions.
         """
         template_ids = list(
             TemplateTranslation.objects.filter(
@@ -86,11 +95,6 @@ class TemplateMetricsUseCase:
             .values_list("message_template_id", flat=True)
             .distinct()
         )
-        if not template_ids:
-            raise TemplateMetricsException(
-                "No templates found for the provided gallery versions."
-            )
-
         return template_ids
 
     def _get_waba_id(self, app_uuid: str) -> str:

@@ -38,7 +38,9 @@ class TemplateMetricsView(APIView):
 
         dto = TemplateMetricsDTO(app_uuid=app_uuid, **serializer.validated_data)
 
-        use_case = TemplateMetricsUseCase()
-        result = use_case.execute(dto)
-
-        return Response(result, status=status.HTTP_200_OK)
+        try:
+            use_case = TemplateMetricsUseCase()
+            result = use_case.execute(dto)
+            return Response(result, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
