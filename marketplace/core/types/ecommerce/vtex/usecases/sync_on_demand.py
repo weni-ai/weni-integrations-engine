@@ -126,6 +126,9 @@ class SyncOnDemandUseCase:
         else:
             kwargs = {"app_uuid": app_uuid, "batch": skus_batch, "priority": 1}
 
+        logger.info(
+            f"Dispatching skus: {skus_batch} to {celery_queue} - sync on demand"
+        )
         self.celery_app.send_task(
             "task_update_webhook_batch_products",
             kwargs=kwargs,
