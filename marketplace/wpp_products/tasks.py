@@ -405,10 +405,7 @@ def task_sync_product_policies():
     print("Starting synchronization of product policies")
 
     try:
-        # Filter VTEX apps that have completed the initial sync
-        vtex_apps = App.objects.filter(
-            code="vtex", config__initial_sync_completed=True, configured=True
-        )
+        vtex_apps = App.objects.filter(code="vtex", configured=True)
 
         for app in vtex_apps:
             catalogs = app.vtex_catalogs.all()
@@ -499,7 +496,9 @@ def task_dequeue_webhooks(
 
 
 @celery_app.task(name="task_update_webhook_batch_products")
-def task_update_webhook_batch_products(app_uuid: str, batch: list, priority: int = 0):
+def task_update_webhook_batch_products(
+    app_uuid: str, batch: list, priority: int = 0, salles_channel: str = None
+):
     """
     Processes product updates in batches for a VTEX app.
     """
@@ -516,7 +515,9 @@ def task_update_webhook_batch_products(app_uuid: str, batch: list, priority: int
             vtex_app = App.objects.get(uuid=app_uuid, configured=True, code="vtex")
             cache.set(cache_key, vtex_app, timeout=300)
 
-        if not vtex_app.config.get("initial_sync_completed", False):
+        # If priority is 0, use legacy synchronization
+        # If priority is 1, use Sync on demand
+        if priority == 0 and not vtex_app.config.get("initial_sync_completed", False):
             logger.info(f"Initial sync not completed for App: {app_uuid}. Task ending.")
             return
 
@@ -533,6 +534,7 @@ def task_update_webhook_batch_products(app_uuid: str, batch: list, priority: int
             catalog=catalog,
             sellers_skus=batch,
             priority=priority,
+            salles_channel=salles_channel,
         )
 
         success = vtex_update_service.process_batch_sync()

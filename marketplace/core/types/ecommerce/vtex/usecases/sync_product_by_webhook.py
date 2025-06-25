@@ -1,6 +1,6 @@
 import logging
 
-from typing import List
+from typing import List, Optional
 
 from django.conf import settings
 
@@ -45,18 +45,28 @@ class SyncProductByWebhookUseCase:
         )
 
     def execute(
-        self, domain: str, sellers_skus: list, catalog: Catalog, priority: int = 0
+        self,
+        domain: str,
+        sellers_skus: list,
+        catalog: Catalog,
+        priority: int = 0,
+        salles_channel: Optional[str] = None,
     ) -> List[FacebookProductDTO]:
         """
-        Execute the sync process for products received via webhook.
+        Executes the synchronization process for products received via webhook.
+
+        This method processes product updates triggered by webhooks, applying business rules
+        and configurations specific to the given domain and catalog.
 
         Args:
-            domain: The domain for which to process products.
-            sellers_skus: List of strings in "seller#sku" format to be processed.
-            catalog: The catalog to process.
+            domain (str): The domain for which the products are being processed.
+            sellers_skus (list): A list of strings in the format "seller#sku".
+            catalog (Catalog): The catalog associated with the products to be processed.
+            priority (int, optional): The priority level for processing. Defaults to 0.
+            salles_channel (str, optional): The sales channel identifier. Defaults to None.
 
         Returns:
-            List of FacebookProductDTO objects representing the processed products.
+            List[FacebookProductDTO]: A list of FacebookProductDTO objects representing the processed products.
         """
         # Step 1: Load business rules and store domain configuration
         config = catalog.vtex_app.config
@@ -79,6 +89,7 @@ class SyncProductByWebhookUseCase:
             mode="seller_sku",
             sellers=None,  # Not needed in this mode, as each item already includes the seller
             priority=priority,
+            salles_channel=salles_channel,
         )
 
         return result

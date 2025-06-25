@@ -1,3 +1,4 @@
+from .unifies_id_with_salles_channel import UnifiesIdWithSallesChannel
 from .currency_pt_br import CurrencyBRL
 from .calculate_by_weight import CalculateByWeight
 from .exclude_alcoholic_drinks import ExcludeAlcoholicDrinks
@@ -37,4 +38,5 @@ RULE_MAPPINGS = {
     "currency_pt_br_round_floor": CurrencyBRLRoudingFloor,
     "currency_clp": CurrencyCLP,
     "currency_ars": CurrencyARS,
+    "unifies_id_with_salles_channel": UnifiesIdWithSallesChannel,
 }
