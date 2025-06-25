@@ -125,7 +125,7 @@ class TemplateStatusUpdateHandler:
             )
 
 
-class WebhookEventProcessor:
+class TemplateWebhookEventProcessor:
     def __init__(
         self,
         handler: TemplateStatusUpdateHandler,

@@ -2,7 +2,7 @@ import logging
 
 from celery import shared_task
 
-from marketplace.wpp_templates.factories import create_webhook_event_processor
+from marketplace.wpp_templates.factories import create_template_webhook_event_processor
 from marketplace.wpp_templates.usecases.template_library_creation import (
     TemplateCreationUseCase,
 )
@@ -44,7 +44,7 @@ def update_templates_by_webhook(**kwargs):  # pragma: no cover
 
     This task processes events from the WhatsApp Business API when a template status changes
     (e.g., to APPROVED, REJECTED, etc.). It reads all webhook entries and delegates the
-    handling of supported events to the WebhookEventProcessor.
+    handling of supported events to the TemplateWebhookEventProcessor.
 
     Args:
         **kwargs: Expected to contain a key `webhook_data` with the webhook payload.
@@ -87,7 +87,7 @@ def update_templates_by_webhook(**kwargs):  # pragma: no cover
 
     logger.info(f"Update templates by webhook data received: {webhook_data}")
 
-    processor = create_webhook_event_processor()
+    processor = create_template_webhook_event_processor()
 
     for entry in webhook_data.get("entry", []):
         whatsapp_business_account_id = entry.get("id")
