@@ -8,11 +8,11 @@ from rest_framework import status
 
 from marketplace.core.tests.base import APIBaseTestCase
 from marketplace.core.tests.mixis.permissions import PermissionTestCaseMixin
-from ..views import FacebookViewSet
+from ...views import FacebookViewSet
 from marketplace.applications.models import App
 from marketplace.accounts.models import ProjectAuthorization
 
-from ..type import FacebookType
+from ...type import FacebookType
 
 apptype = FacebookType()
 
