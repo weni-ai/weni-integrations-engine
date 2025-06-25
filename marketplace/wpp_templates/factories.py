@@ -7,7 +7,7 @@ from marketplace.wpp_templates.usecases.template_library_status import (
 )
 from marketplace.wpp_templates.utils import (
     TemplateStatusUpdateHandler,
-    WebhookEventProcessor,
+    TemplateWebhookEventProcessor,
 )
 
 
@@ -15,7 +15,7 @@ def create_status_use_case(app):
     return TemplateLibraryStatusUseCase(app)
 
 
-def create_webhook_event_processor() -> WebhookEventProcessor:
+def create_template_webhook_event_processor() -> TemplateWebhookEventProcessor:
     flows_service = FlowsService(FlowsClient())
     commerce_service = CommerceService(CommerceClient())
 
@@ -25,4 +25,4 @@ def create_webhook_event_processor() -> WebhookEventProcessor:
         status_use_case_factory=create_status_use_case,
     )
 
-    return WebhookEventProcessor(handler=handler)
+    return TemplateWebhookEventProcessor(handler=handler)

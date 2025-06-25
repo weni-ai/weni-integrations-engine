@@ -4,6 +4,7 @@ from marketplace.celery import app as celery_app
 from marketplace.clients.flows.client import FlowsClient
 from marketplace.applications.models import App
 from marketplace.accounts.models import ProjectAuthorization
+from marketplace.core.types.channels.whatsapp_cloud.factories import create_account_update_webhook_event_processor
 from marketplace.core.types.channels.whatsapp_cloud.usecases.whatsapp_cloud_sync import (
     SyncWhatsAppCloudAppsUseCase,
 )
@@ -61,6 +62,38 @@ def check_apps_uncreated_on_flow():
                     and project:{str(project_uuid)} on app: {str(app.uuid)}"""
             )
             continue
+
+
+@celery_app.task(name="update_account_info_by_webhook")
+def update_account_info_by_webhook(**kwargs):  # pragma: no cover
+    """Update the mmlite status of the app based on the webhook data"""
+    allowed_event_types = ["account_update"]
+    webhook_data = kwargs.get("webhook_data")
+
+    logger.info(f"Update mmlite status by webhook data received: {webhook_data}")
+
+    processor = create_account_update_webhook_event_processor()
+
+    for entry in webhook_data.get("entry", []):
+        for change in entry.get("changes", []):
+            field = change.get("field")
+            value = change.get("value")
+            if value.get("reason", None) is None:
+                value["reason"] = ""
+
+            whatsapp_business_account_id = value.get("waba_info", {}).get("waba_id")
+            if not whatsapp_business_account_id:
+                logger.info(f"Whatsapp business account id not found in webhook data: {webhook_data}")
+                continue
+
+            if field in allowed_event_types:
+                processor.process_event(
+                    whatsapp_business_account_id, value, field, webhook_data
+                )
+            else:
+                logger.info(f"Event: {field}, not mapped to usage")
+
+    logger.info("-" * 50)
 
 
 def has_project_access(user, project_uuid) -> bool:

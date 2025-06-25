@@ -2,12 +2,12 @@ from unittest import TestCase
 from unittest.mock import patch, MagicMock
 from datetime import datetime
 
-from marketplace.wpp_templates.utils import WebhookEventProcessor, extract_template_data
+from marketplace.wpp_templates.utils import TemplateWebhookEventProcessor, extract_template_data
 from marketplace.wpp_templates.error_handlers import handle_error_and_update_config
 from marketplace.applications.models import App
 
 
-class TestWebhookEventProcessor(TestCase):
+class TestTemplateWebhookEventProcessor(TestCase):
     def setUp(self):
         self.mock_app_filter = patch(
             "marketplace.wpp_templates.utils.App.objects.filter"
@@ -16,7 +16,7 @@ class TestWebhookEventProcessor(TestCase):
             "marketplace.wpp_templates.utils.TemplateMessage.objects.filter"
         ).start()
         self.handler = MagicMock()
-        self.processor = WebhookEventProcessor(handler=self.handler)
+        self.processor = TemplateWebhookEventProcessor(handler=self.handler)
         self.addCleanup(patch.stopall)
 
     def test_process_template_status_update_no_apps(self):
