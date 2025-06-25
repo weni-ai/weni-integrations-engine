@@ -233,6 +233,20 @@ class WhatsAppCloudViewSet(
 
         return Response(status=response.status_code)
 
+    @action(detail=True, methods=["PATCH"])
+    def update_mmlite_status(self, request: "Request", **kwargs):
+        app = self.get_object()
+
+        status = request.data.get("status")
+
+        if status not in ["in_progress", "active"]:
+            raise ValidationError("Invalid status")
+
+        app.config["mmlite_status"] = request.data.get("status")
+        app.save()
+
+        return Response(status=status.HTTP_200_OK)
+
 
 class WhatsAppCloudInsights(APIView):
     permission_classes = [CanCommunicateInternally]
