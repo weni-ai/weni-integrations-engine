@@ -281,6 +281,9 @@ class BusinessMetaService:
             phone_number_id, user_access_token, data
         )
 
+    def create_dataset(self, waba_id: str) -> Dict[str, Any]:
+        return self.client.create_dataset(waba_id)
+
     def configure_whatsapp_cloud(
         self, auth_code: str, waba_id: str, phone_number_id: str, waba_currency: str
     ) -> Dict[str, Any]:
@@ -301,10 +304,13 @@ class BusinessMetaService:
         )
         # Subscribes the app to the WABA
         self.subscribe_app(waba_id)
+        # Creates the dataset
+        dataset_id = self.create_dataset(waba_id).get("id")
 
         return {
             "user_access_token": user_access_token,
             "business_id": business_id,
             "message_template_namespace": message_template_namespace,
             "allocation_config_id": allocation_config_id,
+            "dataset_id": dataset_id,
         }

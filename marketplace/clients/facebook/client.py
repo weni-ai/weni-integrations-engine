@@ -508,6 +508,11 @@ class BusinessMetaRequests(
         response = self.make_request(url, method="POST", headers=headers, data=data)
         return response.json()
 
+    def create_dataset(self, waba_id: str) -> dict:
+        url = f"{self.get_url}/{waba_id}/dataset"
+        response = self.make_request(url, method="POST", headers=self._get_headers())
+        return response.json()
+
 
 class FacebookClient(
     CatalogsRequests,

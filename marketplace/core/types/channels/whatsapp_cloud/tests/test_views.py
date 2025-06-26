@@ -409,6 +409,7 @@ class MockBusinessMetaService:
             "business_id": "mock_business_id",
             "message_template_namespace": "mock_message_template_namespace",
             "allocation_config_id": "mock_allocation_config_id",
+            "dataset_id": "mock_dataset_id",
         }
 
     def register_phone_number(self, phone_number_id, user_access_token, data):
@@ -533,6 +534,7 @@ class CreateWhatsAppCloudTestCase(APIBaseTestCase):
         )
         self.assertEqual(len(app.config["wa_pin"]), 6)
         self.assertEqual(app.config["wa_user_token"], "mock_user_access_token")
+        self.assertEqual(app.config["wa_dataset_id"], "mock_dataset_id")
 
     def test_create_whatsapp_cloud_failure_on_exchange_auth_code(self):
         self.mock_business_meta_service.configure_whatsapp_cloud = Mock(
