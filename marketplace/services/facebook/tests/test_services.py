@@ -150,6 +150,9 @@ class MockClient:
             "category": template_data.get("category", "UTILITY"),
         }
 
+    def create_dataset(self, waba_id):
+        return {"id": "mock_dataset_id"}
+
 
 class TestFacebookService(TestCase):
     def generate_unique_facebook_catalog_id(self):
