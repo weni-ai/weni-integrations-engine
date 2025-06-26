@@ -32,16 +32,16 @@ class TestUnifiesIdWithSallesChannel(unittest.TestCase):
 
     def test_apply_with_empty_salles_channel(self):
         salles_channel = ""
+        original_id = self.product.id
         result = self.rule.apply(self.product, salles_channel=salles_channel)
-        expected_id = f"12345{UnifiesIdWithSallesChannel.SEPARATOR}"
-        self.assertTrue(result)
-        self.assertEqual(self.product.id, expected_id)
+        self.assertFalse(result)
+        self.assertEqual(self.product.id, original_id)
 
     def test_apply_with_none_salles_channel(self):
+        original_id = self.product.id
         result = self.rule.apply(self.product, salles_channel=None)
-        expected_id = f"12345{UnifiesIdWithSallesChannel.SEPARATOR}None"
-        self.assertTrue(result)
-        self.assertEqual(self.product.id, expected_id)
+        self.assertFalse(result)
+        self.assertEqual(self.product.id, original_id)
 
     def test_unifies_product_id_seller_channel(self):
         product_id = "67890"
