@@ -116,6 +116,7 @@ class WhatsAppCloudViewSet(
         business_id = config_data["business_id"]
         message_template_namespace = config_data["message_template_namespace"]
         allocation_config_id = config_data["allocation_config_id"]
+        dataset_id = config_data["dataset_id"]
 
         # Get phone number
         phone_number_request = PhoneNumbersService(
@@ -137,6 +138,7 @@ class WhatsAppCloudViewSet(
             wa_message_template_namespace=message_template_namespace,
             wa_pin=pin,
             wa_user_token=user_access_token,
+            wa_dataset_id=dataset_id,
         )
 
         flows_service = FlowsService(client=FlowsClient())
