@@ -5,7 +5,7 @@ from marketplace.core.types.channels.facebook.views import FacebookSearchProduct
 
 urlpatterns = [
     path(
-        "facebook/products/search/",
+        "products/search/",
         FacebookSearchProductsView.as_view(),
         name="facebook-search-products",
     ),
