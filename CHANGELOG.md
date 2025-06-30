@@ -1,3 +1,8 @@
+v4.7.0
+----------
+* fix: handle missing salles_channel in UnifiesIdWithSallesChannel
+* feat: add Facebook product search proxy
+
 v4.6.3
 ----------
 * feat: add salles_channel support to sync on demand 
