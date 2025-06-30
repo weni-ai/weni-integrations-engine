@@ -83,6 +83,22 @@ class FacebookService:  # TODO: Change the name to CatalogService
         )
         return self.client.toggle_catalog_visibility(business_phone_number_id, visible)
 
+    def get_product_by_catalog_id(
+        self,
+        catalog_id: str,
+        filter_str: str,
+        fields_str: str,
+        summary: bool,
+        limit: int,
+    ) -> dict[str, Any]:
+        return self.client.get_products_by_catalog_id(
+            catalog_id=catalog_id,
+            filter_str=filter_str,
+            fields_str=fields_str,
+            summary=summary,
+            limit=limit,
+        )
+
     def wpp_commerce_settings(self, app):
         business_phone_number_id = self._get_app_facebook_credentials(app=app).get(
             "wa_phone_number_id"
