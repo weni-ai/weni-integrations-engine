@@ -265,28 +265,18 @@ class VtexSyncOnDemandView(APIView):
 
 class VtexSyncOnDemandInlineView(APIView):
     """
-    Endpoint for synchronous (priority 2) on-demand product sync for VTEX.
+    Handles on-demand (priority 2) product sync for VTEX.
 
-    This view handles POST requests to process a list of SKU IDs and returns a list of processed
-    FacebookProductDTOs. No data is persisted or uploaded; all operations run in-memory and the
-    results are returned directly to the client.
+    Receives a list of SKU IDs and seller info, processes the sync inline, and returns the list of processed products.
 
-    Main responsibilities:
-      - Validate incoming payload (sku_ids, seller, sales_channel).
-      - Execute the sync use case with API_ONLY priority (inline).
-      - Serialize and return the list of successfully processed products and their total.
-
-    Methods:
-        post(request, project_uuid, *args, **kwargs): Process the sync request and return results.
-
-    Request body example:
+    Example request:
         {
             "sku_ids": ["123", "456"],
             "seller": "1",
             "salles_channel": "1"
         }
 
-    Successful response example (HTTP 200):
+    Example response:
         {
             "products": [
                 {
@@ -295,13 +285,8 @@ class VtexSyncOnDemandInlineView(APIView):
                     ...
                 }
             ],
-            "total_products": 1
-        }
-
-    Response when no products are processed (HTTP 200):
-        {
-            "products": [],
-            "total_products": 0
+            "total_products": 1,
+            "invalid_skus": []
         }
     """
 

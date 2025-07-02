@@ -219,8 +219,20 @@ class ProductUpdateService(VtexServiceBase):
     def process_batch_sync(self):
         """
         Processes product updates for the batch synchronization method.
-        For inline sync (priority 2), returns a list of processed SKUs.
-        For other priorities, returns the same list or an empty list on error.
+
+        For priorities 0 and 1 (default/async):
+            - Returns True if all products were successfully saved, otherwise raises Exception.
+        For priority 2 (inline/API_ONLY):
+            - Returns a list of processed products (which may be empty).
+
+        Returns:
+            Union[bool, list]:
+                - True for successful batch save (priority 0/1).
+                - List of processed products for inline sync (priority 2).
+                - On error: [] for priority 2, False for other priorities.
+
+        Raises:
+            Exception: If the batch process fails for priorities 0 or 1.
         """
         pvt_service = self.get_private_service(
             self.api_credentials.app_key, self.api_credentials.app_token
@@ -228,23 +240,26 @@ class ProductUpdateService(VtexServiceBase):
         sync_use_case = SyncProductByWebhookUseCase(products_service=pvt_service)
 
         try:
-            processed_skus = sync_use_case.execute(
+            processed = sync_use_case.execute(
                 domain=self.api_credentials.domain,
                 sellers_skus=self.sellers_skus,
                 catalog=self.catalog,
                 priority=self.priority,
                 salles_channel=self.salles_channel,
             )
-            if not processed_skus:
+            if self.priority == 2:
+                # For inline/API_ONLY, return the processed list (may be empty)
+                return processed if isinstance(processed, list) else []
+            # For batch/async, require True as success
+            if not processed:
                 raise Exception(
                     f"Error saving batch products in database for Catalog: {self.catalog.facebook_catalog_id}"
                 )
+            return processed  # Should be True
         except Exception as exc:
-            # Log the error
             logger.error(f"Error in ProductUpdateService.process_batch_sync: {exc}")
-            processed_skus = []
-
-        return processed_skus
+            # On error, return [] for priority 2, False for others
+            return [] if self.priority == 2 else False
 
     def _get_sellers_ids(self, service):
         seller_id = extract_sellers_ids(self.webhook)
