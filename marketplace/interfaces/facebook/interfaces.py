@@ -209,3 +209,24 @@ class CatalogsRequestsInterface(ABC):
         :return: A dictionary with the response from the API.
         """
         pass
+
+    @abstractmethod
+    def get_products_by_catalog_id(
+        self,
+        catalog_id: str,
+        filter_str: str,
+        fields_str: str,
+        summary: bool = False,
+        limit: int = 100,
+    ) -> Dict[str, Any]:
+        """
+        Fetches products by business ID with specified fields and filters.
+
+        :param catalog_id: The ID of the catalog.
+        :param filter_str: URL encoded filter string.
+        :param fields_str: URL encoded fields string.
+        :param summary: Whether to include a summary in the response.
+        :param limit: The maximum number of products to return.
+        :return: The API response as a dictionary.
+        """
+        pass

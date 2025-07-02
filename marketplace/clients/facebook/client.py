@@ -198,6 +198,35 @@ class CatalogsRequests(FacebookAuthorization, RequestClient, CatalogsRequestsInt
 
         return response.json()
 
+    def get_products_by_catalog_id(
+        self,
+        catalog_id: str,
+        filter_str: str,
+        fields_str: str,
+        summary: bool = False,
+        limit: int = 100,
+    ):
+        """
+        Fetches products from a catalog using specified fields and filters.
+
+        :param catalog_id: The ID of the catalog to fetch products from.
+        :param filter_str: A URL-encoded string representing the filter criteria.
+        :param fields_str: A URL-encoded string specifying the fields to include in the response.
+        :param summary: A boolean indicating whether to include a summary in the response.
+        :param limit: An integer specifying the maximum number of products to return.
+        :return: A dictionary containing the API response.
+        """
+        url = f"{self.get_url}/{catalog_id}/products"
+        headers = self._get_headers()
+        params = {
+            "fields": fields_str,
+            "filter": filter_str,
+            "summary": summary,
+            "limit": limit,
+        }
+        response = self.make_request(url, method="GET", headers=headers, params=params)
+        return response.json()
+
 
 class TemplatesRequests(
     FacebookAuthorization, RequestClient, TemplatesRequestsInterface

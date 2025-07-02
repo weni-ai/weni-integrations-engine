@@ -37,3 +37,11 @@ class FacebookConfigureSerializer(AppTypeBaseSerializer):
     class Meta:
         model = App
         fields = ("uuid", "config", "modified_by")
+
+
+class FacebookSearchProductsSerializer(serializers.Serializer):
+    catalog_id = serializers.CharField(required=True)
+    product_ids = serializers.ListField(child=serializers.CharField(), required=True)
+    fields = serializers.ListField(child=serializers.CharField(), required=False)
+    summary = serializers.BooleanField(default=False, required=False)
+    limit = serializers.IntegerField(default=100, required=False)

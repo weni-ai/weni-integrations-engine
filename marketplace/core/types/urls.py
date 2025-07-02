@@ -32,11 +32,15 @@ urlpatterns.append(
     path(
         "apptypes/wpp-cloud/list_wpp-cloud/<uuid:project_uuid>/",
         WhatsAppCloudInsights.as_view(),
-        name="wpp-cloud-insights"
+        name="wpp-cloud-insights",
     )
 )
-
-
+# Facebook
+urlpatterns.append(
+    path(
+        "apptypes/facebook/", include("marketplace.core.types.channels.facebook.urls")
+    ),
+)
 # VTEX
 urlpatterns.append(
     path("apptypes/vtex/", include("marketplace.core.types.ecommerce.vtex.urls")),
