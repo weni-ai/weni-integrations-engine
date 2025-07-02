@@ -1,3 +1,7 @@
+v4.6.3
+----------
+* feat: add salles_channel support to sync on demand 
+
 v4.6.2
 ----------
 * feat: add raise exceptions to template metrics
