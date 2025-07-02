@@ -501,34 +501,46 @@ def task_update_webhook_batch_products(
 ):
     """
     Processes product updates in batches for a VTEX app.
+
+    Priority levels:
+        0: Legacy synchronization. Runs only if the app's initial sync is completed.
+        1: On-demand sync via Celery (asynchronous).
+        2: On-demand inline sync (synchronous, returns processed products).
+
+    Args:
+        app_uuid (str): UUID of the VTEX app.
+        batch (list): List of seller#sku identifiers to process.
+        priority (int): Type of synchronization (0=legacy, 1=on demand, 2=inline).
+        salles_channel (str, optional): Sales channel identifier.
+
+    Returns:
+        If priority is 2, returns the list of processed products.
+        Otherwise, returns None.
     """
     start_time = datetime.now()
     vtex_base_service = VtexServiceBase()
+    processed_products = None
 
     try:
         logger.info(f"Processing batch of {len(batch)} items for App: {app_uuid}.")
 
-        # Fetch app configuration
         cache_key = f"app_cache_{app_uuid}"
         vtex_app = cache.get(cache_key)
         if not vtex_app:
             vtex_app = App.objects.get(uuid=app_uuid, configured=True, code="vtex")
             cache.set(cache_key, vtex_app, timeout=300)
 
-        # If priority is 0, use legacy synchronization
-        # If priority is 1, use Sync on demand
+        # Legacy sync is allowed only if the initial sync is completed
         if priority == 0 and not vtex_app.config.get("initial_sync_completed", False):
             logger.info(f"Initial sync not completed for App: {app_uuid}. Task ending.")
-            return
+            return None
 
-        # Get VTEX credentials
         api_credentials = vtex_base_service.get_vtex_credentials_or_raise(vtex_app)
         catalog = vtex_app.vtex_catalogs.first()
         if not catalog:
             logger.info(f"No catalog found for VTEX app: {vtex_app.uuid}")
-            return
+            return None
 
-        # Initialize ProductUpdateService
         vtex_update_service = ProductUpdateService(
             api_credentials=api_credentials,
             catalog=catalog,
@@ -537,13 +549,15 @@ def task_update_webhook_batch_products(
             salles_channel=salles_channel,
         )
 
-        success = vtex_update_service.process_batch_sync()
-        if not success:
-            logger.info(f"Fail to process batch for App: {app_uuid}.")
-            return
+        # Receives a list of processed products from the service
+        processed_products = vtex_update_service.process_batch_sync()
+        if not processed_products:
+            logger.info(f"Failed to process batch for App: {app_uuid}.")
+            return None
 
     except Exception as e:
         logger.error(f"Error during batch processing for App: {app_uuid}, {e}")
+        return None
 
     finally:
         end_time = datetime.now()
@@ -551,3 +565,7 @@ def task_update_webhook_batch_products(
         logger.info(
             f"Finished processing batch for App: {app_uuid}. Duration: {duration:.2f} seconds."
         )
+
+    if priority == 2:
+        return processed_products
+    return None

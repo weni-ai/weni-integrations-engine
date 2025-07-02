@@ -177,6 +177,11 @@ class ProductInsertionService(VtexServiceBase):
 
 
 class ProductUpdateService(VtexServiceBase):
+    """
+    Service for processing product updates via VTEX webhooks.
+    Handles legacy, async (priority 1), and inline (priority 2) batch processing.
+    """
+
     def __init__(
         self,
         api_credentials: APICredentials,
@@ -189,7 +194,15 @@ class ProductUpdateService(VtexServiceBase):
         salles_channel: Optional[str] = None,
     ):
         """
-        Service for processing product updates via VTEX webhooks.
+        Args:
+            api_credentials (APICredentials): VTEX API credentials.
+            catalog (Catalog): Product catalog instance.
+            skus_ids (list[str], optional): List of SKUs for update.
+            webhook (dict, optional): Webhook data.
+            sellers_ids (list[str], optional): List of seller IDs.
+            sellers_skus (list[str], optional): List of seller#sku identifiers.
+            priority (int): Type of synchronization (0=legacy, 1=async, 2=inline).
+            salles_channel (str, optional): Sales channel.
         """
         super().__init__()
         self.api_credentials = api_credentials
@@ -205,31 +218,33 @@ class ProductUpdateService(VtexServiceBase):
 
     def process_batch_sync(self):
         """
-        Processes product updates for the new batch synchronization method.
+        Processes product updates for the batch synchronization method.
+        For inline sync (priority 2), returns a list of processed SKUs.
+        For other priorities, returns the same list or an empty list on error.
         """
-        # Initialize private service
         pvt_service = self.get_private_service(
             self.api_credentials.app_key, self.api_credentials.app_token
         )
-
-        # Create and execute the webhook sync use case
         sync_use_case = SyncProductByWebhookUseCase(products_service=pvt_service)
 
-        # Execute the use case with the required parameters
-        all_success = sync_use_case.execute(
-            domain=self.api_credentials.domain,
-            sellers_skus=self.sellers_skus,
-            catalog=self.catalog,
-            priority=self.priority,
-            salles_channel=self.salles_channel,
-        )
-
-        if not all_success:
-            raise Exception(
-                f"Error saving batch products in database for Catalog: {self.catalog.facebook_catalog_id}"
+        try:
+            processed_skus = sync_use_case.execute(
+                domain=self.api_credentials.domain,
+                sellers_skus=self.sellers_skus,
+                catalog=self.catalog,
+                priority=self.priority,
+                salles_channel=self.salles_channel,
             )
+            if not processed_skus:
+                raise Exception(
+                    f"Error saving batch products in database for Catalog: {self.catalog.facebook_catalog_id}"
+                )
+        except Exception as exc:
+            # Log the error
+            logger.error(f"Error in ProductUpdateService.process_batch_sync: {exc}")
+            processed_skus = []
 
-        return all_success
+        return processed_skus
 
     def _get_sellers_ids(self, service):
         seller_id = extract_sellers_ids(self.webhook)

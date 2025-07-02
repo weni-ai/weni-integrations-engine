@@ -1,8 +1,7 @@
 from typing import Optional
 from marketplace.celery import app as celery_app
-
+from marketplace.core.types.ecommerce.dtos.sync_on_demand_dto import SyncOnDemandDTO
 from marketplace.core.types.ecommerce.vtex.usecases.sync_on_demand import (
-    SyncOnDemandData,
     SyncOnDemandUseCase,
 )
 
@@ -15,7 +14,5 @@ def task_sync_on_demand(
     Syncs products on demand for a VTEX app.
     """
     use_case = SyncOnDemandUseCase()
-    data = SyncOnDemandData(
-        sku_ids=sku_ids, seller=seller, salles_channel=salles_channel
-    )
-    use_case.execute(data, project_uuid)
+    dto = SyncOnDemandDTO(sku_ids=sku_ids, seller=seller, salles_channel=salles_channel)
+    use_case.execute(dto, project_uuid)

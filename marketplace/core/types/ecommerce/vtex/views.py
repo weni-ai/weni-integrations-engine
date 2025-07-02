@@ -6,7 +6,9 @@ from rest_framework.permissions import AllowAny
 
 from uuid import UUID
 
+from marketplace.core.types.ecommerce.dtos.sync_on_demand_dto import SyncOnDemandDTO
 from marketplace.core.types.ecommerce.vtex.serializers import (
+    FacebookProductDTOSerializer,
     FirstProductInsertSerializer,
     VtexAdsSerializer,
     VtexSerializer,
@@ -18,6 +20,9 @@ from marketplace.core.types import views
 from marketplace.core.types.ecommerce.vtex.tasks import task_sync_on_demand
 from marketplace.core.types.ecommerce.vtex.usecases.link_catalog_start_sync import (
     LinkCatalogAndStartSyncUseCase,
+)
+from marketplace.core.types.ecommerce.vtex.usecases.sync_on_demand_in_line import (
+    SyncOnDemandInlineUseCase,
 )
 from marketplace.core.types.ecommerce.vtex.usecases.vtex_integration import (
     VtexIntegration,
@@ -255,4 +260,99 @@ class VtexSyncOnDemandView(APIView):
         )
         return Response(
             {"message": "Products sent to sync on demand."}, status=status.HTTP_200_OK
+        )
+
+
+class VtexSyncOnDemandInlineView(APIView):
+    """
+    Endpoint for synchronous (priority 2) on-demand product sync for VTEX.
+
+    This view handles POST requests to process a list of SKU IDs and returns a list of processed
+    FacebookProductDTOs. No data is persisted or uploaded; all operations run in-memory and the
+    results are returned directly to the client.
+
+    Main responsibilities:
+      - Validate incoming payload (sku_ids, seller, sales_channel).
+      - Execute the sync use case with API_ONLY priority (inline).
+      - Serialize and return the list of successfully processed products and their total.
+
+    Methods:
+        post(request, project_uuid, *args, **kwargs): Process the sync request and return results.
+
+    Request body example:
+        {
+            "sku_ids": ["123", "456"],
+            "seller": "1",
+            "salles_channel": "1"
+        }
+
+    Successful response example (HTTP 200):
+        {
+            "products": [
+                {
+                    "id": "123",
+                    "title": "...",
+                    ...
+                }
+            ],
+            "total_products": 1
+        }
+
+    Response when no products are processed (HTTP 200):
+        {
+            "products": [],
+            "total_products": 0
+        }
+    """
+
+    permission_classes = [AllowAny]
+
+    def post(self, request, project_uuid: UUID, *args, **kwargs) -> Response:
+        """
+        Process a synchronous inline (priority 2) on-demand product sync.
+
+        Args:
+            request: The HTTP request object containing the JSON payload.
+            project_uuid: UUID of the VTEX project.
+
+        Returns:
+            Response: A JSON object containing the serialized products and the total found.
+        """
+        serializer = SyncOnDemandSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        sku_ids = serializer.validated_data.get("sku_ids")
+        seller = serializer.validated_data.get("seller")
+        sales_channel = serializer.validated_data.get("salles_channel")
+
+        use_case = SyncOnDemandInlineUseCase()
+        dto = SyncOnDemandDTO(
+            sku_ids=sku_ids,
+            seller=seller,
+            salles_channel=sales_channel,
+        )
+        result = use_case.execute(dto, project_uuid)
+
+        products = result.get("products") if result else []
+        invalid_skus = result.get("invalid_skus") if result else []
+
+        if not products:
+            return Response(
+                {
+                    "products": [],
+                    "total_products": 0,
+                    "invalid_skus": invalid_skus,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        facebook_products_serializer = FacebookProductDTOSerializer(products, many=True)
+
+        return Response(
+            {
+                "products": facebook_products_serializer.data,
+                "total_products": len(products),
+                "invalid_skus": invalid_skus,
+            },
+            status=status.HTTP_200_OK,
         )
