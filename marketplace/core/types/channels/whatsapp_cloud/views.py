@@ -245,7 +245,8 @@ class WhatsAppCloudViewSet(
         app.config["mmlite_status"] = request.data.get("status")
         app.save()
 
-        return Response(status=status.HTTP_200_OK)
+        serializer = self.get_serializer(app)
+        return Response(serializer.data)
 
 
 class WhatsAppCloudInsights(APIView):
