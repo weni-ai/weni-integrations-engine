@@ -1,4 +1,16 @@
+import logging
+from typing import Optional
+
+from marketplace.applications.models import App
+
+
 class AccountUpdateWebhookEventProcessor:
+    def __init__(self, logger: Optional[logging.Logger] = None):
+        self.logger = logger or logging.getLogger(__name__)
+
+    def get_apps_by_waba_id(self, waba_id: str):
+        return App.objects.filter(config__wa_waba_id=waba_id)
+
     def process_account_update(self, waba_id: str, value: dict, webhook: dict):
         apps = self.get_apps_by_waba_id(waba_id)
         if not apps.exists():
