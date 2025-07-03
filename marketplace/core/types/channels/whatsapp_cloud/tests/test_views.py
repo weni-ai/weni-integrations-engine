@@ -670,3 +670,174 @@ class WhatsAppCloudContactTestCase(APIBaseTestCase):
                 response.json[0],
                 "There was a problem requesting the On-Premise API, check if your authentication token is correct",
             )
+
+
+class UpdateMmliteStatusTestCase(APIBaseTestCase):
+    view_class = WhatsAppCloudViewSet
+
+    def setUp(self):
+        super().setUp()
+
+        self.app = App.objects.create(
+            code="wpp-cloud",
+            config={"existing_key": "existing_value"},
+            created_by=self.user,
+            project_uuid=str(uuid.uuid4()),
+            platform=App.PLATFORM_WENI_FLOWS,
+            flow_object_uuid=str(uuid.uuid4()),
+        )
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+        self.url = reverse(
+            "wpp-cloud-app-update-mmlite-status", kwargs={"uuid": self.app.uuid}
+        )
+
+    @property
+    def view(self):
+        return self.view_class.as_view({"patch": "update_mmlite_status"})
+
+    def test_update_mmlite_status_to_active_success(self):
+        data = {"status": "active"}
+
+        response = self.request.patch(self.url, data, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Verify the app was updated
+        app = App.objects.get(uuid=self.app.uuid)
+        self.assertEqual(app.config["mmlite_status"], "active")
+
+        # Verify existing config is preserved
+        self.assertEqual(app.config["existing_key"], "existing_value")
+
+        # Verify response contains the updated app data
+        self.assertIn("uuid", response.json)
+        self.assertIn("config", response.json)
+        self.assertEqual(response.json["config"]["mmlite_status"], "active")
+
+    def test_update_mmlite_status_to_in_progress_success(self):
+        data = {"status": "in_progress"}
+
+        response = self.request.patch(self.url, data, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Verify the app was updated
+        app = App.objects.get(uuid=self.app.uuid)
+        self.assertEqual(app.config["mmlite_status"], "in_progress")
+
+        # Verify existing config is preserved
+        self.assertEqual(app.config["existing_key"], "existing_value")
+
+        # Verify response contains the updated app data
+        self.assertIn("uuid", response.json)
+        self.assertIn("config", response.json)
+        self.assertEqual(response.json["config"]["mmlite_status"], "in_progress")
+
+    def test_update_mmlite_status_invalid_status(self):
+        data = {"status": "invalid_status"}
+
+        response = self.request.patch(self.url, data, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json, ["Invalid status"])
+
+        # Verify the app was not updated
+        app = App.objects.get(uuid=self.app.uuid)
+        self.assertNotIn("mmlite_status", app.config)
+
+    def test_update_mmlite_status_missing_status_field(self):
+        data = {"other_field": "value"}
+
+        response = self.request.patch(self.url, data, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json, ["Invalid status"])
+
+        # Verify the app was not updated
+        app = App.objects.get(uuid=self.app.uuid)
+        self.assertNotIn("mmlite_status", app.config)
+
+    def test_update_mmlite_status_empty_status(self):
+        data = {"status": ""}
+
+        response = self.request.patch(self.url, data, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json, ["Invalid status"])
+
+        # Verify the app was not updated
+        app = App.objects.get(uuid=self.app.uuid)
+        self.assertNotIn("mmlite_status", app.config)
+
+    def test_update_mmlite_status_null_status(self):
+        data = {"status": None}
+
+        response = self.request.patch(self.url, data, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json, ["Invalid status"])
+
+        # Verify the app was not updated
+        app = App.objects.get(uuid=self.app.uuid)
+        self.assertNotIn("mmlite_status", app.config)
+
+    def test_update_mmlite_status_empty_request_body(self):
+        data = {}
+
+        response = self.request.patch(self.url, data, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json, ["Invalid status"])
+
+        # Verify the app was not updated
+        app = App.objects.get(uuid=self.app.uuid)
+        self.assertNotIn("mmlite_status", app.config)
+
+    def test_update_mmlite_status_case_sensitive(self):
+        # Test that status validation is case sensitive
+        data = {"status": "ACTIVE"}
+
+        response = self.request.patch(self.url, data, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json, ["Invalid status"])
+
+        # Verify the app was not updated
+        app = App.objects.get(uuid=self.app.uuid)
+        self.assertNotIn("mmlite_status", app.config)
+
+    def test_update_mmlite_status_overwrites_existing_status(self):
+        # Set an initial status
+        self.app.config["mmlite_status"] = "in_progress"
+        self.app.save()
+
+        # Update to a different status
+        data = {"status": "active"}
+
+        response = self.request.patch(self.url, data, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Verify the status was overwritten
+        app = App.objects.get(uuid=self.app.uuid)
+        self.assertEqual(app.config["mmlite_status"], "active")
+
+    def test_update_mmlite_status_nonexistent_app(self):
+        nonexistent_uuid = str(uuid.uuid4())
+        url = reverse(
+            "wpp-cloud-app-update-mmlite-status", kwargs={"uuid": nonexistent_uuid}
+        )
+        data = {"status": "active"}
+
+        response = self.request.patch(url, data, uuid=nonexistent_uuid)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_update_mmlite_status_without_authorization(self):
+        # Create app without user authorization
+        app_without_auth = App.objects.create(
+            code="wpp-cloud",
+            created_by=self.user,
+            project_uuid=str(uuid.uuid4()),
+            platform=App.PLATFORM_WENI_FLOWS,
+        )
+        url = reverse(
+            "wpp-cloud-app-update-mmlite-status", kwargs={"uuid": app_without_auth.uuid}
+        )
+        data = {"status": "active"}
+
+        response = self.request.patch(url, data, uuid=app_without_auth.uuid)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
