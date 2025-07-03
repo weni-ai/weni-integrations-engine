@@ -1,4 +1,5 @@
 from uuid import uuid4
+import copy
 
 from unittest.mock import patch
 from unittest.mock import MagicMock
@@ -7,7 +8,11 @@ from django.test import TestCase
 from django.contrib.auth import get_user_model
 
 from marketplace.core.types import APPTYPES
-from ..tasks import sync_whatsapp_cloud_apps, check_apps_uncreated_on_flow
+from ..tasks import (
+    sync_whatsapp_cloud_apps,
+    check_apps_uncreated_on_flow,
+    update_account_info_by_webhook,
+)
 from marketplace.applications.models import App
 from marketplace.accounts.models import ProjectAuthorization
 from marketplace.core.types.channels.whatsapp_cloud.usecases.whatsapp_cloud_sync import (
@@ -264,3 +269,344 @@ class CheckAppsUncreatedOnFlowTaskTestCase(TestCase):
 
         app = App.objects.get(uuid=self.app.uuid)
         self.assertIsNone(app.flow_object_uuid)
+
+
+class UpdateAccountInfoByWebhookTaskTestCase(TestCase):
+    def setUp(self) -> None:
+        self.mock_processor = MagicMock()
+        return super().setUp()
+
+    def _get_webhook_data(self, waba_id="123456789", field="account_update"):
+        return {
+            "entry": [
+                {
+                    "changes": [
+                        {
+                            "field": field,
+                            "value": {
+                                "waba_info": {
+                                    "waba_id": waba_id,
+                                    "ad_account_id": "ad_account_123",
+                                }
+                            },
+                        }
+                    ]
+                }
+            ]
+        }
+
+    @patch(
+        "marketplace.core.types.channels.whatsapp_cloud.tasks.create_account_update_webhook_event_processor"
+    )
+    @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.logger")
+    def test_successful_webhook_processing(self, mock_logger, mock_factory):
+        mock_factory.return_value = self.mock_processor
+        webhook_data = self._get_webhook_data()
+        original_webhook_data = copy.deepcopy(webhook_data)
+
+        update_account_info_by_webhook(webhook_data=webhook_data)
+
+        mock_logger.info.assert_any_call(
+            f"Update mmlite status by webhook data received: {original_webhook_data}"
+        )
+        mock_logger.info.assert_any_call("-" * 50)
+
+        # The value should have reason set to empty string after processing
+        expected_value = webhook_data["entry"][0]["changes"][0]["value"]
+        self.assertEqual(expected_value["reason"], "")
+
+        self.mock_processor.process_event.assert_called_once_with(
+            "123456789", expected_value, "account_update", webhook_data
+        )
+
+    @patch(
+        "marketplace.core.types.channels.whatsapp_cloud.tasks.create_account_update_webhook_event_processor"
+    )
+    @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.logger")
+    def test_webhook_data_missing(self, mock_logger, mock_factory):
+        mock_factory.return_value = self.mock_processor
+
+        # The function will raise AttributeError when webhook_data is None
+        with self.assertRaises(AttributeError):
+            update_account_info_by_webhook()
+
+        mock_logger.info.assert_any_call(
+            "Update mmlite status by webhook data received: None"
+        )
+        self.mock_processor.process_event.assert_not_called()
+
+    @patch(
+        "marketplace.core.types.channels.whatsapp_cloud.tasks.create_account_update_webhook_event_processor"
+    )
+    @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.logger")
+    def test_empty_webhook_data(self, mock_logger, mock_factory):
+        mock_factory.return_value = self.mock_processor
+        webhook_data = {}
+        original_webhook_data = copy.deepcopy(webhook_data)
+
+        update_account_info_by_webhook(webhook_data=webhook_data)
+
+        mock_logger.info.assert_any_call(
+            f"Update mmlite status by webhook data received: {original_webhook_data}"
+        )
+        mock_logger.info.assert_any_call("-" * 50)
+        self.mock_processor.process_event.assert_not_called()
+
+    @patch(
+        "marketplace.core.types.channels.whatsapp_cloud.tasks.create_account_update_webhook_event_processor"
+    )
+    @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.logger")
+    def test_missing_waba_id(self, mock_logger, mock_factory):
+        mock_factory.return_value = self.mock_processor
+        webhook_data = {
+            "entry": [
+                {"changes": [{"field": "account_update", "value": {"waba_info": {}}}]}
+            ]
+        }
+        original_webhook_data = copy.deepcopy(webhook_data)
+
+        update_account_info_by_webhook(webhook_data=webhook_data)
+
+        mock_logger.info.assert_any_call(
+            f"Update mmlite status by webhook data received: {original_webhook_data}"
+        )
+        mock_logger.info.assert_any_call(
+            f"Whatsapp business account id not found in webhook data: {webhook_data}"
+        )
+        mock_logger.info.assert_any_call("-" * 50)
+        self.mock_processor.process_event.assert_not_called()
+
+    @patch(
+        "marketplace.core.types.channels.whatsapp_cloud.tasks.create_account_update_webhook_event_processor"
+    )
+    @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.logger")
+    def test_event_type_not_allowed(self, mock_logger, mock_factory):
+        mock_factory.return_value = self.mock_processor
+        webhook_data = self._get_webhook_data(field="other_event")
+        original_webhook_data = copy.deepcopy(webhook_data)
+
+        update_account_info_by_webhook(webhook_data=webhook_data)
+
+        mock_logger.info.assert_any_call(
+            f"Update mmlite status by webhook data received: {original_webhook_data}"
+        )
+        mock_logger.info.assert_any_call("Event: other_event, not mapped to usage")
+        mock_logger.info.assert_any_call("-" * 50)
+        self.mock_processor.process_event.assert_not_called()
+
+    @patch(
+        "marketplace.core.types.channels.whatsapp_cloud.tasks.create_account_update_webhook_event_processor"
+    )
+    @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.logger")
+    def test_multiple_entries_and_changes(self, mock_logger, mock_factory):
+        mock_factory.return_value = self.mock_processor
+        webhook_data = {
+            "entry": [
+                {
+                    "changes": [
+                        {
+                            "field": "account_update",
+                            "value": {
+                                "waba_info": {
+                                    "waba_id": "123456789",
+                                    "ad_account_id": "ad_account_123",
+                                }
+                            },
+                        },
+                        {
+                            "field": "account_update",
+                            "value": {
+                                "waba_info": {
+                                    "waba_id": "987654321",
+                                    "ad_account_id": "ad_account_456",
+                                }
+                            },
+                        },
+                    ]
+                },
+                {
+                    "changes": [
+                        {
+                            "field": "account_update",
+                            "value": {
+                                "waba_info": {
+                                    "waba_id": "555666777",
+                                    "ad_account_id": "ad_account_789",
+                                }
+                            },
+                        }
+                    ]
+                },
+            ]
+        }
+        original_webhook_data = copy.deepcopy(webhook_data)
+
+        update_account_info_by_webhook(webhook_data=webhook_data)
+
+        mock_logger.info.assert_any_call(
+            f"Update mmlite status by webhook data received: {original_webhook_data}"
+        )
+        mock_logger.info.assert_any_call("-" * 50)
+        self.assertEqual(self.mock_processor.process_event.call_count, 3)
+
+    @patch(
+        "marketplace.core.types.channels.whatsapp_cloud.tasks.create_account_update_webhook_event_processor"
+    )
+    @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.logger")
+    def test_missing_entry_field(self, mock_logger, mock_factory):
+        mock_factory.return_value = self.mock_processor
+        webhook_data = {"other_field": "value"}
+        original_webhook_data = copy.deepcopy(webhook_data)
+
+        update_account_info_by_webhook(webhook_data=webhook_data)
+
+        mock_logger.info.assert_any_call(
+            f"Update mmlite status by webhook data received: {original_webhook_data}"
+        )
+        mock_logger.info.assert_any_call("-" * 50)
+        self.mock_processor.process_event.assert_not_called()
+
+    @patch(
+        "marketplace.core.types.channels.whatsapp_cloud.tasks.create_account_update_webhook_event_processor"
+    )
+    @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.logger")
+    def test_missing_field_in_change(self, mock_logger, mock_factory):
+        mock_factory.return_value = self.mock_processor
+        webhook_data = {
+            "entry": [
+                {
+                    "changes": [
+                        {
+                            "value": {
+                                "waba_info": {
+                                    "waba_id": "123456789",
+                                    "ad_account_id": "ad_account_123",
+                                }
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+        original_webhook_data = copy.deepcopy(webhook_data)
+
+        update_account_info_by_webhook(webhook_data=webhook_data)
+
+        mock_logger.info.assert_any_call(
+            f"Update mmlite status by webhook data received: {original_webhook_data}"
+        )
+        mock_logger.info.assert_any_call("-" * 50)
+        self.mock_processor.process_event.assert_not_called()
+
+    @patch(
+        "marketplace.core.types.channels.whatsapp_cloud.tasks.create_account_update_webhook_event_processor"
+    )
+    @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.logger")
+    def test_missing_value_in_change(self, mock_logger, mock_factory):
+        mock_factory.return_value = self.mock_processor
+        webhook_data = {"entry": [{"changes": [{"field": "account_update"}]}]}
+
+        # The function will raise AttributeError when value is None
+        with self.assertRaises(AttributeError):
+            update_account_info_by_webhook(webhook_data=webhook_data)
+
+        mock_logger.info.assert_any_call(
+            f"Update mmlite status by webhook data received: {webhook_data}"
+        )
+        self.mock_processor.process_event.assert_not_called()
+
+    @patch(
+        "marketplace.core.types.channels.whatsapp_cloud.tasks.create_account_update_webhook_event_processor"
+    )
+    @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.logger")
+    def test_reason_handling_when_none(self, mock_logger, mock_factory):
+        mock_factory.return_value = self.mock_processor
+        webhook_data = {
+            "entry": [
+                {
+                    "changes": [
+                        {
+                            "field": "account_update",
+                            "value": {
+                                "waba_info": {
+                                    "waba_id": "123456789",
+                                    "ad_account_id": "ad_account_123",
+                                },
+                                "reason": None,
+                            },
+                        }
+                    ]
+                }
+            ]
+        }
+        original_webhook_data = copy.deepcopy(webhook_data)
+
+        update_account_info_by_webhook(webhook_data=webhook_data)
+
+        # The value should have reason set to empty string
+        expected_value = webhook_data["entry"][0]["changes"][0]["value"]
+        self.assertEqual(expected_value["reason"], "")
+
+        mock_logger.info.assert_any_call(
+            f"Update mmlite status by webhook data received: {original_webhook_data}"
+        )
+        mock_logger.info.assert_any_call("-" * 50)
+        self.mock_processor.process_event.assert_called_once_with(
+            "123456789", expected_value, "account_update", webhook_data
+        )
+
+    @patch(
+        "marketplace.core.types.channels.whatsapp_cloud.tasks.create_account_update_webhook_event_processor"
+    )
+    @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.logger")
+    def test_reason_handling_when_missing(self, mock_logger, mock_factory):
+        mock_factory.return_value = self.mock_processor
+        webhook_data = {
+            "entry": [
+                {
+                    "changes": [
+                        {
+                            "field": "account_update",
+                            "value": {
+                                "waba_info": {
+                                    "waba_id": "123456789",
+                                    "ad_account_id": "ad_account_123",
+                                }
+                            },
+                        }
+                    ]
+                }
+            ]
+        }
+        original_webhook_data = copy.deepcopy(webhook_data)
+
+        update_account_info_by_webhook(webhook_data=webhook_data)
+
+        # The value should have reason set to empty string
+        expected_value = webhook_data["entry"][0]["changes"][0]["value"]
+        self.assertEqual(expected_value["reason"], "")
+
+        mock_logger.info.assert_any_call(
+            f"Update mmlite status by webhook data received: {original_webhook_data}"
+        )
+        mock_logger.info.assert_any_call("-" * 50)
+        self.mock_processor.process_event.assert_called_once_with(
+            "123456789", expected_value, "account_update", webhook_data
+        )
+
+    @patch(
+        "marketplace.core.types.channels.whatsapp_cloud.tasks.create_account_update_webhook_event_processor"
+    )
+    @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.logger")
+    def test_missing_changes_field(self, mock_logger, mock_factory):
+        mock_factory.return_value = self.mock_processor
+        webhook_data = {"entry": [{"other_field": "value"}]}
+        original_webhook_data = copy.deepcopy(webhook_data)
+
+        update_account_info_by_webhook(webhook_data=webhook_data)
+
+        mock_logger.info.assert_any_call(
+            f"Update mmlite status by webhook data received: {original_webhook_data}"
+        )
+        mock_logger.info.assert_any_call("-" * 50)
+        self.mock_processor.process_event.assert_not_called()
