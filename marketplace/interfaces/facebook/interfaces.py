@@ -143,6 +143,10 @@ class BusinessMetaRequestsInterface(ABC):
     ) -> Dict[str, Any]:
         pass
 
+    @abstractmethod
+    def create_dataset(self, waba_id: str) -> Dict[str, Any]:
+        pass
+
 
 class CatalogsRequestsInterface(ABC):
     @abstractmethod
