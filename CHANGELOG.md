@@ -1,3 +1,7 @@
+v4.8.1
+----------
+* feat: wpp cloud create dataset
+
 v4.8.0
 ----------
 * feat: implement account update webhook event processing for WhatsAppCloud
