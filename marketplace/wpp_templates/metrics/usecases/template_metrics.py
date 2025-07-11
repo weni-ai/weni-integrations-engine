@@ -19,8 +19,8 @@ class TemplateMetricsUseCase:
     based on gallery versions, period, and application context.
     """
 
-    def __init__(self):
-        self.insights_service = InsightsService()
+    def __init__(self, insights_service: InsightsService = None):
+        self.insights_service = insights_service or InsightsService()
 
     def execute(self, metrics_dto: TemplateMetricsDTO) -> Dict:
         """
