@@ -133,3 +133,6 @@ dmypy.json
 
 # Static files
 media/
+
+# Ignore private keys
+marketplace/jwt_keys/private_key.pem
