@@ -4,6 +4,8 @@ import time
 
 from datetime import datetime, timedelta
 
+from marketplace.services.vtex.utils.enums import ProductPriority
+
 from celery import shared_task
 
 from django_redis import get_redis_connection
@@ -447,7 +449,10 @@ def task_enqueue_webhook(app_uuid: str, seller: str, sku_id: str):
 
 @celery_app.task(name="task_dequeue_webhooks")
 def task_dequeue_webhooks(
-    app_uuid: str, celery_queue: str, priority: int = 0, batch_size: int = 5000
+    app_uuid: str,
+    celery_queue: str,
+    priority: int = ProductPriority.DEFAULT,
+    batch_size: int = 5000,
 ):
     """
     Dequeues webhooks from Redis and dispatches them in batches.
@@ -500,24 +505,30 @@ def task_dequeue_webhooks(
 
 @celery_app.task(name="task_update_webhook_batch_products")
 def task_update_webhook_batch_products(
-    app_uuid: str, batch: list, priority: int = 0, salles_channel: str = None
+    app_uuid: str,
+    batch: list,
+    priority: int = ProductPriority.DEFAULT,
+    salles_channel: str = None,
 ):
     """
     Processes product updates in batches for a VTEX app.
 
     Priority levels:
-        0: Legacy synchronization. Runs only if the app's initial sync is completed.
-        1: On-demand sync via Celery (asynchronous).
-        2: On-demand inline sync (synchronous, returns processed products).
+        ProductPriority.DEFAULT: Legacy synchronization. Runs only if the app's initial sync is completed.
+        ProductPriority.ON_DEMAND: On-demand sync via Celery (asynchronous).
+        ProductPriority.API_ONLY: On-demand inline sync (synchronous, returns processed products).
 
     Args:
         app_uuid (str): UUID of the VTEX app.
         batch (list): List of seller#sku identifiers to process.
-        priority (int): Type of synchronization (0=legacy, 1=on demand, 2=inline).
+        priority (int): Type of synchronization.
+            ProductPriority.DEFAULT = legacy,
+            ProductPriority.ON_DEMAND = on demand,
+            ProductPriority.API_ONLY = inline.
         salles_channel (str, optional): Sales channel identifier.
 
     Returns:
-        If priority is 2, returns the list of processed products.
+        If priority is ProductPriority.API_ONLY, returns the list of processed products.
         Otherwise, returns None.
     """
     start_time = datetime.now()
@@ -534,7 +545,9 @@ def task_update_webhook_batch_products(
             cache.set(cache_key, vtex_app, timeout=300)
 
         # Legacy sync is allowed only if the initial sync is completed
-        if priority == 0 and not vtex_app.config.get("initial_sync_completed", False):
+        if priority == ProductPriority.DEFAULT and not vtex_app.config.get(
+            "initial_sync_completed", False
+        ):
             logger.info(f"Initial sync not completed for App: {app_uuid}. Task ending.")
             return None
 
@@ -569,6 +582,7 @@ def task_update_webhook_batch_products(
             f"Finished processing batch for App: {app_uuid}. Duration: {duration:.2f} seconds."
         )
 
-    if priority == 2:
+    if priority == ProductPriority.API_ONLY:
         return processed_products
+
     return None
