@@ -6,6 +6,8 @@ from typing import List, Dict, Any
 
 from datetime import datetime, timezone
 
+from marketplace.services.vtex.utils.enums import ProductPriority
+
 from django.db.models import QuerySet
 
 from django_redis import get_redis_connection
@@ -113,14 +115,14 @@ class SellerSyncUtils:
 
 class UploadManager:
     @staticmethod
-    def check_and_start_upload(app_uuid):
+    def check_and_start_upload(app_uuid, priority: int = ProductPriority.DEFAULT):
         redis_client = get_redis_connection()
         lock_upload_key = f"upload_lock:{app_uuid}"
         if not redis_client.exists(lock_upload_key):
             print(f"No active upload task for App: {app_uuid}, starting upload.")
             celery_app.send_task(
                 "task_upload_vtex_products",
-                kwargs={"app_vtex_uuid": app_uuid},
+                kwargs={"app_vtex_uuid": app_uuid, "priority": priority},
                 queue="vtex-product-upload",
             )
         else:
@@ -271,9 +273,12 @@ class ProductBatchUploader:
     fb_service_class = FacebookService
     fb_client_class = FacebookClient
 
-    def __init__(self, catalog: Catalog, batch_size=5000):
+    def __init__(
+        self, catalog: Catalog, batch_size=5000, priority: int = ProductPriority.DEFAULT
+    ):
         self.catalog = catalog
         self.batch_size = batch_size
+        self.priority = priority
         self.fb_service = self.initialize_fb_service()
         self.product_manager = ProductBatchFetcher(catalog, batch_size)
         self.rapidpro_service = RapidproService(RapidproClient())
@@ -300,6 +305,12 @@ class ProductBatchUploader:
                     self.log_sent_products(product_ids)
                 else:
                     self.product_manager.mark_products_as_error(product_ids)
+
+                # Apply delay based on priority
+                # If priority is DEFAULT, apply 60-second delay
+                # If priority is different from DEFAULT, no delay
+                if self.priority == ProductPriority.DEFAULT:
+                    time.sleep(60)
 
                 # Renew the lock
                 redis_client.expire(lock_key, lock_expiration_time)

@@ -1,7 +1,6 @@
 import threading
 import re
 import concurrent.futures
-from enum import IntEnum
 
 import logging
 from django.db import close_old_connections
@@ -19,14 +18,9 @@ from marketplace.services.vtex.utils.sku_validator import SKUValidator
 from marketplace.clients.exceptions import CustomAPIException
 from marketplace.clients.zeroshot.client import MockZeroShotClient
 from marketplace.wpp_products.utils import UploadManager
+from marketplace.services.vtex.utils.enums import ProductPriority
 
 logger = logging.getLogger(__name__)
-
-
-class ProductPriority(IntEnum):
-    DEFAULT = 0  # Save and upload products
-    ON_DEMAND = 1  # Save and upload products with most priority
-    API_ONLY = 2  # Return products without saving or uploading
 
 
 # --------------------------------------------------
@@ -284,7 +278,9 @@ class ProductSaver:
                 products_dto=batch, catalog=catalog
             ):
                 self.sent_to_db += len(batch)
-                UploadManager.check_and_start_upload(catalog.vtex_app.uuid)
+                UploadManager.check_and_start_upload(
+                    catalog.vtex_app.uuid, priority=self.priority
+                )
 
             else:
                 logger.warning(
@@ -706,7 +702,7 @@ class DataProcessor:
         sync_specific_sellers: bool = False,
         mode: str = "single",
         sellers: List[str] = None,
-        priority: int = 0,
+        priority: int = ProductPriority.DEFAULT,
         salles_channel: str = None,
     ) -> List[FacebookProductDTO]:
         """

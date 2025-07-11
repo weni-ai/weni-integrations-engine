@@ -30,6 +30,7 @@ from marketplace.clients.facebook.client import FacebookClient
 from marketplace.wpp_products.models import Catalog
 from marketplace.services.product.product_facebook_manage import ProductFacebookManager
 from marketplace.services.vtex.app_manager import AppVtexManager
+from marketplace.services.vtex.utils.enums import ProductPriority
 
 
 logger = logging.getLogger(__name__)
@@ -190,7 +191,7 @@ class ProductUpdateService(VtexServiceBase):
         webhook: Optional[dict] = None,
         sellers_ids: list[str] = None,
         sellers_skus: list[str] = None,
-        priority: int = 0,
+        priority: int = ProductPriority.DEFAULT,
         salles_channel: Optional[str] = None,
     ):
         """
@@ -247,7 +248,7 @@ class ProductUpdateService(VtexServiceBase):
                 priority=self.priority,
                 salles_channel=self.salles_channel,
             )
-            if self.priority == 2:
+            if self.priority == ProductPriority.API_ONLY:
                 # For inline/API_ONLY, return the processed list (may be empty)
                 return processed if isinstance(processed, list) else []
             # For batch/async, require True as success
@@ -258,8 +259,8 @@ class ProductUpdateService(VtexServiceBase):
             return processed  # Should be True
         except Exception as exc:
             logger.error(f"Error in ProductUpdateService.process_batch_sync: {exc}")
-            # On error, return [] for priority 2, False for others
-            return [] if self.priority == 2 else False
+            # On error, return [] for priority API_ONLY, False for others
+            return [] if self.priority == ProductPriority.API_ONLY else False
 
     def _get_sellers_ids(self, service):
         seller_id = extract_sellers_ids(self.webhook)
