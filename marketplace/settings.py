@@ -496,3 +496,13 @@ VTEX_WEBHOOK_USE_THREADS = env.bool("VTEX_WEBHOOK_USE_THREADS", default=True)
 
 # Lambda no token validation
 LAMBDA_ALLOWED_ROLES = env.list("LAMBDA_ALLOWED_ROLES", default=[])
+
+# Path to the JWT public key
+JWT_PUBLIC_KEY_PATH = BASE_DIR / "marketplace" / "jwt_keys" / "public_key.pem"
+
+# The public key is loaded a single time at application startup.
+try:
+    with open(JWT_PUBLIC_KEY_PATH, "rb") as f:
+        JWT_PUBLIC_KEY = f.read()
+except FileNotFoundError:
+    JWT_PUBLIC_KEY = None
