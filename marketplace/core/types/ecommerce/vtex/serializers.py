@@ -90,3 +90,19 @@ class SyncOnDemandSerializer(serializers.Serializer):
     sku_ids = serializers.ListField(child=serializers.CharField(), required=True)
     seller = serializers.CharField(required=False)
     salles_channel = serializers.CharField(required=False)
+
+
+class FacebookProductDTOSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    title = serializers.CharField()
+    description = serializers.CharField()
+    availability = serializers.CharField()
+    status = serializers.CharField()
+    condition = serializers.CharField()
+    price = serializers.CharField()
+    link = serializers.CharField()
+    image_link = serializers.CharField()
+    brand = serializers.CharField()
+    sale_price = serializers.CharField()
+    additional_image_link = serializers.CharField(required=False)
+    rich_text_description = serializers.CharField(required=False)

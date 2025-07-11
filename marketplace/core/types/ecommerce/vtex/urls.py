@@ -1,6 +1,10 @@
 from django.urls import path
 
-from .views import VtexIntegrationDetailsView, VtexSyncOnDemandView
+from .views import (
+    VtexIntegrationDetailsView,
+    VtexSyncOnDemandInlineView,
+    VtexSyncOnDemandView,
+)
 
 
 urlpatterns = [
@@ -13,5 +17,10 @@ urlpatterns = [
         "sync-on-demand/<uuid:project_uuid>/",
         VtexSyncOnDemandView.as_view(),
         name="sync-on-demand",
+    ),
+    path(
+        "sync-on-demand-inline/",
+        VtexSyncOnDemandInlineView.as_view(),
+        name="sync-on-demand-inline",
     ),
 ]

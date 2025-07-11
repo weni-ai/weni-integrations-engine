@@ -1,11 +1,12 @@
 import threading
 import re
 import concurrent.futures
+from enum import IntEnum
 
 import logging
 from django.db import close_old_connections
 from tqdm import tqdm
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from queue import Queue
 
@@ -20,6 +21,12 @@ from marketplace.clients.zeroshot.client import MockZeroShotClient
 from marketplace.wpp_products.utils import UploadManager
 
 logger = logging.getLogger(__name__)
+
+
+class ProductPriority(IntEnum):
+    DEFAULT = 0  # Save and upload products
+    ON_DEMAND = 1  # Save and upload products with most priority
+    API_ONLY = 2  # Return products without saving or uploading
 
 
 # --------------------------------------------------
@@ -225,14 +232,13 @@ class ProductValidator:
 class ProductSaver:
     """
     Manages the batch saving of products to the database.
-
     This class is responsible for handling the persistence of product data in batches.
     It ensures that products are saved efficiently by grouping them into batches of a specified size.
     Additionally, it manages the priority of product processing, which can be used to determine
     the order in which products are handled.
     """
 
-    def __init__(self, batch_size: int = 10_000, priority: int = 0):
+    def __init__(self, batch_size: int = 10_000, priority: int = 0) -> None:
         """
         Initialize the ProductSaver with specified batch size and priority.
 
@@ -265,6 +271,9 @@ class ProductSaver:
         Returns:
             List of remaining products that were not processed in this batch.
         """
+        # If priority is API_ONLY, do not save or upload, just return an empty list (all processed)
+        if self.priority == ProductPriority.API_ONLY:
+            return []
 
         if not products:
             return products
@@ -514,7 +523,7 @@ class BatchProcessor:
         temp_queue: Optional[TempRedisQueueManager] = None,
         use_threads: bool = True,
         max_workers: int = 100,
-    ):
+    ) -> None:
         """
         Initialize the batch processor
 
@@ -527,7 +536,7 @@ class BatchProcessor:
         self.temp_queue = temp_queue
         self.use_threads = use_threads
         self.max_workers = max_workers
-        self.results = []
+        self.results: List[FacebookProductDTO] = []
         self.valid = 0
         self.invalid = 0
         self.progress_lock = threading.Lock()
@@ -535,13 +544,13 @@ class BatchProcessor:
     def run(
         self,
         items: List[str],
-        processor: ProductProcessor,
+        processor: "ProductProcessor",
         mode: str = "single",
         sellers: List[str] = None,
         saver: ProductSaver = None,
-    ):
+    ) -> Union[List[FacebookProductDTO], bool]:
         """
-        Run the batch processor on a list of items
+        Run the batch processor on a list of items.
 
         Args:
             items: List of items to process
@@ -551,7 +560,9 @@ class BatchProcessor:
             saver: ProductSaver to use for saving results
 
         Returns:
-            List of processed products
+            If priority is API_ONLY, returns the list of processed DTOs.
+            Otherwise, returns True if all results were successfully processed
+            (empty list means there's nothing pending to upload).
         """
         for item in items:
             self.queue.put(item)
@@ -570,7 +581,7 @@ class BatchProcessor:
 
         progress_bar = tqdm(total=total_items, desc="[✓:0 | ✗:0]", ncols=0)
 
-        def worker_job():
+        def worker_job() -> None:
             while not self.queue.empty():
                 item = self.queue.get()
 
@@ -634,9 +645,11 @@ class BatchProcessor:
 
         finally:
             progress_bar.close()
-
+        # If priority is API_ONLY, return the list of processed DTOs
+        if saver and saver.priority == ProductPriority.API_ONLY:
+            return self.results
         # Try to save remaining items
-        if saver and self.results:
+        if saver and saver.priority != ProductPriority.API_ONLY and self.results:
             self.results = saver.save_batch(self.results, processor.catalog)
 
         if self.temp_queue:
