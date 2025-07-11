@@ -19,7 +19,7 @@ urlpatterns = [
         name="sync-on-demand",
     ),
     path(
-        "sync-on-demand-inline/<uuid:project_uuid>/",
+        "sync-on-demand-inline/",
         VtexSyncOnDemandInlineView.as_view(),
         name="sync-on-demand-inline",
     ),

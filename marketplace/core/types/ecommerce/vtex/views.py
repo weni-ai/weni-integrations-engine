@@ -28,6 +28,7 @@ from marketplace.core.types.ecommerce.vtex.usecases.vtex_integration import (
     VtexIntegration,
 )
 
+from marketplace.internal.jwt_mixins import JWTModuleAuthMixin
 from marketplace.services.flows.service import FlowsService
 from marketplace.clients.flows.client import FlowsClient
 from marketplace.services.vtex.app_manager import AppVtexManager
@@ -263,7 +264,7 @@ class VtexSyncOnDemandView(APIView):
         )
 
 
-class VtexSyncOnDemandInlineView(APIView):
+class VtexSyncOnDemandInlineView(JWTModuleAuthMixin, APIView):
     """
     Handles on-demand (priority 2) product sync for VTEX.
 
@@ -290,9 +291,7 @@ class VtexSyncOnDemandInlineView(APIView):
         }
     """
 
-    permission_classes = [AllowAny]
-
-    def post(self, request, project_uuid: UUID, *args, **kwargs) -> Response:
+    def post(self, request, *args, **kwargs) -> Response:
         """
         Process a synchronous inline (priority 2) on-demand product sync.
 
@@ -316,7 +315,7 @@ class VtexSyncOnDemandInlineView(APIView):
             seller=seller,
             salles_channel=sales_channel,
         )
-        result = use_case.execute(dto, project_uuid)
+        result = use_case.execute(dto, self.project_uuid)
 
         products = result.get("products") if result else []
         invalid_skus = result.get("invalid_skus") if result else []
