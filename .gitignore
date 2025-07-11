@@ -135,4 +135,4 @@ dmypy.json
 media/
 
 # Ignore private keys
-jwt_keys/private_key.pem
+marketplace/jwt_keys/private_key.pem
