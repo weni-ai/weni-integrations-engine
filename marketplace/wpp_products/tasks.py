@@ -289,7 +289,10 @@ def send_sync(app_uuid: str, webhook: dict):
             return
 
     if not sku_id:
-        raise ValueError(f"SKU ID not provided in the request. App:{str(app.uuid)}")
+        logger.info(
+            f"SKU ID not provided in the request. App: {str(app.uuid)} | Webhook received: {webhook}"
+        )
+        return
 
     # Check if the app uses specific queue
     celery_queue = app.config.get("celery_queue_name", "product_synchronization")

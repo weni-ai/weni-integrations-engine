@@ -395,9 +395,15 @@ class ProductProcessor:
                 return []
             return [dto]
         except CustomAPIException as e:
-            logger.error(
-                f"Error processing SKU {sku_id} (seller {seller_id}): {str(e)}"
-            )
+            if e.status_code in (404, 500):
+                logger.info(
+                    f"SKU {sku_id} returned status: {e.status_code}. Skipping. func: process_seller_sku"
+                )
+            else:
+                logger.error(
+                    f"Error processing SKU {sku_id}: {str(e)}. func: process_seller_sku",
+                    exc_info=True,
+                )
             return []
 
     def process_single_sku(
@@ -491,7 +497,15 @@ class ProductProcessor:
 
             return results
         except CustomAPIException as e:
-            logger.error(f"Error processing SKU {sku_id}: {str(e)}")
+            if e.status_code in (404, 500):
+                logger.info(
+                    f"SKU {sku_id} returned status: {e.status_code}. Skipping. func: process_single_sku"
+                )
+            else:
+                logger.error(
+                    f"Error processing SKU {sku_id}: {str(e)}. func: process_single_sku",
+                    exc_info=True,
+                )
             return []
 
 

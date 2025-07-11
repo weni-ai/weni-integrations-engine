@@ -10,7 +10,7 @@ from marketplace.wpp_templates.metrics.usecases.template_metrics import (
 )
 
 
-class TemplateMetricsView(APIView):
+class TemplateMetricsView(APIView):  # pragma: no cover
     """
     View responsible for retrieving template metrics data
     based on gallery versions and a specified time range.

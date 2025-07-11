@@ -116,6 +116,7 @@ class WhatsAppCloudViewSet(
         business_id = config_data["business_id"]
         message_template_namespace = config_data["message_template_namespace"]
         allocation_config_id = config_data["allocation_config_id"]
+        dataset_id = config_data["dataset_id"]
 
         # Get phone number
         phone_number_request = PhoneNumbersService(
@@ -137,6 +138,7 @@ class WhatsAppCloudViewSet(
             wa_message_template_namespace=message_template_namespace,
             wa_pin=pin,
             wa_user_token=user_access_token,
+            wa_dataset_id=dataset_id,
         )
 
         flows_service = FlowsService(client=FlowsClient())
@@ -232,6 +234,21 @@ class WhatsAppCloudViewSet(
         )
 
         return Response(status=response.status_code)
+
+    @action(detail=True, methods=["PATCH"])
+    def update_mmlite_status(self, request: "Request", **kwargs):
+        app = self.get_object()
+
+        status = request.data.get("status")
+
+        if status not in ["in_progress", "active"]:
+            raise ValidationError("Invalid status")
+
+        app.config["mmlite_status"] = request.data.get("status")
+        app.save()
+
+        serializer = self.get_serializer(app)
+        return Response(serializer.data)
 
 
 class WhatsAppCloudInsights(APIView):

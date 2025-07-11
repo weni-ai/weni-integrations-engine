@@ -5,7 +5,7 @@ description = "Marketplace engine"
 authors = ["Weni"]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.9.2"
 Django = "3.2.4"
 django-environ = "0.4.5"
 psycopg2 = "^2.8.6"
@@ -33,6 +33,9 @@ elastic-apm = "^6.10.1"
 pre-commit = "2.20.0"
 pandas = "^2.1.4"
 tqdm = "^4.66.2"
+pyjwt = "^2.10.1"
+cryptography = "^45.0.5"
+pyopenssl = "^25.1.0"
 
 [tool.poetry.dev-dependencies]
 black = "^21.5b2"

@@ -1,3 +1,11 @@
+v4.8.1
+----------
+* feat: wpp cloud create dataset
+
+v4.8.0
+----------
+* feat: implement account update webhook event processing for WhatsAppCloud
+
 v4.7.0
 ----------
 * fix: handle missing salles_channel in UnifiesIdWithSallesChannel
