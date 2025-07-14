@@ -4,6 +4,8 @@ import time
 
 from datetime import datetime, timedelta
 
+from marketplace.services.vtex.utils.enums import ProductPriority
+
 from celery import shared_task
 
 from django_redis import get_redis_connection
@@ -447,7 +449,10 @@ def task_enqueue_webhook(app_uuid: str, seller: str, sku_id: str):
 
 @celery_app.task(name="task_dequeue_webhooks")
 def task_dequeue_webhooks(
-    app_uuid: str, celery_queue: str, priority: int = 0, batch_size: int = 5000
+    app_uuid: str,
+    celery_queue: str,
+    priority: int = ProductPriority.DEFAULT,
+    batch_size: int = 5000,
 ):
     """
     Dequeues webhooks from Redis and dispatches them in batches.
@@ -500,38 +505,58 @@ def task_dequeue_webhooks(
 
 @celery_app.task(name="task_update_webhook_batch_products")
 def task_update_webhook_batch_products(
-    app_uuid: str, batch: list, priority: int = 0, salles_channel: str = None
+    app_uuid: str,
+    batch: list,
+    priority: int = ProductPriority.DEFAULT,
+    salles_channel: str = None,
 ):
     """
     Processes product updates in batches for a VTEX app.
+
+    Priority levels:
+        ProductPriority.DEFAULT: Legacy synchronization. Runs only if the app's initial sync is completed.
+        ProductPriority.ON_DEMAND: On-demand sync via Celery (asynchronous).
+        ProductPriority.API_ONLY: On-demand inline sync (synchronous, returns processed products).
+
+    Args:
+        app_uuid (str): UUID of the VTEX app.
+        batch (list): List of seller#sku identifiers to process.
+        priority (int): Type of synchronization.
+            ProductPriority.DEFAULT = legacy,
+            ProductPriority.ON_DEMAND = on demand,
+            ProductPriority.API_ONLY = inline.
+        salles_channel (str, optional): Sales channel identifier.
+
+    Returns:
+        If priority is ProductPriority.API_ONLY, returns the list of processed products.
+        Otherwise, returns None.
     """
     start_time = datetime.now()
     vtex_base_service = VtexServiceBase()
+    processed_products = None
 
     try:
         logger.info(f"Processing batch of {len(batch)} items for App: {app_uuid}.")
 
-        # Fetch app configuration
         cache_key = f"app_cache_{app_uuid}"
         vtex_app = cache.get(cache_key)
         if not vtex_app:
             vtex_app = App.objects.get(uuid=app_uuid, configured=True, code="vtex")
             cache.set(cache_key, vtex_app, timeout=300)
 
-        # If priority is 0, use legacy synchronization
-        # If priority is 1, use Sync on demand
-        if priority == 0 and not vtex_app.config.get("initial_sync_completed", False):
+        # Legacy sync is allowed only if the initial sync is completed
+        if priority == ProductPriority.DEFAULT and not vtex_app.config.get(
+            "initial_sync_completed", False
+        ):
             logger.info(f"Initial sync not completed for App: {app_uuid}. Task ending.")
-            return
+            return None
 
-        # Get VTEX credentials
         api_credentials = vtex_base_service.get_vtex_credentials_or_raise(vtex_app)
         catalog = vtex_app.vtex_catalogs.first()
         if not catalog:
             logger.info(f"No catalog found for VTEX app: {vtex_app.uuid}")
-            return
+            return None
 
-        # Initialize ProductUpdateService
         vtex_update_service = ProductUpdateService(
             api_credentials=api_credentials,
             catalog=catalog,
@@ -540,13 +565,15 @@ def task_update_webhook_batch_products(
             salles_channel=salles_channel,
         )
 
-        success = vtex_update_service.process_batch_sync()
-        if not success:
-            logger.info(f"Fail to process batch for App: {app_uuid}.")
-            return
+        # Receives a list of processed products from the service
+        processed_products = vtex_update_service.process_batch_sync()
+        if not processed_products:
+            logger.info(f"Failed to process batch for App: {app_uuid}.")
+            return None
 
     except Exception as e:
         logger.error(f"Error during batch processing for App: {app_uuid}, {e}")
+        return None
 
     finally:
         end_time = datetime.now()
@@ -554,3 +581,8 @@ def task_update_webhook_batch_products(
         logger.info(
             f"Finished processing batch for App: {app_uuid}. Duration: {duration:.2f} seconds."
         )
+
+    if priority == ProductPriority.API_ONLY:
+        return processed_products
+
+    return None

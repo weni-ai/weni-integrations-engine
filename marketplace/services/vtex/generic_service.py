@@ -30,6 +30,7 @@ from marketplace.clients.facebook.client import FacebookClient
 from marketplace.wpp_products.models import Catalog
 from marketplace.services.product.product_facebook_manage import ProductFacebookManager
 from marketplace.services.vtex.app_manager import AppVtexManager
+from marketplace.services.vtex.utils.enums import ProductPriority
 
 
 logger = logging.getLogger(__name__)
@@ -177,6 +178,11 @@ class ProductInsertionService(VtexServiceBase):
 
 
 class ProductUpdateService(VtexServiceBase):
+    """
+    Service for processing product updates via VTEX webhooks.
+    Handles legacy, async (priority 1), and inline (priority 2) batch processing.
+    """
+
     def __init__(
         self,
         api_credentials: APICredentials,
@@ -185,11 +191,19 @@ class ProductUpdateService(VtexServiceBase):
         webhook: Optional[dict] = None,
         sellers_ids: list[str] = None,
         sellers_skus: list[str] = None,
-        priority: int = 0,
+        priority: int = ProductPriority.DEFAULT,
         salles_channel: Optional[str] = None,
     ):
         """
-        Service for processing product updates via VTEX webhooks.
+        Args:
+            api_credentials (APICredentials): VTEX API credentials.
+            catalog (Catalog): Product catalog instance.
+            skus_ids (list[str], optional): List of SKUs for update.
+            webhook (dict, optional): Webhook data.
+            sellers_ids (list[str], optional): List of seller IDs.
+            sellers_skus (list[str], optional): List of seller#sku identifiers.
+            priority (int): Type of synchronization (0=legacy, 1=async, 2=inline).
+            salles_channel (str, optional): Sales channel.
         """
         super().__init__()
         self.api_credentials = api_credentials
@@ -205,31 +219,48 @@ class ProductUpdateService(VtexServiceBase):
 
     def process_batch_sync(self):
         """
-        Processes product updates for the new batch synchronization method.
+        Processes product updates for the batch synchronization method.
+
+        For priorities 0 and 1 (default/async):
+            - Returns True if all products were successfully saved, otherwise raises Exception.
+        For priority 2 (inline/API_ONLY):
+            - Returns a list of processed products (which may be empty).
+
+        Returns:
+            Union[bool, list]:
+                - True for successful batch save (priority 0/1).
+                - List of processed products for inline sync (priority 2).
+                - On error: [] for priority 2, False for other priorities.
+
+        Raises:
+            Exception: If the batch process fails for priorities 0 or 1.
         """
-        # Initialize private service
         pvt_service = self.get_private_service(
             self.api_credentials.app_key, self.api_credentials.app_token
         )
-
-        # Create and execute the webhook sync use case
         sync_use_case = SyncProductByWebhookUseCase(products_service=pvt_service)
 
-        # Execute the use case with the required parameters
-        all_success = sync_use_case.execute(
-            domain=self.api_credentials.domain,
-            sellers_skus=self.sellers_skus,
-            catalog=self.catalog,
-            priority=self.priority,
-            salles_channel=self.salles_channel,
-        )
-
-        if not all_success:
-            raise Exception(
-                f"Error saving batch products in database for Catalog: {self.catalog.facebook_catalog_id}"
+        try:
+            processed = sync_use_case.execute(
+                domain=self.api_credentials.domain,
+                sellers_skus=self.sellers_skus,
+                catalog=self.catalog,
+                priority=self.priority,
+                salles_channel=self.salles_channel,
             )
-
-        return all_success
+            if self.priority == ProductPriority.API_ONLY:
+                # For inline/API_ONLY, return the processed list (may be empty)
+                return processed if isinstance(processed, list) else []
+            # For batch/async, require True as success
+            if not processed:
+                raise Exception(
+                    f"Error saving batch products in database for Catalog: {self.catalog.facebook_catalog_id}"
+                )
+            return processed  # Should be True
+        except Exception as exc:
+            logger.error(f"Error in ProductUpdateService.process_batch_sync: {exc}")
+            # On error, return [] for priority API_ONLY, False for others
+            return [] if self.priority == ProductPriority.API_ONLY else False
 
     def _get_sellers_ids(self, service):
         seller_id = extract_sellers_ids(self.webhook)

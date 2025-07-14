@@ -6,7 +6,9 @@ from rest_framework.permissions import AllowAny
 
 from uuid import UUID
 
+from marketplace.core.types.ecommerce.dtos.sync_on_demand_dto import SyncOnDemandDTO
 from marketplace.core.types.ecommerce.vtex.serializers import (
+    FacebookProductDTOSerializer,
     FirstProductInsertSerializer,
     VtexAdsSerializer,
     VtexSerializer,
@@ -19,10 +21,14 @@ from marketplace.core.types.ecommerce.vtex.tasks import task_sync_on_demand
 from marketplace.core.types.ecommerce.vtex.usecases.link_catalog_start_sync import (
     LinkCatalogAndStartSyncUseCase,
 )
+from marketplace.core.types.ecommerce.vtex.usecases.sync_on_demand_in_line import (
+    SyncOnDemandInlineUseCase,
+)
 from marketplace.core.types.ecommerce.vtex.usecases.vtex_integration import (
     VtexIntegration,
 )
 
+from marketplace.internal.jwt_mixins import JWTModuleAuthMixin
 from marketplace.services.flows.service import FlowsService
 from marketplace.clients.flows.client import FlowsClient
 from marketplace.services.vtex.app_manager import AppVtexManager
@@ -255,4 +261,82 @@ class VtexSyncOnDemandView(APIView):
         )
         return Response(
             {"message": "Products sent to sync on demand."}, status=status.HTTP_200_OK
+        )
+
+
+class VtexSyncOnDemandInlineView(JWTModuleAuthMixin, APIView):
+    """
+    Handles on-demand (priority 2) product sync for VTEX.
+
+    Receives a list of SKU IDs and seller info, processes the sync inline, and returns the list of processed products.
+
+    Example request:
+        {
+            "sku_ids": ["123", "456"],
+            "seller": "1",
+            "salles_channel": "1"
+        }
+
+    Example response:
+        {
+            "products": [
+                {
+                    "id": "123",
+                    "title": "...",
+                    ...
+                }
+            ],
+            "total_products": 1,
+            "invalid_skus": []
+        }
+    """
+
+    def post(self, request, *args, **kwargs) -> Response:
+        """
+        Process a synchronous inline (priority 2) on-demand product sync.
+
+        Args:
+            request: The HTTP request object containing the JSON payload.
+            project_uuid: UUID of the VTEX project.
+
+        Returns:
+            Response: A JSON object containing the serialized products and the total found.
+        """
+        serializer = SyncOnDemandSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        sku_ids = serializer.validated_data.get("sku_ids")
+        seller = serializer.validated_data.get("seller")
+        sales_channel = serializer.validated_data.get("salles_channel")
+
+        use_case = SyncOnDemandInlineUseCase()
+        dto = SyncOnDemandDTO(
+            sku_ids=sku_ids,
+            seller=seller,
+            salles_channel=sales_channel,
+        )
+        result = use_case.execute(dto, self.project_uuid)
+
+        products = result.get("products") if result else []
+        invalid_skus = result.get("invalid_skus") if result else []
+
+        if not products:
+            return Response(
+                {
+                    "products": [],
+                    "total_products": 0,
+                    "invalid_skus": invalid_skus,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        facebook_products_serializer = FacebookProductDTOSerializer(products, many=True)
+
+        return Response(
+            {
+                "products": facebook_products_serializer.data,
+                "total_products": len(products),
+                "invalid_skus": invalid_skus,
+            },
+            status=status.HTTP_200_OK,
         )
