@@ -1,3 +1,12 @@
+v4.9.0
+----------
+* feat: add unit tests for TemplateMetricsUseCase
+* feat: add JWT authentication support with public key handling and permissions
+* fix: log SKU ID absence in send_sync function and return early
+* fix: ignore VTEX 404 and 500 exceptions on product sync
+* feat: add delay for default priority uploads
+* feat: adds new ProductPriority to data_processor to only process products
+
 v4.8.1
 ----------
 * feat: wpp cloud create dataset
