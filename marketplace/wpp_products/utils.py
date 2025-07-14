@@ -310,6 +310,9 @@ class ProductBatchUploader:
                 # If priority is DEFAULT, apply 60-second delay
                 # If priority is different from DEFAULT, no delay
                 if self.priority == ProductPriority.DEFAULT:
+                    logger.info(
+                        f"Waiting 60 seconds for catalog {self.catalog.name} before next batch"
+                    )
                     time.sleep(60)
 
                 # Renew the lock
