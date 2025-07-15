@@ -1,5 +1,6 @@
 import logging
 
+from django.conf import settings
 from django_redis import get_redis_connection
 from django.core.cache import cache
 from marketplace.wpp_products.models import Catalog, ProductValidation
@@ -14,7 +15,7 @@ class SKUValidator:
         self.domain = domain
         self.zeroshot_client = zeroshot_client
         self.redis_client = get_redis_connection()
-        self.default_timeout = 3600
+        self.default_timeout = settings.SKU_VALIDATOR_TIMEOUT
 
     def validate_product_details(self, sku_id: str, catalog: Catalog):
         # Ensure SKU ID is a non-empty string
