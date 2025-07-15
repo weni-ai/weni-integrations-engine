@@ -1,3 +1,7 @@
+v4.9.2
+----------
+* feat: add SKU Validator timeout configuration
+
 v4.9.1
 ----------
 * Upgrade debian version to bookworm
