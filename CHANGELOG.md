@@ -1,3 +1,7 @@
+v4.9.1
+----------
+* Upgrade debian version to bookworm
+
 v4.9.0
 ----------
 * feat: add unit tests for TemplateMetricsUseCase
