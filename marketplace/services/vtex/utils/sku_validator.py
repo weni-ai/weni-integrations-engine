@@ -16,6 +16,19 @@ class SKUValidator:
         self.zeroshot_client = zeroshot_client
         self.redis_client = get_redis_connection()
         self.default_timeout = settings.SKU_VALIDATOR_TIMEOUT
+        self.cache_prefix = "sku_validator"
+
+    def _get_cache_key(self, catalog: Catalog, sku_id: str) -> str:
+        """Generate a cache key with prefix for easier searching"""
+        return f"{self.cache_prefix}:{str(catalog.uuid)}:{sku_id}"
+
+    def _get_cached_validation(self, cache_key: str):
+        """Get cached validation and renew timeout if found"""
+        cached_validation = cache.get(cache_key)
+        if cached_validation is not None:
+            # Renew the cache timeout when accessed
+            cache.set(cache_key, cached_validation, timeout=self.default_timeout)
+        return cached_validation
 
     def validate_product_details(self, sku_id: str, catalog: Catalog):
         # Ensure SKU ID is a non-empty string
@@ -25,8 +38,8 @@ class SKUValidator:
             )
             return None
 
-        cache_key = f"{str(catalog.uuid)}:{sku_id}"
-        cached_validation = cache.get(cache_key)
+        cache_key = self._get_cache_key(catalog, sku_id)
+        cached_validation = self._get_cached_validation(cache_key)
 
         if cached_validation is not None:
             is_valid, classification = cached_validation

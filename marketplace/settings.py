@@ -508,4 +508,4 @@ except FileNotFoundError:
     JWT_PUBLIC_KEY = None
 
 # SKU Validator timeout
-SKU_VALIDATOR_TIMEOUT = env.int("SKU_VALIDATOR_TIMEOUT", default=86400)
+SKU_VALIDATOR_TIMEOUT = env.int("SKU_VALIDATOR_TIMEOUT", default=1200)
