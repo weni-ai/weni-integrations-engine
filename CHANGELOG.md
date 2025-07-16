@@ -1,3 +1,7 @@
+v4.9.3
+----------
+* fix: remove webhook log and update sku validator timeout
+
 v4.9.2
 ----------
 * feat: add SKU Validator timeout configuration
