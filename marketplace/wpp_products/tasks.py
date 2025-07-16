@@ -299,8 +299,8 @@ def send_sync(app_uuid: str, webhook: dict):
     # Check if the app uses specific queue
     celery_queue = app.config.get("celery_queue_name", "product_synchronization")
 
-    # Webhook Log
-    WebhookLog.objects.create(sku_id=sku_id, data=webhook, vtex_app=app)
+    # Commented out on 2025-07-16 to reduce database writes
+    # WebhookLog.objects.create(sku_id=sku_id, data=webhook, vtex_app=app)
 
     logger.info(f"App {app_uuid} uses Sync v2. Enqueuing for batch update.")
 
