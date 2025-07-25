@@ -25,7 +25,7 @@ class SyncOnDemandInlineUseCase(BaseSyncUseCase):
         app_uuid: str,
         celery_queue: str,  # Not used, but kept for compatibility
         skus_batch: List[str],
-        salles_channel: Optional[str],
+        sales_channel: Optional[list[str]],
         invalid_skus: Set[str],
     ) -> dict:
         """
@@ -36,8 +36,8 @@ class SyncOnDemandInlineUseCase(BaseSyncUseCase):
             "batch": skus_batch,
             "priority": self.priority,
         }
-        if salles_channel:
-            kwargs["salles_channel"] = salles_channel
+        if sales_channel:
+            kwargs["sales_channel"] = sales_channel
 
         logger.info(
             f"Processing inline sync for {skus_batch} (priority {self.priority}) – no Celery queue involved"

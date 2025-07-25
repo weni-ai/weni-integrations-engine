@@ -311,9 +311,9 @@ class ProductBatchUploader:
                 # If priority is different from DEFAULT, no delay
                 if self.priority == ProductPriority.DEFAULT:
                     logger.info(
-                        f"Waiting 60 seconds for catalog {self.catalog.name} before next batch"
+                        f"Waiting 30 seconds for catalog {self.catalog.name} before next batch"
                     )
-                    time.sleep(60)
+                    time.sleep(30)
 
                 # Renew the lock
                 redis_client.expire(lock_key, lock_expiration_time)

@@ -10,16 +10,18 @@ class UnifiesIdWithSallesChannel(Rule):
     SEPARATOR = "#"
 
     def apply(self, product: FacebookProductDTO, **kwargs) -> bool:
-        salles_channel = kwargs.get("salles_channel")
-        if not salles_channel:
+        sales_channel = kwargs.get("sales_channel")
+        if not sales_channel:
             logger.info(
-                "No salles_channel found, skipping unifies_id_with_salles_channel"
+                "No sales_channel found, skipping unifies_id_with_sales_channel"
             )
             return False
 
-        product.id = self.unifies_product_id_seller_channel(product.id, salles_channel)
+        product.id = self.unifies_product_id_seller_channel(product.id, sales_channel)
         return True
 
     @staticmethod
-    def unifies_product_id_seller_channel(product_id: str, salles_channel: str) -> str:
-        return f"{product_id}{UnifiesIdWithSallesChannel.SEPARATOR}{salles_channel}"
+    def unifies_product_id_seller_channel(
+        product_id: str, sales_channel: list[str]
+    ) -> str:
+        return f"{product_id}{UnifiesIdWithSallesChannel.SEPARATOR}{sales_channel}"

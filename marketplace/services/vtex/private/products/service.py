@@ -83,14 +83,30 @@ class PrivateProductsService:
         sku_id: str,
         seller_id: str,
         domain: str,
-        salles_channel: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        sales_channel: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Simulate cart for a seller with optional multiple sales channels.
+
+        Args:
+            sku_id: The SKU ID to simulate
+            seller_id: The seller ID
+            domain: The VTEX domain
+            sales_channel: Optional sales channel
+
+        Returns:
+            List of availability results (one for each sales channel, or one if no sales channel)
+        """
         return self.client.pub_simulate_cart_for_seller(
-            sku_id, seller_id, domain, salles_channel
+            sku_id, seller_id, domain, sales_channel
         )
 
     def simulate_cart_for_multiple_sellers(
-        self, sku_id: str, sellers: List[str], domain: str
+        self,
+        sku_id: str,
+        sellers: List[str],
+        domain: str,
+        sales_channel: Optional[str] = None,
     ) -> Dict[str, Dict[str, Any]]:
         """
         Simulates cart for a SKU across multiple sellers, in blocks of 200.
@@ -99,6 +115,7 @@ class PrivateProductsService:
             sku_id: The ID of the SKU to simulate the cart for
             sellers: List of seller IDs to simulate the cart with
             domain: The VTEX domain to use for the simulation
+            sales_channel: Optional list of sales channels
 
         Returns:
             Dictionary mapping seller IDs to their cart simulation results
@@ -110,7 +127,7 @@ class PrivateProductsService:
             seller_chunk = sellers[i : i + 200]  # noqa: E203
             # Call the client method for each chunk of sellers
             chunk_results = self.client.simulate_cart_for_multiple_sellers(
-                sku_id, seller_chunk, domain
+                sku_id, seller_chunk, domain, sales_channel
             )
             # Merge the results from the client into the overall results
             results.update(chunk_results)
