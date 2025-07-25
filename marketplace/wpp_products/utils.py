@@ -6,6 +6,8 @@ from typing import List, Dict, Any
 
 from datetime import datetime, timezone
 
+from django.conf import settings
+
 from marketplace.services.vtex.utils.enums import ProductPriority
 
 from django.db.models import QuerySet
@@ -307,13 +309,14 @@ class ProductBatchUploader:
                     self.product_manager.mark_products_as_error(product_ids)
 
                 # Apply delay based on priority
-                # If priority is DEFAULT, apply 60-second delay
+                # If priority is DEFAULT, apply delay from settings
                 # If priority is different from DEFAULT, no delay
                 if self.priority == ProductPriority.DEFAULT:
+                    upload_delay: int = settings.META_UPLOAD_PRODUCT_DELAY_DEFAULT
                     logger.info(
-                        f"Waiting 30 seconds for catalog {self.catalog.name} before next batch"
+                        f"Waiting {upload_delay} seconds for catalog {self.catalog.name} before next batch"
                     )
-                    time.sleep(30)
+                    time.sleep(upload_delay)
 
                 # Renew the lock
                 redis_client.expire(lock_key, lock_expiration_time)
