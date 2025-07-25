@@ -49,7 +49,7 @@ class SyncProductByWebhookUseCase:
         sellers_skus: list,
         catalog: Catalog,
         priority: int = 0,
-        salles_channel: Optional[str] = None,
+        sales_channel: Optional[list[str]] = None,
     ) -> List[FacebookProductDTO]:
         """
         Executes the synchronization process for products received via webhook.
@@ -59,7 +59,7 @@ class SyncProductByWebhookUseCase:
             sellers_skus (list): A list of strings in the format "seller#sku".
             catalog (Catalog): The catalog associated with the products to be processed.
             priority (int, optional): The priority level for processing. Defaults to 0.
-            salles_channel (str, optional): The sales channel identifier.
+            sales_channel (list[str], optional): The sales channel identifier.
 
         Returns:
             List[FacebookProductDTO]: List of processed products.
@@ -85,7 +85,7 @@ class SyncProductByWebhookUseCase:
             mode="seller_sku",
             sellers=None,  # Not needed in this mode, as each item already includes the seller
             priority=priority,
-            salles_channel=salles_channel,
+            sales_channel=sales_channel,
         )
 
         return result

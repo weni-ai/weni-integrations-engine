@@ -509,3 +509,8 @@ except FileNotFoundError:
 
 # SKU Validator timeout
 SKU_VALIDATOR_TIMEOUT = env.int("SKU_VALIDATOR_TIMEOUT", default=1200)
+
+# Meta upload product delay
+META_UPLOAD_PRODUCT_DELAY_DEFAULT = env.int(
+    "META_UPLOAD_PRODUCT_DELAY_DEFAULT", default=30
+)

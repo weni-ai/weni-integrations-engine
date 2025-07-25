@@ -152,6 +152,7 @@ class ProductInsertionService(VtexServiceBase):
         credentials: APICredentials,
         catalog: Catalog,
         sellers: Optional[List[str]] = None,
+        sales_channel: Optional[list[str]] = None,
     ):
         """
         Handles the first product insert process using the SyncAllProductsUseCase.
@@ -171,6 +172,7 @@ class ProductInsertionService(VtexServiceBase):
             sellers=sellers,
             update_product=False,
             sync_specific_sellers=False,
+            sales_channel=sales_channel,
         )
         print(f"First product sync completed for Catalog: {catalog.name}")
         self.app_manager.initial_sync_products_completed(catalog.vtex_app)
@@ -192,7 +194,7 @@ class ProductUpdateService(VtexServiceBase):
         sellers_ids: list[str] = None,
         sellers_skus: list[str] = None,
         priority: int = ProductPriority.DEFAULT,
-        salles_channel: Optional[str] = None,
+        sales_channel: Optional[list[str]] = None,
     ):
         """
         Args:
@@ -203,7 +205,7 @@ class ProductUpdateService(VtexServiceBase):
             sellers_ids (list[str], optional): List of seller IDs.
             sellers_skus (list[str], optional): List of seller#sku identifiers.
             priority (int): Type of synchronization (0=legacy, 1=async, 2=inline).
-            salles_channel (str, optional): Sales channel.
+            sales_channel (list[str], optional): Sales channel.
         """
         super().__init__()
         self.api_credentials = api_credentials
@@ -215,7 +217,7 @@ class ProductUpdateService(VtexServiceBase):
         self.sellers_skus = sellers_skus if sellers_skus else []
         self.product_manager = ProductFacebookManager()
         self.priority = priority
-        self.salles_channel = salles_channel
+        self.sales_channel = sales_channel
 
     def process_batch_sync(self):
         """
@@ -246,7 +248,7 @@ class ProductUpdateService(VtexServiceBase):
                 sellers_skus=self.sellers_skus,
                 catalog=self.catalog,
                 priority=self.priority,
-                salles_channel=self.salles_channel,
+                sales_channel=self.sales_channel,
             )
             if self.priority == ProductPriority.API_ONLY:
                 # For inline/API_ONLY, return the processed list (may be empty)
@@ -290,7 +292,11 @@ def extract_sellers_ids(webhook):
 class CatalogProductInsertion:
     @classmethod
     def first_product_insert_with_catalog(
-        cls, vtex_app: App, catalog_id: str, sellers: Optional[List[str]] = None
+        cls,
+        vtex_app: App,
+        catalog_id: str,
+        sellers: Optional[List[str]] = None,
+        sales_channel: Optional[list[str]] = None,
     ):
         """Inserts the first product with the given catalog."""
         wpp_cloud_uuid = cls._get_wpp_cloud_uuid(vtex_app)
@@ -301,7 +307,7 @@ class CatalogProductInsertion:
         cls._update_app_connected_catalog_flag(vtex_app)
         cls._link_catalog_to_vtex_app_if_needed(catalog, vtex_app)
 
-        cls._send_insert_task(credentials, catalog, sellers)
+        cls._send_insert_task(credentials, catalog, sellers, sales_channel)
 
     @staticmethod
     def _get_wpp_cloud_uuid(vtex_app) -> str:
@@ -377,7 +383,10 @@ class CatalogProductInsertion:
 
     @staticmethod
     def _send_insert_task(
-        credentials, catalog, sellers: Optional[List[str]] = None
+        credentials,
+        catalog,
+        sellers: Optional[List[str]] = None,
+        sales_channel: Optional[list[str]] = None,
     ) -> None:
         from marketplace.celery import app as celery_app
 
@@ -388,6 +397,7 @@ class CatalogProductInsertion:
                 "credentials": credentials,
                 "catalog_uuid": str(catalog.uuid),
                 "sellers": sellers,
+                "sales_channel": sales_channel,
             },
             queue="product_first_synchronization",
         )
@@ -410,6 +420,7 @@ class ProductInsertionBySellerService(VtexServiceBase):  # pragma: no cover
         catalog: Catalog,
         sellers: List[str],
         sync_all_sellers: bool = False,
+        sales_channel: Optional[list[str]] = None,
     ):
         """
         Fetches and processes products from specific sellers for insertion.
@@ -440,6 +451,7 @@ class ProductInsertionBySellerService(VtexServiceBase):  # pragma: no cover
             update_product=True,
             sync_specific_sellers=True,
             sync_all_sellers=sync_all_sellers,
+            sales_channel=sales_channel,
         )
 
         logger.info(f"Finished synchronizing products for specific sellers: {sellers}.")

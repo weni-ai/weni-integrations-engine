@@ -27,7 +27,9 @@ class LinkCatalogAndStartSyncUseCase:
         else:
             self.catalog_product_insertion = catalog_product_insertion
 
-    def execute(self, vtex_app: App, catalog_id: str) -> bool:
+    def execute(
+        self, vtex_app: App, catalog_id: str, sales_channel: list[str] = None
+    ) -> bool:
         """
         Execute the catalog linking and product synchronization process.
 
@@ -40,7 +42,7 @@ class LinkCatalogAndStartSyncUseCase:
         """
         try:
             self.catalog_product_insertion.first_product_insert_with_catalog(
-                vtex_app=vtex_app, catalog_id=catalog_id
+                vtex_app=vtex_app, catalog_id=catalog_id, sales_channel=sales_channel
             )
             return True
         except Exception as e:

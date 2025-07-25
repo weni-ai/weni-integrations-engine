@@ -25,7 +25,7 @@ class SyncOnDemandUseCase(BaseSyncUseCase):
         app_uuid: str,
         celery_queue: str,
         skus_batch: List[str],
-        salles_channel: Optional[str],
+        sales_channel: Optional[list[str]],
         invalid_skus: Set[str],  # Not used, but kept for compatibility
     ) -> None:
         """
@@ -37,8 +37,8 @@ class SyncOnDemandUseCase(BaseSyncUseCase):
             "batch": skus_batch,
             "priority": self.priority,
         }
-        if salles_channel:
-            kwargs["salles_channel"] = salles_channel
+        if sales_channel:
+            kwargs["sales_channel"] = sales_channel
 
         logger.info(
             f"Dispatching {skus_batch} to queue '{celery_queue}' "

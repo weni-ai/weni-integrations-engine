@@ -144,14 +144,15 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
 
     @retry_on_exception()
     def pub_simulate_cart_for_seller(
-        self, sku_id, seller_id, domain, salles_channel=None
+        self, sku_id: str, seller_id: str, domain: str, sales_channel: str = None
     ):
         cart_simulation_url = f"https://{domain}/api/checkout/pub/orderForms/simulation"
         payload = {"items": [{"id": sku_id, "quantity": 1, "seller": seller_id}]}
 
         time.sleep(1)  # The best performance needed this 'sleep'
 
-        params = {"sc": salles_channel} if salles_channel else None
+        # Set params based on sales channel
+        params = {"sc": sales_channel} if sales_channel else None
 
         response = self.make_request(
             cart_simulation_url, method="POST", json=payload, params=params
@@ -230,7 +231,9 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
         return response.json()
 
     @retry_on_exception()
-    def simulate_cart_for_multiple_sellers(self, sku_id, sellers, domain):
+    def simulate_cart_for_multiple_sellers(
+        self, sku_id, sellers, domain, sales_channel: str = None
+    ):
         """
         Simulate cart for a SKU across multiple sellers in a single request.
         """
@@ -238,7 +241,12 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
         items = [{"id": sku_id, "quantity": 1, "seller": seller} for seller in sellers]
         payload = {"items": items}
 
-        response = self.make_request(cart_simulation_url, method="POST", json=payload)
+        # Set params based on sales channel
+        params = {"sc": sales_channel} if sales_channel else None
+
+        response = self.make_request(
+            cart_simulation_url, method="POST", json=payload, params=params
+        )
         simulation_data = response.json()
 
         results = {}

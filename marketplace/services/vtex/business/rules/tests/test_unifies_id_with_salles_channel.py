@@ -23,33 +23,33 @@ class TestUnifiesIdWithSallesChannel(unittest.TestCase):
             product_details={},
         )
 
-    def test_apply_with_valid_salles_channel(self):
-        salles_channel = "channel1"
-        result = self.rule.apply(self.product, salles_channel=salles_channel)
-        expected_id = f"12345{UnifiesIdWithSallesChannel.SEPARATOR}{salles_channel}"
+    def test_apply_with_valid_sales_channel(self):
+        sales_channel = "channel1"
+        result = self.rule.apply(self.product, sales_channel=sales_channel)
+        expected_id = f"12345{UnifiesIdWithSallesChannel.SEPARATOR}{sales_channel}"
         self.assertTrue(result)
         self.assertEqual(self.product.id, expected_id)
 
-    def test_apply_with_empty_salles_channel(self):
-        salles_channel = ""
+    def test_apply_with_empty_sales_channel(self):
+        sales_channel = ""
         original_id = self.product.id
-        result = self.rule.apply(self.product, salles_channel=salles_channel)
+        result = self.rule.apply(self.product, sales_channel=sales_channel)
         self.assertFalse(result)
         self.assertEqual(self.product.id, original_id)
 
-    def test_apply_with_none_salles_channel(self):
+    def test_apply_with_none_sales_channel(self):
         original_id = self.product.id
-        result = self.rule.apply(self.product, salles_channel=None)
+        result = self.rule.apply(self.product, sales_channel=None)
         self.assertFalse(result)
         self.assertEqual(self.product.id, original_id)
 
     def test_unifies_product_id_seller_channel(self):
         product_id = "67890"
-        salles_channel = "channel2"
+        sales_channel = "channel2"
         unified_id = UnifiesIdWithSallesChannel.unifies_product_id_seller_channel(
-            product_id, salles_channel
+            product_id, sales_channel
         )
         expected_id = (
-            f"{product_id}{UnifiesIdWithSallesChannel.SEPARATOR}{salles_channel}"
+            f"{product_id}{UnifiesIdWithSallesChannel.SEPARATOR}{sales_channel}"
         )
         self.assertEqual(unified_id, expected_id)

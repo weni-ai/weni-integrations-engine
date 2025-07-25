@@ -19,7 +19,7 @@ class SyncData(TypedDict):
 
     sku_ids: List[str]
     seller: str
-    salles_channel: Optional[str]
+    sales_channel: Optional[list[str]]
 
 
 class BaseSyncUseCase(ABC):
@@ -81,7 +81,7 @@ class BaseSyncUseCase(ABC):
         """
         seller: str = dto.seller
         sku_ids: Set[str] = set(dto.sku_ids)
-        salles_channel: Optional[str] = dto.salles_channel
+        sales_channel: Optional[list[str]] = dto.sales_channel
 
         vtex_app = self._get_vtex_app(project_uuid)
         if not vtex_app:
@@ -105,7 +105,7 @@ class BaseSyncUseCase(ABC):
             app_uuid=app_uuid,
             celery_queue=celery_queue,
             skus_batch=skus_batch,
-            salles_channel=salles_channel,
+            sales_channel=sales_channel,
             invalid_skus=invalid_skus,
         )
 
@@ -116,7 +116,7 @@ class BaseSyncUseCase(ABC):
         app_uuid: str,
         celery_queue: str,
         skus_batch: List[str],
-        salles_channel: Optional[str],
+        sales_channel: Optional[list[str]],
         invalid_skus: Set[str],
     ) -> Any:
         """

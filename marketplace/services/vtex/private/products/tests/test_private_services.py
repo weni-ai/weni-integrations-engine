@@ -27,7 +27,7 @@ class MockClient:
         )
 
     def pub_simulate_cart_for_seller(
-        self, sku_id, seller_id, domain, salles_channel=None
+        self, sku_id, seller_id, domain, sales_channel=None
     ):
         return {"sku_id": sku_id, "seller_id": seller_id, "domain": domain}
 
@@ -38,7 +38,9 @@ class MockClient:
             else {}
         )
 
-    def simulate_cart_for_multiple_sellers(self, sku_id, sellers, domain):
+    def simulate_cart_for_multiple_sellers(
+        self, sku_id, sellers, domain, sales_channel=None
+    ):
         results = {}
         for seller in sellers:
             results[seller] = {
