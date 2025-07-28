@@ -10,8 +10,9 @@ from marketplace.connect.client import ConnectProjectClient
 from marketplace.core.types.channels.facebook.usecases.search_products import (
     FacebookSearchProductsUseCase,
 )
+from marketplace.internal.jwt_mixins import JWTModuleAuthMixin
 from marketplace.services.facebook.service import FacebookService
-from marketplace.utils.aws.lambda_validation import LambdaURLValidator
+
 
 from .serializers import (
     FacebookSearchProductsSerializer,
@@ -70,7 +71,7 @@ class FacebookViewSet(views.BaseAppTypeViewSet):
         return Response(serializer.data)
 
 
-class FacebookSearchProductsView(APIView, LambdaURLValidator):  # pragma: no cover
+class FacebookSearchProductsView(JWTModuleAuthMixin, APIView):  # pragma: no cover
     authentication_classes = []
     facebook_client = FacebookClient(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
 
@@ -84,10 +85,6 @@ class FacebookSearchProductsView(APIView, LambdaURLValidator):  # pragma: no cov
         return self.__use_case
 
     def post(self, request, *args, **kwargs):
-        validation_response = self._validate_lambda_url(request)
-
-        if validation_response:
-            return validation_response
         serializer = FacebookSearchProductsSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -99,9 +96,3 @@ class FacebookSearchProductsView(APIView, LambdaURLValidator):  # pragma: no cov
             limit=serializer.validated_data.get("limit"),
         )
         return Response(result, status=status.HTTP_200_OK)
-
-    def _validate_lambda_url(self, request):
-        validation_response = self.protected_resource(request)
-        if validation_response.status_code != 200:
-            return validation_response
-        return None

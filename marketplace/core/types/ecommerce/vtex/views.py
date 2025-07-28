@@ -2,9 +2,6 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny
-
-from uuid import UUID
 
 from marketplace.core.types.ecommerce.dtos.sync_on_demand_dto import SyncOnDemandDTO
 from marketplace.core.types.ecommerce.vtex.serializers import (
@@ -247,10 +244,8 @@ class VtexIntegrationDetailsView(APIView):
         return Response(status=status.HTTP_200_OK, data=integration_details)
 
 
-class VtexSyncOnDemandView(APIView):
-    permission_classes = [AllowAny]
-
-    def post(self, request, project_uuid: UUID, *args, **kwargs) -> Response:
+class VtexSyncOnDemandView(JWTModuleAuthMixin, APIView):  # pragma: no cover
+    def post(self, request, *args, **kwargs) -> Response:
         serializer = SyncOnDemandSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -259,7 +254,7 @@ class VtexSyncOnDemandView(APIView):
         sales_channel = serializer.validated_data.get("sales_channel")
 
         task_sync_on_demand.apply_async(
-            args=[str(project_uuid), sku_ids, seller, sales_channel],
+            args=[str(self.project_uuid), sku_ids, seller, sales_channel],
             queue="vtex-sync-on-demand",
         )
         return Response(
@@ -267,7 +262,7 @@ class VtexSyncOnDemandView(APIView):
         )
 
 
-class VtexSyncOnDemandInlineView(JWTModuleAuthMixin, APIView):
+class VtexSyncOnDemandInlineView(JWTModuleAuthMixin, APIView):  # pragma: no cover
     """
     Handles on-demand (priority 2) product sync for VTEX.
 

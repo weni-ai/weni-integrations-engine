@@ -14,7 +14,7 @@ urlpatterns = [
         name="integration-details",
     ),
     path(
-        "sync-on-demand/<uuid:project_uuid>/",
+        "sync-on-demand/",
         VtexSyncOnDemandView.as_view(),
         name="sync-on-demand",
     ),
