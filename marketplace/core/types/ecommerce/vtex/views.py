@@ -208,6 +208,7 @@ class VtexViewSet(views.BaseAppTypeViewSet):
         validated_data = serializer.validated_data
 
         catalog_id = validated_data.get("catalog_id")
+        sales_channel = validated_data.get("sales_channel")
 
         # self.get_object() returns the VTEX app instance
         try:
@@ -219,7 +220,9 @@ class VtexViewSet(views.BaseAppTypeViewSet):
 
         # Instantiate the use case for linking catalog and synchronizing products.
         use_case = LinkCatalogAndStartSyncUseCase()
-        success = use_case.execute(vtex_app=vtex_app, catalog_id=catalog_id)
+        success = use_case.execute(
+            vtex_app=vtex_app, catalog_id=catalog_id, sales_channel=sales_channel
+        )
 
         if not success:
             return Response(
@@ -253,10 +256,10 @@ class VtexSyncOnDemandView(APIView):
 
         sku_ids = serializer.validated_data.get("sku_ids")
         seller = serializer.validated_data.get("seller")
-        salles_channel = serializer.validated_data.get("salles_channel")
+        sales_channel = serializer.validated_data.get("sales_channel")
 
         task_sync_on_demand.apply_async(
-            args=[str(project_uuid), sku_ids, seller, salles_channel],
+            args=[str(project_uuid), sku_ids, seller, sales_channel],
             queue="vtex-sync-on-demand",
         )
         return Response(
@@ -274,7 +277,7 @@ class VtexSyncOnDemandInlineView(JWTModuleAuthMixin, APIView):
         {
             "sku_ids": ["123", "456"],
             "seller": "1",
-            "salles_channel": "1"
+            "sales_channel": "1"
         }
 
     Example response:
@@ -307,13 +310,13 @@ class VtexSyncOnDemandInlineView(JWTModuleAuthMixin, APIView):
 
         sku_ids = serializer.validated_data.get("sku_ids")
         seller = serializer.validated_data.get("seller")
-        sales_channel = serializer.validated_data.get("salles_channel")
+        sales_channel = serializer.validated_data.get("sales_channel")
 
         use_case = SyncOnDemandInlineUseCase()
         dto = SyncOnDemandDTO(
             sku_ids=sku_ids,
             seller=seller,
-            salles_channel=sales_channel,
+            sales_channel=sales_channel,
         )
         result = use_case.execute(dto, self.project_uuid)
 

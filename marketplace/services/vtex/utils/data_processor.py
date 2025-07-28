@@ -193,7 +193,7 @@ class ProductValidator:
         seller_id: str,
         service,
         domain,
-        salles_channel: str = None,
+        sales_channel: Optional[str] = None,
     ) -> bool:
         """
         Apply business rules to a product.
@@ -203,7 +203,7 @@ class ProductValidator:
             seller_id: The seller ID.
             service: The service to use for rule application.
             domain: The domain to use for rule application.
-            salles_channel: VTEX sales channel identifier
+            sales_channel: VTEX sales channel identifier
         Returns:
             True if the product passes all rules, False otherwise.
         """
@@ -212,7 +212,7 @@ class ProductValidator:
             "seller_id": seller_id,
             "service": service,
             "domain": domain,
-            "salles_channel": salles_channel,
+            "sales_channel": sales_channel,
         }
         for rule in self.rules:
             if not rule.apply(product_dto, **params):
@@ -310,7 +310,7 @@ class ProductProcessor:
         validator: ProductValidator,
         update_product: bool = False,
         sync_specific_sellers: bool = False,
-        salles_channel: str = None,
+        sales_channel: list[str] = None,
     ):
         """
         Initialize the product processor
@@ -323,7 +323,7 @@ class ProductProcessor:
             validator: ProductValidator to use for validation
             update_product: Whether to update existing products
             sync_specific_sellers: Whether this is a seller-specific sync
-            salles_channel: VTEX sales channel identifier
+            sales_channel: VTEX sales channel identifier
         """
         self.catalog = catalog
         self.domain = domain
@@ -337,22 +337,30 @@ class ProductProcessor:
         self.use_sku_sellers = getattr(catalog.vtex_app, "config", {}).get(
             "use_sku_sellers", False
         )
-        self.salles_channel = salles_channel
+        self.sales_channel = sales_channel
 
     def process_seller_sku(
         self, seller_id: str, sku_id: str
     ) -> List[FacebookProductDTO]:
         """
-        Process a single SKU for a specific seller
+        Process a single SKU for a specific seller.
+
+        This will fetch product details, simulate the VTEX cart per sales channel,
+        validate DTO structure, and apply business rules (including ID unification).
+
+        Note:
+            Reads `self.sales_channel` (Optional[List[str]]). If set, iterates once per channel;
+            otherwise runs with channel=None.
 
         Args:
-            seller_id: The seller ID to process for
-            sku_id: The SKU ID to process
+            seller_id (str): VTEX seller identifier to process.
+            sku_id (str): VTEX SKU identifier to process.
 
         Returns:
-            List of processed products (0 or 1)
+            List[FacebookProductDTO]: A list of processed product DTOs for each sales channel
+                that passed availability and business rule checks.
         """
-        # Input validation
+        # Validate seller_id
         if not seller_id or not isinstance(seller_id, str):
             logger.error(
                 f"Invalid seller_id: {seller_id}. Expected non-empty string. "
@@ -360,6 +368,7 @@ class ProductProcessor:
             )
             return []
 
+        # Validate sku_id
         if not sku_id or not isinstance(sku_id, str):
             logger.error(
                 f"Invalid sku_id: {sku_id}. Expected non-empty string. "
@@ -368,6 +377,7 @@ class ProductProcessor:
             return []
 
         try:
+            # Fetch product details; skip if inactive and not updating
             product_details = self.validator_service.validate_product_details(
                 sku_id, self.catalog
             )
@@ -376,28 +386,44 @@ class ProductProcessor:
             ):
                 return []
 
-            availability = self.service.simulate_cart_for_seller(
-                sku_id, seller_id, self.domain, self.salles_channel
-            )
-            if not availability.get("is_available") and not self.update_product:
-                return []
+            results: List[FacebookProductDTO] = []
+            # Determine sales channels to process (or [None] if not provided)
+            channels = self.sales_channel or [None]
 
-            dto = self.extractor.extract(product_details, availability)
-            if not self.validator.is_valid(dto):
-                return []
-            if not self.validator.apply_rules(
-                dto, seller_id, self.service, self.domain, self.salles_channel
-            ):
-                return []
-            return [dto]
+            for channel in channels:
+                # Simulate cart for given seller and channel
+                availability = self.service.simulate_cart_for_seller(
+                    sku_id, seller_id, self.domain, channel
+                )
+                # Skip if unavailable and not in update mode
+                if not availability.get("is_available") and not self.update_product:
+                    continue
+
+                # Build DTO from API response
+                dto = self.extractor.extract(product_details, availability)
+                # Validate DTO required fields
+                if not self.validator.is_valid(dto):
+                    continue
+                # Apply business rules (merging IDs, filters, etc.)
+                if not self.validator.apply_rules(
+                    dto, seller_id, self.service, self.domain, channel
+                ):
+                    continue
+
+                # Only append if all checks passed
+                results.append(dto)
+
+            return results
+
         except CustomAPIException as e:
+            # Gracefully skip common VTEX errors, log others
             if e.status_code in (404, 500):
                 logger.info(
                     f"SKU {sku_id} returned status: {e.status_code}. Skipping. func: process_seller_sku"
                 )
             else:
                 logger.error(
-                    f"Error processing SKU {sku_id}: {str(e)}. func: process_seller_sku",
+                    f"Error processing SKU {sku_id}: {e}. func: process_seller_sku",
                     exc_info=True,
                 )
             return []
@@ -408,14 +434,22 @@ class ProductProcessor:
         """
         Process a single SKU for multiple sellers.
 
+        If self.sales_channel is provided, runs cart simulation and business rule application
+        for each channel in the list; otherwise, runs one batch simulation with channel=None.
+
+        Note:
+            This method reads `self.sales_channel` (Optional[List[str]]). If it is set,
+            it will iterate once per channel; otherwise, it runs with channel=None.
+
         Args:
-            sku_id: The SKU ID to process.
-            sellers: List of seller IDs to process for.
+            sku_id (str): The VTEX SKU identifier to process.
+            sellers (List[str]): A list of VTEX seller identifiers to process for.
 
         Returns:
-            List of processed products (0 or more).
+            List[FacebookProductDTO]: A list of processed product DTOs for each seller and channel
+                that passed both availability checks and business rules.
         """
-        # Input validation
+        # Validate sku_id input
         if not sku_id or not isinstance(sku_id, str):
             logger.error(
                 f"Invalid sku_id: {sku_id}. Expected non-empty string. "
@@ -423,6 +457,7 @@ class ProductProcessor:
             )
             return []
 
+        # Validate sellers list input
         if not sellers or not isinstance(sellers, list):
             logger.error(
                 f"Invalid sellers: {sellers}. Expected non-empty list. "
@@ -430,6 +465,7 @@ class ProductProcessor:
             )
             return []
 
+        # Ensure each seller is a non-empty string
         if not all(isinstance(seller, str) and seller for seller in sellers):
             logger.error(
                 f"Invalid seller values in sellers list. All sellers must be non-empty strings. "
@@ -438,20 +474,19 @@ class ProductProcessor:
             return []
 
         try:
+            # Fetch product details; skip if inactive and not in update mode
             product_details = self.validator_service.validate_product_details(
                 sku_id, self.catalog
             )
-            # If product details are not found, or if the product is inactive and we're not in update mode,
-            # return empty.
             if not product_details or (
                 not product_details.get("IsActive") and not self.update_product
             ):
                 return []
 
-            # If using SKU sellers and not in update mode, override sellers from product details.
+            # Optionally override sellers from SKU metadata
             if self.use_sku_sellers and not self.update_product:
                 sellers = [
-                    s.get("SellerId")
+                    s["SellerId"]
                     for s in product_details.get("SkuSellers", [])
                     if s.get("SellerId")
                 ]
@@ -459,47 +494,64 @@ class ProductProcessor:
             if not sellers:
                 return []
 
-            # If update_product is True and the product is inactive, mock the availability results
-            # without calling the external simulation.
-            if not product_details.get("IsActive") and self.update_product:
-                availability_results = {
-                    seller: {
-                        "is_available": False,
-                        "price": 0,
-                        "list_price": 0,
-                        "data": {},
-                    }
-                    for seller in sellers
-                }
-            else:
-                # Otherwise, simulate cart for multiple sellers normally.
-                availability_results = self.service.simulate_cart_for_multiple_sellers(
-                    sku_id, sellers, self.domain
-                )
+            results: List[FacebookProductDTO] = []
+            # Determine which channels to process: provided list or [None]
+            channels = self.sales_channel or [None]
 
-            results = []
-            # Iterate over availability results for each seller.
-            for seller_id, availability in availability_results.items():
-                # Skip if product is unavailable and not in update mode.
-                if not availability.get("is_available") and not self.update_product:
-                    continue
-                # Extract product DTO based on product details and availability.
-                dto = self.extractor.extract(product_details, availability)
-                # If the DTO is valid and passes all business rules, add it to results.
-                if self.validator.is_valid(dto) and self.validator.apply_rules(
-                    dto, seller_id, self.service, self.domain
-                ):
+            for channel in channels:
+                # Build availability_results either by mocking or real simulation
+                if not product_details.get("IsActive") and self.update_product:
+                    # In update mode for inactive product: mock all as unavailable
+                    availability_results = {
+                        seller: {
+                            "is_available": False,
+                            "price": 0,
+                            "list_price": 0,
+                            "data": {},
+                        }
+                        for seller in sellers
+                    }
+                else:
+                    # Simulate cart in bulk for these sellers and this channel
+                    availability_results = (
+                        self.service.simulate_cart_for_multiple_sellers(
+                            sku_id, sellers, self.domain, channel
+                        )
+                    )
+
+                # Process each seller’s simulated result
+                for seller_id, availability in availability_results.items():
+                    # Skip if unavailable and not updating existing product
+                    if not availability.get("is_available") and not self.update_product:
+                        continue
+
+                    # Extract the DTO from API response
+                    dto = self.extractor.extract(product_details, availability)
+
+                    # Validate the DTO’s required fields
+                    if not self.validator.is_valid(dto):
+                        continue
+
+                    # Apply business rules (including ID unification with channel)
+                    if not self.validator.apply_rules(
+                        dto, seller_id, self.service, self.domain, channel
+                    ):
+                        continue
+
+                    # Only append if all checks passed
                     results.append(dto)
 
             return results
+
         except CustomAPIException as e:
+            # Skip common VTEX errors gracefully; log others
             if e.status_code in (404, 500):
                 logger.info(
                     f"SKU {sku_id} returned status: {e.status_code}. Skipping. func: process_single_sku"
                 )
             else:
                 logger.error(
-                    f"Error processing SKU {sku_id}: {str(e)}. func: process_single_sku",
+                    f"Error processing SKU {sku_id}: {e}. func: process_single_sku",
                     exc_info=True,
                 )
             return []
@@ -703,7 +755,7 @@ class DataProcessor:
         mode: str = "single",
         sellers: List[str] = None,
         priority: int = ProductPriority.DEFAULT,
-        salles_channel: str = None,
+        sales_channel: Optional[list[str]] = None,
     ) -> List[FacebookProductDTO]:
         """
         Process a list of items
@@ -720,7 +772,7 @@ class DataProcessor:
             mode: Processing mode ("single" or "seller_sku")
             sellers: List of seller IDs to process (for "single" mode)
             priority: Priority level for processing
-            salles_channel: VTEX sales channel identifier
+            sales_channel: VTEX sales channel identifier
         Returns:
             List of processed products
         """
@@ -736,7 +788,7 @@ class DataProcessor:
             validator=validator,
             update_product=update_product,
             sync_specific_sellers=sync_specific_sellers,
-            salles_channel=salles_channel,
+            sales_channel=sales_channel,
         )
         batch_processor = BatchProcessor(
             queue=self.queue,

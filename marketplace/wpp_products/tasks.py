@@ -164,6 +164,7 @@ def task_insert_vtex_products(**kwargs):
     credentials = kwargs.get("credentials")
     catalog_uuid = kwargs.get("catalog_uuid")
     sellers = kwargs.get("sellers")
+    sales_channel = kwargs.get("sales_channel")
 
     if not all([credentials, catalog_uuid]):
         logger.error(
@@ -179,7 +180,9 @@ def task_insert_vtex_products(**kwargs):
             domain=credentials["domain"],
         )
         print(f"Starting first product insert for catalog: {str(catalog.name)}")
-        products = vtex_service.first_product_insert(api_credentials, catalog, sellers)
+        products = vtex_service.first_product_insert(
+            api_credentials, catalog, sellers, sales_channel
+        )
         if products is None:
             print("There are no products to be shipped after processing the rules")
             return
@@ -201,6 +204,8 @@ def task_insert_vtex_products(**kwargs):
 @celery_app.task(name="task_upload_vtex_products")
 def task_upload_vtex_products(**kwargs):
     app_vtex_uuid = kwargs.get("app_vtex_uuid")
+    priority = kwargs.get("priority")
+
     app_vtex = App.objects.get(uuid=app_vtex_uuid)
     redis_client = get_redis_connection()
     lock_key = f"upload_lock:{app_vtex_uuid}"
@@ -219,7 +224,7 @@ def task_upload_vtex_products(**kwargs):
                     logger.info(
                         f"[task_upload_vtex_products] Processing catalog: {catalog.name} for VTEX app: {app_vtex.uuid}"
                     )
-                    uploader = ProductBatchUploader(catalog=catalog)
+                    uploader = ProductBatchUploader(catalog=catalog, priority=priority)
 
             uploader.process_and_upload(redis_client, lock_key, lock_expiration_time)
 
@@ -347,6 +352,7 @@ def task_insert_vtex_products_by_sellers(**kwargs):
     catalog_uuid = kwargs.get("catalog_uuid")
     sellers = kwargs.get("sellers")
     sync_all_sellers = kwargs.get("sync_all_sellers", False)
+    sales_channel = kwargs.get("sales_channel")
 
     if not sellers and not sync_all_sellers:
         logger.error(
@@ -375,7 +381,7 @@ def task_insert_vtex_products_by_sellers(**kwargs):
 
         if lock_key:
             sync_success = vtex_service.insertion_products_by_seller(
-                api_credentials, catalog, sellers, sync_all_sellers
+                api_credentials, catalog, sellers, sync_all_sellers, sales_channel
             )
             if not sync_success:
                 print("There are no products to be shipped after processing the rules.")
@@ -508,7 +514,7 @@ def task_update_webhook_batch_products(
     app_uuid: str,
     batch: list,
     priority: int = ProductPriority.DEFAULT,
-    salles_channel: str = None,
+    sales_channel: list[str] = None,
 ):
     """
     Processes product updates in batches for a VTEX app.
@@ -525,7 +531,7 @@ def task_update_webhook_batch_products(
             ProductPriority.DEFAULT = legacy,
             ProductPriority.ON_DEMAND = on demand,
             ProductPriority.API_ONLY = inline.
-        salles_channel (str, optional): Sales channel identifier.
+        sales_channel (list[str], optional): Sales channel identifier.
 
     Returns:
         If priority is ProductPriority.API_ONLY, returns the list of processed products.
@@ -562,7 +568,7 @@ def task_update_webhook_batch_products(
             catalog=catalog,
             sellers_skus=batch,
             priority=priority,
-            salles_channel=salles_channel,
+            sales_channel=sales_channel,
         )
 
         # Receives a list of processed products from the service

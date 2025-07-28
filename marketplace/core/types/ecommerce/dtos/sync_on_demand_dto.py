@@ -10,4 +10,4 @@ class SyncOnDemandDTO:
 
     sku_ids: List[str]
     seller: str
-    salles_channel: Optional[str]
+    sales_channel: Optional[list[str]]

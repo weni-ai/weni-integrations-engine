@@ -46,6 +46,7 @@ class SyncAllProductsUseCase:
         update_product: bool = False,
         sync_specific_sellers: bool = False,
         sync_all_sellers: bool = False,
+        sales_channel: Optional[list[str]] = None,
     ) -> bool:
         """
         Execute the sync process for all products.
@@ -57,7 +58,7 @@ class SyncAllProductsUseCase:
             update_product: Whether this is an update process.
             sync_specific_sellers: Whether this is a seller-specific sync.
             sync_all_sellers: Whether to sync all active sellers regardless of sellers parameter.
-
+            sales_channel: The sales channel to be linked with the VTEX app.
         Returns:
             True if the sync completed successfully, False otherwise.
         """
@@ -93,6 +94,7 @@ class SyncAllProductsUseCase:
             sync_specific_sellers=sync_specific_sellers,
             mode="single",
             sellers=seller_ids,
+            sales_channel=sales_channel,
         )
 
         # Step 7: Clear the main queue after processing is complete.
