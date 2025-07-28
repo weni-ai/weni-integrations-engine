@@ -72,7 +72,6 @@ class FacebookViewSet(views.BaseAppTypeViewSet):
 
 
 class FacebookSearchProductsView(JWTModuleAuthMixin, APIView):  # pragma: no cover
-    authentication_classes = []
     facebook_client = FacebookClient(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
 
     @property
