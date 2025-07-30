@@ -1,3 +1,10 @@
+v4.9.4
+----------
+* feat: support optional multiple sales channels in product processing
+* feat: refactor Facebook and VTEX views to use JWT authentication
+* fix: add language parameter to TemplateTranslation query
+* fix: add ignore_error_logs parameter to RequestClient methods
+
 v4.9.3
 ----------
 * fix: remove webhook log and update sku validator timeout
