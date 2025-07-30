@@ -165,6 +165,7 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
             access_token = APPTYPES.get("wpp-cloud").get_access_token(template.app)
 
         message_template_id = request.data.get("message_template_id")
+        language = request.data.get("language")
 
         request.data.pop("message_template_id")
         data = request.data
@@ -177,7 +178,9 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
 
         list_components = []
 
-        translation = TemplateTranslation.objects.get(template=template)
+        translation = TemplateTranslation.objects.get(
+            template=template, language=language
+        )
 
         if header:
             header = dict(header)

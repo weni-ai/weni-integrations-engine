@@ -524,6 +524,7 @@ class WhatsappTemplateUpdateTestCase(APIBaseTestCase):
         self.headers = {"Project-Uuid": str(self.app.project_uuid)}
         self.body = {
             "message_template_id": "0123456789",
+            "language": "pt_br",
             "header": {
                 "header_type": "VIDEO",
                 "example": "data:application/pdf;base64,test==",
