@@ -155,7 +155,11 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
         params = {"sc": sales_channel} if sales_channel else None
 
         response = self.make_request(
-            cart_simulation_url, method="POST", json=payload, params=params
+            cart_simulation_url,
+            method="POST",
+            json=payload,
+            params=params,
+            ignore_error_logs=True,
         )
         simulation_data = response.json()
 
@@ -245,7 +249,11 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
         params = {"sc": sales_channel} if sales_channel else None
 
         response = self.make_request(
-            cart_simulation_url, method="POST", json=payload, params=params
+            cart_simulation_url,
+            method="POST",
+            json=payload,
+            params=params,
+            ignore_error_logs=True,
         )
         simulation_data = response.json()
 
