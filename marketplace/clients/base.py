@@ -20,6 +20,7 @@ class RequestClient:
         files=None,
         json=None,
         timeout=60,
+        ignore_error_logs=False,
     ):
         if data and json:
             raise ValueError(
@@ -37,16 +38,17 @@ class RequestClient:
                 files=files,
             )
         except Exception as e:
-            self._log_request_exception(
-                exception=e,
-                url=url,
-                method=method,
-                headers=headers,
-                json=json,
-                data=data,
-                params=params,
-                files=files,
-            )
+            if not ignore_error_logs:
+                self._log_request_exception(
+                    exception=e,
+                    url=url,
+                    method=method,
+                    headers=headers,
+                    json=json,
+                    data=data,
+                    params=params,
+                    files=files,
+                )
             raise CustomAPIException(
                 detail=f"Base request error: {str(e)}",
                 status_code=getattr(e.response, "status_code", None),
@@ -54,9 +56,10 @@ class RequestClient:
 
         if response.status_code >= 400:
             detail = ""
-            self._generate_log(
-                response, url, method, headers, json, data, params, files
-            )
+            if not ignore_error_logs:
+                self._generate_log(
+                    response, url, method, headers, json, data, params, files
+                )
             try:
                 detail = response.json()
             except ValueError:
