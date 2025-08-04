@@ -53,6 +53,7 @@ class ConfigSerializer(serializers.Serializer):
     tooltipMessage = serializers.CharField(required=False)
     startFullScreen = serializers.BooleanField(default=False)
     embedded = serializers.BooleanField(default=False)
+    contactTimeout = serializers.IntegerField(default=0)
 
     def to_internal_value(self, data):
         self.app = self.parent.instance
