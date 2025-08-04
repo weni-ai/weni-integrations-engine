@@ -1,3 +1,7 @@
+v4.9.5
+----------
+* feat: add contact timeout field to WWC ConfigSerializer
+
 v4.9.4
 ----------
 * feat: support optional multiple sales channels in product processing
