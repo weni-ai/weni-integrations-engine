@@ -64,7 +64,6 @@ class Conversations(object):
             business_initiated=self._business_initiated,
             total=self._total,
             templates=templates,
-            grand_total=self._total + templates_total,
         )
 
 

@@ -70,7 +70,6 @@ class TestFacebookConversationAPI(TestCase):
             "business_initiated": 1,
             "total": 6,
             "templates": {"MARKETING": 2, "SERVICE": 7, "total": 9},
-            "grand_total": 15,
         }
         mock_response = mock.Mock()
         mock_response.json.return_value = {"conversation_analytics": data}
