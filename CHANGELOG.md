@@ -1,3 +1,7 @@
+v4.9.6
+----------
+* feat: implement dual API support for WhatsApp conversations (July 2025)
+
 v4.9.5
 ----------
 * feat: add contact timeout field to WWC ConfigSerializer
