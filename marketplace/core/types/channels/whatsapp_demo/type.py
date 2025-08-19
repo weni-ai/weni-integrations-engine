@@ -56,6 +56,7 @@ class WhatsAppDemoType(AppType):
             wa_business_id=cls.BUSINESS_ID,
             wa_message_template_namespace=None,
             wa_pin=None,
+            is_demo=True,
         )
 
         flows_service = FlowsService(client=FlowsClient())
