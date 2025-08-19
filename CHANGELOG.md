@@ -1,3 +1,7 @@
+v4.9.7
+----------
+* feat: Add is demo in wpp-demo creation
+
 v4.9.6
 ----------
 * feat: implement dual API support for WhatsApp conversations (July 2025)
