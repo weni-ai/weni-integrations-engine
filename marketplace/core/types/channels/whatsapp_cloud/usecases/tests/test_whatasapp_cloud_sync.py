@@ -138,7 +138,9 @@ class SyncWhatsAppCloudAppsUseCaseTestCase(TestCase):
         result = use_case._fetch_channels()
 
         self.assertEqual(result, expected_channels)
-        mock_list_channels.assert_called_once_with(use_case.app_type.flows_type_code)
+        mock_list_channels.assert_called_once_with(
+            use_case.app_type.flows_type_code, exclude_wpp_demo=True
+        )
 
     @patch(
         "marketplace.core.types.channels.whatsapp_cloud.usecases.whatsapp_cloud_sync.get_redis_connection"
