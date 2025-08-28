@@ -15,6 +15,7 @@ from .calculate_by_area import CalculateByArea
 from .currency_pt_br_round_floor import CurrencyBRLRoudingFloor
 from .currency_clp import CurrencyCLP
 from .currency_ars import CurrencyARS
+from .currency_gtq import CurrencyGTQ
 
 
 """
@@ -39,4 +40,5 @@ RULE_MAPPINGS = {
     "currency_clp": CurrencyCLP,
     "currency_ars": CurrencyARS,
     "unifies_id_with_salles_channel": UnifiesIdWithSallesChannel,
+    "currency_gtq": CurrencyGTQ,
 }
