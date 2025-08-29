@@ -215,6 +215,7 @@ class TemplateTranslationSerializerTestCase(TestCase):
                     "language": "pt_br",
                     "country": None,
                     "body": None,
+                    "body_example": [],
                     "footer": None,
                     "buttons": [],
                     "variable_count": 1,

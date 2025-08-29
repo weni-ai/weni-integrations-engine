@@ -63,7 +63,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
     country = serializers.CharField(required=False)
     header = HeaderSerializer(required=False)
     body = serializers.JSONField(required=False)
-
+    body_example = serializers.ListField(read_only=True)
     footer = serializers.JSONField(required=False)
     buttons = ButtonSerializer(many=True, required=False)
     variable_count = serializers.IntegerField(read_only=True)
