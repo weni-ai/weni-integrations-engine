@@ -1,3 +1,7 @@
+v4.9.8
+----------
+* feat: add CurrencyGTQ rule for price formatting in GTQ
+
 v4.9.7
 ----------
 * feat: Add is demo in wpp-demo creation
