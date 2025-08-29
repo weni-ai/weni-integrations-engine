@@ -2,6 +2,7 @@ import uuid
 import re
 import textwrap
 
+from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
 
 from django.contrib.auth import get_user_model
@@ -104,6 +105,9 @@ class TemplateTranslation(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, null=True)
 
     body = models.CharField(max_length=2048, null=True)
+    body_example = ArrayField(
+        models.CharField(max_length=255), blank=True, default=list
+    )
     footer = models.CharField(max_length=60, null=True)
     variable_count = models.IntegerField(null=True)
     language = models.CharField(max_length=60, null=True)
