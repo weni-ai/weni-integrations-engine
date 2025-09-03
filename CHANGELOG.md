@@ -1,3 +1,9 @@
+
+v4.9.9
+----------
+* feat: add body_example field to TemplateTranslation model
+* fix: exclude demo channels in WhatsApp Cloud sync
+
 v4.9.8
 ----------
 * feat: add CurrencyGTQ rule for price formatting in GTQ
