@@ -1,3 +1,6 @@
+v4.9.10
+----------
+* feat: sync template body params
 
 v4.9.9
 ----------
