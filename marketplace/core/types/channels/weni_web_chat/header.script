@@ -1,16 +1,28 @@
-let weni_j = document.createElement("div");
-weni_j.id = "<APPTYPE_CODE>";
-document.body.appendChild(weni_j);
-
-let weni_s = document.createElement("link");
-weni_s.rel = "stylesheet";
-weni_s.href = "<CUSTOM_CSS>";
-document.head.appendChild(weni_s);
-
-let weni_p = <FIELDS>;
-
-weni_p["customMessageDelay"] = message => {
-    return <CUSTOM-MESSAGE-DELAY> * 1000;
+if (typeof require === 'function') {
+    require(['WebChat'], (WebChat) => {
+        useWebChat(WebChat);
+    });
+} else if (window.WebChat) {
+    useWebChat(window.WebChat);
+} else {
+    console.error('It was not possible to load WebChat');
 }
 
-WebChat.default.init(weni_p);
+function useWebChat(WebChat) {
+    let weni_j = document.createElement("div");
+    weni_j.id = "<APPTYPE_CODE>";
+    document.body.appendChild(weni_j);
+
+    let weni_s = document.createElement("link");
+    weni_s.rel = "stylesheet";
+    weni_s.href = "<CUSTOM_CSS>";
+    document.head.appendChild(weni_s);
+
+    let weni_p = <FIELDS>;
+
+    weni_p["customMessageDelay"] = message => {
+        return <CUSTOM-MESSAGE-DELAY> * 1000;
+    }
+
+    WebChat.default.init(weni_p);
+}
