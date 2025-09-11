@@ -18,6 +18,7 @@ from marketplace.wpp_templates.models import (
     TemplateButton,
     TemplateHeader,
 )
+from marketplace.wpp_templates.template_helpers import extract_body_example
 from marketplace.clients.facebook.client import FacebookClient
 from marketplace.services.facebook.service import TemplateService, PhotoAPIService
 
@@ -164,17 +165,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
         # Extract body example from body if available
         body_example = []
         if validated_data.get("body", {}).get("example"):
-            example_data = validated_data["body"]["example"]
-            # Flatten nested lists into a single list
-            for values in example_data.values():
-                if isinstance(values, list) and values:
-                    # If it's a list of lists, take the first inner list
-                    if isinstance(values[0], list):
-                        body_example.extend(values[0])
-                    else:
-                        body_example.extend(values)
-                else:
-                    body_example.append(values)
+            body_example = extract_body_example(validated_data["body"]["example"])
 
         translation = TemplateTranslation.objects.create(
             template=template,
