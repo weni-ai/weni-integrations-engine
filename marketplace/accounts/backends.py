@@ -165,10 +165,9 @@ class WeniOIDCAuthenticationBackend(OIDCAuthenticationBackend):  # pragma: no co
         if has_changes:
             user.save()
 
-        # Only invalidate cache if email actually changed
-        if old_email != new_email:
-            cache.delete(self._get_cache_key(old_email))
-            cache.delete(self._get_cache_key(new_email))
+        # Invalidate cache if any changes were made
+        if has_changes:
+            cache.delete(self._get_cache_key(user.email))
 
         self.check_module_permission(claims, user)
 
