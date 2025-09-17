@@ -58,6 +58,7 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
     def filter_queryset(self, queryset):
         params = self.request.query_params
         name = params.get("name")
+        names = params.getlist("names")  # Support for multiple names
         category = params.get("category")
         order_by = params.get("sort")
         date_params = params.get("start")
@@ -79,7 +80,12 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
 
             filters["created_on__range"] = (start, end)
 
-        if name:
+        # Support for filtering by template names
+        if names:
+            # Filter by exact name matches for the list of names
+            queryset = queryset.filter(name__in=names)
+        elif name:
+            # Single name filter with icontains
             queryset = queryset.filter(name__icontains=name)
 
         if filters:
