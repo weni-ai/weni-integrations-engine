@@ -1,3 +1,9 @@
+v4.9.11
+----------
+* feat: add support for filtering by multiple template names in TemplateMessageViewSet
+* feat: implement caching for userinfo
+* feat: update ForeignKeys on UploadProduct model to use CASCADE
+
 v4.9.10
 ----------
 * feat: sync template body params
