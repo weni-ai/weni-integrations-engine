@@ -1,6 +1,7 @@
 import logging
 import requests
 
+from sentry_sdk import capture_exception
 from typing import List, Dict, Any
 
 from marketplace.wpp_products.models import Catalog
@@ -321,7 +322,12 @@ class BusinessMetaService:
         # Subscribes the app to the WABA
         self.subscribe_app(waba_id)
         # Creates the dataset
-        dataset_id = self.create_dataset(waba_id).get("id")
+        try:
+            dataset_id = self.create_dataset(waba_id).get("id")
+        except Exception as e:
+            capture_exception(e)
+            logger.error(f"Error creating dataset for WABA {waba_id}: {e}")
+            dataset_id = None
 
         return {
             "user_access_token": user_access_token,

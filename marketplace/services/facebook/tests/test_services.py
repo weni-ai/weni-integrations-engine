@@ -459,3 +459,24 @@ class TestBusinessMetaService(TestCase):
                 "dataset_id": "mock_dataset_id",
             },
         )
+
+    def test_configure_whatsapp_cloud_dataset_creation_error(self):
+        # Force dataset creation to raise an exception and ensure method does not raise
+        original_create_dataset = self.service.create_dataset
+        try:
+            self.service.create_dataset = Mock(side_effect=Exception("dataset failure"))
+            response = self.service.configure_whatsapp_cloud(
+                "auth_code", "waba_id", "phone_number_id", "USD"
+            )
+            self.assertEqual(
+                response,
+                {
+                    "user_access_token": "mock_access_token",
+                    "business_id": "mock_business_id",
+                    "message_template_namespace": "mock_namespace",
+                    "allocation_config_id": "mock_allocation_id",
+                    "dataset_id": None,
+                },
+            )
+        finally:
+            self.service.create_dataset = original_create_dataset
