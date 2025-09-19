@@ -1,3 +1,7 @@
+v4.9.12
+----------
+* fix: handle dataset creation errors in BusinessMetaService
+
 v4.9.11
 ----------
 * feat: add support for filtering by multiple template names in TemplateMessageViewSet
