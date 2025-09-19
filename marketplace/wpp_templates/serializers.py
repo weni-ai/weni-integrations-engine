@@ -18,6 +18,7 @@ from marketplace.wpp_templates.models import (
     TemplateButton,
     TemplateHeader,
 )
+from marketplace.wpp_templates.template_helpers import extract_body_example
 from marketplace.clients.facebook.client import FacebookClient
 from marketplace.services.facebook.service import TemplateService, PhotoAPIService
 
@@ -63,6 +64,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
     country = serializers.CharField(required=False)
     header = HeaderSerializer(required=False)
     body = serializers.JSONField(required=False)
+    body_example = serializers.ListField(read_only=True)
     footer = serializers.JSONField(required=False)
     buttons = ButtonSerializer(many=True, required=False)
     variable_count = serializers.IntegerField(read_only=True)
@@ -72,6 +74,7 @@ class TemplateTranslationSerializer(serializers.Serializer):
 
         if instance.headers.first():
             data["header"] = instance.headers.first().to_dict()
+
         return data
 
     def append_to_components(self, components: List[Any], component=None):
@@ -159,10 +162,16 @@ class TemplateTranslationSerializer(serializers.Serializer):
             language=validated_data.get("language"),
         )
 
+        # Extract body example from body if available
+        body_example = []
+        if validated_data.get("body", {}).get("example"):
+            body_example = extract_body_example(validated_data["body"]["example"])
+
         translation = TemplateTranslation.objects.create(
             template=template,
             status="PENDING",
             body=validated_data.get("body", {}).get("text", ""),
+            body_example=body_example,
             footer=validated_data.get("footer", {}).get("text", ""),
             language=validated_data.get("language"),
             country=validated_data.get("country", "Brasil"),

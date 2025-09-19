@@ -1,3 +1,30 @@
+v4.9.11
+----------
+* feat: add support for filtering by multiple template names in TemplateMessageViewSet
+* feat: implement caching for userinfo
+* feat: update ForeignKeys on UploadProduct model to use CASCADE
+
+v4.9.10
+----------
+* feat: sync template body params
+
+v4.9.9
+----------
+* feat: add body_example field to TemplateTranslation model
+* fix: exclude demo channels in WhatsApp Cloud sync
+
+v4.9.8
+----------
+* feat: add CurrencyGTQ rule for price formatting in GTQ
+
+v4.9.7
+----------
+* feat: Add is demo in wpp-demo creation
+
+v4.9.6
+----------
+* feat: implement dual API support for WhatsApp conversations (July 2025)
+
 v4.9.5
 ----------
 * feat: add contact timeout field to WWC ConfigSerializer

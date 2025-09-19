@@ -70,7 +70,6 @@ class TestFacebookConversationAPI(TestCase):
             "business_initiated": 1,
             "total": 6,
             "templates": {"MARKETING": 2, "SERVICE": 7, "total": 9},
-            "grand_total": 15,
         }
         mock_response = mock.Mock()
         mock_response.json.return_value = {"conversation_analytics": data}
@@ -80,8 +79,8 @@ class TestFacebookConversationAPI(TestCase):
         facebook_api = FacebookConversationAPI()
         conversations = facebook_api.conversations(
             access_token="test",
-            end="test",
-            start="test",
+            end="1685934000",  # Valid timestamp
+            start="1685847600",  # Valid timestamp
             waba_id="test",
         )
         self.assertEqual(conversations.__dict__(), expected_data)
@@ -99,7 +98,7 @@ class TestFacebookConversationAPI(TestCase):
         with self.assertRaises(FacebookApiException):
             facebook_api.conversations(
                 access_token="test",
-                end="test",
-                start="test",
+                end="1685934000",  # Valid timestamp
+                start="1685847600",  # Valid timestamp
                 waba_id="test",
             )

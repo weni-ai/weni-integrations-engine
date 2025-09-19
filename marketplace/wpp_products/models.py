@@ -133,11 +133,11 @@ class UploadProduct(models.Model):
     facebook_product_id = models.CharField(max_length=100)
     data = JSONField()
     catalog = models.ForeignKey(
-        Catalog, on_delete=models.PROTECT, related_name="upload_catalog"
+        Catalog, on_delete=models.CASCADE, related_name="upload_catalog"
     )
     feed = models.ForeignKey(
         ProductFeed,
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         related_name="upload_feed",
         null=True,
         blank=True,

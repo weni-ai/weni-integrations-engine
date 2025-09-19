@@ -57,7 +57,9 @@ class SyncWhatsAppCloudAppsUseCase:
 
     def _fetch_channels(self) -> List[Dict]:
         """Fetch WhatsApp Cloud channels from Flows API."""
-        return self.client.list_channels(self.app_type.flows_type_code)
+        return self.client.list_channels(
+            self.app_type.flows_type_code, exclude_wpp_demo=True
+        )
 
     def _process_channels(self, channels: List[Dict]) -> None:
         """Process all channels from the API."""

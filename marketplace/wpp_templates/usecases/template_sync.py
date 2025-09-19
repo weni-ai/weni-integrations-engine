@@ -10,6 +10,7 @@ from marketplace.wpp_templates.models import (
     TemplateTranslation,
 )
 from marketplace.wpp_templates.error_handlers import handle_error_and_update_config
+from marketplace.wpp_templates.template_helpers import extract_body_example
 
 
 logger = logging.getLogger(__name__)
@@ -110,9 +111,15 @@ class TemplateSyncUseCase:
 
                 body = ""
                 footer = ""
+                body_example = []
                 for translation in template.get("components"):
                     if translation.get("type") == "BODY":
                         body = translation.get("text", "")
+                        # Extract body example from Meta API response
+                        if translation.get("example"):
+                            body_example = extract_body_example(
+                                translation.get("example")
+                            )
 
                     if translation.get("type") == "FOOTER":
                         footer = translation.get("text", "")
@@ -129,14 +136,16 @@ class TemplateSyncUseCase:
                     language=template.get("language"),
                 )
                 returned_translation.body = body
+                returned_translation.body_example = body_example
                 returned_translation.footer = footer
                 returned_translation.status = template.get("status")
                 returned_translation.variable_count = 0
                 returned_translation.message_template_id = template.get("id")
                 returned_translation.save()
                 logger.info(
-                    f"Translation saved with status: {returned_translation.status} and "
-                    f"ID: {returned_translation.message_template_id}"
+                    f"Translation saved with status: {returned_translation.status}, "
+                    f"ID: {returned_translation.message_template_id} and "
+                    f"body_example: {returned_translation.body_example}"
                 )
 
                 for translation in template.get("components"):

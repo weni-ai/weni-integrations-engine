@@ -1,5 +1,5 @@
 import abc
-import calendar
+
 from typing import TYPE_CHECKING
 from datetime import datetime
 
@@ -34,10 +34,21 @@ class QueryParamsParser(object):
         self.end = self._parse_to_unix(self._get_end())
 
     def _parse_to_unix(self, time: datetime) -> str:
-        return calendar.timegm(time.utctimetuple())
+        """
+        Convert datetime to Unix timestamp using UTC to avoid timezone issues.
+
+        Args:
+            time: datetime object to convert
+
+        Returns:
+            Unix timestamp as string
+        """
+        utc_time = time.replace(tzinfo=None)
+        return str(int(utc_time.timestamp()))
 
     def _get_start(self) -> datetime:
-        return self._get_param_datetime(self.QUERY_PARAMS_START_KEY)
+        start = self._get_param_datetime(self.QUERY_PARAMS_START_KEY)
+        return start.replace(hour=0, minute=0, second=0)
 
     def _get_end(self) -> datetime:
         end = self._get_param_datetime(self.QUERY_PARAMS_END_KEY)
@@ -69,6 +80,17 @@ class WhatsAppConversationsMixin(object, metaclass=abc.ABCMeta):
         permission_classes=[ProjectViewPermission | IsCRMUser],
     )
     def conversations(self, request: "Request", **kwargs) -> Response:
+        """
+        Get conversation analytics data using appropriate API based on date range.
+
+        This endpoint automatically determines which API to use:
+        - Before July 1, 2025: Uses legacy conversations API
+        - July 1, 2025 onwards: Uses new pricing analytics API
+
+        Query Parameters:
+            start: Start date in M-D-YYYY format (e.g., "7-1-2025")
+            end: End date in M-D-YYYY format (e.g., "7-30-2025")
+        """
         self.get_object()
         date_params = QueryParamsParser(request.query_params)
 
