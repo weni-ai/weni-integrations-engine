@@ -208,31 +208,31 @@ class CheckAppsUncreatedOnFlowTaskTestCase(TestCase):
         )
 
     @patch("marketplace.clients.flows.client.FlowsClient")
-    def test_wa_phone_number_id_missing(self, ConnectProjectClientMock):
+    def test_wa_phone_number_id_missing(self, FlowsClientMock):
         self.app.config = {}
         self.app.save()
         check_apps_uncreated_on_flow()
 
-        ConnectProjectClientMock.assert_not_called()
+        FlowsClientMock.assert_not_called()
 
     @patch("marketplace.clients.flows.client.FlowsClient")
-    def test_user_no_project_access(self, ConnectProjectClientMock):
+    def test_user_no_project_access(self, FlowsClientMock):
         self.app.config = {"wa_phone_number_id": "123456789"}
         self.app.save()
 
         check_apps_uncreated_on_flow()
 
-        ConnectProjectClientMock.assert_not_called()
+        FlowsClientMock.assert_not_called()
 
     @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.FlowsClient")
-    def test_channel_created_successfully(self, ConnectProjectClientMock):
+    def test_channel_created_successfully(self, FlowsClientMock):
         self.create_project_authorization()
         self.app.config = {"wa_phone_number_id": "123456789"}
         self.app.save()
 
         data = {"uuid": uuid4()}
 
-        client_mock = ConnectProjectClientMock.return_value
+        client_mock = FlowsClientMock.return_value
         client_mock.create_wac_channel.return_value = data
 
         check_apps_uncreated_on_flow()
@@ -241,12 +241,12 @@ class CheckAppsUncreatedOnFlowTaskTestCase(TestCase):
         self.assertEqual(app.flow_object_uuid, data["uuid"])
 
     @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.FlowsClient")
-    def test_channel_creation_exception(self, ConnectProjectClientMock):
+    def test_channel_creation_exception(self, FlowsClientMock):
         self.create_project_authorization()
         self.app.config = {"wa_phone_number_id": "0123456789"}
         self.app.save()
 
-        client_mock = ConnectProjectClientMock.return_value
+        client_mock = FlowsClientMock.return_value
         client_mock.create_wac_channel.side_effect = Exception(
             "Channel creation failed"
         )
@@ -257,12 +257,12 @@ class CheckAppsUncreatedOnFlowTaskTestCase(TestCase):
         self.assertIsNone(app.flow_object_uuid)
 
     @patch("marketplace.core.types.channels.whatsapp_cloud.tasks.FlowsClient")
-    def test_channel_without_uuid(self, ConnectProjectClientMock):
+    def test_channel_without_uuid(self, FlowsClientMock):
         self.create_project_authorization()
         self.app.config = {"wa_phone_number_id": "0123456789"}
         self.app.save()
 
-        client_mock = ConnectProjectClientMock.return_value
+        client_mock = FlowsClientMock.return_value
         client_mock.create_wac_channel.return_value = {}
 
         check_apps_uncreated_on_flow()

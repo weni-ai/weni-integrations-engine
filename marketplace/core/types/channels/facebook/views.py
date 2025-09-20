@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from rest_framework import status
 
 from marketplace.clients.facebook.client import FacebookClient
-from marketplace.connect.client import ConnectProjectClient
+from marketplace.clients.flows.client import FlowsClient
 from marketplace.core.types.channels.facebook.usecases.search_products import (
     FacebookSearchProductsUseCase,
 )
@@ -54,7 +54,7 @@ class FacebookViewSet(views.BaseAppTypeViewSet):
             }
 
             user = request.user
-            client = ConnectProjectClient()
+            client = FlowsClient()
 
             response = client.create_channel(
                 user.email, app.project_uuid, payload, app.flows_type_code

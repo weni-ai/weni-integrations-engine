@@ -1,7 +1,7 @@
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from marketplace.connect.client import ConnectProjectClient
+from marketplace.clients.flows.client import FlowsClient
 
 from .serializers import TelegramSerializer, TelegramConfigureSerializer
 from marketplace.core.types import views
@@ -35,7 +35,7 @@ class TelegramViewSet(views.BaseAppTypeViewSet):
             }
 
             user = request.user
-            client = ConnectProjectClient()
+            client = FlowsClient()
 
             response = client.create_channel(
                 user.email, app.project_uuid, payload, app.flows_type_code
