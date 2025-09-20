@@ -34,15 +34,21 @@ class CreateWhatsAppDemoAppTestCase(PermissionTestCaseMixin, APIBaseTestCase):
         )
 
         # Patch for FlowsService.create_wac_channel
-        self.create_wac_channel_patcher = patch("marketplace.services.flows.service.FlowsService.create_wac_channel")
+        self.create_wac_channel_patcher = patch(
+            "marketplace.services.flows.service.FlowsService.create_wac_channel"
+        )
         self.mock_create_wac_channel = self.create_wac_channel_patcher.start()
 
         # Patch for FlowsService.update_config
-        self.update_config_patcher = patch("marketplace.services.flows.service.FlowsService.update_config")
+        self.update_config_patcher = patch(
+            "marketplace.services.flows.service.FlowsService.update_config"
+        )
         self.mock_update_config = self.update_config_patcher.start()
 
         # Patch for WPPRouterChannelClient.get_channel_token
-        self.get_channel_token_patcher = patch("marketplace.connect.client.WPPRouterChannelClient.get_channel_token")
+        self.get_channel_token_patcher = patch(
+            "marketplace.clients.router.client.WPPRouterChannelClient.get_channel_token"
+        )
         self.mock_get_channel_token = self.get_channel_token_patcher.start()
 
         # Add cleanup for all patches
@@ -71,7 +77,8 @@ class CreateWhatsAppDemoAppTestCase(PermissionTestCaseMixin, APIBaseTestCase):
         self.assertEqual(str(app.uuid), response.json["uuid"])
         self.assertEqual(app.config["title"], "WhatsApp: +559999998888")
         self.assertEqual(
-            app.config["router_token"], "WhatsApp:+559999998888-whatsapp-demo-v5ciobe7te"
+            app.config["router_token"],
+            "WhatsApp:+559999998888-whatsapp-demo-v5ciobe7te",
         )
         self.assertEqual(
             app.config["redirect_url"],

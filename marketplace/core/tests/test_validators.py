@@ -9,7 +9,7 @@ from unittest.mock import Mock
 
 
 class ValidateAppCodeExistsTestCase(TestCase):
-    @patch("marketplace.connect.client.ConnectProjectClient.detail_channel_type")
+    @patch("marketplace.clients.flows.client.FlowsClient.detail_channel_type")
     def test_invalid_app_code(self, mock_list_detail_channel_type):
         response_data = None
         mock_response = Mock()
@@ -27,7 +27,7 @@ class ValidateAppCodeExistsTestCase(TestCase):
         value = "wwc"
         validate_app_code_exists(value)
 
-    @patch("marketplace.connect.client.ConnectProjectClient.detail_channel_type")
+    @patch("marketplace.clients.flows.client.FlowsClient.detail_channel_type")
     def test_valid_generic_app_code(self, mock_list_detail_channel_type):
         response_data = {
             "attributes": {

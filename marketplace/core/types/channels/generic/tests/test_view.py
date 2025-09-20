@@ -54,7 +54,7 @@ class CreateGenericAppTestCase(PermissionTestCaseMixin, APIBaseTestCase):
         )
 
     @patch("marketplace.core.types.channels.generic.views.search_icon")
-    @patch("marketplace.flows.client.FlowsClient.list_channel_types")
+    @patch("marketplace.clients.flows.client.FlowsClient.list_channel_types")
     def test_create_list_of_channels(self, mock_list_channel_types, mock_search_icon):
         """Testing list of channels"""
         mock_list_channel_types.return_value = self._mock_channel_response()
@@ -78,7 +78,7 @@ class CreateGenericAppTestCase(PermissionTestCaseMixin, APIBaseTestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     @patch("marketplace.core.types.channels.generic.views.search_icon")
-    @patch("marketplace.flows.client.FlowsClient.list_channel_types")
+    @patch("marketplace.clients.flows.client.FlowsClient.list_channel_types")
     def test_create_app_platform(self, mock_list_channel_types, mock_search_icon):
         """Testing if create channels have platform"""
         mock_list_channel_types.return_value = self._mock_channel_response()
@@ -90,7 +90,7 @@ class CreateGenericAppTestCase(PermissionTestCaseMixin, APIBaseTestCase):
             self.assertEqual(response.json["platform"], App.PLATFORM_WENI_FLOWS)
 
     @patch("marketplace.core.types.channels.generic.views.search_icon")
-    @patch("marketplace.flows.client.FlowsClient.list_channel_types")
+    @patch("marketplace.clients.flows.client.FlowsClient.list_channel_types")
     def test_create_app_without_permission(
         self, mock_list_channel_types, mock_search_icon
     ):
@@ -105,7 +105,7 @@ class CreateGenericAppTestCase(PermissionTestCaseMixin, APIBaseTestCase):
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     @patch("marketplace.core.types.channels.generic.views.search_icon")
-    @patch("marketplace.flows.client.FlowsClient.list_channel_types")
+    @patch("marketplace.clients.flows.client.FlowsClient.list_channel_types")
     def test_create_app_with_internal_permission_only(
         self, mock_list_channel_types, mock_search_icon
     ):
@@ -211,9 +211,7 @@ class ConfigureGenericAppTestCase(PermissionTestCaseMixin, APIBaseTestCase):
     def view(self):
         return self.view_class.as_view({"patch": "configure"})
 
-    @patch(
-        "marketplace.core.types.channels.generic.serializers.ConnectProjectClient.create_channel"
-    )
+    @patch("marketplace.clients.flows.client.FlowsClient.create_channel")
     def test_configure_channel_success(self, mock_configure):
         self.user_authorization = self.user.authorizations.create(
             project_uuid=self.app.project_uuid
@@ -267,9 +265,7 @@ class ConfigureGenericAppTestCase(PermissionTestCaseMixin, APIBaseTestCase):
         response = self.request.patch(self.url, payload, uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    @patch(
-        "marketplace.core.types.channels.generic.serializers.ConnectProjectClient.create_channel"
-    )
+    @patch("marketplace.clients.flows.client.FlowsClient.create_channel")
     def test_configure_channel_with_internal_permission_only(self, mock_create_channel):
         """Should succeed with only internal permission"""
         ProjectAuthorization.objects.filter(user=self.user).delete()
@@ -320,7 +316,7 @@ class DetailChannelAppTestCase(APIBaseTestCase):
     def view(self):
         return self.view_class.as_view({"get": "retrieve"})
 
-    @patch("marketplace.flows.client.FlowsClient.list_channel_types")
+    @patch("marketplace.clients.flows.client.FlowsClient.list_channel_types")
     def test_retrieve_success(self, mock_list_channels_type):
         response_data = {
             "channel_types": {
@@ -341,7 +337,7 @@ class DetailChannelAppTestCase(APIBaseTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json, response_data)
 
-    @patch("marketplace.flows.client.FlowsClient.list_channel_types")
+    @patch("marketplace.clients.flows.client.FlowsClient.list_channel_types")
     def test_retrieve_fail(self, mock_list_channels_type):
         response_data = None
         mock_response = Mock()
@@ -423,7 +419,7 @@ class GetIconsTestCase(APIBaseTestCase):
     def view(self):
         return self.view_class.as_view({"get": "list"})
 
-    @patch("marketplace.flows.client.FlowsClient.list_channel_types")
+    @patch("marketplace.clients.flows.client.FlowsClient.list_channel_types")
     @patch("marketplace.core.types.channels.generic.views.search_icon")
     def test_get_icons_success(self, mock_search_icon, mock_list_channels_type):
         response_data = {
@@ -445,7 +441,7 @@ class GetIconsTestCase(APIBaseTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json, response_data["channel_types"])
 
-    @patch("marketplace.flows.client.FlowsClient.list_channel_types")
+    @patch("marketplace.clients.flows.client.FlowsClient.list_channel_types")
     @patch("marketplace.core.types.channels.generic.views.search_icon")
     def test_get_icons_fail(self, mock_search_icon, mock_list_channels_type):
         mock_response = Mock()
@@ -469,7 +465,7 @@ class GenericAppTypesTestCase(APIBaseTestCase):
     def view(self):
         return self.view_class.as_view({"get": "list"})
 
-    @patch("marketplace.flows.client.FlowsClient.list_channel_types")
+    @patch("marketplace.clients.flows.client.FlowsClient.list_channel_types")
     def test_list_genericapptypes_success(self, mock_list_channels_type):
         response_data = {
             "channel_types": {
@@ -574,9 +570,7 @@ class GenericConfigSerializerTest(APIBaseTestCase):
     def view(self):
         return self.view_class.as_view({"patch": "configure"})
 
-    @patch(
-        "marketplace.core.types.channels.generic.serializers.ConnectProjectClient.create_channel"
-    )
+    @patch("marketplace.clients.flows.client.FlowsClient.create_channel")
     def test_configure_channel_without_flow_object_uuid(self, mock_configure):
         mock_configure.return_value = {"uuid": str(uuid.uuid4())}
         keys_values = {

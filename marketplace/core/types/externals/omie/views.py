@@ -2,7 +2,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status
 
-from marketplace.flows.client import FlowsClient
+from marketplace.clients.flows.client import FlowsClient
 
 from .serializers import OmieSerializer, OmieConfigureSerializer
 from marketplace.core.types import views

@@ -10,7 +10,7 @@ from marketplace.core.serializers import AppTypeBaseSerializer
 from marketplace.core.storage import AppStorage
 from . import type as type_
 
-from marketplace.connect.client import ConnectProjectClient
+from marketplace.clients.flows.client import FlowsClient
 
 
 class WeniWebChatSerializer(AppTypeBaseSerializer):
@@ -114,7 +114,7 @@ class ConfigSerializer(serializers.Serializer):
         user = self.context.get("request").user
         name = f"{type_.WeniWebChatType.name} - #{self.app.id}"
         data = {"name": name, "base_url": settings.SOCKET_BASE_URL}
-        client = ConnectProjectClient()
+        client = FlowsClient()
         return client.create_channel(
             user.email, self.app.project_uuid, data, self.app.flows_type_code
         )

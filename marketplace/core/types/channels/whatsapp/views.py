@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from rest_framework.request import Request  # pragma: no cover
 
 from marketplace.core.types import views
-from marketplace.flows.client import FlowsClient
+from marketplace.clients.flows.client import FlowsClient
 
 from .apis import OnPremiseBusinessProfileAPI
 from .facades import OnPremiseProfileFacade
