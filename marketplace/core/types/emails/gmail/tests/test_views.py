@@ -166,3 +166,87 @@ class DestroyGmailAppTestCase(SetUpTestBase):
         self.user_authorization.set_role(ProjectAuthorization.ROLE_NOT_SETTED)
         response = self.request.delete(self.url, uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class AuthenticateGoogleTestCase(SetUpTestBase):
+    current_view_mapping = {"post": "authenticate_google"}
+
+    def setUp(self):
+        super().setUp()
+        self.url = reverse("gmail-app-authenticate-google")
+        # Grant internal permission for authentication endpoint
+        self.grant_permission(self.user, "can_communicate_internally")
+
+    @patch(
+        "marketplace.core.types.emails.gmail.views.GoogleAuthService.exchange_code_for_token"
+    )
+    def test_authenticate_google_success(self, mock_exchange):
+        """Test successful Google authentication with valid code"""
+        mock_exchange.return_value = {
+            "access_token": "mock_access_token",
+            "refresh_token": "mock_refresh_token",
+        }
+
+        data = {"code": "mock_auth_code", "project_uuid": self.project_uuid}
+        response = self.request.post(self.url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("access_token", response.json)
+        self.assertIn("refresh_token", response.json)
+        self.assertEqual(response.json["access_token"], "mock_access_token")
+        self.assertEqual(response.json["refresh_token"], "mock_refresh_token")
+
+    def test_authenticate_google_missing_code(self):
+        """Test authentication fails when code is missing"""
+        data = {"project_uuid": self.project_uuid}
+        response = self.request.post(self.url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("error", response.json)
+        self.assertEqual(response.json["error"], "Authorization code is required")
+
+    def test_authenticate_google_empty_code(self):
+        """Test authentication fails when code is empty"""
+        data = {"code": "", "project_uuid": self.project_uuid}
+        response = self.request.post(self.url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("error", response.json)
+        self.assertEqual(response.json["error"], "Authorization code is required")
+
+    def test_authenticate_google_none_code(self):
+        """Test authentication fails when code is None"""
+        data = {"code": None, "project_uuid": self.project_uuid}
+        response = self.request.post(self.url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("error", response.json)
+        self.assertEqual(response.json["error"], "Authorization code is required")
+
+    @patch(
+        "marketplace.core.types.emails.gmail.views.GoogleAuthService.exchange_code_for_token"
+    )
+    def test_authenticate_google_invalid_code(self, mock_exchange):
+        """Test authentication fails with invalid authorization code"""
+        mock_exchange.side_effect = Exception("Invalid authorization code")
+
+        data = {"code": "invalid_code", "project_uuid": self.project_uuid}
+        response = self.request.post(self.url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("error", response.json)
+        self.assertEqual(response.json["error"], "Invalid authorization code")
+
+    @patch(
+        "marketplace.core.types.emails.gmail.views.GoogleAuthService.exchange_code_for_token"
+    )
+    def test_authenticate_google_service_error(self, mock_exchange):
+        """Test authentication fails when GoogleAuthService raises an exception"""
+        mock_exchange.side_effect = Exception("Service unavailable")
+
+        data = {"code": "valid_code", "project_uuid": self.project_uuid}
+        response = self.request.post(self.url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("error", response.json)
+        self.assertEqual(response.json["error"], "Service unavailable")
