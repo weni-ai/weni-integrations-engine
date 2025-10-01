@@ -330,7 +330,7 @@ class DeleteChatGPTAppTestCase(APIBaseTestCase):
         response = self.request.delete(self.url, uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    @patch("marketplace.flows.client.FlowsClient.release_external_service")
+    @patch("marketplace.clients.flows.client.FlowsClient.release_external_service")
     def test_release_external_service(self, mock_release):
         mock_response = Mock()
         mock_response.status_code = 200

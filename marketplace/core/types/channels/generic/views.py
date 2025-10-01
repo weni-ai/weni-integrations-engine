@@ -7,7 +7,7 @@ from rest_framework import viewsets
 from .serializers import GenericChannelSerializer, GenericConfigureSerializer
 
 from marketplace.core.types import views
-from marketplace.flows.client import FlowsClient
+from marketplace.clients.flows.client import FlowsClient
 
 from marketplace.applications.models import AppTypeAsset
 

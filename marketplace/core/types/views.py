@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from marketplace.applications.models import App
 from marketplace.accounts.permissions import ProjectManagePermission
 
-from marketplace.connect.client import ConnectProjectClient
+from marketplace.clients.flows.client import FlowsClient
 
 
 class BaseAppTypeViewSet(
@@ -50,7 +50,7 @@ class BaseAppTypeViewSet(
         project_uuid = str(instance.project_uuid)
         channel_uuid = instance.flow_object_uuid
         if channel_uuid:
-            client = ConnectProjectClient()
+            client = FlowsClient()
             client.release_channel(channel_uuid, project_uuid, self.request.user.email)
 
     def set_app(self, instance: App):
