@@ -4,7 +4,7 @@ from unittest.mock import patch
 from unittest.mock import MagicMock
 
 from django.urls import reverse
-from django.test import override_settings
+
 from rest_framework import status
 
 from marketplace.core.tests.base import APIBaseTestCase
@@ -106,7 +106,6 @@ class RetrieveWeniWebChatAppTestCase(APIBaseTestCase):
         self.assertEqual(response.json["config"], {})
 
 
-@override_settings(USE_GRPC=False)
 class DestroyWeniWebChatAppTestCase(APIBaseTestCase):
     view_class = WeniWebChatViewSet
 

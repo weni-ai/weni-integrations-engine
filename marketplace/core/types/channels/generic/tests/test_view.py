@@ -1,7 +1,7 @@
 import uuid
 
 from django.urls import reverse
-from django.test import override_settings
+
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 
@@ -353,7 +353,6 @@ class DetailChannelAppTestCase(APIBaseTestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
 
-@override_settings(USE_GRPC=False)
 class DestroyGenericAppTestCase(PermissionTestCaseMixin, APIBaseTestCase):
     view_class = GenericChannelViewSet
 
