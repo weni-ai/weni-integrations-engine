@@ -1,3 +1,8 @@
+v4.10.0
+----------
+* fix: add tests for Google authentication and BaseEmailSerializer validation
+* refactor: replace ConnectProjectClient with FlowsClient and remove deprecated flows module
+
 v4.9.12
 ----------
 * fix: handle dataset creation errors in BusinessMetaService
