@@ -318,23 +318,16 @@ class FlowsClient(RequestClient):
         )
         return response
 
-    def list_availables_channels(self):
-        url = f"{self.base_url}/v1/channel-types"
-        response = self.make_request(
-            url,
-            method="GET",
-            headers=self.authentication_instance.headers,
-        )
-        return response
-
     def detail_channel_type(self, channel_code: str):
-        params = {"channel_type_code": channel_code}
-        url = f"{self.base_url}/v1/channel-types"
+        """
+        Returns Flows channel detail using v2 endpoint
+        Based on Connect FlowsRESTClient.list_channel_types implementation
+        """
+        url = f"{self.base_url}/api/v2/internals/channels/{str(channel_code)}"
         response = self.make_request(
             url,
             method="GET",
             headers=self.authentication_instance.headers,
-            params=params,
         )
         return response
 
