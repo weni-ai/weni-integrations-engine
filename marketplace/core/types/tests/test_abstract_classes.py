@@ -166,9 +166,14 @@ class BaseAppTypeViewSetTest(TestCase):
         instance.project_uuid = "project_uuid"
         instance.flow_object_uuid = "channel_uuid"
 
-        with patch(
-            "marketplace.clients.flows.client.FlowsClient.make_request"
-        ) as mock_make_request:
+        with patch("marketplace.core.types.views.FlowsClient") as mock_client_class:
+            mock_client_instance = MagicMock()
+            mock_client_class.return_value = mock_client_instance
+
             self.viewset.perform_destroy(instance)
 
-        mock_make_request.assert_called_once()
+            mock_client_class.assert_called_once()
+
+            mock_client_instance.release_channel.assert_called_once_with(
+                "channel_uuid", "project_uuid", "test@example.com"
+            )
