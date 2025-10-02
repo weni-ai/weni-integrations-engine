@@ -180,20 +180,18 @@ class ConfigureWeniWebChatTestCase(PermissionTestCaseMixin, APIBaseTestCase):
     def view(self):
         return self.view_class.as_view({"patch": "configure"})
 
-    @patch(
-        "marketplace.core.types.channels.weni_web_chat.serializers.ConnectProjectClient"
-    )
+    @patch("marketplace.core.types.channels.weni_web_chat.serializers.FlowsClient")
     @patch(
         "marketplace.core.types.channels.weni_web_chat.serializers.AppStorage",
         MockAppStorage,
     )
-    def test_configure_with_project_authorization(self, mock_connect_project_client):
+    def test_configure_with_project_authorization(self, mock_flows_client):
         self.user_authorization = self.user.authorizations.create(
             project_uuid=self.app.project_uuid
         )
         self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
 
-        mock_connect_project_client.return_value.create_channel.return_value = {
+        mock_flows_client.return_value.create_channel.return_value = {
             "uuid": str(uuid.uuid4()),
             "mainColor": "#009E96",
             "keepHistory": True,
@@ -211,18 +209,16 @@ class ConfigureWeniWebChatTestCase(PermissionTestCaseMixin, APIBaseTestCase):
         response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    @patch(
-        "marketplace.core.types.channels.weni_web_chat.serializers.ConnectProjectClient"
-    )
+    @patch("marketplace.core.types.channels.weni_web_chat.serializers.FlowsClient")
     @patch(
         "marketplace.core.types.channels.weni_web_chat.serializers.AppStorage",
         MockAppStorage,
     )
-    def test_configure_with_internal_permission_only(self, mock_connect_project_client):
+    def test_configure_with_internal_permission_only(self, mock_flows_client):
         self.grant_permission(self.user, "can_communicate_internally")
         ProjectAuthorization.objects.filter(user=self.user).delete()
 
-        mock_connect_project_client.return_value.create_channel.return_value = {
+        mock_flows_client.return_value.create_channel.return_value = {
             "uuid": str(uuid.uuid4()),
             "mainColor": "#009E96",
             "keepHistory": True,

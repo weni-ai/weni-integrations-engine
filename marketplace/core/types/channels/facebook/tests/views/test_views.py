@@ -161,9 +161,7 @@ class ConfigureFacebookAppTestCase(APIBaseTestCase):
     def view(self):
         return self.view_class.as_view({"patch": "configure"})
 
-    @patch(
-        "marketplace.core.types.channels.facebook.views.ConnectProjectClient.create_channel"
-    )
+    @patch("marketplace.clients.flows.client.FlowsClient.create_channel")
     def test_configure_facebook_success(self, mock_create_external_service):
         data = {
             "title": "Test",

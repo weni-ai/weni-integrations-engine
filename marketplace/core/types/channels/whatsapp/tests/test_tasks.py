@@ -71,7 +71,7 @@ class SyncWhatsAppAppsTaskTestCase(TestCase):
         ]
 
     @patch("marketplace.core.types.channels.whatsapp.tasks.get_redis_connection")
-    @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
+    @patch("marketplace.clients.flows.client.FlowsClient.list_channels")
     def test_create_new_whatsapp_app(
         self, list_channel_mock: "MagicMock", mock_redis
     ) -> None:
@@ -90,7 +90,7 @@ class SyncWhatsAppAppsTaskTestCase(TestCase):
         self.assertTrue(App.objects.filter(project_uuid=project_uuid).exists())
 
     @patch("marketplace.core.types.channels.whatsapp.tasks.get_redis_connection")
-    @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
+    @patch("marketplace.clients.flows.client.FlowsClient.list_channels")
     def test_update_app_auth_token(
         self, list_channel_mock: "MagicMock", mock_redis
     ) -> None:
@@ -107,7 +107,7 @@ class SyncWhatsAppAppsTaskTestCase(TestCase):
         self.assertEqual(app.config.get("auth_token"), "54321")
 
     @patch("marketplace.core.types.channels.whatsapp.tasks.get_redis_connection")
-    @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
+    @patch("marketplace.clients.flows.client.FlowsClient.list_channels")
     def test_channel_migration_from_wpp_cloud_to_wpp(
         self, list_channel_mock: "MagicMock", mock_redis
     ) -> None:
@@ -118,7 +118,7 @@ class SyncWhatsAppAppsTaskTestCase(TestCase):
         sync_whatsapp_apps()
 
     @patch("marketplace.core.types.channels.whatsapp.tasks.get_redis_connection")
-    @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
+    @patch("marketplace.clients.flows.client.FlowsClient.list_channels")
     def test_task_that_was_executed(
         self, list_channel_mock: "MagicMock", mock_redis
     ) -> None:
@@ -129,7 +129,7 @@ class SyncWhatsAppAppsTaskTestCase(TestCase):
         sync_whatsapp_apps()
 
     @patch("marketplace.core.types.channels.whatsapp.tasks.get_redis_connection")
-    @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
+    @patch("marketplace.clients.flows.client.FlowsClient.list_channels")
     def test_skipping_wpp_demo(
         self, list_channel_mock: "MagicMock", mock_redis
     ) -> None:
@@ -149,7 +149,7 @@ class SyncWhatsAppAppsTaskTestCase(TestCase):
         sync_whatsapp_apps()
 
     @patch("marketplace.core.types.channels.whatsapp.tasks.get_redis_connection")
-    @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
+    @patch("marketplace.clients.flows.client.FlowsClient.list_channels")
     @patch("marketplace.core.types.channels.whatsapp.tasks.logger")
     def test_skip_channel_with_none_uuid(
         self, logger_mock, list_channel_mock: "MagicMock", mock_redis
@@ -166,7 +166,7 @@ class SyncWhatsAppAppsTaskTestCase(TestCase):
         logger_mock.info.assert_called_with("Skipping channel with None UUID.")
 
     @patch("marketplace.core.types.channels.whatsapp.tasks.get_redis_connection")
-    @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
+    @patch("marketplace.clients.flows.client.FlowsClient.list_channels")
     @patch("marketplace.core.types.channels.whatsapp.tasks.logger")
     def test_skip_inactive_channel_and_delete_apps(
         self, logger_mock, list_channel_mock: "MagicMock", mock_redis
@@ -195,7 +195,7 @@ class SyncWhatsAppAppsTaskTestCase(TestCase):
         self.assertFalse(App.objects.filter(flow_object_uuid=flow_object_uuid).exists())
 
     @patch("marketplace.core.types.channels.whatsapp.tasks.get_redis_connection")
-    @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
+    @patch("marketplace.clients.flows.client.FlowsClient.list_channels")
     @patch("marketplace.core.types.channels.whatsapp.tasks.logger")
     @patch("marketplace.core.types.channels.whatsapp.tasks.APPTYPES.get")
     def test_app_creation_error(
@@ -219,7 +219,7 @@ class SyncWhatsAppAppsTaskTestCase(TestCase):
         )
 
     @patch("marketplace.core.types.channels.whatsapp.tasks.get_redis_connection")
-    @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
+    @patch("marketplace.clients.flows.client.FlowsClient.list_channels")
     def test_skip_inactive_channel_and_delete_apps_with_templates(
         self, list_channel_mock: "MagicMock", mock_redis
     ) -> None:
@@ -252,7 +252,7 @@ class SyncWhatsAppAppsTaskTestCase(TestCase):
         self.assertNotEqual(app_template_count, app_template_after_task)
 
     @patch("marketplace.core.types.channels.whatsapp.tasks.get_redis_connection")
-    @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
+    @patch("marketplace.clients.flows.client.FlowsClient.list_channels")
     def test_skip_inactive_channel(
         self, list_channel_mock: "MagicMock", mock_redis
     ) -> None:
@@ -287,7 +287,7 @@ class SyncWhatsAppAppsTaskTestCase(TestCase):
         self.assertEqual(app_template_after_task, 0)
 
     @patch("marketplace.core.types.channels.whatsapp.tasks.get_redis_connection")
-    @patch("marketplace.connect.client.ConnectProjectClient.list_channels")
+    @patch("marketplace.clients.flows.client.FlowsClient.list_channels")
     @patch("marketplace.core.types.channels.whatsapp.tasks.logger")
     def test_skip_channel_with_none_project_uuid(
         self, logger_mock, list_channel_mock: "MagicMock", mock_redis
