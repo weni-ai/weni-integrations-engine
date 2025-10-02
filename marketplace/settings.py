@@ -67,7 +67,6 @@ INSTALLED_APPS = [
     "marketplace.projects",
     "marketplace.applications",
     "marketplace.interactions",
-    "marketplace.grpc",
     "marketplace.wpp_templates",
     "marketplace.event_driven",
     "marketplace.wpp_products",
@@ -76,7 +75,6 @@ INSTALLED_APPS = [
     "rest_framework",
     "storages",
     "corsheaders",
-    "django_grpc_framework",
     "drf_yasg",
 ]
 
@@ -347,15 +345,6 @@ if USE_SENTRY:
         dsn=env.str("SENTRY_DSN"),
         integrations=[DjangoIntegration()],
     )
-
-
-# gRPC Framework configurations
-
-GRPC_FRAMEWORK = {
-    "ROOT_HANDLERS_HOOK": "marketplace.grpc.urls.grpc_handlers",
-}
-
-USE_GRPC = env.bool("USE_GRPC", default=False)
 
 
 # Celery
