@@ -15,7 +15,6 @@ class CurrencyCLP(Rule):
         Format price in CLP currency:
         - Remove last two digits (convert cents to units)
         - Round down to nearest whole number
-        - If < 1 CLP and > 0 CLP, return "1 CLP"
         - If None or empty or 0, return "0 CLP"
         - Ensure last three decimals are always "990" when not naturally "990"
         """
@@ -23,9 +22,6 @@ class CurrencyCLP(Rule):
             return "0 CLP"
 
         price_in_units = int(price / 100)
-
-        if price_in_units > 0 and price_in_units < 1:
-            return "1 CLP"
 
         if price_in_units == 0:
             return f"{float(price / 100):.2f} CLP"
