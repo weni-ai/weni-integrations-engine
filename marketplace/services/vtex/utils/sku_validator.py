@@ -10,12 +10,23 @@ logger = logging.getLogger(__name__)
 
 
 class SKUValidator:
-    def __init__(self, service, domain, zeroshot_client):
+    def __init__(self, service, domain, zeroshot_client, redis_client=None):
+        """
+        Initialize SKUValidator with dependency injection for better testability and scalability.
+
+        Args:
+            service: VTEX service for product details
+            domain: Domain for VTEX operations
+            zeroshot_client: AI client for product validation
+            redis_client: Optional Redis client (defaults to get_redis_connection())
+        """
         self.service = service
         self.domain = domain
         self.zeroshot_client = zeroshot_client
-        self.redis_client = get_redis_connection()
-        self.default_timeout = settings.SKU_VALIDATOR_TIMEOUT
+        self.redis_client = redis_client or get_redis_connection()
+        self.default_timeout = getattr(
+            settings, "SKU_VALIDATOR_TIMEOUT", 3600
+        )  # Default 1 hour
         self.cache_prefix = "sku_validator"
 
     def _get_cache_key(self, catalog: Catalog, sku_id: str) -> str:
