@@ -4,7 +4,6 @@ from unittest.mock import Mock, patch
 from django.test import TestCase
 from django.core.cache import cache
 
-from marketplace.wpp_products.models import Catalog
 from marketplace.services.vtex.utils.sku_validator import SKUValidator
 
 
@@ -68,7 +67,7 @@ class TestSKUValidator(TestCase):
         super().setUp()
 
         # Create mock catalog instead of real Django object
-        self.catalog = Mock(spec=Catalog)
+        self.catalog = Mock()
         self.catalog.uuid = str(uuid.uuid4())
         self.catalog.name = "Test Catalog"
 
