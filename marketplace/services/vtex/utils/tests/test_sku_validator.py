@@ -2,8 +2,8 @@ import uuid
 from unittest.mock import Mock, patch
 
 from django.test import TestCase
-from django.core.cache import cache
 
+from marketplace.wpp_products.models import Catalog
 from marketplace.services.vtex.utils.sku_validator import SKUValidator
 
 
@@ -66,24 +66,32 @@ class TestSKUValidator(TestCase):
         """Set up test fixtures"""
         super().setUp()
 
-        # Create mock catalog instead of real Django object
-        self.catalog = Mock()
+        # Create a fake Catalog object without saving to database
+        self.catalog = Catalog()
         self.catalog.uuid = str(uuid.uuid4())
         self.catalog.name = "Test Catalog"
+        # Don't save to database, just use as a fake object
 
         # Create mock services
         self.mock_service = MockVTEXService()
         self.mock_zeroshot_client = MockZeroShotClient()
 
-        # Create SKUValidator instance
+        # Create SKUValidator instance with mock redis client
+        self.mock_redis_client = Mock()
         self.validator = SKUValidator(
             service=self.mock_service,
             domain="test-domain.com",
             zeroshot_client=self.mock_zeroshot_client,
+            redis_client=self.mock_redis_client,
         )
 
-        # Clear cache before each test
-        cache.clear()
+        # Mock cache to avoid Redis dependency
+        self.cache_patcher = patch(
+            "marketplace.services.vtex.utils.sku_validator.cache"
+        )
+        self.mock_cache = self.cache_patcher.start()
+        self.mock_cache.get.return_value = None  # Default to cache miss
+        self.addCleanup(self.cache_patcher.stop)
 
         # Mock ProductValidation.objects to avoid database operations
         self.product_validation_patcher = patch(
@@ -112,23 +120,30 @@ class TestSKUValidator(TestCase):
         cache_key = "test_cache_key"
         cached_data = (True, "Valid from cache")
 
-        # Set cache
-        cache.set(cache_key, cached_data, timeout=300)
+        # Mock cache to return cached data
+        self.mock_cache.get.return_value = cached_data
 
-        # Get cached validation
         result = self.validator._get_cached_validation(cache_key)
 
         self.assertEqual(result, cached_data)
-        # Verify cache was renewed
-        self.assertIsNotNone(cache.get(cache_key))
+        self.mock_cache.get.assert_called_once_with(cache_key)
+        self.mock_cache.set.assert_called_once_with(
+            cache_key, cached_data, timeout=self.validator.default_timeout
+        )
 
     def test_get_cached_validation_with_cache_miss(self):
         """Test getting cached validation with cache miss"""
         cache_key = "non_existent_key"
 
+        # Mock cache to return None (cache miss)
+        self.mock_cache.get.return_value = None
+
         result = self.validator._get_cached_validation(cache_key)
 
         self.assertIsNone(result)
+        self.mock_cache.get.assert_called_once_with(cache_key)
+        # Should not call set when cache miss
+        self.mock_cache.set.assert_not_called()
 
     def test_validate_product_details_invalid_sku_id_none(self):
         """Test validation with None sku_id"""
@@ -151,10 +166,9 @@ class TestSKUValidator(TestCase):
     def test_validate_product_details_cached_invalid(self):
         """Test validation with cached invalid result"""
         sku_id = "INVALID-SKU"
-        cache_key = self.validator._get_cache_key(self.catalog, sku_id)
 
-        # Set invalid cache
-        cache.set(cache_key, (False, "Invalid from cache"), timeout=300)
+        # Mock cache to return invalid result
+        self.mock_cache.get.return_value = (False, "Invalid from cache")
 
         result = self.validator.validate_product_details(sku_id, self.catalog)
 
@@ -164,10 +178,9 @@ class TestSKUValidator(TestCase):
     def test_validate_product_details_cached_valid(self):
         """Test validation with cached valid result"""
         sku_id = "VALID-SKU"
-        cache_key = self.validator._get_cache_key(self.catalog, sku_id)
 
-        # Set valid cache
-        cache.set(cache_key, (True, "Valid from cache"), timeout=300)
+        # Mock cache to return valid result
+        self.mock_cache.get.return_value = (True, "Valid from cache")
 
         result = self.validator.validate_product_details(sku_id, self.catalog)
 
@@ -190,8 +203,11 @@ class TestSKUValidator(TestCase):
 
         # Verify cache was set
         cache_key = self.validator._get_cache_key(self.catalog, sku_id)
-        cached_result = cache.get(cache_key)
-        self.assertEqual(cached_result, (False, "Invalid from database"))
+        self.mock_cache.set.assert_called_with(
+            cache_key,
+            (False, "Invalid from database"),
+            timeout=self.validator.default_timeout,
+        )
 
     def test_validate_product_details_database_valid(self):
         """Test validation with valid database record"""
@@ -209,8 +225,11 @@ class TestSKUValidator(TestCase):
 
         # Verify cache was set
         cache_key = self.validator._get_cache_key(self.catalog, sku_id)
-        cached_result = cache.get(cache_key)
-        self.assertEqual(cached_result, (True, "Valid from database"))
+        self.mock_cache.set.assert_called_with(
+            cache_key,
+            (True, "Valid from database"),
+            timeout=self.validator.default_timeout,
+        )
 
     def test_validate_product_details_no_product_details(self):
         """Test validation when service returns no product details"""
@@ -296,9 +315,9 @@ class TestSKUValidator(TestCase):
 
         # Verify cache was set
         cache_key = self.validator._get_cache_key(self.catalog, sku_id)
-        cached_result = cache.get(cache_key)
-        self.assertIsNotNone(cached_result)
-        self.assertTrue(cached_result[0])  # is_valid should be True
+        self.mock_cache.set.assert_called_with(
+            cache_key, (True, "Valid Product"), timeout=self.validator.default_timeout
+        )
 
     def test_validate_product_details_long_description_truncation(self):
         """Test validation with long product description"""
