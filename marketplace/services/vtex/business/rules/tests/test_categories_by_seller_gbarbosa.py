@@ -78,13 +78,13 @@ class TestCategoriesBySeller(TestCase):
                 "SkuName": "Nome do SKU",
                 "ProductId": "PROD123",
                 "Id": "PROD123",
-                # Mock para especificações do produto
+                # Mock for product specifications
                 "ProductSpecifications": [
                     {"Name": "Cor", "Value": ["Azul", "Vermelho"]},
                     {"Name": "Tamanho", "Value": ["M", "G"]},
                     {"Name": "Material", "Value": ["Aço inox"]},
                 ],
-                # Mock para dados de simulação de carrinho (PIX)
+                # Mock for cart simulation data (PIX)
                 "CartSimulationData": {
                     "is_available": True,
                     "data": {
@@ -94,7 +94,7 @@ class TestCategoriesBySeller(TestCase):
                                     "paymentName": "pix",
                                     "installments": [
                                         {"value": 70000}
-                                    ],  # R$700.00 em cents
+                                    ],  # R$700.00 in cents
                                 }
                             ]
                         }
@@ -103,7 +103,7 @@ class TestCategoriesBySeller(TestCase):
             },
         )
 
-        # Criar um mock service que retorna os dados mockados
+        # Create a mock service that returns the mocked data
         mock_service = MagicMock()
         mock_service.get_product_specification.return_value = (
             product.product_details.get("ProductSpecifications")
@@ -118,14 +118,14 @@ class TestCategoriesBySeller(TestCase):
 
         self.assertTrue(result)
 
-        # Verificar que o produto foi modificado corretamente
+        # Verify that the product was modified correctly
         self.assertIn("*Características:*", product.description)
         self.assertIn("*Cor* : Azul, Vermelho", product.description)
         self.assertIn("*Tamanho* : M, G", product.description)
         self.assertIn("*Material* : Aço inox", product.description)
 
-        # Verificar que o preço PIX foi aplicado
-        self.assertEqual(product.sale_price, 70000)  # PIX price é menor
+        # Verify that the PIX price was applied
+        self.assertEqual(product.sale_price, 70000)  # PIX price is lower
         self.assertIn("Preço promocional PIX R$ 700,00", product.description)
 
     def test_get_categories(self):
@@ -234,7 +234,7 @@ class TestCategoriesBySeller(TestCase):
                 "ProductDescription": "Descrição da TV",
                 "SkuName": "TV LED",
                 "ProductId": "TV123",
-                # Mock para especificações do produto
+                # Mock for product specifications
                 "ProductSpecifications": [
                     {"Name": "Resolução", "Value": ["4K", "HD"]},
                     {"Name": "Tamanho", "Value": ["55 polegadas"]},
@@ -243,7 +243,7 @@ class TestCategoriesBySeller(TestCase):
             },
         )
 
-        # Criar um mock service que retorna especificações
+        # Create a mock service that returns specifications
         mock_service = MagicMock()
         mock_service.get_product_specification.return_value = (
             product.product_details.get("ProductSpecifications")
@@ -252,13 +252,13 @@ class TestCategoriesBySeller(TestCase):
         # Call the method directly to test
         result = self.rule._product_specification(product, mock_service, "test.com")
 
-        # Verificar que o método funciona corretamente
+        # Verify that the method works correctly
         self.assertIn("*Características:*", result)
         self.assertIn("*Resolução* : 4K, HD", result)
         self.assertIn("*Tamanho* : 55 polegadas", result)
         self.assertIn("*Tecnologia* : LED, Smart TV", result)
 
-        # Verificar que o service foi chamado corretamente
+        # Verify that the service was called correctly
         mock_service.get_product_specification.assert_called_once_with(
             "TV123", "test.com"
         )
