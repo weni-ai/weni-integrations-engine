@@ -8,7 +8,7 @@ from marketplace import settings
 
 def get_extra_task_paths() -> list:
     types_path = "marketplace.core.types."
-    extra_task_paths = ["marketplace.grpc.client"]
+    extra_task_paths = []
     for apptype in settings.APPTYPES_CLASSES:
         extra_task_paths.append(types_path + ".".join(apptype.split(".")[:2]))
     return extra_task_paths

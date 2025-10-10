@@ -3,7 +3,7 @@ import uuid
 from unittest.mock import patch
 
 from django.urls import reverse
-from django.test import override_settings
+
 from rest_framework import status
 
 from marketplace.core.tests.base import APIBaseTestCase
@@ -104,7 +104,6 @@ class RetrieveTelegramAppTestCase(APIBaseTestCase):
         self.assertEqual(response.json["config"], {})
 
 
-@override_settings(USE_GRPC=False)
 class DestroyTelegramAppTestCase(PermissionTestCaseMixin, APIBaseTestCase):
     view_class = TelegramViewSet
 
