@@ -15,10 +15,10 @@ class MockClient:
     def check_domain(self, domain):
         return domain in ["valid.domain.com", "another.valid.com"]
 
-    def list_active_sellers(self, domain):
+    def list_active_sellers(self, domain, sales_channel=None):
         return ["seller1", "seller2"] if domain == "valid.domain.com" else []
 
-    def list_all_products_sku_ids(self, domain):
+    def list_all_products_sku_ids(self, domain, sales_channel=None):
         return ["sku1", "sku2"] if domain == "valid.domain.com" else []
 
     def get_product_details(self, sku_id, domain):
@@ -98,14 +98,14 @@ class PrivateProductsServiceTestCase(TestCase):
     def test_list_all_skus_ids(self, mock_cache_set, mock_cache_get):
         mock_cache_get.return_value = ["sku1", "sku2"]
         skus = self.service.list_all_skus_ids("valid.domain.com")
-        mock_cache_get.assert_called_once_with("active_products_valid.domain.com")
+        mock_cache_get.assert_called_once_with("active_products_valid.domain.com_all")
         self.assertEqual(skus, ["sku1", "sku2"])
 
         mock_cache_get.return_value = None
         self.mock_client.list_all_products_sku_ids = Mock(return_value=["sku3", "sku4"])
         skus = self.service.list_all_skus_ids("new.domain.com")
         mock_cache_set.assert_called_once_with(
-            "active_products_new.domain.com", ["sku3", "sku4"], timeout=36000
+            "active_products_new.domain.com_all", ["sku3", "sku4"], timeout=36000
         )
 
     def test_get_product_details(self):

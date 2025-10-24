@@ -66,7 +66,7 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
         except Exception:
             return False
 
-    def list_all_products_sku_ids(self, domain, page_size=100000):
+    def list_all_products_sku_ids(self, domain, page_size=100000, sales_channel=None):
         """Retrieves all SKU IDs of active products from VTEX with progress tracking."""
         all_skus = []
         page = 1
@@ -77,7 +77,9 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
 
         while True:
             # Fetch product batch with retry mechanism
-            sku_ids = self._fetch_sku_batch_with_retry(domain, page, page_size, headers)
+            sku_ids = self._fetch_sku_batch_with_retry(
+                domain, page, page_size, headers, sales_channel
+            )
 
             if not sku_ids:
                 break
@@ -100,38 +102,60 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
         return all_skus
 
     @retry_on_exception()
-    def _fetch_sku_batch_with_retry(self, domain, page, page_size, headers):
+    def _fetch_sku_batch_with_retry(
+        self, domain, page, page_size, headers, sales_channel=None
+    ):
         """Fetches a batch of product SKUs from VTEX with automatic retries in case of failure."""
-        url = f"https://{domain}/api/catalog_system/pvt/sku/stockkeepingunitids?page={page}&pagesize={page_size}"
+        if sales_channel:
+            url = f"https://{domain}/api/catalog_system/pvt/sku/stockkeepingunitidsbysaleschannel?sc={sales_channel}&page={page}&pagesize={page_size}"  # noqa: E501
+        else:
+            url = f"https://{domain}/api/catalog_system/pvt/sku/stockkeepingunitids?page={page}&pagesize={page_size}"
         response = self.make_request(url, method="GET", headers=headers)
         return response.json()
 
     @retry_on_exception()
-    def list_active_sellers(self, domain):
-        from_index = 0
-        batch_size = 100
-        total_sellers = float("inf")
-        active_sellers = []
-
-        while from_index < total_sellers:
-            url = f"https://{domain}/api/seller-register/pvt/sellers?from={from_index}&to={from_index + batch_size}"
+    def list_active_sellers(self, domain, sales_channel=None):
+        if sales_channel:
+            # Use sales channel specific endpoint
+            url = f"https://{domain}/api/catalog_system/pvt/seller/list?sc={sales_channel}&sellerType=1"
             headers = self._get_headers()
             response = self.make_request(url, method="GET", headers=headers)
             sellers_data = response.json()
 
-            if total_sellers == float("inf"):
-                total_sellers = sellers_data["paging"]["total"]
+            # Extract seller IDs from the response
+            # The API returns a list directly, not an object with "items" property
+            active_sellers = [
+                seller["SellerId"]
+                for seller in sellers_data
+                if isinstance(seller, dict) and seller.get("IsActive", False)
+            ]
+            return active_sellers
+        else:
+            # Use original endpoint for backward compatibility
+            from_index = 0
+            batch_size = 100
+            total_sellers = float("inf")
+            active_sellers = []
 
-            active_sellers.extend(
-                [
-                    seller["id"]
-                    for seller in sellers_data["items"]
-                    if seller.get("isActive", False)
-                ]
-            )
-            from_index += batch_size
+            while from_index < total_sellers:
+                url = f"https://{domain}/api/seller-register/pvt/sellers?from={from_index}&to={from_index + batch_size}"  # noqa: E501
+                headers = self._get_headers()
+                response = self.make_request(url, method="GET", headers=headers)
+                sellers_data = response.json()
 
-        return active_sellers
+                if total_sellers == float("inf"):
+                    total_sellers = sellers_data["paging"]["total"]
+
+                active_sellers.extend(
+                    [
+                        seller["id"]
+                        for seller in sellers_data["items"]
+                        if seller.get("isActive", False)
+                    ]
+                )
+                from_index += batch_size
+
+            return active_sellers
 
     @retry_on_exception()
     def get_product_details(self, sku_id, domain):
