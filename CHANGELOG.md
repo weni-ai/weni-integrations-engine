@@ -1,3 +1,7 @@
+v4.10.1
+----------
+* feat: enhance VTEX client methods to support sales channel filtering
+
 v4.10.0
 ----------
 * fix: add tests for Google authentication and BaseEmailSerializer validation
