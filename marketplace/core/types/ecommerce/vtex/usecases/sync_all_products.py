@@ -63,7 +63,9 @@ class SyncAllProductsUseCase:
             True if the sync completed successfully, False otherwise.
         """
         # Step 1: Filter active sellers for the given domain.
-        seller_ids = self._filter_active_sellers(domain, sellers, sync_all_sellers)
+        seller_ids = self._filter_active_sellers(
+            domain, sellers, sync_all_sellers, sales_channel
+        )
         if not seller_ids:
             return False
 
@@ -72,7 +74,7 @@ class SyncAllProductsUseCase:
 
         # Step 3: Populate the main queue by reinserting pending items from the temporary queue;
         # if the main queue is empty, load SKUs from cache.
-        self._populate_main_queue(main_queue, temp_queue, domain)
+        self._populate_main_queue(main_queue, temp_queue, domain, sales_channel)
 
         # Step 4: Load business rules and store domain configuration
         config = catalog.vtex_app.config
@@ -106,6 +108,7 @@ class SyncAllProductsUseCase:
         domain: str,
         sellers: Optional[List[str]] = None,
         sync_all_sellers: bool = False,
+        sales_channel: Optional[List[str]] = None,
     ) -> List[str]:
         """
         Retrieve and filter active sellers for the given domain.
@@ -114,12 +117,19 @@ class SyncAllProductsUseCase:
             domain: The domain for which to retrieve active sellers.
             sellers: Optional list of seller IDs to filter.
             sync_all_sellers: Whether to return all active sellers regardless of sellers parameter.
+            sales_channel: Optional sales channel to filter sellers.
 
         Returns:
             A list of valid seller IDs, or empty list if none are valid.
         """
         logger.info(f"Getting active sellers for domain: {domain}")
-        active_sellers = set(self.products_service.list_active_sellers(domain))
+        # Use the first sales channel if multiple are provided, or None if not provided
+        sales_channel_param = (
+            sales_channel[0] if sales_channel and len(sales_channel) > 0 else None
+        )
+        active_sellers = set(
+            self.products_service.list_active_sellers(domain, sales_channel_param)
+        )
 
         if sync_all_sellers:
             logger.info(
@@ -157,7 +167,13 @@ class SyncAllProductsUseCase:
         temp_queue = TempRedisQueueManager(redis_key=redis_key, timeout=7 * 24 * 3600)
         return main_queue, temp_queue
 
-    def _populate_main_queue(self, main_queue, temp_queue, domain: str) -> None:
+    def _populate_main_queue(
+        self,
+        main_queue,
+        temp_queue,
+        domain: str,
+        sales_channel: Optional[List[str]] = None,
+    ) -> None:
         """
         Populate the main Redis queue by reinserting pending items from the temporary queue;
         if the main queue is empty, load SKUs from cache.
@@ -166,6 +182,7 @@ class SyncAllProductsUseCase:
             main_queue: The main Redis queue.
             temp_queue: The temporary Redis queue.
             domain: The domain for which to load SKUs.
+            sales_channel: Optional sales channel to filter SKUs.
         """
         # Reinsert pending items from the temporary queue, if any.
         temp_items = temp_queue.get_all()
@@ -177,7 +194,13 @@ class SyncAllProductsUseCase:
             temp_queue.clear()
         # If the main queue is empty, load SKUs from cache.
         if main_queue.qsize() == 0:
-            skus_ids = self.products_service.list_all_skus_ids(domain)
+            # Use the first sales channel if multiple are provided, or None if not provided
+            sales_channel_param = (
+                sales_channel[0] if sales_channel and len(sales_channel) > 0 else None
+            )
+            skus_ids = self.products_service.list_all_skus_ids(
+                domain, sales_channel_param
+            )
             main_queue.put_many(skus_ids)
             logger.info(f"Loaded {len(skus_ids)} SKUs into main Redis queue.")
         else:
