@@ -341,12 +341,12 @@ def _enqueue_webhook(app_uuid: str, seller: str, sku_id: str) -> bool:
         inserted = queue.insert(value)
 
         if inserted:
-            logger.debug(
+            logger.info(
                 f"Webhook enqueued for App: {app_uuid}, Item: {value}, "
                 f"Total Enqueue: {queue.length()}"
             )
         else:
-            logger.debug(
+            logger.info(
                 f"Webhook already exists in queue for App: {app_uuid}, Item: {value}, "
                 f"Total Enqueue: {queue.length()}"
             )
@@ -377,12 +377,12 @@ def _schedule_dequeue_with_debounce(
 
     # Check if dequeue is already running (lock exists)
     if redis.exists(lock_key):
-        logger.debug(f"Dequeue already running for App: {app_uuid}. Skipping schedule.")
+        logger.info(f"Dequeue already running for App: {app_uuid}. Skipping schedule.")
         return
 
     # Check if a dequeue task is already scheduled
     if redis.exists(scheduled_key):
-        logger.debug(
+        logger.info(
             f"Dequeue already scheduled for App: {app_uuid}. Skipping duplicate schedule."
         )
         return
@@ -399,7 +399,7 @@ def _schedule_dequeue_with_debounce(
         ignore_result=True,
     )
 
-    logger.debug(
+    logger.info(
         f"Scheduled dequeue task for App: {app_uuid} with {debounce_seconds}s debounce."
     )
 
