@@ -314,19 +314,93 @@ def send_sync(app_uuid: str, webhook: dict):
     if not seller_id:
         raise ValueError(f"Seller ID not found in webhook. App:{str(app.uuid)}")
 
-    # Enqueue the seller and SKU in the task_enqueue_webhook
-    celery_app.send_task(
-        "task_enqueue_webhook",
-        kwargs={"app_uuid": app_uuid, "seller": seller_id, "sku_id": sku_id},
-        queue=celery_queue,
-        ignore_result=True,
-    )
-    # Dequeue
+    # OPTIMIZATION: Enqueue directly without creating a Celery task
+    # This is a fast Redis operation that doesn't need to be async
+    if not _enqueue_webhook(app_uuid, seller_id, sku_id):
+        return
+
+    # OPTIMIZATION: Schedule dequeue with debounce to avoid creating multiple tasks
+    _schedule_dequeue_with_debounce(app_uuid, celery_queue)
+
+
+def _enqueue_webhook(app_uuid: str, seller: str, sku_id: str) -> bool:
+    """
+    Enqueues the seller and SKU in Redis for batch processing.
+
+    This function is called directly from send_sync to avoid creating
+    unnecessary Celery tasks for a simple Redis operation.
+
+    Returns:
+        bool: True if enqueued successfully, False otherwise
+    """
+    try:
+        queue = RedisQueue(f"webhook_queue:{app_uuid}")
+        value = f"{seller}#{sku_id}"
+
+        # Added to queue if it doesn't exist
+        inserted = queue.insert(value)
+
+        if inserted:
+            logger.debug(
+                f"Webhook enqueued for App: {app_uuid}, Item: {value}, "
+                f"Total Enqueue: {queue.length()}"
+            )
+        else:
+            logger.debug(
+                f"Webhook already exists in queue for App: {app_uuid}, Item: {value}, "
+                f"Total Enqueue: {queue.length()}"
+            )
+
+        return True
+    except Exception as e:
+        logger.error(f"Failed to enqueue webhook for App: {app_uuid}, {e}")
+        return False
+
+
+def _schedule_dequeue_with_debounce(
+    app_uuid: str, celery_queue: str, debounce_seconds: int = 5
+):
+    """
+    Schedules dequeue task with debounce to avoid creating multiple tasks.
+
+    Uses Redis to track if a dequeue task is already scheduled or running.
+    This prevents task explosion when receiving many webhooks simultaneously.
+
+    Args:
+        app_uuid: UUID of the VTEX app
+        celery_queue: Celery queue name
+        debounce_seconds: Delay before scheduling the dequeue task (default: 5 seconds)
+    """
+    redis = get_redis_connection()
+    scheduled_key = f"dequeue_scheduled:{app_uuid}"
+    lock_key = f"lock:webhook_queue:{app_uuid}"
+
+    # Check if dequeue is already running (lock exists)
+    if redis.exists(lock_key):
+        logger.debug(f"Dequeue already running for App: {app_uuid}. Skipping schedule.")
+        return
+
+    # Check if a dequeue task is already scheduled
+    if redis.exists(scheduled_key):
+        logger.debug(
+            f"Dequeue already scheduled for App: {app_uuid}. Skipping duplicate schedule."
+        )
+        return
+
+    # Mark as scheduled with TTL (slightly longer than debounce to avoid race conditions)
+    redis.set(scheduled_key, "vtex_webhook", ex=debounce_seconds + 2)
+
+    # Schedule the dequeue task with delay
     celery_app.send_task(
         "task_dequeue_webhooks",
         kwargs={"app_uuid": app_uuid, "celery_queue": celery_queue},
         queue=celery_queue,
+        countdown=debounce_seconds,
         ignore_result=True,
+    )
+
+    logger.debug(
+        f"Scheduled dequeue task for App: {app_uuid} with {debounce_seconds}s debounce."
     )
 
 
@@ -437,20 +511,13 @@ def task_sync_product_policies():
 @celery_app.task(name="task_enqueue_webhook")
 def task_enqueue_webhook(app_uuid: str, seller: str, sku_id: str):
     """
-    Enqueues the seller and SKU in Redis for batch processing.
+    Celery task wrapper for enqueueing webhooks.
+
+    Uses the shared _enqueue_webhook function for consistency.
+    Note: New webhooks use _enqueue_webhook directly to avoid task overhead.
+    This task is kept for backward compatibility.
     """
-    try:
-        queue = RedisQueue(f"webhook_queue:{app_uuid}")
-        value = f"{seller}#{sku_id}"
-
-        # Added to queue if it doesn't exist
-        queue.insert(value)
-
-        print(
-            f"Webhook enqueued for App: {app_uuid}, Item: {value}, Total Enqueue: {queue.length()}"
-        )
-    except Exception as e:
-        logger.error(f"Failed to enqueue webhook for App: {app_uuid}, {e}")
+    _enqueue_webhook(app_uuid, seller, sku_id)
 
 
 @celery_app.task(name="task_dequeue_webhooks")
@@ -466,6 +533,7 @@ def task_dequeue_webhooks(
     queue_key = f"webhook_queue:{app_uuid}"
     queue = RedisQueue(queue_key)
     lock_key = f"lock:{queue_key}"
+    scheduled_key = f"dequeue_scheduled:{app_uuid}"
     redis = queue.redis
 
     lock_ttl_seconds = 60 * 5  # Lock expires in 5 minutes
@@ -474,6 +542,9 @@ def task_dequeue_webhooks(
     if not redis.set(lock_key, "locked", nx=True, ex=lock_ttl_seconds):
         logger.info(f"Task already running for App: {app_uuid}. Skipping dequeue.")
         return
+
+    # Clear the scheduled flag since we're now running
+    redis.delete(scheduled_key)
 
     try:
         logger.info(
