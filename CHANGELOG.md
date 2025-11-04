@@ -1,3 +1,8 @@
+v4.10.2
+----------
+* feat: add unit tests to vtex data_processor utils
+* feat: optimize webhook processing by enqueuing directly
+
 v4.10.1
 ----------
 * feat: enhance VTEX client methods to support sales channel filtering
