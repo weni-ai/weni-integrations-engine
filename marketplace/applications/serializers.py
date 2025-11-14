@@ -69,4 +69,4 @@ class MyAppSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = App
-        fields = ("uuid", "code", "name", "description", "summary", "icon", "config")
+        fields = ("uuid", "code", "name", "description", "summary", "icon", "config", "flow_object_uuid")
