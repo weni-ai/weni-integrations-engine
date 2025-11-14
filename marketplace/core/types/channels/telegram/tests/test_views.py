@@ -3,7 +3,7 @@ import uuid
 from unittest.mock import patch
 
 from django.urls import reverse
-from django.test import override_settings
+
 from rest_framework import status
 
 from marketplace.core.tests.base import APIBaseTestCase
@@ -104,7 +104,6 @@ class RetrieveTelegramAppTestCase(APIBaseTestCase):
         self.assertEqual(response.json["config"], {})
 
 
-@override_settings(USE_GRPC=False)
 class DestroyTelegramAppTestCase(PermissionTestCaseMixin, APIBaseTestCase):
     view_class = TelegramViewSet
 
@@ -188,9 +187,7 @@ class ConfigureTelegramAppTestCase(PermissionTestCaseMixin, APIBaseTestCase):
     def view(self):
         return self.view_class.as_view({"patch": "configure"})
 
-    @patch(
-        "marketplace.core.types.channels.telegram.views.ConnectProjectClient.create_channel"
-    )
+    @patch("marketplace.clients.flows.client.FlowsClient.create_channel")
     def test_configure_telegram_success(self, mock_create_external_service):
         mock_create_external_service.return_value = {
             "channelUuid": str(uuid.uuid4()),
@@ -208,9 +205,7 @@ class ConfigureTelegramAppTestCase(PermissionTestCaseMixin, APIBaseTestCase):
         response = self.request.patch(self.url, self.payload, uuid=self.app.uuid)
         self.assertEqual(response.status_code, 403)
 
-    @patch(
-        "marketplace.core.types.channels.telegram.views.ConnectProjectClient.create_channel"
-    )
+    @patch("marketplace.clients.flows.client.FlowsClient.create_channel")
     def test_configure_telegram_with_internal_permission_only(
         self, mock_create_external_service
     ):

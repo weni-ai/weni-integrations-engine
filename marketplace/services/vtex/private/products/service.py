@@ -57,18 +57,28 @@ class PrivateProductsService:
         self.check_is_valid_domain(domain)
         return self.client.is_valid_credentials(domain)
 
-    def list_active_sellers(self, domain: str) -> List[str]:
-        return self.client.list_active_sellers(domain)
+    def list_active_sellers(
+        self, domain: str, sales_channel: Optional[str] = None
+    ) -> List[str]:
+        return self.client.list_active_sellers(domain, sales_channel)
 
-    def list_all_skus_ids(self, domain: str) -> List[str]:
-        cache_key = f"active_products_{domain}"
+    def list_all_skus_ids(
+        self, domain: str, sales_channel: Optional[str] = None
+    ) -> List[str]:
+        cache_key = f"active_products_{domain}_{sales_channel or 'all'}"
         cached_skus = cache.get(cache_key)
         if cached_skus:
-            logger.info(f"Returning cached SKUs for domain {domain}.")
+            logger.info(
+                f"Returning cached SKUs for domain {domain} and sales_channel {sales_channel}."
+            )
             return cached_skus
 
-        logger.info(f"Fetching SKUs for domain {domain}.")
-        skus = self.client.list_all_products_sku_ids(domain)
+        logger.info(
+            f"Fetching SKUs for domain {domain} and sales_channel {sales_channel}."
+        )
+        skus = self.client.list_all_products_sku_ids(
+            domain, sales_channel=sales_channel
+        )
         cache.set(cache_key, skus, timeout=36000)  # Cache for 10 hours
         return skus
 

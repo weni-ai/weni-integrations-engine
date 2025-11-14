@@ -3,7 +3,7 @@ import uuid
 from unittest.mock import patch
 
 from django.urls import reverse
-from django.test import override_settings
+
 from rest_framework import status
 
 from marketplace.core.tests.base import APIBaseTestCase
@@ -102,7 +102,6 @@ class RetrieveFacebookAppTestCase(APIBaseTestCase):
         self.assertEqual(response.json["config"], {})
 
 
-@override_settings(USE_GRPC=False)
 class DestroyFacebookAppTestCase(APIBaseTestCase):
     view_class = FacebookViewSet
 
@@ -162,9 +161,7 @@ class ConfigureFacebookAppTestCase(APIBaseTestCase):
     def view(self):
         return self.view_class.as_view({"patch": "configure"})
 
-    @patch(
-        "marketplace.core.types.channels.facebook.views.ConnectProjectClient.create_channel"
-    )
+    @patch("marketplace.clients.flows.client.FlowsClient.create_channel")
     def test_configure_facebook_success(self, mock_create_external_service):
         data = {
             "title": "Test",

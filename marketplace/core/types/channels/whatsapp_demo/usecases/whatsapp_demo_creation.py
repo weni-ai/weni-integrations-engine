@@ -1,5 +1,5 @@
 from marketplace.applications.models import App
-from marketplace.connect.client import WPPRouterChannelClient
+from marketplace.clients.router.client import WPPRouterChannelClient
 
 
 class EnsureWhatsAppDemoAppUseCase:
@@ -27,6 +27,4 @@ class EnsureWhatsAppDemoAppUseCase:
         # TODO: We should change this to use the FlowsClient in the future
         channel_token_client = WPPRouterChannelClient()
 
-        return WhatsAppDemoType.configure_app(
-            app, self.user, channel_token_client
-        )
+        return WhatsAppDemoType.configure_app(app, self.user, channel_token_client)

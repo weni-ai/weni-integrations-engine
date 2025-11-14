@@ -14,7 +14,7 @@ from .serializers import (
     ReadWppDemoSerializer,
     WhatsAppDemoSerializer,
 )
-from marketplace.connect.client import WPPRouterChannelClient
+from marketplace.clients.router.client import WPPRouterChannelClient
 from marketplace.accounts.models import ProjectAuthorization
 
 

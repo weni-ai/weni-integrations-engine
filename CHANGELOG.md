@@ -1,3 +1,27 @@
+v4.10.2
+----------
+* feat: add unit tests to vtex data_processor utils
+* feat: optimize webhook processing by enqueuing directly
+
+v4.10.1
+----------
+* feat: enhance VTEX client methods to support sales channel filtering
+
+v4.10.0
+----------
+* fix: add tests for Google authentication and BaseEmailSerializer validation
+* refactor: replace ConnectProjectClient with FlowsClient and remove deprecated flows module
+
+v4.9.12
+----------
+* fix: handle dataset creation errors in BusinessMetaService
+
+v4.9.11
+----------
+* feat: add support for filtering by multiple template names in TemplateMessageViewSet
+* feat: implement caching for userinfo
+* feat: update ForeignKeys on UploadProduct model to use CASCADE
+
 v4.9.10
 ----------
 * feat: sync template body params
