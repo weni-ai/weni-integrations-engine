@@ -54,6 +54,7 @@ class ConfigSerializer(serializers.Serializer):
     startFullScreen = serializers.BooleanField(default=False)
     embedded = serializers.BooleanField(default=False)
     contactTimeout = serializers.IntegerField(default=0)
+    useConnectionOptimization = serializers.BooleanField(default=False)
 
     def to_internal_value(self, data):
         self.app = self.parent.instance
