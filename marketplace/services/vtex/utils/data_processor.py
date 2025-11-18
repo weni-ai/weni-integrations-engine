@@ -95,7 +95,9 @@ class ProductExtractor:
             FacebookProductDTO with formatted product data
         """
         # Ensure price and list_price are always numbers, even when None
-        price = availability_details.get("price", 0) or 0
+        # Selling price
+        selling_price = availability_details.get("selling_price", 0) or 0
+        # Original price
         list_price = availability_details.get("list_price", 0) or 0
 
         # Check if 'Images' exists and is a non-empty list; if not, fallback to 'ImageUrl'
@@ -136,7 +138,7 @@ class ProductExtractor:
             link=product_url,
             image_link=image_url,
             brand=product_details.get("BrandName", "N/A"),
-            sale_price=price,
+            sale_price=selling_price,
             product_details=product_details,
         )
 

@@ -102,6 +102,7 @@ class TestProductExtractor(TestCase):
         availability_details = {
             "price": 100.0,
             "list_price": 120.0,
+            "selling_price": 100.0,
             "is_available": True,
         }
 

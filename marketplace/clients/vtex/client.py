@@ -199,6 +199,7 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
             "is_available": item["availability"] == "available",
             "price": item.get("price", 0),
             "list_price": item.get("listPrice", 0),
+            "selling_price": item.get("sellingPrice", 0),
             "data": simulation_data,
         }
 
@@ -287,6 +288,7 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
             results[seller_id] = {
                 "is_available": item.get("availability") == "available",
                 "price": item.get("price", 0),
+                "selling_price": item.get("sellingPrice", 0),
                 "list_price": item.get("listPrice", 0),
                 "data": simulation_data,
             }
