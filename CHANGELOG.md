@@ -1,3 +1,7 @@
+v4.10.3
+----------
+* feat: add selling price to VtexPrivateClient and update data processing logic
+
 v4.10.2
 ----------
 * feat: add unit tests to vtex data_processor utils
