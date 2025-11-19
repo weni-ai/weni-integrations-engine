@@ -1,3 +1,10 @@
+v4.10.3
+----------
+* feat: add selling price to VtexPrivateClient and update data processing logic
+* feat: add version field to ConfigSerializer and exclude it from generated script
+* feat: add useConnectionOptimization field to ConfigSerializer
+* feat: add flow_object_uuid field to MyAppSerializer
+
 v4.10.2
 ----------
 * feat: add unit tests to vtex data_processor utils
