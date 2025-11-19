@@ -55,6 +55,7 @@ class ConfigSerializer(serializers.Serializer):
     embedded = serializers.BooleanField(default=False)
     contactTimeout = serializers.IntegerField(default=0)
     version = serializers.CharField(default="1")
+    useConnectionOptimization = serializers.BooleanField(default=False)
 
     def to_internal_value(self, data):
         self.app = self.parent.instance
