@@ -54,6 +54,7 @@ class ConfigSerializer(serializers.Serializer):
     startFullScreen = serializers.BooleanField(default=False)
     embedded = serializers.BooleanField(default=False)
     contactTimeout = serializers.IntegerField(default=0)
+    version = serializers.CharField(default="1")
     useConnectionOptimization = serializers.BooleanField(default=False)
 
     def to_internal_value(self, data):
@@ -143,6 +144,9 @@ class ConfigSerializer(serializers.Serializer):
 
             if custom_css:
                 attrs.pop("customCss")
+
+            # Do not include version in the generated script
+            attrs.pop("version", None)
 
         script = header.replace("<FIELDS>", json.dumps(attrs, indent=2))
 
