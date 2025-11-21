@@ -12,6 +12,7 @@ from marketplace.interfaces.facebook.interfaces import (
     CloudProfileRequestsInterface,
     BusinessMetaRequestsInterface,
     CatalogsRequestsInterface,
+    CallingRequestsInterface,
 )
 
 
@@ -336,3 +337,29 @@ class BusinessMetaService:
             "allocation_config_id": allocation_config_id,
             "dataset_id": dataset_id,
         }
+
+
+class CallingService:
+    def __init__(self, client: CallingRequestsInterface):
+        self.client = client
+
+    def get_settings(self) -> Dict[str, Any]:
+        return self.client.get_calling_settings()
+
+    def enable(self, call_icon_visibility: str = "DEFAULT") -> Dict[str, Any]:
+        """
+        Enable WhatsApp Calling without configuring call_hours.
+        """
+        calling: Dict[str, Any] = {
+            "status": "ENABLED",
+            "call_icon_visibility": call_icon_visibility,
+        }
+        payload = {"messaging_product": "whatsapp", "calling": calling}
+        return self.client.update_calling_settings(payload)
+
+    def disable(self) -> Dict[str, Any]:
+        payload = {
+            "messaging_product": "whatsapp",
+            "calling": {"status": "DISABLED"},
+        }
+        return self.client.update_calling_settings(payload)

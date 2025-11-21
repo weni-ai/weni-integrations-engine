@@ -230,3 +230,13 @@ class CatalogsRequestsInterface(ABC):
         :return: The API response as a dictionary.
         """
         pass
+
+
+class CallingRequestsInterface(ABC):
+    @abstractmethod
+    def get_calling_settings(self) -> Dict[str, Any]:
+        pass
+
+    @abstractmethod
+    def update_calling_settings(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        pass
