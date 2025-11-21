@@ -41,6 +41,7 @@ class WhatsAppConfigSerializer(serializers.Serializer):
     phone_number = WhatsAppConfigPhoneNumberSerializer(required=False)
     wa_business_id = serializers.CharField(required=False)
     mmlite_status = serializers.CharField(required=False)
+    has_calling = serializers.BooleanField(required=False)
 
 
 class WhatsAppSerializer(AppTypeBaseSerializer):

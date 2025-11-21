@@ -25,6 +25,9 @@ from marketplace.core.types.channels.whatsapp.usecases.waba_sync import WABASync
 from marketplace.core.types.channels.whatsapp_cloud.usecases.whatsapp_insights_sync import (
     WhatsAppInsightsSyncUseCase,
 )
+from marketplace.core.types.channels.whatsapp_cloud.usecases.whatsapp_calling import (
+    WhatsAppCallingUseCase,
+)
 from marketplace.services.facebook.service import (
     PhoneNumbersService,
     BusinessMetaService,
@@ -249,6 +252,42 @@ class WhatsAppCloudViewSet(
 
         serializer = self.get_serializer(app)
         return Response(serializer.data)
+
+    @action(detail=True, methods=["GET"])
+    def calling_status(self, request: "Request", **kwargs):
+        app = self.get_object()
+        try:
+            data = WhatsAppCallingUseCase(app).get_settings()
+        except ValueError as exc:
+            raise ValidationError(str(exc)) from exc
+        else:
+            return Response(data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["PATCH"])
+    def enable_calling(self, request: "Request", **kwargs):
+        app = self.get_object()
+        try:
+            details = WhatsAppCallingUseCase(app).enable()
+        except ValueError as exc:
+            raise ValidationError(str(exc)) from exc
+        else:
+            serializer = self.get_serializer(app)
+            return Response(
+                {"app": serializer.data, "calling": details}, status=status.HTTP_200_OK
+            )
+
+    @action(detail=True, methods=["PATCH"])
+    def disable_calling(self, request: "Request", **kwargs):
+        app = self.get_object()
+        try:
+            details = WhatsAppCallingUseCase(app).disable()
+        except ValueError as exc:
+            raise ValidationError(str(exc)) from exc
+        else:
+            serializer = self.get_serializer(app)
+            return Response(
+                {"app": serializer.data, "calling": details}, status=status.HTTP_200_OK
+            )
 
 
 class WhatsAppCloudInsights(APIView):

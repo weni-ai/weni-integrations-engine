@@ -14,6 +14,7 @@ from marketplace.interfaces.facebook.interfaces import (
     PhotoAPIRequestsInterface,
     TemplatesRequestsInterface,
     CatalogsRequestsInterface,
+    CallingRequestsInterface,
 )
 
 
@@ -378,6 +379,33 @@ class CloudProfileRequests(
         ...
 
 
+class CallingRequests(FacebookAuthorization, RequestClient, CallingRequestsInterface):
+    """
+    Handles WhatsApp Calling settings for a specific phone number.
+    """
+
+    def __init__(self, access_token: str, phone_number_id: str) -> None:
+        super().__init__(access_token)
+        self._phone_number_id = phone_number_id
+
+    @property
+    def _url(self) -> str:
+        return f"{settings.WHATSAPP_API_URL}/{self._phone_number_id}/settings"
+
+    def get_calling_settings(self) -> dict:
+        params = {"fields": "calling"}
+        response = self.make_request(
+            method="GET", url=self._url, params=params, headers=self._get_headers()
+        )
+        return response.json()
+
+    def update_calling_settings(self, payload: dict) -> dict:
+        response = self.make_request(
+            method="POST", url=self._url, json=payload, headers=self._get_headers()
+        )
+        return response.json()
+
+
 class PhoneNumbersRequests(
     FacebookAuthorization, RequestClient, PhoneNumbersRequestsInterface
 ):
@@ -550,6 +578,7 @@ class FacebookClient(
     PhoneNumbersRequests,
     PhotoAPIRequests,
     BusinessMetaRequests,
+    CallingRequests,
 ):
     def __init__(self, access_token):
         # Initialize FacebookAuthorization with access_token
@@ -557,3 +586,6 @@ class FacebookClient(
 
     def get_profile_requests(self, phone_number_id: str) -> CloudProfileRequests:
         return CloudProfileRequests(self.access_token, phone_number_id)
+
+    def get_calling_requests(self, phone_number_id: str) -> CallingRequests:
+        return CallingRequests(self.access_token, phone_number_id)
