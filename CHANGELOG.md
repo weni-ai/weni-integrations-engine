@@ -1,3 +1,7 @@
+v4.10.4
+----------
+* feat: implement whatsapp calling
+
 v4.10.3
 ----------
 * feat: add selling price to VtexPrivateClient and update data processing logic
