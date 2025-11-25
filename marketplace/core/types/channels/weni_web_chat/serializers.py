@@ -145,8 +145,13 @@ class ConfigSerializer(serializers.Serializer):
             if custom_css:
                 attrs.pop("customCss")
 
-            # Do not include version in the generated script
-            attrs.pop("version", None)
+            # For WWC version 2, enforce connectOn rule based on useConnectionOptimization
+            version_value = str(attrs.pop("version", "1"))
+            if version_value == "2":
+                use_conn_opt = bool(attrs.get("useConnectionOptimization", False))
+                attrs["connectOn"] = "demand" if use_conn_opt else "mount"
+
+            # Do not include version in the generated script (already popped above)
 
         script = header.replace("<FIELDS>", json.dumps(attrs, indent=2))
 
