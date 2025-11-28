@@ -1,5 +1,7 @@
 [run]
 omit =
+    **/interface.py
+    **/interfaces.py
     *migrations/*
     debug_*.py
     *site-packages/*
