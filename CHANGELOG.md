@@ -1,3 +1,8 @@
+v4.10.6
+----------
+* feat: enforce connectOn rule in ConfigSerializer for WWC version 2
+* feat: increase unit tests
+
 v4.10.5
 ----------
 * feat: update mmlite processor
