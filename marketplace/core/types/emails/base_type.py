@@ -9,3 +9,6 @@ class EmailAppType(AppType):
     description = "email.data.description"
     summary = "email.data.summary"
     developer = "Weni"
+
+    def can_add(self, project_uuid: str) -> bool:
+        return False
