@@ -1,3 +1,7 @@
+v4.10.8
+----------
+* feat: update can_add method in EmailAppType to allow project additions
+
 v4.10.7
 ----------
 * feat: add can_add method to EmailAppType to restrict project additions
