@@ -102,7 +102,13 @@ class ConfigSerializer(serializers.Serializer):
         }
 
         if self.app.flow_object_uuid is None:
-            self.app.flow_object_uuid = self._create_channel().get("uuid")
+            version = attrs.get("version", "2")
+            self.app.flow_object_uuid = self._create_channel(version).get("uuid")
+            config = {
+                "base_url": settings.SOCKET_BASE_URL,
+                "version": version,
+            }
+            self._update_config(config)
             self.app.configured = True
 
         attrs["socketUrl"] = settings.SOCKET_BASE_URL
@@ -112,7 +118,7 @@ class ConfigSerializer(serializers.Serializer):
 
         return super().validate(attrs)
 
-    def _create_channel(self) -> str:
+    def _create_channel(self, version: str) -> str:
         user = self.context.get("request").user
         name = f"{type_.WeniWebChatType.name} - #{self.app.id}"
         data = {"name": name, "base_url": settings.SOCKET_BASE_URL}
@@ -120,6 +126,11 @@ class ConfigSerializer(serializers.Serializer):
         return client.create_channel(
             user.email, self.app.project_uuid, data, self.app.flows_type_code
         )
+
+    def _update_config(self, config: dict):
+        client = FlowsClient()
+        response = client.update_config(config, self.app.flow_object_uuid)
+        response.raise_for_status()
 
     def generate_script(self, attrs):
         """
