@@ -105,7 +105,8 @@ class ConfigSerializer(serializers.Serializer):
             version = attrs.get("version", "2")
             self.app.flow_object_uuid = self._create_channel(version).get("uuid")
             config = {
-                "version": version
+                "base_url": settings.SOCKET_BASE_URL,
+                "version": version,
             }
             self._update_config(config)
             self.app.configured = True
