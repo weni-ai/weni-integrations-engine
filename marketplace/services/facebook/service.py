@@ -224,6 +224,16 @@ class TemplateService:
             waba_id=waba_id, template_data=template_data
         )
 
+    def setup_insights(self, waba_id: str) -> bool:
+        try:
+            self.enable_template_insights(waba_id)
+        except Exception as e:
+            capture_exception(e)
+            logger.error(f"Error enabling template insights for WABA {waba_id}: {e}")
+            return False
+
+        return True
+
 
 class PhotoAPIService:
     def __init__(self, client: PhotoAPIRequestsInterface):
