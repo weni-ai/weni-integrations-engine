@@ -1,3 +1,8 @@
+v4.11.0
+----------
+* feat: add TemplateService and implement setup_insights method for WhatsApp Cloud configuration
+* feat: modify wwc channel creation to include version parameter
+
 v4.10.8
 ----------
 * feat: update can_add method in EmailAppType to allow project additions
