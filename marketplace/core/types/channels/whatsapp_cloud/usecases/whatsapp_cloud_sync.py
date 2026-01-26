@@ -99,6 +99,10 @@ class SyncWhatsAppCloudAppsUseCase:
         config = channel.get("config", {})
         config["title"] = config.get("wa_number")
         config["wa_phone_number_id"] = address
+
+        if config.get('mmlite', False):
+            config['mmlite_status'] = 'active'
+
         return config
 
     def _update_existing_app(self, app: App, is_active: bool, config: Dict) -> None:
@@ -118,7 +122,8 @@ class SyncWhatsAppCloudAppsUseCase:
             app.code = self.app_type.code
             config["config_before_migration"] = app.config
 
-        app.config = config
+        # merge channel config with app.config, updating the app.config with the new config values
+        app.config = {**app.config, **config}
         app.modified_by = self.admin_user
         app.save()
 
