@@ -123,7 +123,7 @@ class SyncWhatsAppCloudAppsUseCase:
             config["config_before_migration"] = app.config
 
         # merge channel config with app.config, updating the app.config with the new config values
-        app.config.update(config)
+        app.config = {**app.config, **config}
         app.modified_by = self.admin_user
         app.save()
 
