@@ -1,3 +1,8 @@
+v4.12.0
+----------
+* feat: add new fields to ConfigSerializer for voice recording, camera options and domain navigation
+* feat: update WhatsApp Cloud app configuration to include mmlite status and merge channel config
+
 v4.11.0
 ----------
 * feat: add TemplateService and implement setup_insights method for WhatsApp Cloud configuration
