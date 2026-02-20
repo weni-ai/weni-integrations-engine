@@ -56,6 +56,7 @@ class ConfigSerializer(serializers.Serializer):
     contactTimeout = serializers.IntegerField(default=0)
     version = serializers.CharField(default="1")
     useConnectionOptimization = serializers.BooleanField(default=False)
+    displayRatio = serializers.IntegerField(required=False, min_value=0, max_value=100)
 
     def to_internal_value(self, data):
         self.app = self.parent.instance
