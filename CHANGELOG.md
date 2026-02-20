@@ -1,3 +1,30 @@
+v4.12.0
+----------
+* feat: add new fields to ConfigSerializer for voice recording, camera options and domain navigation
+* feat: update WhatsApp Cloud app configuration to include mmlite status and merge channel config
+
+v4.11.0
+----------
+* feat: add TemplateService and implement setup_insights method for WhatsApp Cloud configuration
+* feat: modify wwc channel creation to include version parameter
+
+v4.10.8
+----------
+* feat: update can_add method in EmailAppType to allow project additions
+
+v4.10.7
+----------
+* feat: add can_add method to EmailAppType to restrict project additions
+
+v4.10.6
+----------
+* feat: enforce connectOn rule in ConfigSerializer for WWC version 2
+* feat: increase unit tests
+
+v4.10.5
+----------
+* feat: update mmlite processor
+
 v4.10.4
 ----------
 * feat: implement whatsapp calling

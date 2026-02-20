@@ -36,6 +36,11 @@ class SetUpTestBase(PermissionTestCaseMixin, APIBaseTestCase):
         self.mock_flows_service.start()
         self.addCleanup(self.mock_flows_service.stop)
 
+        # Mock can_add to return True during tests
+        self.mock_can_add = patch.object(GmailType, "can_add", return_value=True)
+        self.mock_can_add.start()
+        self.addCleanup(self.mock_can_add.stop)
+
         self.project_uuid = str(uuid.uuid4())
         self.app = App.objects.create(
             code="gmail",

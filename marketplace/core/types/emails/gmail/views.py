@@ -32,9 +32,16 @@ class GmailViewSet(views.BaseAppTypeViewSet):
         """
         Custom create logic that includes configuring Gmail during creation.
         """
+        project_uuid = request.data.get("project_uuid")
+
+        if not self.type_class.can_add(project_uuid):
+            return Response(
+                {"error": "This integration is temporarily disabled"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         serializer = GmailSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        project_uuid = request.data.get("project_uuid")
 
         channel_data = serializer.to_channel_data()
 

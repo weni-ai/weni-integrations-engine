@@ -75,8 +75,7 @@ class AccountUpdateWebhookEventProcessorTestCase(TestCase):
 
     def test_process_account_update_success(self):
         """Test successful account update processing"""
-        ad_account_id = "ad_account_123"
-        value = {"waba_info": {"ad_account_id": ad_account_id}}
+        value = {"event": "MM_LITE_TERMS_SIGNED"}
         webhook = {"test": "data"}
 
         self.processor.process_account_update(self.waba_id, value, webhook)
@@ -85,15 +84,13 @@ class AccountUpdateWebhookEventProcessorTestCase(TestCase):
         self.app1.refresh_from_db()
         self.app2.refresh_from_db()
 
-        self.assertEqual(self.app1.config["ad_account_id"], ad_account_id)
         self.assertEqual(self.app1.config["mmlite_status"], "active")
-        self.assertEqual(self.app2.config["ad_account_id"], ad_account_id)
         self.assertEqual(self.app2.config["mmlite_status"], "active")
 
     def test_process_account_update_no_apps_found(self):
         """Test process_account_update when no apps are found"""
         non_existent_waba = "non_existent_waba"
-        value = {"waba_info": {"ad_account_id": "ad_account_123"}}
+        value = {"event": "MM_LITE_TERMS_SIGNED"}
         webhook = {"test": "data"}
 
         self.processor.process_account_update(non_existent_waba, value, webhook)
@@ -103,8 +100,8 @@ class AccountUpdateWebhookEventProcessorTestCase(TestCase):
             f"There are no applications linked to waba: {non_existent_waba}"
         )
 
-    def test_process_account_update_missing_waba_info(self):
-        """Test process_account_update when waba_info is missing"""
+    def test_process_account_update_missing_event(self):
+        """Test process_account_update when event is missing"""
         value = {}
         webhook = {"test": "data"}
 
@@ -112,36 +109,29 @@ class AccountUpdateWebhookEventProcessorTestCase(TestCase):
 
         # Verify logger was called with appropriate message
         self.mock_logger.info.assert_called_once_with(
-            f"Ad account id not found in webhook data: {webhook}"
+            f"Event type not found in webhook data: {webhook}"
         )
 
         # Verify apps were not updated
         self.app1.refresh_from_db()
         self.app2.refresh_from_db()
 
-        self.assertNotIn("ad_account_id", self.app1.config)
         self.assertNotIn("mmlite_status", self.app1.config)
-        self.assertNotIn("ad_account_id", self.app2.config)
         self.assertNotIn("mmlite_status", self.app2.config)
 
-    def test_process_account_update_missing_ad_account_id(self):
-        """Test process_account_update when ad_account_id is missing"""
-        value = {"waba_info": {}}
+    def test_process_account_update_unsupported_event(self):
+        """Test process_account_update with unsupported event"""
+        value = {"event": "OTHER_EVENT"}
         webhook = {"test": "data"}
 
         self.processor.process_account_update(self.waba_id, value, webhook)
 
-        # Verify logger was called with appropriate message
-        self.mock_logger.info.assert_called_once_with(
-            f"Ad account id not found in webhook data: {webhook}"
-        )
-
         # Verify apps were not updated
         self.app1.refresh_from_db()
         self.app2.refresh_from_db()
 
-        self.assertNotIn("ad_account_id", self.app1.config)
         self.assertNotIn("mmlite_status", self.app1.config)
+        self.assertNotIn("mmlite_status", self.app2.config)
 
     def test_process_account_update_existing_config_preserved(self):
         """Test process_account_update preserves existing config"""
@@ -149,8 +139,7 @@ class AccountUpdateWebhookEventProcessorTestCase(TestCase):
         self.app1.config["existing_key"] = "existing_value"
         self.app1.save()
 
-        ad_account_id = "ad_account_123"
-        value = {"waba_info": {"ad_account_id": ad_account_id}}
+        value = {"event": "MM_LITE_TERMS_SIGNED"}
         webhook = {"test": "data"}
 
         self.processor.process_account_update(self.waba_id, value, webhook)
@@ -159,13 +148,12 @@ class AccountUpdateWebhookEventProcessorTestCase(TestCase):
         self.app1.refresh_from_db()
 
         self.assertEqual(self.app1.config["existing_key"], "existing_value")
-        self.assertEqual(self.app1.config["ad_account_id"], ad_account_id)
         self.assertEqual(self.app1.config["mmlite_status"], "active")
 
     def test_process_event_with_account_update(self):
         """Test process_event calls process_account_update for account_update events"""
         waba_id = self.waba_id
-        value = {"waba_info": {"ad_account_id": "ad_account_123"}}
+        value = {"event": "MM_LITE_TERMS_SIGNED"}
         event_type = "account_update"
         webhook = {"test": "data"}
 
@@ -177,7 +165,7 @@ class AccountUpdateWebhookEventProcessorTestCase(TestCase):
     def test_process_event_with_other_event_type(self):
         """Test process_event ignores non-account_update events"""
         waba_id = self.waba_id
-        value = {"waba_info": {"ad_account_id": "ad_account_123"}}
+        value = {"event": "MM_LITE_TERMS_SIGNED"}
         event_type = "other_event"
         webhook = {"test": "data"}
 
@@ -189,7 +177,7 @@ class AccountUpdateWebhookEventProcessorTestCase(TestCase):
     def test_process_event_with_empty_event_type(self):
         """Test process_event ignores empty event types"""
         waba_id = self.waba_id
-        value = {"waba_info": {"ad_account_id": "ad_account_123"}}
+        value = {"event": "MM_LITE_TERMS_SIGNED"}
         event_type = ""
         webhook = {"test": "data"}
 
@@ -201,7 +189,7 @@ class AccountUpdateWebhookEventProcessorTestCase(TestCase):
     def test_process_event_with_none_event_type(self):
         """Test process_event ignores None event types"""
         waba_id = self.waba_id
-        value = {"waba_info": {"ad_account_id": "ad_account_123"}}
+        value = {"event": "MM_LITE_TERMS_SIGNED"}
         event_type = None
         webhook = {"test": "data"}
 
@@ -238,41 +226,3 @@ class AccountUpdateWebhookEventProcessorTestCase(TestCase):
         self.assertIn(self.app2, apps)
         self.assertNotIn(app3, apps)
         self.assertNotIn(app4, apps)
-
-    def test_process_account_update_with_ad_account_id_none(self):
-        """Test process_account_update when ad_account_id is None"""
-        value = {"waba_info": {"ad_account_id": None}}
-        webhook = {"test": "data"}
-
-        self.processor.process_account_update(self.waba_id, value, webhook)
-
-        # Verify logger was called with appropriate message
-        self.mock_logger.info.assert_called_once_with(
-            f"Ad account id not found in webhook data: {webhook}"
-        )
-
-        # Verify apps were not updated
-        self.app1.refresh_from_db()
-        self.app2.refresh_from_db()
-
-        self.assertNotIn("ad_account_id", self.app1.config)
-        self.assertNotIn("mmlite_status", self.app1.config)
-
-    def test_process_account_update_with_empty_ad_account_id(self):
-        """Test process_account_update when ad_account_id is empty string"""
-        value = {"waba_info": {"ad_account_id": ""}}
-        webhook = {"test": "data"}
-
-        self.processor.process_account_update(self.waba_id, value, webhook)
-
-        # Verify logger was called with appropriate message
-        self.mock_logger.info.assert_called_once_with(
-            f"Ad account id not found in webhook data: {webhook}"
-        )
-
-        # Verify apps were not updated
-        self.app1.refresh_from_db()
-        self.app2.refresh_from_db()
-
-        self.assertNotIn("ad_account_id", self.app1.config)
-        self.assertNotIn("mmlite_status", self.app1.config)

@@ -17,15 +17,16 @@ class AccountUpdateWebhookEventProcessor:
             self.logger.info(f"There are no applications linked to waba: {waba_id}")
             return
 
-        ad_account_id = value.get("waba_info", {}).get("ad_account_id")
-        if not ad_account_id:
-            self.logger.info(f"Ad account id not found in webhook data: {webhook}")
+        event_type = value.get("event", "")
+        if not event_type:
+            self.logger.info(f"Event type not found in webhook data: {webhook}")
             return
 
-        for app in apps:
-            app.config["ad_account_id"] = ad_account_id
-            app.config["mmlite_status"] = "active"
-            app.save()
+        # For now, we only support MM_LITE_TERMS_SIGNED event
+        if event_type == "MM_LITE_TERMS_SIGNED":
+            for app in apps:
+                app.config["mmlite_status"] = "active"
+                app.save()
 
     def process_event(self, waba_id: str, value: dict, event_type: str, webhook: dict):
         if event_type == "account_update":
