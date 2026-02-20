@@ -235,3 +235,66 @@ class ConfigureWeniWebChatTestCase(PermissionTestCaseMixin, APIBaseTestCase):
 
         response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    @patch("marketplace.core.types.channels.weni_web_chat.serializers.FlowsClient")
+    @patch(
+        "marketplace.core.types.channels.weni_web_chat.serializers.AppStorage",
+        MockAppStorage,
+    )
+    def test_configure_with_display_ratio(self, mock_flows_client):
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+
+        mock_flows_client.return_value.create_channel.return_value = {
+            "uuid": str(uuid.uuid4()),
+        }
+
+        self.body["config"]["displayRatio"] = 50
+        response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.app.refresh_from_db()
+        self.assertEqual(self.app.config.get("displayRatio"), 50)
+
+    @patch("marketplace.core.types.channels.weni_web_chat.serializers.FlowsClient")
+    @patch(
+        "marketplace.core.types.channels.weni_web_chat.serializers.AppStorage",
+        MockAppStorage,
+    )
+    def test_configure_without_display_ratio(self, mock_flows_client):
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+
+        mock_flows_client.return_value.create_channel.return_value = {
+            "uuid": str(uuid.uuid4()),
+        }
+
+        response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.app.refresh_from_db()
+        self.assertNotIn("displayRatio", self.app.config)
+
+    def test_configure_with_invalid_display_ratio_above_max(self):
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+
+        self.body["config"]["displayRatio"] = 150
+        response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_configure_with_invalid_display_ratio_below_min(self):
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+
+        self.body["config"]["displayRatio"] = -10
+        response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
