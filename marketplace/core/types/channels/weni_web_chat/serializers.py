@@ -2,7 +2,10 @@ import os
 import json
 
 from django.conf import settings
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.validators import URLValidator
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 from marketplace.core.fields import Base64ImageField
 from marketplace.applications.models import App
@@ -38,6 +41,25 @@ class AvatarBase64ImageField(Base64ImageField):
         return f"avatar.{extencion}"
 
 
+class AvatarImageField(serializers.Field):
+    """Accepts either a base64-encoded image or a direct URL."""
+
+    def to_internal_value(self, data):
+        if isinstance(data, str) and data.startswith("data:"):
+            base64_field = AvatarBase64ImageField()
+            return base64_field.to_internal_value(data)
+
+        if isinstance(data, str):
+            url_validator = URLValidator()
+            try:
+                url_validator(data)
+            except DjangoValidationError:
+                raise ValidationError("Invalid URL or base64 image.")
+            return data
+
+        raise ValidationError("Expected a base64 image string or a URL.")
+
+
 class ConfigSerializer(serializers.Serializer):
     title = serializers.CharField(required=True)
     subtitle = serializers.CharField(required=False)
@@ -47,7 +69,7 @@ class ConfigSerializer(serializers.Serializer):
     keepHistory = serializers.BooleanField(default=False)
     initPayload = serializers.CharField(required=False)
     mainColor = serializers.CharField(default="#00DED3")
-    profileAvatar = AvatarBase64ImageField(required=False)
+    profileAvatar = AvatarImageField(required=False)
     customCss = serializers.CharField(required=False)
     timeBetweenMessages = serializers.IntegerField(default=1)
     tooltipMessage = serializers.CharField(required=False)
@@ -67,13 +89,16 @@ class ConfigSerializer(serializers.Serializer):
         storage = AppStorage(self.app)
 
         if data.get("profileAvatar"):
-            content_file = data["profileAvatar"]
-
-            with storage.open(content_file.name, "w") as up_file:
-                up_file.write(content_file.file.read())
-                file_url = storage.url(up_file.name)
-                data["profileAvatar"] = file_url
-                data["openLauncherImage"] = file_url
+            avatar = data["profileAvatar"]
+            if isinstance(avatar, str):
+                # Already a URL, no upload needed — profileAvatar is already set
+                data["openLauncherImage"] = avatar
+            else:
+                with storage.open(avatar.name, "w") as up_file:
+                    up_file.write(avatar.file.read())
+                    file_url = storage.url(up_file.name)
+                    data["profileAvatar"] = file_url
+                    data["openLauncherImage"] = file_url
 
         if data.get("customCss"):
             with storage.open("custom.css", "w") as up_file:

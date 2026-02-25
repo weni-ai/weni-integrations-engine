@@ -235,3 +235,39 @@ class ConfigureWeniWebChatTestCase(PermissionTestCaseMixin, APIBaseTestCase):
 
         response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    @patch("marketplace.core.types.channels.weni_web_chat.serializers.FlowsClient")
+    @patch(
+        "marketplace.core.types.channels.weni_web_chat.serializers.AppStorage",
+        MockAppStorage,
+    )
+    def test_configure_with_url_avatar(self, mock_flows_client):
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+
+        mock_flows_client.return_value.create_channel.return_value = {
+            "uuid": str(uuid.uuid4()),
+        }
+
+        avatar_url = "https://example.com/avatar.png"
+        self.body["config"]["profileAvatar"] = avatar_url
+
+        response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.app.refresh_from_db()
+        self.assertEqual(self.app.config["profileAvatar"], avatar_url)
+        self.assertEqual(self.app.config["openLauncherImage"], avatar_url)
+
+    def test_configure_with_invalid_avatar(self):
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+
+        self.body["config"]["profileAvatar"] = "not-a-url-or-base64"
+
+        response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
