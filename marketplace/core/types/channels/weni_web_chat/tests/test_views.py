@@ -3,13 +3,17 @@ import uuid
 from unittest.mock import patch
 from unittest.mock import MagicMock
 
+from django.core.files.base import ContentFile
+from django.test import TestCase
 from django.urls import reverse
 
 from rest_framework import status
+from rest_framework.exceptions import ValidationError
 
 from marketplace.core.tests.base import APIBaseTestCase
 from marketplace.core.tests.mixis.permissions import PermissionTestCaseMixin
 from ..views import WeniWebChatViewSet
+from ..serializers import AvatarImageField
 from marketplace.applications.models import App
 from marketplace.accounts.models import ProjectAuthorization
 
@@ -147,6 +151,34 @@ class DestroyWeniWebChatAppTestCase(APIBaseTestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
+class AvatarImageFieldTestCase(TestCase):
+    def setUp(self):
+        self.field = AvatarImageField()
+
+    def test_valid_url_returns_string(self):
+        url = "https://example.com/avatar.png"
+        result = self.field.to_internal_value(url)
+        self.assertEqual(result, url)
+
+    def test_invalid_string_raises_validation_error(self):
+        with self.assertRaises(ValidationError):
+            self.field.to_internal_value("not-a-url-or-base64")
+
+    def test_non_string_raises_validation_error(self):
+        with self.assertRaises(ValidationError):
+            self.field.to_internal_value(12345)
+
+    def test_base64_returns_content_file(self):
+        base64_image = (
+            "data:image/png;base64,"
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4"
+            "2mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        )
+        result = self.field.to_internal_value(base64_image)
+        self.assertIsInstance(result, ContentFile)
+        self.assertEqual(result.name, "avatar.png")
+
+
 class MockAppStorage(MagicMock):
     def open(self, name, mode):
         mock_file = MagicMock()
@@ -260,6 +292,38 @@ class ConfigureWeniWebChatTestCase(PermissionTestCaseMixin, APIBaseTestCase):
         self.app.refresh_from_db()
         self.assertEqual(self.app.config["profileAvatar"], avatar_url)
         self.assertEqual(self.app.config["openLauncherImage"], avatar_url)
+
+    @patch("marketplace.core.types.channels.weni_web_chat.serializers.FlowsClient")
+    @patch(
+        "marketplace.core.types.channels.weni_web_chat.serializers.AppStorage",
+        MockAppStorage,
+    )
+    def test_configure_with_base64_avatar(self, mock_flows_client):
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+
+        mock_flows_client.return_value.create_channel.return_value = {
+            "uuid": str(uuid.uuid4()),
+        }
+
+        base64_avatar = (
+            "data:image/png;base64,"
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4"
+            "2mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        )
+        self.body["config"]["profileAvatar"] = base64_avatar
+
+        response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.app.refresh_from_db()
+        self.assertIn("profileAvatar", self.app.config)
+        self.assertTrue(self.app.config["profileAvatar"].startswith("https://"))
+        self.assertEqual(
+            self.app.config["profileAvatar"], self.app.config["openLauncherImage"]
+        )
 
     def test_configure_with_invalid_avatar(self):
         self.user_authorization = self.user.authorizations.create(
