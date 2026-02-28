@@ -2,7 +2,10 @@ import os
 import json
 
 from django.conf import settings
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.validators import URLValidator
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 from marketplace.core.fields import Base64ImageField
 from marketplace.applications.models import App
@@ -38,9 +41,47 @@ class AvatarBase64ImageField(Base64ImageField):
         return f"avatar.{extencion}"
 
 
-class OpenLauncherImageField(Base64ImageField):
+class OpenLauncherBase64ImageField(Base64ImageField):
     def get_file_name(self, extencion: str) -> str:
         return f"launcher.{extencion}"
+
+
+class AvatarImageField(serializers.Field):
+    """Accepts either a base64-encoded image or a direct URL."""
+
+    def to_internal_value(self, data):
+        if isinstance(data, str) and data.startswith("data:"):
+            base64_field = AvatarBase64ImageField()
+            return base64_field.to_internal_value(data)
+
+        if isinstance(data, str):
+            url_validator = URLValidator()
+            try:
+                url_validator(data)
+            except DjangoValidationError:
+                raise ValidationError("Invalid URL or base64 image.")
+            return data
+
+        raise ValidationError("Expected a base64 image string or a URL.")
+
+
+class OpenLauncherImageField(serializers.Field):
+    """Accepts either a base64-encoded image or a direct URL."""
+
+    def to_internal_value(self, data):
+        if isinstance(data, str) and data.startswith("data:"):
+            base64_field = OpenLauncherBase64ImageField()
+            return base64_field.to_internal_value(data)
+
+        if isinstance(data, str):
+            url_validator = URLValidator()
+            try:
+                url_validator(data)
+            except DjangoValidationError:
+                raise ValidationError("Invalid URL or base64 image.")
+            return data
+
+        raise ValidationError("Expected a base64 image string or a URL.")
 
 
 class ConfigSerializer(serializers.Serializer):
@@ -52,12 +93,15 @@ class ConfigSerializer(serializers.Serializer):
     keepHistory = serializers.BooleanField(default=False)
     initPayload = serializers.CharField(required=False)
     mainColor = serializers.CharField(default="#00DED3")
-    profileAvatar = AvatarBase64ImageField(required=False)
+    profileAvatar = AvatarImageField(required=False)
     openLauncherImage = OpenLauncherImageField(required=False)
     customCss = serializers.CharField(required=False)
     timeBetweenMessages = serializers.IntegerField(default=1)
     tooltipMessage = serializers.CharField(required=False)
     startFullScreen = serializers.BooleanField(default=False)
+    showVoiceRecordingButton = serializers.BooleanField(default=False)
+    showCameraButton = serializers.BooleanField(default=False)
+    navigateIfSameDomain = serializers.BooleanField(default=False)
     embedded = serializers.BooleanField(default=False)
     contactTimeout = serializers.IntegerField(default=0)
     version = serializers.CharField(default="1")
@@ -73,18 +117,22 @@ class ConfigSerializer(serializers.Serializer):
         storage = AppStorage(self.app)
 
         if data.get("profileAvatar"):
-            content_file = data["profileAvatar"]
-
-            with storage.open(content_file.name, "w") as up_file:
-                up_file.write(content_file.file.read())
-                data["profileAvatar"] = storage.url(up_file.name)
+            avatar = data["profileAvatar"]
+            if isinstance(avatar, str):
+                pass
+            else:
+                with storage.open(avatar.name, "w") as up_file:
+                    up_file.write(avatar.file.read())
+                    data["profileAvatar"] = storage.url(up_file.name)
 
         if data.get("openLauncherImage"):
-            content_file = data["openLauncherImage"]
-
-            with storage.open(content_file.name, "w") as up_file:
-                up_file.write(content_file.file.read())
-                data["openLauncherImage"] = storage.url(up_file.name)
+            launcher = data["openLauncherImage"]
+            if isinstance(launcher, str):
+                pass
+            else:
+                with storage.open(launcher.name, "w") as up_file:
+                    up_file.write(launcher.file.read())
+                    data["openLauncherImage"] = storage.url(up_file.name)
 
         if data.get("customCss"):
             with storage.open("custom.css", "w") as up_file:
@@ -116,7 +164,13 @@ class ConfigSerializer(serializers.Serializer):
         }
 
         if self.app.flow_object_uuid is None:
-            self.app.flow_object_uuid = self._create_channel().get("uuid")
+            version = attrs.get("version", "2")
+            self.app.flow_object_uuid = self._create_channel(version).get("uuid")
+            config = {
+                "base_url": settings.SOCKET_BASE_URL,
+                "version": version,
+            }
+            self._update_config(config)
             self.app.configured = True
 
         attrs["socketUrl"] = settings.SOCKET_BASE_URL
@@ -126,7 +180,7 @@ class ConfigSerializer(serializers.Serializer):
 
         return super().validate(attrs)
 
-    def _create_channel(self) -> str:
+    def _create_channel(self, version: str) -> str:
         user = self.context.get("request").user
         name = f"{type_.WeniWebChatType.name} - #{self.app.id}"
         data = {"name": name, "base_url": settings.SOCKET_BASE_URL}
@@ -134,6 +188,11 @@ class ConfigSerializer(serializers.Serializer):
         return client.create_channel(
             user.email, self.app.project_uuid, data, self.app.flows_type_code
         )
+
+    def _update_config(self, config: dict):
+        client = FlowsClient()
+        response = client.update_config(config, self.app.flow_object_uuid)
+        response.raise_for_status()
 
     def generate_script(self, attrs):
         """

@@ -11,4 +11,4 @@ class EmailAppType(AppType):
     developer = "Weni"
 
     def can_add(self, project_uuid: str) -> bool:
-        return False
+        return True

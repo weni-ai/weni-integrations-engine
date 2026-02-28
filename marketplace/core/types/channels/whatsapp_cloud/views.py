@@ -31,6 +31,7 @@ from marketplace.core.types.channels.whatsapp_cloud.usecases.whatsapp_calling im
 from marketplace.services.facebook.service import (
     PhoneNumbersService,
     BusinessMetaService,
+    TemplateService,
 )
 from marketplace.services.flows.service import FlowsService
 from marketplace.internal.permissions import CanCommunicateInternally
@@ -109,6 +110,7 @@ class WhatsAppCloudViewSet(
         whatsapp_system_user_access_token = settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
         facebook_client = FacebookClient(whatsapp_system_user_access_token)
         business_service = BusinessMetaService(client=facebook_client)
+        template_service = TemplateService(client=facebook_client)
 
         # Configure WhatsApp Cloud
         config_data = business_service.configure_whatsapp_cloud(
@@ -152,7 +154,7 @@ class WhatsAppCloudViewSet(
         config["title"] = config.get("wa_number")
         config["wa_allocation_config_id"] = allocation_config_id
         config["wa_phone_number_id"] = phone_number_id
-        config["has_insights"] = False
+        config["has_insights"] = template_service.setup_insights(waba_id)
 
         app = App.objects.create(
             code=self.type_class.code,
