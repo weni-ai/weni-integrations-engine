@@ -38,6 +38,11 @@ class AvatarBase64ImageField(Base64ImageField):
         return f"avatar.{extencion}"
 
 
+class OpenLauncherImageField(Base64ImageField):
+    def get_file_name(self, extencion: str) -> str:
+        return f"launcher.{extencion}"
+
+
 class ConfigSerializer(serializers.Serializer):
     title = serializers.CharField(required=True)
     subtitle = serializers.CharField(required=False)
@@ -48,6 +53,7 @@ class ConfigSerializer(serializers.Serializer):
     initPayload = serializers.CharField(required=False)
     mainColor = serializers.CharField(default="#00DED3")
     profileAvatar = AvatarBase64ImageField(required=False)
+    openLauncherImage = OpenLauncherImageField(required=False)
     customCss = serializers.CharField(required=False)
     timeBetweenMessages = serializers.IntegerField(default=1)
     tooltipMessage = serializers.CharField(required=False)
@@ -71,9 +77,14 @@ class ConfigSerializer(serializers.Serializer):
 
             with storage.open(content_file.name, "w") as up_file:
                 up_file.write(content_file.file.read())
-                file_url = storage.url(up_file.name)
-                data["profileAvatar"] = file_url
-                data["openLauncherImage"] = file_url
+                data["profileAvatar"] = storage.url(up_file.name)
+
+        if data.get("openLauncherImage"):
+            content_file = data["openLauncherImage"]
+
+            with storage.open(content_file.name, "w") as up_file:
+                up_file.write(content_file.file.read())
+                data["openLauncherImage"] = storage.url(up_file.name)
 
         if data.get("customCss"):
             with storage.open("custom.css", "w") as up_file:
