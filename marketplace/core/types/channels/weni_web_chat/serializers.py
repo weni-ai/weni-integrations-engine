@@ -118,20 +118,14 @@ class ConfigSerializer(serializers.Serializer):
 
         if data.get("profileAvatar"):
             avatar = data["profileAvatar"]
-            if isinstance(avatar, str):
-                # Already a URL, no upload needed
-                pass
-            else:
+            if not isinstance(avatar, str):
                 with storage.open(avatar.name, "w") as up_file:
                     up_file.write(avatar.file.read())
                     data["profileAvatar"] = storage.url(up_file.name)
 
         if data.get("openLauncherImage"):
             launcher = data["openLauncherImage"]
-            if isinstance(launcher, str):
-                # Already a URL, no upload needed
-                pass
-            else:
+            if not isinstance(launcher, str):
                 with storage.open(launcher.name, "w") as up_file:
                     up_file.write(launcher.file.read())
                     data["openLauncherImage"] = storage.url(up_file.name)
