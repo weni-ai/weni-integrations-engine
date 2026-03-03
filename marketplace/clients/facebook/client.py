@@ -570,6 +570,11 @@ class BusinessMetaRequests(
         response = self.make_request(url, method="POST", headers=self._get_headers())
         return response.json()
 
+    def get_mmlite_status(self, waba_id: str) -> dict:
+        url = f"{self.get_url}/{waba_id}/?fields=marketing_messages_onboarding_status"
+        response = self.make_request(url, method="GET", headers=self._get_headers())
+        return response.json()
+
 
 class FacebookClient(
     CatalogsRequests,

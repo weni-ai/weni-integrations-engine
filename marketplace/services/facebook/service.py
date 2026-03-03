@@ -348,6 +348,9 @@ class BusinessMetaService:
             "dataset_id": dataset_id,
         }
 
+    def get_mmlite_status(self, waba_id: str) -> Dict[str, Any]:
+        return self.client.get_mmlite_status(waba_id)
+
 
 class CallingService:
     def __init__(self, client: CallingRequestsInterface):
