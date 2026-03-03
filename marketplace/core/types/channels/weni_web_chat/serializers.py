@@ -28,8 +28,9 @@ class WeniWebChatSerializer(AppTypeBaseSerializer):
             "created_by",
             "created_on",
             "modified_by",
+            "flow_object_uuid",
         )
-        read_only_fields = ("code", "uuid", "platform")
+        read_only_fields = ("code", "uuid", "platform", "flow_object_uuid")
 
     def create(self, validated_data):
         validated_data["platform"] = self.type_class.platform
