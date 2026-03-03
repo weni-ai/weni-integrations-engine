@@ -1,3 +1,10 @@
+v4.13.0
+----------
+* feat: fetch mmlite status from meta on update
+* feat: add flow_object_uuid to read_only_fields in WeniWebChatSerializer
+* feat: add displayRatio field in wwc
+* feat: add AvatarImageField to handle base64 and URL avatars in ConfigSerializer
+
 v4.12.0
 ----------
 * feat: add new fields to ConfigSerializer for voice recording, camera options and domain navigation
