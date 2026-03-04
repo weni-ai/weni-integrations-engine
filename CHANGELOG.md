@@ -1,3 +1,7 @@
+v4.13.1
+----------
+* fix: remove sellerType parameter from list_active_sellers
+
 v4.13.0
 ----------
 * feat: fetch mmlite status from meta on update
