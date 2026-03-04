@@ -117,7 +117,7 @@ class VtexPrivateClient(VtexAuthorization, VtexCommonClient):
     def list_active_sellers(self, domain, sales_channel=None):
         if sales_channel:
             # Use sales channel specific endpoint
-            url = f"https://{domain}/api/catalog_system/pvt/seller/list?sc={sales_channel}&sellerType=1"
+            url = f"https://{domain}/api/catalog_system/pvt/seller/list?sc={sales_channel}"
             headers = self._get_headers()
             response = self.make_request(url, method="GET", headers=headers)
             sellers_data = response.json()
