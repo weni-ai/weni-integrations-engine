@@ -21,7 +21,10 @@ rating_router.register(
     "ratings", interactions_views.RatingViewSet, basename="apptype-rating"
 )
 
-commerce_base_urls = ["commerce/check-whatsapp-integration"]
+commerce_base_urls = [
+    "commerce/check-whatsapp-integration",
+    "commerce/preverified-phone-number",
+]
 
 urlpatterns = [
     path("", include(router.urls)),
@@ -30,5 +33,14 @@ urlpatterns = [
     path("", include(apps_urls)),
     path("internal/", include(account_urls), name="internal"),
     path("", include(wpp_templates_urls)),
-    path(commerce_base_urls[0], applications_views.CheckAppIsIntegrated.as_view(), name="check-whatsapp-integration")
+    path(
+        commerce_base_urls[0],
+        applications_views.CheckAppIsIntegrated.as_view(),
+        name="check-whatsapp-integration",
+    ),
+    path(
+        commerce_base_urls[1],
+        applications_views.PreverifiedPhoneNumber.as_view(),
+        name="preverified-phone-number",
+    ),
 ]

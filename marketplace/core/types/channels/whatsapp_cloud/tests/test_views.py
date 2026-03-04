@@ -682,7 +682,7 @@ class UpdateMmliteStatusTestCase(APIBaseTestCase):
 
         self.app = App.objects.create(
             code="wpp-cloud",
-            config={"existing_key": "existing_value"},
+            config={"existing_key": "existing_value", "wa_waba_id": "mock_waba_id"},
             created_by=self.user,
             project_uuid=str(uuid.uuid4()),
             platform=App.PLATFORM_WENI_FLOWS,
@@ -696,6 +696,37 @@ class UpdateMmliteStatusTestCase(APIBaseTestCase):
             "wpp-cloud-app-update-mmlite-status", kwargs={"uuid": self.app.uuid}
         )
 
+        self.mock_facebook_client = MagicMock()
+        self.mock_business_service = MagicMock()
+        self.mock_business_service.get_mmlite_status.return_value = {
+            "marketing_messages_onboarding_status": "NOT_ONBOARDED"
+        }
+        self.mock_flows_client = MagicMock()
+        self.mock_flows_client.detail_channel.return_value = {
+            "config": {"existing_flow_key": "existing_flow_value"}
+        }
+
+        patcher_facebook = patch(
+            "marketplace.core.types.channels.whatsapp_cloud.views.FacebookClient",
+            return_value=self.mock_facebook_client,
+        )
+        patcher_business_service = patch(
+            "marketplace.core.types.channels.whatsapp_cloud.views.BusinessMetaService",
+            return_value=self.mock_business_service,
+        )
+        patcher_flows_client = patch(
+            "marketplace.core.types.channels.whatsapp_cloud.views.FlowsClient",
+            return_value=self.mock_flows_client,
+        )
+
+        patcher_facebook.start()
+        patcher_business_service.start()
+        patcher_flows_client.start()
+
+        self.addCleanup(patcher_facebook.stop)
+        self.addCleanup(patcher_business_service.stop)
+        self.addCleanup(patcher_flows_client.stop)
+
     @property
     def view(self):
         return self.view_class.as_view({"patch": "update_mmlite_status"})
@@ -706,7 +737,6 @@ class UpdateMmliteStatusTestCase(APIBaseTestCase):
         response = self.request.patch(self.url, data, uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        # Verify the app was updated
         app = App.objects.get(uuid=self.app.uuid)
         self.assertEqual(app.config["mmlite_status"], "active")
 
@@ -724,7 +754,6 @@ class UpdateMmliteStatusTestCase(APIBaseTestCase):
         response = self.request.patch(self.url, data, uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        # Verify the app was updated
         app = App.objects.get(uuid=self.app.uuid)
         self.assertEqual(app.config["mmlite_status"], "in_progress")
 
@@ -804,19 +833,65 @@ class UpdateMmliteStatusTestCase(APIBaseTestCase):
         self.assertNotIn("mmlite_status", app.config)
 
     def test_update_mmlite_status_overwrites_existing_status(self):
-        # Set an initial status
         self.app.config["mmlite_status"] = "in_progress"
         self.app.save()
 
-        # Update to a different status
         data = {"status": "active"}
 
         response = self.request.patch(self.url, data, uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        # Verify the status was overwritten
         app = App.objects.get(uuid=self.app.uuid)
         self.assertEqual(app.config["mmlite_status"], "active")
+
+    def test_update_mmlite_status_checks_meta_onboarding_status(self):
+        data = {"status": "in_progress"}
+
+        self.request.patch(self.url, data, uuid=self.app.uuid)
+
+        self.mock_business_service.get_mmlite_status.assert_called_once_with(
+            "mock_waba_id"
+        )
+
+    def test_update_mmlite_status_when_already_onboarded_forces_active(self):
+        self.mock_business_service.get_mmlite_status.return_value = {
+            "marketing_messages_onboarding_status": "ONBOARDED"
+        }
+
+        data = {"status": "in_progress"}
+
+        response = self.request.patch(self.url, data, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        app = App.objects.get(uuid=self.app.uuid)
+        self.assertEqual(app.config["mmlite_status"], "active")
+
+        self.assertIn("config", response.json)
+        self.assertEqual(response.json["config"]["mmlite_status"], "active")
+
+    def test_update_mmlite_status_when_already_onboarded_updates_flows_config(self):
+        self.mock_business_service.get_mmlite_status.return_value = {
+            "marketing_messages_onboarding_status": "ONBOARDED"
+        }
+
+        data = {"status": "in_progress"}
+
+        self.request.patch(self.url, data, uuid=self.app.uuid)
+
+        flow_uuid = uuid.UUID(str(self.app.flow_object_uuid))
+        self.mock_flows_client.detail_channel.assert_called_once_with(flow_uuid)
+        self.mock_flows_client.update_config.assert_called_once_with(
+            data={"existing_flow_key": "existing_flow_value", "mmlite": True},
+            flow_object_uuid=flow_uuid,
+        )
+
+    def test_update_mmlite_status_when_not_onboarded_does_not_update_flows(self):
+        data = {"status": "in_progress"}
+
+        self.request.patch(self.url, data, uuid=self.app.uuid)
+
+        self.mock_flows_client.detail_channel.assert_not_called()
+        self.mock_flows_client.update_config.assert_not_called()
 
     def test_update_mmlite_status_nonexistent_app(self):
         nonexistent_uuid = str(uuid.uuid4())

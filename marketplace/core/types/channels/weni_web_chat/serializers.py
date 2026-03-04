@@ -28,8 +28,9 @@ class WeniWebChatSerializer(AppTypeBaseSerializer):
             "created_by",
             "created_on",
             "modified_by",
+            "flow_object_uuid",
         )
-        read_only_fields = ("code", "uuid", "platform")
+        read_only_fields = ("code", "uuid", "platform", "flow_object_uuid")
 
     def create(self, validated_data):
         validated_data["platform"] = self.type_class.platform
@@ -41,12 +42,36 @@ class AvatarBase64ImageField(Base64ImageField):
         return f"avatar.{extencion}"
 
 
+class OpenLauncherBase64ImageField(Base64ImageField):
+    def get_file_name(self, extencion: str) -> str:
+        return f"launcher.{extencion}"
+
+
 class AvatarImageField(serializers.Field):
     """Accepts either a base64-encoded image or a direct URL."""
 
     def to_internal_value(self, data):
         if isinstance(data, str) and data.startswith("data:"):
             base64_field = AvatarBase64ImageField()
+            return base64_field.to_internal_value(data)
+
+        if isinstance(data, str):
+            url_validator = URLValidator()
+            try:
+                url_validator(data)
+            except DjangoValidationError:
+                raise ValidationError("Invalid URL or base64 image.")
+            return data
+
+        raise ValidationError("Expected a base64 image string or a URL.")
+
+
+class OpenLauncherImageField(serializers.Field):
+    """Accepts either a base64-encoded image or a direct URL."""
+
+    def to_internal_value(self, data):
+        if isinstance(data, str) and data.startswith("data:"):
+            base64_field = OpenLauncherBase64ImageField()
             return base64_field.to_internal_value(data)
 
         if isinstance(data, str):
@@ -70,6 +95,7 @@ class ConfigSerializer(serializers.Serializer):
     initPayload = serializers.CharField(required=False)
     mainColor = serializers.CharField(default="#00DED3")
     profileAvatar = AvatarImageField(required=False)
+    openLauncherImage = OpenLauncherImageField(required=False)
     customCss = serializers.CharField(required=False)
     timeBetweenMessages = serializers.IntegerField(default=1)
     tooltipMessage = serializers.CharField(required=False)
@@ -81,7 +107,9 @@ class ConfigSerializer(serializers.Serializer):
     contactTimeout = serializers.IntegerField(default=0)
     version = serializers.CharField(default="1")
     useConnectionOptimization = serializers.BooleanField(default=False)
-    displayRatio = serializers.IntegerField(required=False, min_value=0, max_value=100)
+    renderPercentage = serializers.IntegerField(
+        required=False, min_value=0, max_value=100
+    )
 
     def to_internal_value(self, data):
         self.app = self.parent.instance
@@ -91,15 +119,17 @@ class ConfigSerializer(serializers.Serializer):
 
         if data.get("profileAvatar"):
             avatar = data["profileAvatar"]
-            if isinstance(avatar, str):
-                # Already a URL, no upload needed — profileAvatar is already set
-                data["openLauncherImage"] = avatar
-            else:
+            if not isinstance(avatar, str):
                 with storage.open(avatar.name, "w") as up_file:
                     up_file.write(avatar.file.read())
-                    file_url = storage.url(up_file.name)
-                    data["profileAvatar"] = file_url
-                    data["openLauncherImage"] = file_url
+                    data["profileAvatar"] = storage.url(up_file.name)
+
+        if data.get("openLauncherImage"):
+            launcher = data["openLauncherImage"]
+            if not isinstance(launcher, str):
+                with storage.open(launcher.name, "w") as up_file:
+                    up_file.write(launcher.file.read())
+                    data["openLauncherImage"] = storage.url(up_file.name)
 
         if data.get("customCss"):
             with storage.open("custom.css", "w") as up_file:

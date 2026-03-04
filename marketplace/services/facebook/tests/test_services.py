@@ -153,6 +153,9 @@ class MockClient:
     def create_dataset(self, waba_id):
         return {"id": "mock_dataset_id"}
 
+    def get_mmlite_status(self, waba_id):
+        return {"marketing_messages_onboarding_status": "ONBOARDED"}
+
 
 class TestFacebookService(TestCase):
     def generate_unique_facebook_catalog_id(self):
@@ -480,3 +483,7 @@ class TestBusinessMetaService(TestCase):
             )
         finally:
             self.service.create_dataset = original_create_dataset
+
+    def test_get_mmlite_status(self):
+        response = self.service.get_mmlite_status("waba_id")
+        self.assertEqual(response, {"marketing_messages_onboarding_status": "ONBOARDED"})

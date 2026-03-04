@@ -249,7 +249,29 @@ class WhatsAppCloudViewSet(
         if status not in ["in_progress", "active"]:
             raise ValidationError("Invalid status")
 
-        app.config["mmlite_status"] = request.data.get("status")
+        # request meta to check if mmlite is already active
+        facebook_client = FacebookClient(app.apptype.get_access_token(app))
+        business_service = BusinessMetaService(client=facebook_client)
+
+        waba_id = app.config.get("wa_waba_id")
+        mmlite_status = business_service.get_mmlite_status(waba_id)
+
+        # if mmlite is already active, update locally and flows channel config
+        if mmlite_status.get("marketing_messages_onboarding_status") == "ONBOARDED":
+            app.config["mmlite_status"] = "active"
+
+            flows_client = FlowsClient()
+            detail_channel = flows_client.detail_channel(app.flow_object_uuid)
+
+            flows_config = detail_channel["config"]
+            updated_config = flows_config
+            updated_config["mmlite"] = True
+            flows_client.update_config(
+                data=updated_config, flow_object_uuid=app.flow_object_uuid
+            )
+        else:
+            app.config["mmlite_status"] = request.data.get("status")
+
         app.save()
 
         serializer = self.get_serializer(app)
