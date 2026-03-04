@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class ProfileHandlerInterface(ABC):
@@ -145,6 +145,10 @@ class BusinessMetaRequestsInterface(ABC):
 
     @abstractmethod
     def create_dataset(self, waba_id: str) -> Dict[str, Any]:
+        pass
+
+    @abstractmethod
+    def get_preverified_numbers(self) -> Dict[str, Any]:
         pass
 
 

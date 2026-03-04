@@ -511,6 +511,8 @@ class PhotoAPIRequests(FacebookAuthorization, RequestClient, PhotoAPIRequestsInt
 class BusinessMetaRequests(
     FacebookAuthorization, RequestClient, BusinessMetaRequestsInterface
 ):
+    MAX_PAGE_SIZE = 100
+
     def exchange_auth_code_to_token(self, auth_code: str) -> dict:
         url = f"{self.get_url}/oauth/access_token"
         params = dict(
@@ -574,6 +576,24 @@ class BusinessMetaRequests(
         url = f"{self.get_url}/{waba_id}/?fields=marketing_messages_onboarding_status"
         response = self.make_request(url, method="GET", headers=self._get_headers())
         return response.json()
+
+    def get_preverified_numbers(self) -> dict:
+        business_id = settings.WHATSAPP_BSP_BUSINESS_ID
+        url = f"{self.get_url}/{business_id}/preverified_numbers"
+        headers = {
+            **self._get_headers(),
+            "Content-Type": "application/json",
+        }
+        params = {
+            "limit": self.MAX_PAGE_SIZE,
+            "code_verification_status": "VERIFIED",
+            "availability_status": "AVAILABLE",
+        }
+        response = self.make_request(
+            url, method="GET", headers=headers, params=params
+        )
+        body = response.json()
+        return {"data": body.get("data") or []}    
 
 
 class FacebookClient(
