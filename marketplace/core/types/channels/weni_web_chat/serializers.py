@@ -110,6 +110,7 @@ class ConfigSerializer(serializers.Serializer):
     renderPercentage = serializers.IntegerField(
         required=False, min_value=0, max_value=100
     )
+    voiceMode = serializers.JSONField(required=False)
 
     def to_internal_value(self, data):
         self.app = self.parent.instance
@@ -166,6 +167,7 @@ class ConfigSerializer(serializers.Serializer):
             config = {
                 "base_url": settings.SOCKET_BASE_URL,
                 "version": version,
+                "voice_mode": attrs.get("voiceMode", {}),
             }
             self._update_config(config)
             self.app.configured = True
@@ -173,7 +175,19 @@ class ConfigSerializer(serializers.Serializer):
         attrs["socketUrl"] = settings.SOCKET_BASE_URL
         attrs["host"] = settings.FLOWS_HOST_URL
         attrs.pop("keepHistory")
+
+        # Remove the apiKey from the generated script but keep it in attrs for storage
+        voice_mode = attrs.get("voiceMode")
+        elevenlabs_api_key = None
+        if voice_mode:
+            elevenlabs = voice_mode.get("elevenlabs")
+            if elevenlabs:
+                elevenlabs_api_key = elevenlabs.pop("apiKey", None)
+
         attrs["script"] = self.generate_script(attrs.copy())
+
+        if elevenlabs_api_key is not None:
+            attrs["voiceMode"]["elevenlabs"]["apiKey"] = elevenlabs_api_key
 
         return super().validate(attrs)
 
