@@ -1,3 +1,4 @@
+import copy
 import os
 import json
 
@@ -177,17 +178,14 @@ class ConfigSerializer(serializers.Serializer):
         attrs.pop("keepHistory")
 
         # Remove the apiKey from the generated script but keep it in attrs for storage
-        voice_mode = attrs.get("voiceMode")
-        elevenlabs_api_key = None
+        script_attrs = copy.deepcopy(attrs)
+        voice_mode = script_attrs.get("voiceMode", None)
         if voice_mode:
-            elevenlabs = voice_mode.get("elevenlabs")
+            elevenlabs = voice_mode.get("elevenlabs", None)
             if elevenlabs:
-                elevenlabs_api_key = elevenlabs.pop("apiKey", None)
+                elevenlabs.pop("apiKey", None)
 
-        attrs["script"] = self.generate_script(attrs.copy())
-
-        if elevenlabs_api_key is not None:
-            attrs["voiceMode"]["elevenlabs"]["apiKey"] = elevenlabs_api_key
+        attrs["script"] = self.generate_script(script_attrs)
 
         return super().validate(attrs)
 
