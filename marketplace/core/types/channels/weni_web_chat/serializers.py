@@ -162,16 +162,17 @@ class ConfigSerializer(serializers.Serializer):
             "storage": "local" if attrs["keepHistory"] else "session",
         }
 
+        version = attrs.get("version", "2")
         if self.app.flow_object_uuid is None:
-            version = attrs.get("version", "2")
             self.app.flow_object_uuid = self._create_channel(version).get("uuid")
-            config = {
-                "base_url": settings.SOCKET_BASE_URL,
-                "version": version,
-                "voice_mode": attrs.get("voiceMode", {}),
-            }
-            self._update_config(config)
-            self.app.configured = True
+
+        flows_config = {
+            "base_url": settings.SOCKET_BASE_URL,
+            "version": version,
+            "voice_mode": attrs.get("voiceMode", {}),
+        }
+        self._update_config(flows_config)
+        self.app.configured = True
 
         attrs["socketUrl"] = settings.SOCKET_BASE_URL
         attrs["host"] = settings.FLOWS_HOST_URL
