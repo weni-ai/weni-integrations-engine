@@ -181,9 +181,9 @@ class ConfigSerializer(serializers.Serializer):
         script_attrs = copy.deepcopy(attrs)
         voice_mode = script_attrs.get("voiceMode", None)
         if voice_mode:
-            elevenlabs = voice_mode.get("elevenlabs", None)
-            if elevenlabs:
-                elevenlabs.pop("apiKey", None)
+            eleven_labs = voice_mode.get("elevenLabs", None)
+            if eleven_labs:
+                eleven_labs.pop("apiKey", None)
 
         attrs["script"] = self.generate_script(script_attrs)
 
