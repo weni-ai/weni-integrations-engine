@@ -12,7 +12,14 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import views
 
-from marketplace.applications.serializers import AppTypeSerializer, MyAppSerializer
+from marketplace.applications.serializers import (
+    AppTypeSerializer,
+    CheckWebChatIntegrationSerializer,
+    MyAppSerializer,
+)
+from marketplace.applications.usecases.check_webchat_integration import (
+    CheckWebChatIntegrationUseCase,
+)
 from marketplace.core import types
 from marketplace.applications.models import App, AppTypeFeatured
 from marketplace.accounts.models import ProjectAuthorization
@@ -108,6 +115,21 @@ class MyAppViewSet(viewsets.ReadOnlyModelViewSet):
                 )
 
         return queryset
+
+
+class CheckWebChatIntegrationView(views.APIView):
+    permission_classes = [CanCommunicateInternally]
+
+    def get(self, request):
+        serializer = CheckWebChatIntegrationSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+
+        use_case = CheckWebChatIntegrationUseCase()
+        result = use_case.execute(
+            project_uuid=str(serializer.validated_data["project_uuid"])
+        )
+
+        return Response(result)
 
 
 class CheckAppIsIntegrated(views.APIView):

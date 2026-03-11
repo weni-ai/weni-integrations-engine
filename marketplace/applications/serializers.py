@@ -61,6 +61,10 @@ class AppTypeSerializer(serializers.Serializer):
         return obj.can_add(project_uuid)
 
 
+class CheckWebChatIntegrationSerializer(serializers.Serializer):
+    project_uuid = serializers.UUIDField()
+
+
 class MyAppSerializer(serializers.ModelSerializer):
     icon = serializers.SerializerMethodField()
 
@@ -69,4 +73,13 @@ class MyAppSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = App
-        fields = ("uuid", "code", "name", "description", "summary", "icon", "config", "flow_object_uuid")
+        fields = (
+            "uuid",
+            "code",
+            "name",
+            "description",
+            "summary",
+            "icon",
+            "config",
+            "flow_object_uuid",
+        )
