@@ -1,3 +1,7 @@
+v4.14.0
+----------
+* feat: add voiceMode field to ConfigSerializer and handle elevenlabs API key
+
 v4.13.1
 ----------
 * fix: remove sellerType parameter from list_active_sellers

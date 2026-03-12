@@ -1,3 +1,4 @@
+import copy
 import os
 import json
 
@@ -110,6 +111,7 @@ class ConfigSerializer(serializers.Serializer):
     renderPercentage = serializers.IntegerField(
         required=False, min_value=0, max_value=100
     )
+    voiceMode = serializers.JSONField(required=False)
 
     def to_internal_value(self, data):
         self.app = self.parent.instance
@@ -160,20 +162,31 @@ class ConfigSerializer(serializers.Serializer):
             "storage": "local" if attrs["keepHistory"] else "session",
         }
 
+        version = attrs.get("version", "2")
         if self.app.flow_object_uuid is None:
-            version = attrs.get("version", "2")
             self.app.flow_object_uuid = self._create_channel(version).get("uuid")
-            config = {
-                "base_url": settings.SOCKET_BASE_URL,
-                "version": version,
-            }
-            self._update_config(config)
-            self.app.configured = True
+
+        flows_config = {
+            "base_url": settings.SOCKET_BASE_URL,
+            "version": version,
+            "voice_mode": attrs.get("voiceMode", {}),
+        }
+        self._update_config(flows_config)
+        self.app.configured = True
 
         attrs["socketUrl"] = settings.SOCKET_BASE_URL
         attrs["host"] = settings.FLOWS_HOST_URL
         attrs.pop("keepHistory")
-        attrs["script"] = self.generate_script(attrs.copy())
+
+        # Remove the apiKey from the generated script but keep it in attrs for storage
+        script_attrs = copy.deepcopy(attrs)
+        voice_mode = script_attrs.get("voiceMode", None)
+        if voice_mode:
+            eleven_labs = voice_mode.get("elevenLabs", None)
+            if eleven_labs:
+                eleven_labs.pop("apiKey", None)
+
+        attrs["script"] = self.generate_script(script_attrs)
 
         return super().validate(attrs)
 
