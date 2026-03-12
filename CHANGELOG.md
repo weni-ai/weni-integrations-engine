@@ -1,3 +1,7 @@
+v4.14.1
+----------
+* feat: Adds endpoint to check webchat integration
+
 v4.14.0
 ----------
 * feat: add voiceMode field to ConfigSerializer and handle elevenlabs API key
