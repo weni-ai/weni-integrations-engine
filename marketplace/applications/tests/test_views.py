@@ -15,7 +15,7 @@ from marketplace.clients.facebook.client import FacebookClient
 from marketplace.interactions.models import Rating
 from marketplace.core import types
 from marketplace.core.tests.base import APIBaseTestCase
-from marketplace.core.tests.mixins.permissions import PermissionTestCaseMixin
+from marketplace.core.tests.mixis.permissions import PermissionTestCaseMixin
 
 
 User = get_user_model()
