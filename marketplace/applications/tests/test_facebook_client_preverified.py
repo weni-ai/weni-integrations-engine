@@ -31,10 +31,11 @@ class FacebookClientGetPreverifiedNumbersTestCase(TestCase):
 
         self.assertEqual(result, {"data": mock_response.json.return_value["data"]})
         mock_make_request.assert_called_once()
-        call_kwargs = mock_make_request.call_args[1]
+        call_args, call_kwargs = mock_make_request.call_args
+        url = call_args[0]
         self.assertEqual(call_kwargs["method"], "GET")
-        self.assertIn("123456789", call_kwargs["url"])
-        self.assertIn("preverified_numbers", call_kwargs["url"])
+        self.assertIn("123456789", url)
+        self.assertIn("preverified_numbers", url)
         self.assertEqual(call_kwargs["params"]["limit"], 100)
         self.assertEqual(call_kwargs["params"]["code_verification_status"], "VERIFIED")
         self.assertEqual(call_kwargs["params"]["availability_status"], "AVAILABLE")
