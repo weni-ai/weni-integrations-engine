@@ -1,3 +1,7 @@
+v4.14.2
+----------
+* feat: Add EUR and MXN currency formatting rules for VTEX
+
 v4.14.1
 ----------
 * feat: Adds endpoint to check webchat integration
