@@ -1,3 +1,7 @@
+"""
+Tests for FacebookClient.get_preverified_numbers (BusinessMetaRequests).
+Held under applications.tests so Django test discovery runs them (marketplace.clients is not an app).
+"""
 from unittest.mock import Mock, patch
 
 from django.test import TestCase, override_settings
