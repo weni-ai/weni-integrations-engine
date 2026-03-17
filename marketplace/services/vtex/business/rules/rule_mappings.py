@@ -16,6 +16,8 @@ from .currency_pt_br_round_floor import CurrencyBRLRoudingFloor
 from .currency_clp import CurrencyCLP
 from .currency_ars import CurrencyARS
 from .currency_gtq import CurrencyGTQ
+from .currency_eur import CurrencyEUR
+from .currency_mxn import CurrencyMXN
 
 
 """
@@ -41,4 +43,6 @@ RULE_MAPPINGS = {
     "currency_ars": CurrencyARS,
     "unifies_id_with_salles_channel": UnifiesIdWithSallesChannel,
     "currency_gtq": CurrencyGTQ,
+    "currency_eur": CurrencyEUR,
+    "currency_mxn": CurrencyMXN,
 }
