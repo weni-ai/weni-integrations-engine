@@ -184,10 +184,11 @@ class PreverifiedPhoneNumber(views.APIView):
                 meta_status = getattr(e, "status_code", None)
                 meta_detail = e.detail
                 if not isinstance(meta_detail, dict):
-                    meta_detail = {
-                        "error": str(meta_detail) if meta_detail
-                        else "Failed to fetch preverified numbers from Meta",
-                    }
+                    default_msg = "Failed to fetch preverified numbers from Meta"
+                    raw = meta_detail if meta_detail is None else str(meta_detail).strip()
+                    if raw in (None, "", "A server error occurred."):
+                        raw = default_msg
+                    meta_detail = {"error": raw}
                 if meta_status == 429:
                     return Response(meta_detail, status=status.HTTP_429_TOO_MANY_REQUESTS)
                 if meta_status == 500:

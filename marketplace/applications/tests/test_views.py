@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 
 from django.urls import reverse
 from django.contrib.auth import get_user_model
-from django.test import override_settings
+from django.test import override_settings, TestCase
 from django.utils import timezone
 from rest_framework import status
 
@@ -494,7 +494,7 @@ class PreverifiedPhoneNumberViewTestCase(PermissionTestCaseMixin, APIBaseTestCas
         mock_client = Mock()
         mock_client.get_preverified_numbers.side_effect = CustomAPIException(
             detail="Connection timeout",
-            status_code=None,
+            status_code=503,
         )
         mock_client_class.return_value = mock_client
         response = self.request.get(self.url)
@@ -587,7 +587,7 @@ class PreverifiedPhoneNumberViewTestCase(PermissionTestCaseMixin, APIBaseTestCas
         self.assertIn("preverified_numbers", call_url)
 
 
-class FacebookClientGetPreverifiedNumbersTestCase(APIBaseTestCase):
+class FacebookClientGetPreverifiedNumbersTestCase(TestCase):
     """Tests for FacebookClient.get_preverified_numbers (BusinessMetaRequests)."""
 
     @override_settings(WHATSAPP_BSP_BUSINESS_ID="123456789")
