@@ -336,15 +336,6 @@ class PreverifiedPhoneNumberViewTestCase(PermissionTestCaseMixin, APIBaseTestCas
         super().setUp()
         self.grant_permission(self.user, "can_communicate_internally")
 
-    @override_settings(WHATSAPP_BSP_BUSINESS_ID="")
-    def test_returns_503_when_business_id_not_configured(self):
-        response = self.request.get(self.url)
-        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
-        self.assertEqual(
-            response.json.get("error"),
-            "WHATSAPP_BSP_BUSINESS_ID is not configured",
-        )
-
     @override_settings(WHATSAPP_BSP_BUSINESS_ID="123456")
     @patch("marketplace.applications.views.cache.get", return_value=None)
     @patch("marketplace.applications.views.cache.set")
@@ -415,7 +406,7 @@ class PreverifiedPhoneNumberViewTestCase(PermissionTestCaseMixin, APIBaseTestCas
     @override_settings(WHATSAPP_BSP_BUSINESS_ID="123456")
     @patch("marketplace.applications.views.cache.get", return_value=None)
     @patch("marketplace.applications.views.FacebookClient")
-    def test_returns_503_when_meta_returns_other_error(
+    def test_returns_500_when_meta_returns_other_error(
         self, mock_client_class, mock_cache_get
     ):
         mock_client = Mock()
@@ -425,7 +416,7 @@ class PreverifiedPhoneNumberViewTestCase(PermissionTestCaseMixin, APIBaseTestCas
         )
         mock_client_class.return_value = mock_client
         response = self.request.get(self.url)
-        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
         self.assertIn("error", response.json)
 
     @override_settings(WHATSAPP_BSP_BUSINESS_ID="123456")
@@ -488,7 +479,7 @@ class PreverifiedPhoneNumberViewTestCase(PermissionTestCaseMixin, APIBaseTestCas
     @override_settings(WHATSAPP_BSP_BUSINESS_ID="123456")
     @patch("marketplace.applications.views.cache.get", return_value=None)
     @patch("marketplace.applications.views.FacebookClient")
-    def test_returns_503_with_error_dict_when_meta_detail_is_string(
+    def test_returns_500_with_error_dict_when_meta_detail_is_string(
         self, mock_client_class, mock_cache_get
     ):
         mock_client = Mock()
@@ -498,13 +489,13 @@ class PreverifiedPhoneNumberViewTestCase(PermissionTestCaseMixin, APIBaseTestCas
         )
         mock_client_class.return_value = mock_client
         response = self.request.get(self.url)
-        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
         self.assertEqual(response.json.get("error"), "Connection timeout")
 
     @override_settings(WHATSAPP_BSP_BUSINESS_ID="123456")
     @patch("marketplace.applications.views.cache.get", return_value=None)
     @patch("marketplace.applications.views.FacebookClient")
-    def test_returns_503_when_meta_detail_is_none(
+    def test_returns_500_when_meta_detail_is_none(
         self, mock_client_class, mock_cache_get
     ):
         mock_client = Mock()
@@ -514,7 +505,7 @@ class PreverifiedPhoneNumberViewTestCase(PermissionTestCaseMixin, APIBaseTestCas
         )
         mock_client_class.return_value = mock_client
         response = self.request.get(self.url)
-        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
         self.assertEqual(
             response.json.get("error"),
             "Failed to fetch preverified numbers from Meta",
