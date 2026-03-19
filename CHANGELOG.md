@@ -1,3 +1,15 @@
+v4.14.2
+----------
+* feat: Add EUR and MXN currency formatting rules for VTEX
+
+v4.14.1
+----------
+* feat: Adds endpoint to check webchat integration
+
+v4.14.0
+----------
+* feat: add voiceMode field to ConfigSerializer and handle elevenlabs API key
+
 v4.13.1
 ----------
 * fix: remove sellerType parameter from list_active_sellers
