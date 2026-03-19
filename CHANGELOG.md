@@ -1,3 +1,8 @@
+v4.15.0
+----------
+* feat: add PreverifiedPhoneNumber view and integrate preverified numbers fetching
+* feat: add conversationStartersPDP field to ConfigSerializer and implement related tests
+
 v4.14.2
 ----------
 * feat: Add EUR and MXN currency formatting rules for VTEX
