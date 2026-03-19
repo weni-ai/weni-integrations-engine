@@ -108,6 +108,7 @@ class ConfigSerializer(serializers.Serializer):
     contactTimeout = serializers.IntegerField(default=0)
     version = serializers.CharField(default="1")
     useConnectionOptimization = serializers.BooleanField(default=False)
+    conversationStartersPDP = serializers.BooleanField(default=False)
     renderPercentage = serializers.IntegerField(
         required=False, min_value=0, max_value=100
     )
@@ -177,6 +178,9 @@ class ConfigSerializer(serializers.Serializer):
         attrs["socketUrl"] = settings.SOCKET_BASE_URL
         attrs["host"] = settings.FLOWS_HOST_URL
         attrs.pop("keepHistory")
+
+        conversation_starters_pdp = attrs.pop("conversationStartersPDP")
+        attrs["conversationStarters"] = {"pdp": conversation_starters_pdp}
 
         # Remove the apiKey from the generated script but keep it in attrs for storage
         script_attrs = copy.deepcopy(attrs)
