@@ -38,4 +38,9 @@ urlpatterns = [
         applications_views.CheckWebChatIntegrationView.as_view(),
         name="check-webchat-integration",
     ),
+    path(
+        "commerce/preverified-phone-number",
+        applications_views.PreverifiedPhoneNumber.as_view(),
+        name="preverified-phone-number",
+    ),
 ]

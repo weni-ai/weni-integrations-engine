@@ -1,3 +1,9 @@
+import random
+from datetime import timedelta
+
+from django.conf import settings as django_settings
+from django.core.cache import cache
+from django.utils import timezone
 from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework import status
@@ -19,6 +25,8 @@ from marketplace.applications.models import App, AppTypeFeatured
 from marketplace.accounts.models import ProjectAuthorization
 from marketplace.accounts.permissions import is_crm_user
 from marketplace.internal.permissions import CanCommunicateInternally
+from marketplace.clients.facebook.client import FacebookClient
+from marketplace.clients.exceptions import CustomAPIException
 
 
 class AppTypeViewSet(viewsets.ViewSet):
@@ -160,3 +168,73 @@ class CheckAppIsIntegrated(views.APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class PreverifiedPhoneNumber(views.APIView):
+    """
+    Returns a random pre-verified phone number from the BSP business for
+    embedded signup. Cache stores the list from Meta plus IDs already chosen
+    in the last 5 minutes, so we avoid returning the same number twice in that
+    window (e.g. concurrent requests). After 5 min the cache is rebuilt from Meta.
+    """
+
+    permission_classes = [CanCommunicateInternally]
+    CACHE_KEY = "preverified_numbers"
+    CACHE_TTL_SECONDS = 300  # 5 minutes
+
+    def get(self, request):
+        cached = cache.get(self.CACHE_KEY)
+        now = timezone.now()
+        if cached is None or (cached.get("expires_at") and now > cached["expires_at"]):
+            try:
+                client = FacebookClient(
+                    django_settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
+                )
+                response = client.get_preverified_numbers()
+            except CustomAPIException as e:
+                meta_status = getattr(e, "status_code", None)
+                meta_detail = e.detail
+                if not isinstance(meta_detail, dict):
+                    default_msg = "Failed to fetch preverified numbers from Meta"
+                    raw = meta_detail if meta_detail is None else str(meta_detail).strip()
+                    if raw in (None, "", "A server error occurred."):
+                        raw = default_msg
+                    meta_detail = {"error": raw}
+                if meta_status == 429:
+                    return Response(meta_detail, status=status.HTTP_429_TOO_MANY_REQUESTS)
+                if meta_status == 500:
+                    return Response(meta_detail, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response(
+                    meta_detail,
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+            except Exception:
+                return Response(
+                    {"error": "Internal server error"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+            data_list = response.get("data") or []
+            cached = {
+                "data_list": data_list,
+                "chosen_ids": [],
+                "expires_at": now + timedelta(seconds=self.CACHE_TTL_SECONDS),
+            }
+            cache.set(self.CACHE_KEY, cached, timeout=self.CACHE_TTL_SECONDS + 60)
+
+        data_list = cached.get("data_list") or []
+        chosen_ids = set(cached.get("chosen_ids") or [])
+        available = [i for i in data_list if i.get("id") not in chosen_ids]
+
+        if not available:
+            return Response({"data": []}, status=status.HTTP_200_OK)
+
+        chosen = random.choice(available)
+        chosen_id = chosen["id"]
+        chosen_ids.add(chosen_id)
+        remaining = getattr(cache, "ttl", lambda k: None)(self.CACHE_KEY)
+        cache.set(
+            self.CACHE_KEY,
+            {**cached, "chosen_ids": list(chosen_ids)},
+            timeout=remaining if remaining and remaining > 0 else self.CACHE_TTL_SECONDS + 60,
+        )
+        return Response({"data": [chosen_id]}, status=status.HTTP_200_OK)
