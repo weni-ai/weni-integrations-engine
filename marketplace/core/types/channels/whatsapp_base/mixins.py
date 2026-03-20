@@ -14,7 +14,12 @@ if TYPE_CHECKING:
         BusinessProfileHandlerInterface,
     )
 
-from marketplace.accounts.permissions import ProjectViewPermission, IsCRMUser
+from marketplace.accounts.permissions import (
+    ProjectManagePermission,
+    ProjectViewPermission,
+    IsCRMUser,
+)
+from marketplace.internal.permissions import CanCommunicateInternally
 from .requests.facebook import FacebookConversationAPI
 from .exceptions import FacebookApiException, UnableProcessProfilePhoto
 from .serializers import WhatsAppBusinessContactSerializer, WhatsAppProfileSerializer
@@ -156,6 +161,9 @@ class WhatsAppProfileMixin(object, metaclass=abc.ABCMeta):
         detail=True,
         methods=["GET", "PATCH", "DELETE"],
         serializer_class=WhatsAppProfileSerializer,
+        permission_classes=[
+            ProjectManagePermission | IsCRMUser | CanCommunicateInternally
+        ],
     )
     def profile(self, request: "Request", **kwargs) -> Response:
         # TODO: Split this view in a APIView
