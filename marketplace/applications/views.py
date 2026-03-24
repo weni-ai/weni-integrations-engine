@@ -183,17 +183,6 @@ class PreverifiedPhoneNumber(views.APIView):
     CACHE_TTL_SECONDS = 300  # 5 minutes
 
     def get(self, request):
-        business_id = getattr(
-            django_settings, "WHATSAPP_BSP_BUSINESS_ID", ""
-        ).strip()
-        if not business_id:
-            return Response(
-                {
-                    "error": "WHATSAPP_BSP_BUSINESS_ID is not configured",
-                },
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
-
         cached = cache.get(self.CACHE_KEY)
         now = timezone.now()
         if cached is None or (cached.get("expires_at") and now > cached["expires_at"]):
@@ -206,14 +195,18 @@ class PreverifiedPhoneNumber(views.APIView):
                 meta_status = getattr(e, "status_code", None)
                 meta_detail = e.detail
                 if not isinstance(meta_detail, dict):
-                    meta_detail = {"error": str(meta_detail) if meta_detail else "Failed to fetch preverified numbers from Meta"}
+                    default_msg = "Failed to fetch preverified numbers from Meta"
+                    raw = meta_detail if meta_detail is None else str(meta_detail).strip()
+                    if raw in (None, "", "A server error occurred."):
+                        raw = default_msg
+                    meta_detail = {"error": raw}
                 if meta_status == 429:
                     return Response(meta_detail, status=status.HTTP_429_TOO_MANY_REQUESTS)
                 if meta_status == 500:
                     return Response(meta_detail, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                 return Response(
                     meta_detail,
-                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
             except Exception:
                 return Response(
