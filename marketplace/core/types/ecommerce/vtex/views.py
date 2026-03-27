@@ -8,6 +8,7 @@ from marketplace.core.types.ecommerce.vtex.serializers import (
     FacebookProductDTOSerializer,
     FirstProductInsertSerializer,
     VtexAdsSerializer,
+    VtexIOSerializer,
     VtexSerializer,
     VtexAppSerializer,
     VtexSyncSellerSerializer,
@@ -29,6 +30,7 @@ from marketplace.internal.jwt_mixins import JWTModuleAuthMixin
 from marketplace.services.flows.service import FlowsService
 from marketplace.clients.flows.client import FlowsClient
 from marketplace.services.vtex.app_manager import AppVtexManager
+from marketplace.services.vtex.dtos import APICredentials
 
 from marketplace.wpp_products.utils import SellerSyncUtils
 from marketplace.accounts.permissions import ProjectManagePermission
@@ -70,25 +72,51 @@ class VtexViewSet(views.BaseAppTypeViewSet):
     def perform_create(self, serializer):
         serializer.save(code=self.type_class.code, uuid=serializer.initial_data["uuid"])
 
-    def create(self, request, *args, **kwargs):
-        # TODO: Fix circular import error in the future
-        from marketplace.services.vtex.generic_service import APICredentials
+    def _build_credentials(self, data: dict) -> tuple:
+        """
+        Validates input and builds APICredentials for both v1 (direct) and v2 (IO proxy).
 
-        serializer = VtexSerializer(data=request.data)
+        The mode is determined by the explicit `use_io_proxy` flag in the request data.
+
+        Returns:
+            Tuple of (credentials, wpp_cloud_uuid, store_domain).
+        """
+        is_io_proxy = data.get("use_io_proxy", False)
+
+        if is_io_proxy:
+            serializer = VtexIOSerializer(data=data)
+        else:
+            serializer = VtexSerializer(data=data)
+
         serializer.is_valid(raise_exception=True)
         validated_data = serializer.validated_data
-        # Validate before starting creation
-        credentials = APICredentials(
-            app_key=validated_data.get("app_key"),
-            app_token=validated_data.get("app_token"),
-            domain=validated_data.get("domain"),
+
+        if is_io_proxy:
+            credentials = APICredentials(
+                domain=validated_data["domain"],
+                use_io_proxy=True,
+                project_uuid=str(validated_data["project_uuid"]),
+            )
+        else:
+            credentials = APICredentials(
+                app_key=validated_data["app_key"],
+                app_token=validated_data["app_token"],
+                domain=validated_data["domain"],
+            )
+
+        return (
+            credentials,
+            validated_data["wpp_cloud_uuid"],
+            validated_data["store_domain"],
         )
-        wpp_cloud_uuid = validated_data["wpp_cloud_uuid"]
-        store_domain = validated_data["store_domain"]
+
+    def create(self, request, *args, **kwargs):
+        credentials, wpp_cloud_uuid, store_domain = self._build_credentials(
+            request.data
+        )
 
         self.service.check_is_valid_credentials(credentials)
 
-        # Calls the create method of the base class to create the App object
         response = super().create(request, *args, **kwargs)
         app = self.get_app()
         if not app:
@@ -107,7 +135,7 @@ class VtexViewSet(views.BaseAppTypeViewSet):
             )
 
         except Exception as e:
-            app.delete()  # if there are exceptions, remove the created instance
+            app.delete()
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     def destroy(self, request, *args, **kwargs):
