@@ -1,3 +1,8 @@
+v4.15.1
+----------
+* chore: Change WWC name from Weni Web Chat to Web Chat
+* feat: Return flow channel UUID on retrieve and enable internal auth on profile endpoint
+
 v4.15.0
 ----------
 * feat: add PreverifiedPhoneNumber view and integrate preverified numbers fetching
