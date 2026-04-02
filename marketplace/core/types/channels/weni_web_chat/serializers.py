@@ -114,8 +114,26 @@ class ConfigSerializer(serializers.Serializer):
     )
     voiceMode = serializers.JSONField(required=False)
 
+    @staticmethod
+    def _is_stored_url(value):
+        return isinstance(value, str) and value.startswith(("http://", "https://"))
+
+    def _merge_with_existing_config(self, incoming_data):
+        """Merge incoming PATCH data with existing config to preserve unset fields."""
+        existing_config = self.app.config
+        merged = {}
+        for field_name in self.fields:
+            if field_name in incoming_data:
+                merged[field_name] = incoming_data[field_name]
+            elif field_name in existing_config:
+                merged[field_name] = existing_config[field_name]
+        return merged
+
     def to_internal_value(self, data):
         self.app = self.parent.instance
+
+        if self.app and self.app.config:
+            data = self._merge_with_existing_config(data)
 
         data = super().to_internal_value(data)
         storage = AppStorage(self.app)
@@ -135,9 +153,11 @@ class ConfigSerializer(serializers.Serializer):
                     data["openLauncherImage"] = storage.url(up_file.name)
 
         if data.get("customCss"):
-            with storage.open("custom.css", "w") as up_file:
-                up_file.write(data["customCss"])
-                data["customCss"] = storage.url(up_file.name)
+            custom_css = data["customCss"]
+            if not self._is_stored_url(custom_css):
+                with storage.open("custom.css", "w") as up_file:
+                    up_file.write(custom_css)
+                    data["customCss"] = storage.url(up_file.name)
 
         return data
 
