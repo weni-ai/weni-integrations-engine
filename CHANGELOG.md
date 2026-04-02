@@ -1,3 +1,7 @@
+v4.16.0
+----------
+* fix: Preserve WWC config fields not sent on PATCH configure
+
 v4.15.1
 ----------
 * chore: Change WWC name from Weni Web Chat to Web Chat
