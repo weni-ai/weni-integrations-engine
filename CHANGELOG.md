@@ -1,3 +1,17 @@
+v4.16.0
+----------
+* fix: Preserve WWC config fields not sent on PATCH configure
+
+v4.15.1
+----------
+* chore: Change WWC name from Weni Web Chat to Web Chat
+* feat: Return flow channel UUID on retrieve and enable internal auth on profile endpoint
+
+v4.15.0
+----------
+* feat: add PreverifiedPhoneNumber view and integrate preverified numbers fetching
+* feat: add conversationStartersPDP field to ConfigSerializer and implement related tests
+
 v4.14.2
 ----------
 * feat: Add EUR and MXN currency formatting rules for VTEX

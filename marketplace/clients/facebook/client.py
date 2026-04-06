@@ -593,7 +593,7 @@ class BusinessMetaRequests(
             url, method="GET", headers=headers, params=params
         )
         body = response.json()
-        return {"data": body.get("data") or []}    
+        return {"data": body.get("data") or []}
 
 
 class FacebookClient(
