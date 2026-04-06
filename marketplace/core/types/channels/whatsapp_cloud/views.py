@@ -104,46 +104,20 @@ class WhatsAppCloudViewSet(
         project_uuid = request.data.get("project_uuid")
         waba_id = serializer.validated_data.get("waba_id")
         phone_number_id = serializer.validated_data.get("phone_number_id")
-        auth_code = serializer.validated_data.get("auth_code")
         waba_currency = "USD"
 
-        whatsapp_system_user_access_token = settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
-        facebook_client = FacebookClient(whatsapp_system_user_access_token)
-        business_service = BusinessMetaService(client=facebook_client)
-        template_service = TemplateService(client=facebook_client)
-
-        # Configure WhatsApp Cloud
-        config_data = business_service.configure_whatsapp_cloud(
-            auth_code, waba_id, phone_number_id, waba_currency
-        )
-
-        user_access_token = config_data["user_access_token"]
-        business_id = config_data["business_id"]
-        message_template_namespace = config_data["message_template_namespace"]
-        allocation_config_id = config_data["allocation_config_id"]
-        dataset_id = config_data["dataset_id"]
-
-        # Get phone number
-        phone_number_request = PhoneNumbersService(
-            client=FacebookClient(whatsapp_system_user_access_token)
-        )
-        phone_number = phone_number_request.get_phone_number(phone_number_id)
-
-        # Register phone number
         pin = get_random_string(6, string.digits)
-        data = dict(messaging_product="whatsapp", pin=pin)
-        business_service.register_phone_number(phone_number_id, user_access_token, data)
 
         config = dict(
-            wa_number=phone_number.get("display_phone_number"),
-            wa_verified_name=phone_number.get("verified_name"),
+            wa_number=phone_number_id,
+            wa_verified_name=f"mock-{phone_number_id}",
             wa_waba_id=waba_id,
             wa_currency=waba_currency,
-            wa_business_id=business_id,
-            wa_message_template_namespace=message_template_namespace,
+            wa_business_id=f"mock-business-{waba_id}",
+            wa_message_template_namespace=f"mock-ns-{waba_id}",
             wa_pin=pin,
-            wa_user_token=user_access_token,
-            wa_dataset_id=dataset_id,
+            wa_user_token="mock-token",
+            wa_dataset_id=f"mock-dataset-{waba_id}",
         )
 
         flows_service = FlowsService(client=FlowsClient())
@@ -152,9 +126,9 @@ class WhatsAppCloudViewSet(
         )
 
         config["title"] = config.get("wa_number")
-        config["wa_allocation_config_id"] = allocation_config_id
+        config["wa_allocation_config_id"] = f"mock-alloc-{waba_id}"
         config["wa_phone_number_id"] = phone_number_id
-        config["has_insights"] = template_service.setup_insights(waba_id)
+        config["has_insights"] = False
 
         app = App.objects.create(
             code=self.type_class.code,
@@ -165,10 +139,6 @@ class WhatsAppCloudViewSet(
             flow_object_uuid=channel.get("uuid"),
             configured=True,
         )
-
-        WABASyncUseCase(app).sync_whatsapp_cloud_waba()
-        PhoneNumberSyncUseCase(app).sync_whatsapp_cloud_phone_number()
-        WhatsAppInsightsSyncUseCase(app).sync()
 
         response_data = {
             **serializer.validated_data,
