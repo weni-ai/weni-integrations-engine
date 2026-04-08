@@ -6,8 +6,6 @@ import logging
 
 from typing import Optional, List
 
-from dataclasses import dataclass
-
 from marketplace.applications.models import App
 from marketplace.core.types.ecommerce.vtex.usecases.sync_all_products import (
     SyncAllProductsUseCase,
@@ -19,6 +17,7 @@ from marketplace.services.vtex.private.products.service import (
     PrivateProductsService,
 )
 from marketplace.clients.vtex.client import VtexPrivateClient
+from marketplace.clients.vtex.proxy_client import VtexProxyClient
 from marketplace.services.vtex.exceptions import (
     CredentialsValidationError,
 )
@@ -30,24 +29,11 @@ from marketplace.clients.facebook.client import FacebookClient
 from marketplace.wpp_products.models import Catalog
 from marketplace.services.product.product_facebook_manage import ProductFacebookManager
 from marketplace.services.vtex.app_manager import AppVtexManager
+from marketplace.services.vtex.dtos import APICredentials  # noqa: F401
 from marketplace.services.vtex.utils.enums import ProductPriority
 
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class APICredentials:
-    domain: str
-    app_key: str
-    app_token: str
-
-    def to_dict(self):
-        return {
-            "domain": self.domain,
-            "app_key": self.app_key,
-            "app_token": self.app_token,
-        }
 
 
 class VtexServiceBase:
@@ -74,7 +60,23 @@ class VtexServiceBase:
             self._pvt_service = PrivateProductsService(client)
         return self._pvt_service
 
+    def _create_vtex_client(self, credentials: APICredentials):
+        if credentials.use_io_proxy:
+            return VtexProxyClient(project_uuid=credentials.project_uuid)
+        return VtexPrivateClient(credentials.app_key, credentials.app_token)
+
+    def get_private_service_for_credentials(
+        self, credentials: APICredentials
+    ) -> PrivateProductsService:
+        if not self._pvt_service:
+            client = self._create_vtex_client(credentials)
+            self._pvt_service = PrivateProductsService(client)
+        return self._pvt_service
+
     def check_is_valid_credentials(self, credentials: APICredentials) -> bool:
+        if credentials.use_io_proxy:
+            return True
+
         pvt_service = self.get_private_service(
             credentials.app_key, credentials.app_token
         )
@@ -103,10 +105,21 @@ class VtexServiceBase:
         return app
 
     def get_vtex_credentials_or_raise(self, app: App) -> APICredentials:
-        domain = app.config["api_credentials"]["domain"]
-        app_key = app.config["api_credentials"]["app_key"]
-        app_token = app.config["api_credentials"]["app_token"]
-        if not domain or not app_key or not app_token:
+        api_credentials = app.config.get("api_credentials", {})
+        domain = api_credentials.get("domain")
+        if not domain:
+            raise CredentialsValidationError()
+
+        if api_credentials.get("use_io_proxy"):
+            return APICredentials(
+                domain=domain,
+                use_io_proxy=True,
+                project_uuid=api_credentials.get("project_uuid", str(app.project_uuid)),
+            )
+
+        app_key = api_credentials.get("app_key")
+        app_token = api_credentials.get("app_token")
+        if not app_key or not app_token:
             raise CredentialsValidationError()
 
         return APICredentials(
@@ -117,9 +130,7 @@ class VtexServiceBase:
 
     def active_sellers(self, app) -> List:
         credentials = self.get_vtex_credentials_or_raise(app)
-        pvt_service = self.get_private_service(
-            app_key=credentials.app_key, app_token=credentials.app_token
-        )
+        pvt_service = self.get_private_service_for_credentials(credentials)
         return pvt_service.list_active_sellers(credentials.domain)
 
     def synchronized_sellers(
@@ -157,15 +168,9 @@ class ProductInsertionService(VtexServiceBase):
         """
         Handles the first product insert process using the SyncAllProductsUseCase.
         """
-        # Initialize the private service with API credentials.
-        pvt_service = self.get_private_service(
-            credentials.app_key, credentials.app_token
-        )
-
-        # Instantiate the sync use case with the private service.
+        pvt_service = self.get_private_service_for_credentials(credentials)
         sync_use_case = SyncAllProductsUseCase(products_service=pvt_service)
 
-        # Execute the use case with the required parameters.
         success = sync_use_case.execute(
             domain=credentials.domain,
             catalog=catalog,
@@ -237,9 +242,7 @@ class ProductUpdateService(VtexServiceBase):
         Raises:
             Exception: If the batch process fails for priorities 0 or 1.
         """
-        pvt_service = self.get_private_service(
-            self.api_credentials.app_key, self.api_credentials.app_token
-        )
+        pvt_service = self.get_private_service_for_credentials(self.api_credentials)
         sync_use_case = SyncProductByWebhookUseCase(products_service=pvt_service)
 
         try:
@@ -323,6 +326,11 @@ class CatalogProductInsertion:
     def _get_credentials(vtex_app) -> dict:
         """Extracts API credentials from VTEX app config."""
         api_credentials = vtex_app.config.get("api_credentials", {})
+        if api_credentials.get("use_io_proxy"):
+            if "domain" not in api_credentials:
+                raise ValueError("Missing domain in IO proxy credentials.")
+            return api_credentials
+
         if not all(
             key in api_credentials for key in ["app_key", "app_token", "domain"]
         ):
@@ -436,14 +444,8 @@ class ProductInsertionBySellerService(VtexServiceBase):  # pragma: no cover
         if not sellers and not sync_all_sellers:
             raise ValueError("'sellers' or 'sync_all_sellers' is required")
 
-        # Initialize the private service.
-        pvt_service = self.get_private_service(
-            credentials.app_key, credentials.app_token
-        )
-
-        # Instantiate the sync use case with the private service.
+        pvt_service = self.get_private_service_for_credentials(credentials)
         sync_use_case = SyncAllProductsUseCase(products_service=pvt_service)
-        # Execute the use case with update flags enabled for seller-specific sync.
         success = sync_use_case.execute(
             domain=credentials.domain,
             catalog=catalog,
@@ -503,6 +505,11 @@ class CatalogInsertionBySeller:  # pragma: no cover
     def _get_credentials(vtex_app) -> dict:
         """Extracts API credentials from VTEX app config."""
         api_credentials = vtex_app.config.get("api_credentials", {})
+        if api_credentials.get("use_io_proxy"):
+            if "domain" not in api_credentials:
+                raise ValueError("Missing domain in IO proxy credentials.")
+            return api_credentials
+
         if not all(
             key in api_credentials for key in ["app_key", "app_token", "domain"]
         ):

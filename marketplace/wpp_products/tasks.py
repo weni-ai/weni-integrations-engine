@@ -29,7 +29,7 @@ from marketplace.services.vtex.generic_service import (
     VtexServiceBase,
     ProductInsertionBySellerService,
 )
-from marketplace.services.vtex.generic_service import APICredentials
+from marketplace.services.vtex.dtos import APICredentials
 from marketplace.applications.models import App
 
 from marketplace.wpp_products.utils import (
@@ -156,6 +156,20 @@ class FacebookCatalogSyncService:
         print(f"Success in synchronizing the app's catalogs for app: {self.app.uuid}")
 
 
+def _build_api_credentials(credentials: dict) -> APICredentials:
+    if credentials.get("use_io_proxy"):
+        return APICredentials(
+            domain=credentials["domain"],
+            use_io_proxy=True,
+            project_uuid=credentials.get("project_uuid", ""),
+        )
+    return APICredentials(
+        app_key=credentials["app_key"],
+        app_token=credentials["app_token"],
+        domain=credentials["domain"],
+    )
+
+
 @celery_app.task(name="task_insert_vtex_products")
 def task_insert_vtex_products(**kwargs):
     print("Starting task: 'task_insert_vtex_products'")
@@ -174,11 +188,7 @@ def task_insert_vtex_products(**kwargs):
 
     try:
         catalog = Catalog.objects.get(uuid=catalog_uuid)
-        api_credentials = APICredentials(
-            app_key=credentials["app_key"],
-            app_token=credentials["app_token"],
-            domain=credentials["domain"],
-        )
+        api_credentials = _build_api_credentials(credentials)
         print(f"Starting first product insert for catalog: {str(catalog.name)}")
         products = vtex_service.first_product_insert(
             api_credentials, catalog, sellers, sales_channel
@@ -442,11 +452,7 @@ def task_insert_vtex_products_by_sellers(**kwargs):
 
     try:
         catalog = Catalog.objects.get(uuid=catalog_uuid)
-        api_credentials = APICredentials(
-            app_key=credentials["app_key"],
-            app_token=credentials["app_token"],
-            domain=credentials["domain"],
-        )
+        api_credentials = _build_api_credentials(credentials)
         print(f"Starting sync by sellers for catalog: {str(catalog.name)}")
 
         lock_key = None

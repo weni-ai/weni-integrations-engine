@@ -484,6 +484,8 @@ INSIGHTS_REST_ENDPOINT = env.str("INSIGHTS_REST_ENDPOINT", "")
 
 VTEX_WEBHOOK_USE_THREADS = env.bool("VTEX_WEBHOOK_USE_THREADS", default=True)
 
+RETAIL_PROXY_URL = env.str("RETAIL_PROXY_URL", default="")
+
 # Lambda no token validation
 LAMBDA_ALLOWED_ROLES = env.list("LAMBDA_ALLOWED_ROLES", default=[])
 
@@ -496,6 +498,14 @@ try:
         JWT_PUBLIC_KEY = f.read()
 except FileNotFoundError:
     JWT_PUBLIC_KEY = None
+
+JWT_PRIVATE_KEY_PATH = BASE_DIR / "marketplace" / "jwt_keys" / "private_key.pem"
+
+try:
+    with open(JWT_PRIVATE_KEY_PATH, "rb") as f:
+        JWT_PRIVATE_KEY = f.read()
+except FileNotFoundError:
+    JWT_PRIVATE_KEY = None
 
 # SKU Validator timeout
 SKU_VALIDATOR_TIMEOUT = env.int("SKU_VALIDATOR_TIMEOUT", default=1200)
