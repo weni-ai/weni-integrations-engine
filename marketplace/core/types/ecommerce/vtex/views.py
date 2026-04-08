@@ -235,28 +235,14 @@ class VtexViewSet(views.BaseAppTypeViewSet):
         serializer.is_valid(raise_exception=True)
         validated_data = serializer.validated_data
 
-        catalog_id = validated_data.get("catalog_id")
-        sales_channel = validated_data.get("sales_channel")
-
-        # self.get_object() returns the VTEX app instance
-        try:
-            vtex_app = self.get_object()
-        except Exception:
-            return Response(
-                {"error": "VTEX app not found"}, status=status.HTTP_404_NOT_FOUND
-            )
-
-        # Instantiate the use case for linking catalog and synchronizing products.
+        vtex_app = self.get_object()
         use_case = LinkCatalogAndStartSyncUseCase()
-        success = use_case.execute(
-            vtex_app=vtex_app, catalog_id=catalog_id, sales_channel=sales_channel
+        use_case.execute(
+            vtex_app=vtex_app,
+            catalog_id=validated_data["catalog_id"],
+            sales_channel=validated_data.get("sales_channel"),
         )
 
-        if not success:
-            return Response(
-                {"error": "Failed to link catalog and start product synchronization"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
         return Response(
             {
                 "message": "Catalog linked and synchronization task dispatched successfully"
