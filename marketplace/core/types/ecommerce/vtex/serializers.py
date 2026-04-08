@@ -10,7 +10,7 @@ class VtexSerializer(serializers.Serializer):
     app_key = serializers.CharField(required=True)
     app_token = serializers.CharField(required=True)
     wpp_cloud_uuid = serializers.UUIDField(required=True)
-    uuid = serializers.UUIDField(required=True)
+    uuid = serializers.UUIDField(required=False)
     project_uuid = serializers.UUIDField(required=True)
     store_domain = serializers.CharField(required=True)
 
@@ -32,7 +32,7 @@ class VtexIOSerializer(serializers.Serializer):
 
     domain = serializers.CharField(required=True)
     wpp_cloud_uuid = serializers.UUIDField(required=True)
-    uuid = serializers.UUIDField(required=True)
+    uuid = serializers.UUIDField(required=False)
     project_uuid = serializers.UUIDField(required=True)
     store_domain = serializers.CharField(required=True)
 

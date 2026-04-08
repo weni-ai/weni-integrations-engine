@@ -1,3 +1,5 @@
+import uuid as uuid_lib
+
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import action
@@ -70,7 +72,8 @@ class VtexViewSet(views.BaseAppTypeViewSet):
         return self._app_manager
 
     def perform_create(self, serializer):
-        serializer.save(code=self.type_class.code, uuid=serializer.initial_data["uuid"])
+        app_uuid = serializer.initial_data.get("uuid") or uuid_lib.uuid4()
+        serializer.save(code=self.type_class.code, uuid=app_uuid)
 
     def _build_credentials(self, data: dict) -> tuple:
         """
