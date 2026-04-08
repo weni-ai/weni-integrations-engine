@@ -499,13 +499,7 @@ try:
 except FileNotFoundError:
     JWT_PUBLIC_KEY = None
 
-JWT_PRIVATE_KEY_PATH = BASE_DIR / "marketplace" / "jwt_keys" / "private_key.pem"
-
-try:
-    with open(JWT_PRIVATE_KEY_PATH, "rb") as f:
-        JWT_PRIVATE_KEY = f.read()
-except FileNotFoundError:
-    JWT_PRIVATE_KEY = None
+JWT_PRIVATE_KEY = env.str("JWT_PRIVATE_KEY", default="")
 
 # SKU Validator timeout
 SKU_VALIDATOR_TIMEOUT = env.int("SKU_VALIDATOR_TIMEOUT", default=1200)
