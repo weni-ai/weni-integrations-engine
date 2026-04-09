@@ -113,6 +113,7 @@ class ConfigSerializer(serializers.Serializer):
         required=False, min_value=0, max_value=100
     )
     voiceMode = serializers.JSONField(required=False)
+    addToCart = serializers.BooleanField(default=False)
 
     @staticmethod
     def _is_stored_url(value):
