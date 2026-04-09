@@ -1,6 +1,11 @@
 import logging
 
+from rest_framework.exceptions import ValidationError
+
 from marketplace.applications.models import App
+from marketplace.services.vtex.catalog_insertion import (
+    CatalogProductInsertion,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -17,34 +22,30 @@ class LinkCatalogAndStartSyncUseCase:
     """
 
     def __init__(self, catalog_product_insertion=None):
-        if catalog_product_insertion is None:
-            # TODO: Fix circular import error in the future
-            from marketplace.services.vtex.generic_service import (
-                CatalogProductInsertion,
-            )
+        self.catalog_product_insertion = (
+            catalog_product_insertion or CatalogProductInsertion
+        )
 
-            self.catalog_product_insertion = CatalogProductInsertion
-        else:
-            self.catalog_product_insertion = catalog_product_insertion
-
-    def execute(
-        self, vtex_app: App, catalog_id: str, sales_channel: list[str] = None
-    ) -> bool:
+    def execute(self, vtex_app: App, catalog_id: str, sales_channel: list[str] = None):
         """
         Execute the catalog linking and product synchronization process.
 
         Args:
             vtex_app: The VTEX app instance.
             catalog_id: The catalog identifier provided from Meta.
+            sales_channel: Optional sales channel list.
 
-        Returns:
-            True if the task was dispatched successfully, False otherwise.
+        Raises:
+            ValidationError: If catalog is not found or configuration is invalid.
         """
         try:
             self.catalog_product_insertion.first_product_insert_with_catalog(
-                vtex_app=vtex_app, catalog_id=catalog_id, sales_channel=sales_channel
+                vtex_app=vtex_app,
+                catalog_id=catalog_id,
+                sales_channel=sales_channel,
             )
-            return True
-        except Exception as e:
-            logger.error(f"Error linking catalog and syncing products: {str(e)}")
-            return False
+        except ValueError as e:
+            logger.error(
+                f"Failed to link catalog {catalog_id} " f"for app {vtex_app.uuid}: {e}"
+            )
+            raise ValidationError(str(e))
