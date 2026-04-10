@@ -6,8 +6,6 @@ import logging
 
 from typing import Optional, List
 
-from dataclasses import dataclass
-
 from marketplace.applications.models import App
 from marketplace.core.types.ecommerce.vtex.usecases.sync_all_products import (
     SyncAllProductsUseCase,
@@ -19,6 +17,7 @@ from marketplace.services.vtex.private.products.service import (
     PrivateProductsService,
 )
 from marketplace.clients.vtex.client import VtexPrivateClient
+from marketplace.clients.vtex.proxy_client import VtexProxyClient
 from marketplace.services.vtex.exceptions import (
     CredentialsValidationError,
 )
@@ -30,24 +29,15 @@ from marketplace.clients.facebook.client import FacebookClient
 from marketplace.wpp_products.models import Catalog
 from marketplace.services.product.product_facebook_manage import ProductFacebookManager
 from marketplace.services.vtex.app_manager import AppVtexManager
+from marketplace.services.vtex.dtos import APICredentials  # noqa: F401
+from marketplace.services.vtex.catalog_insertion import (  # noqa: F401
+    CatalogProductInsertion,
+    CatalogInsertionBySeller,
+)
 from marketplace.services.vtex.utils.enums import ProductPriority
 
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class APICredentials:
-    domain: str
-    app_key: str
-    app_token: str
-
-    def to_dict(self):
-        return {
-            "domain": self.domain,
-            "app_key": self.app_key,
-            "app_token": self.app_token,
-        }
 
 
 class VtexServiceBase:
@@ -74,7 +64,23 @@ class VtexServiceBase:
             self._pvt_service = PrivateProductsService(client)
         return self._pvt_service
 
+    def _create_vtex_client(self, credentials: APICredentials):
+        if credentials.use_io_proxy:
+            return VtexProxyClient(project_uuid=credentials.project_uuid)
+        return VtexPrivateClient(credentials.app_key, credentials.app_token)
+
+    def get_private_service_for_credentials(
+        self, credentials: APICredentials
+    ) -> PrivateProductsService:
+        if not self._pvt_service:
+            client = self._create_vtex_client(credentials)
+            self._pvt_service = PrivateProductsService(client)
+        return self._pvt_service
+
     def check_is_valid_credentials(self, credentials: APICredentials) -> bool:
+        if credentials.use_io_proxy:
+            return True
+
         pvt_service = self.get_private_service(
             credentials.app_key, credentials.app_token
         )
@@ -103,10 +109,21 @@ class VtexServiceBase:
         return app
 
     def get_vtex_credentials_or_raise(self, app: App) -> APICredentials:
-        domain = app.config["api_credentials"]["domain"]
-        app_key = app.config["api_credentials"]["app_key"]
-        app_token = app.config["api_credentials"]["app_token"]
-        if not domain or not app_key or not app_token:
+        api_credentials = app.config.get("api_credentials", {})
+        domain = api_credentials.get("domain")
+        if not domain:
+            raise CredentialsValidationError()
+
+        if api_credentials.get("use_io_proxy"):
+            return APICredentials(
+                domain=domain,
+                use_io_proxy=True,
+                project_uuid=api_credentials.get("project_uuid", str(app.project_uuid)),
+            )
+
+        app_key = api_credentials.get("app_key")
+        app_token = api_credentials.get("app_token")
+        if not app_key or not app_token:
             raise CredentialsValidationError()
 
         return APICredentials(
@@ -117,9 +134,7 @@ class VtexServiceBase:
 
     def active_sellers(self, app) -> List:
         credentials = self.get_vtex_credentials_or_raise(app)
-        pvt_service = self.get_private_service(
-            app_key=credentials.app_key, app_token=credentials.app_token
-        )
+        pvt_service = self.get_private_service_for_credentials(credentials)
         return pvt_service.list_active_sellers(credentials.domain)
 
     def synchronized_sellers(
@@ -157,15 +172,9 @@ class ProductInsertionService(VtexServiceBase):
         """
         Handles the first product insert process using the SyncAllProductsUseCase.
         """
-        # Initialize the private service with API credentials.
-        pvt_service = self.get_private_service(
-            credentials.app_key, credentials.app_token
-        )
-
-        # Instantiate the sync use case with the private service.
+        pvt_service = self.get_private_service_for_credentials(credentials)
         sync_use_case = SyncAllProductsUseCase(products_service=pvt_service)
 
-        # Execute the use case with the required parameters.
         success = sync_use_case.execute(
             domain=credentials.domain,
             catalog=catalog,
@@ -237,9 +246,7 @@ class ProductUpdateService(VtexServiceBase):
         Raises:
             Exception: If the batch process fails for priorities 0 or 1.
         """
-        pvt_service = self.get_private_service(
-            self.api_credentials.app_key, self.api_credentials.app_token
-        )
+        pvt_service = self.get_private_service_for_credentials(self.api_credentials)
         sync_use_case = SyncProductByWebhookUseCase(products_service=pvt_service)
 
         try:
@@ -289,123 +296,6 @@ def extract_sellers_ids(webhook):
     return None
 
 
-class CatalogProductInsertion:
-    @classmethod
-    def first_product_insert_with_catalog(
-        cls,
-        vtex_app: App,
-        catalog_id: str,
-        sellers: Optional[List[str]] = None,
-        sales_channel: Optional[list[str]] = None,
-    ):
-        """Inserts the first product with the given catalog."""
-        wpp_cloud_uuid = cls._get_wpp_cloud_uuid(vtex_app)
-        credentials = cls._get_credentials(vtex_app)
-        wpp_cloud = cls._get_wpp_cloud(wpp_cloud_uuid)
-
-        catalog = cls._get_or_sync_catalog(wpp_cloud, catalog_id)
-        cls._update_app_connected_catalog_flag(vtex_app)
-        cls._link_catalog_to_vtex_app_if_needed(catalog, vtex_app)
-
-        cls._send_insert_task(credentials, catalog, sellers, sales_channel)
-
-    @staticmethod
-    def _get_wpp_cloud_uuid(vtex_app) -> str:
-        """Retrieves WPP Cloud UUID from VTEX app config."""
-        wpp_cloud_uuid = vtex_app.config.get("wpp_cloud_uuid")
-        if not wpp_cloud_uuid:
-            raise ValueError(
-                "The VTEX app does not have the WPP Cloud UUID in its configuration."
-            )
-        return wpp_cloud_uuid
-
-    @staticmethod
-    def _get_credentials(vtex_app) -> dict:
-        """Extracts API credentials from VTEX app config."""
-        api_credentials = vtex_app.config.get("api_credentials", {})
-        if not all(
-            key in api_credentials for key in ["app_key", "app_token", "domain"]
-        ):
-            raise ValueError("Missing one or more API credentials.")
-        return api_credentials
-
-    @staticmethod
-    def _get_wpp_cloud(wpp_cloud_uuid) -> App:
-        """Fetches the WPP Cloud app based on UUID."""
-        try:
-            return App.objects.get(uuid=wpp_cloud_uuid)
-        except App.DoesNotExist:
-            raise ValueError(
-                f"The cloud app {wpp_cloud_uuid} linked to the VTEX app does not exist."
-            )
-
-    @classmethod
-    def _get_or_sync_catalog(cls, wpp_cloud, catalog_id) -> Catalog:
-        from marketplace.wpp_products.tasks import FacebookCatalogSyncService
-
-        """Attempts to find the catalog, syncs if not found, and tries again."""
-        catalog = wpp_cloud.catalogs.filter(facebook_catalog_id=catalog_id).first()
-        if not catalog:
-            print(
-                f"Catalog {catalog_id} not found for cloud app: {wpp_cloud.uuid}. Starting catalog synchronization."
-            )
-            sync_service = FacebookCatalogSyncService(wpp_cloud)
-            sync_service.sync_catalogs()
-            catalog = wpp_cloud.catalogs.filter(facebook_catalog_id=catalog_id).first()
-            if not catalog:
-                raise ValueError(
-                    f"Catalog {catalog_id} not found for cloud app: {wpp_cloud.uuid} after synchronization."
-                )
-        return catalog
-
-    @staticmethod
-    def _link_catalog_to_vtex_app_if_needed(catalog, vtex_app) -> None:
-        from django.contrib.auth import get_user_model
-
-        """Links the catalog to the VTEX app if not already linked."""
-        if not catalog.vtex_app:
-            User = get_user_model()
-            catalog.vtex_app = vtex_app
-            catalog.modified_by = User.objects.get_admin_user()
-            catalog.save()
-            print(
-                f"Catalog {catalog.name} successfully linked to VTEX app: {vtex_app.uuid}."
-            )
-
-    @staticmethod
-    def _update_app_connected_catalog_flag(app) -> None:  # Vtex app
-        """Change connected catalog status"""
-        connected_catalog = app.config.get("connected_catalog", None)
-        if connected_catalog is not True:
-            app.config["connected_catalog"] = True
-            app.save()
-            print("Changed connected_catalog to True")
-
-    @staticmethod
-    def _send_insert_task(
-        credentials,
-        catalog,
-        sellers: Optional[List[str]] = None,
-        sales_channel: Optional[list[str]] = None,
-    ) -> None:
-        from marketplace.celery import app as celery_app
-
-        """Sends the insert task to the task queue."""
-        celery_app.send_task(
-            name="task_insert_vtex_products",
-            kwargs={
-                "credentials": credentials,
-                "catalog_uuid": str(catalog.uuid),
-                "sellers": sellers,
-                "sales_channel": sales_channel,
-            },
-            queue="product_first_synchronization",
-        )
-        print(
-            f"Catalog: {catalog.name} was sent successfully sent to task_insert_vtex_products"
-        )
-
-
 class ProductInsertionBySellerService(VtexServiceBase):  # pragma: no cover
     """
     Service for inserting products by seller.
@@ -436,14 +326,8 @@ class ProductInsertionBySellerService(VtexServiceBase):  # pragma: no cover
         if not sellers and not sync_all_sellers:
             raise ValueError("'sellers' or 'sync_all_sellers' is required")
 
-        # Initialize the private service.
-        pvt_service = self.get_private_service(
-            credentials.app_key, credentials.app_token
-        )
-
-        # Instantiate the sync use case with the private service.
+        pvt_service = self.get_private_service_for_credentials(credentials)
         sync_use_case = SyncAllProductsUseCase(products_service=pvt_service)
-        # Execute the use case with update flags enabled for seller-specific sync.
         success = sync_use_case.execute(
             domain=credentials.domain,
             catalog=catalog,
@@ -457,123 +341,3 @@ class ProductInsertionBySellerService(VtexServiceBase):  # pragma: no cover
         logger.info(f"Finished synchronizing products for specific sellers: {sellers}.")
 
         return success
-
-
-class CatalogInsertionBySeller:  # pragma: no cover
-    @classmethod
-    def start_insertion_by_seller(
-        cls, vtex_app: App, sellers: List[str] = None, sync_all_sellers: bool = False
-    ):
-        """
-        Starts the insertion process for products by seller.
-
-        Args:
-            vtex_app: The VTEX app instance
-            sellers: Optional list of seller IDs to synchronize
-            sync_all_sellers: Flag to synchronize all active sellers
-
-        Raises:
-            ValueError: If required parameters are missing or validation fails
-        """
-        if not sellers and not sync_all_sellers:
-            raise ValueError(
-                "Either 'sellers' list or 'sync_all_sellers' must be provided."
-            )
-
-        wpp_cloud_uuid = cls._get_wpp_cloud_uuid(vtex_app)
-        credentials = cls._get_credentials(vtex_app)
-        wpp_cloud = cls._get_wpp_cloud(wpp_cloud_uuid)
-
-        catalog = cls._validate_link_apps(wpp_cloud, vtex_app)
-
-        cls._validate_connected_catalog_flag(vtex_app)
-        cls._send_task(credentials, catalog, sellers, sync_all_sellers)
-
-    @staticmethod
-    def _get_wpp_cloud_uuid(vtex_app) -> str:
-        """Retrieves WPP Cloud UUID from VTEX app config."""
-        wpp_cloud_uuid = vtex_app.config.get("wpp_cloud_uuid")
-        if not wpp_cloud_uuid:
-            raise ValueError(
-                "The VTEX app does not have the WPP Cloud UUID in its configuration."
-            )
-        return wpp_cloud_uuid
-
-    @staticmethod
-    def _get_credentials(vtex_app) -> dict:
-        """Extracts API credentials from VTEX app config."""
-        api_credentials = vtex_app.config.get("api_credentials", {})
-        if not all(
-            key in api_credentials for key in ["app_key", "app_token", "domain"]
-        ):
-            raise ValueError("Missing one or more API credentials.")
-        return api_credentials
-
-    @staticmethod
-    def _get_wpp_cloud(wpp_cloud_uuid) -> App:
-        """Fetches the WPP Cloud app based on UUID."""
-        try:
-            app = App.objects.get(uuid=wpp_cloud_uuid, code="wpp-cloud")
-            if app.flow_object_uuid is None:
-                print(f"Alert: App: {app.uuid} has the flow_object_uuid None field")
-            return app
-        except App.DoesNotExist:
-            raise ValueError(
-                f"The cloud app {wpp_cloud_uuid} linked to the VTEX app does not exist."
-            )
-
-    @classmethod
-    def _validate_link_apps(cls, wpp_cloud, vtex_app) -> Catalog:
-        """Checks for linked catalogs."""
-        vtex_catalog = vtex_app.vtex_catalogs.first()
-
-        if not vtex_catalog:
-            raise ValueError(
-                f"There must be a catalog linked to the vtex app {str(vtex_app.uuid)}"
-            )
-
-        catalog = wpp_cloud.catalogs.filter(
-            facebook_catalog_id=vtex_catalog.facebook_catalog_id
-        ).first()
-        if not catalog:
-            raise ValueError(
-                f"Catalog {vtex_catalog.catalog_id} not found for cloud app: {wpp_cloud.uuid}."
-            )
-
-        print("validate_link_apps - Ok")
-        return catalog
-
-    @staticmethod
-    def _validate_connected_catalog_flag(vtex_app) -> None:
-        """Connected catalog status"""
-        connected_catalog = vtex_app.config.get("connected_catalog", None)
-        if connected_catalog is not True:
-            raise ValueError(
-                f"Change connected_catalog to True. actual is:{connected_catalog}"
-            )
-
-        print("validate_connected_catalog_flag - Ok")
-
-    @staticmethod
-    def _send_task(
-        credentials,
-        catalog,
-        sellers: Optional[List[str]] = None,
-        sync_all_sellers: bool = False,
-    ) -> None:
-        from marketplace.celery import app as celery_app
-
-        """Sends the insert task to the task queue."""
-        celery_app.send_task(
-            name="task_insert_vtex_products_by_sellers",
-            kwargs={
-                "credentials": credentials,
-                "catalog_uuid": str(catalog.uuid),
-                "sellers": sellers,
-                "sync_all_sellers": sync_all_sellers,
-            },
-            queue="product_first_synchronization",
-        )
-        print(
-            f"Catalog: {catalog.name} was sent successfully sent to task_insert_vtex_products_by_sellers"
-        )
