@@ -10,7 +10,7 @@ class VtexSerializer(serializers.Serializer):
     app_key = serializers.CharField(required=True)
     app_token = serializers.CharField(required=True)
     wpp_cloud_uuid = serializers.UUIDField(required=True)
-    uuid = serializers.UUIDField(required=True)
+    uuid = serializers.UUIDField(required=False)
     project_uuid = serializers.UUIDField(required=True)
     store_domain = serializers.CharField(required=True)
 
@@ -18,6 +18,25 @@ class VtexSerializer(serializers.Serializer):
         """
         Check that the wpp_cloud_uuid corresponds to an existing App with code 'wpp-cloud'.
         """
+        try:
+            App.objects.get(uuid=value, code="wpp-cloud")
+        except App.DoesNotExist:
+            raise ValidationError(
+                "The wpp_cloud_uuid does not correspond to a valid 'wpp-cloud' App."
+            )
+        return str(value)
+
+
+class VtexIOSerializer(serializers.Serializer):
+    """Serializer for creating VTEX apps that use IO proxy (no app_key/app_token)."""
+
+    domain = serializers.CharField(required=True)
+    wpp_cloud_uuid = serializers.UUIDField(required=True)
+    uuid = serializers.UUIDField(required=False)
+    project_uuid = serializers.UUIDField(required=True)
+    store_domain = serializers.CharField(required=True)
+
+    def validate_wpp_cloud_uuid(self, value):
         try:
             App.objects.get(uuid=value, code="wpp-cloud")
         except App.DoesNotExist:
@@ -47,7 +66,7 @@ class VtexAppSerializer(AppTypeBaseSerializer):
     def get_config(self, obj):
         config = obj.config.copy()
         api_credentials = config.get("api_credentials", {})
-        if api_credentials:
+        if api_credentials and not api_credentials.get("use_io_proxy"):
             api_credentials["app_key"] = "***"
             api_credentials["app_token"] = "***"
 

@@ -1,3 +1,7 @@
+v4.17.0
+----------
+* feat: Adds VTEX IO proxy support for retail-setup integration
+
 v4.16.0
 ----------
 * fix: Preserve WWC config fields not sent on PATCH configure
