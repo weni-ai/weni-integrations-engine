@@ -1,3 +1,8 @@
+v4.18.0
+----------
+* feat: Add PAYMENT_REQUEST button support for WhatsApp templates
+* feat: Add addToCart field to ConfigSerializer
+
 v4.17.0
 ----------
 * feat: Adds VTEX IO proxy support for retail-setup integration
