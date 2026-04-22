@@ -49,9 +49,12 @@ class OpenLauncherBase64ImageField(Base64ImageField):
 
 
 class AvatarImageField(serializers.Field):
-    """Accepts either a base64-encoded image or a direct URL."""
+    """Accepts a base64-encoded image, a direct URL, or an empty string to clear it."""
 
     def to_internal_value(self, data):
+        if data == "":
+            return ""
+
         if isinstance(data, str) and data.startswith("data:"):
             base64_field = AvatarBase64ImageField()
             return base64_field.to_internal_value(data)
@@ -68,9 +71,12 @@ class AvatarImageField(serializers.Field):
 
 
 class OpenLauncherImageField(serializers.Field):
-    """Accepts either a base64-encoded image or a direct URL."""
+    """Accepts a base64-encoded image, a direct URL, or an empty string to clear it."""
 
     def to_internal_value(self, data):
+        if data == "":
+            return ""
+
         if isinstance(data, str) and data.startswith("data:"):
             base64_field = OpenLauncherBase64ImageField()
             return base64_field.to_internal_value(data)
@@ -97,7 +103,7 @@ class ConfigSerializer(serializers.Serializer):
     mainColor = serializers.CharField(default="#00DED3")
     profileAvatar = AvatarImageField(required=False)
     openLauncherImage = OpenLauncherImageField(required=False)
-    customCss = serializers.CharField(required=False)
+    customCss = serializers.CharField(required=False, allow_blank=True)
     timeBetweenMessages = serializers.IntegerField(default=1)
     tooltipMessage = serializers.CharField(required=False)
     startFullScreen = serializers.BooleanField(default=False)
@@ -138,6 +144,12 @@ class ConfigSerializer(serializers.Serializer):
 
         data = super().to_internal_value(data)
         storage = AppStorage(self.app)
+
+        # An empty string on these fields means "clear the value" — drop the
+        # key so the stored config no longer keeps the previous URL.
+        for clearable_field in ("profileAvatar", "openLauncherImage", "customCss"):
+            if data.get(clearable_field) == "":
+                data.pop(clearable_field)
 
         if data.get("profileAvatar"):
             avatar = data["profileAvatar"]
