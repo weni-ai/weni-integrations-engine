@@ -178,6 +178,10 @@ class AvatarImageFieldTestCase(TestCase):
         self.assertIsInstance(result, ContentFile)
         self.assertEqual(result.name, "avatar.png")
 
+    def test_empty_string_returns_empty_string(self):
+        result = self.field.to_internal_value("")
+        self.assertEqual(result, "")
+
 
 class OpenLauncherImageFieldTestCase(TestCase):
     def setUp(self):
@@ -205,6 +209,10 @@ class OpenLauncherImageFieldTestCase(TestCase):
         result = self.field.to_internal_value(base64_image)
         self.assertIsInstance(result, ContentFile)
         self.assertEqual(result.name, "launcher.png")
+
+    def test_empty_string_returns_empty_string(self):
+        result = self.field.to_internal_value("")
+        self.assertEqual(result, "")
 
 
 class MockAppStorage(MagicMock):
@@ -526,3 +534,114 @@ class ConfigureWeniWebChatTestCase(PermissionTestCaseMixin, APIBaseTestCase):
 
         response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    @patch("marketplace.core.types.channels.weni_web_chat.serializers.FlowsClient")
+    @patch(
+        "marketplace.core.types.channels.weni_web_chat.serializers.AppStorage",
+        MockAppStorage,
+    )
+    def test_configure_removes_profile_avatar_with_empty_string(
+        self, mock_flows_client
+    ):
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+
+        mock_flows_client.return_value.create_channel.return_value = {
+            "uuid": str(uuid.uuid4()),
+        }
+
+        avatar_url = "https://example.com/avatar.png"
+        self.body["config"]["profileAvatar"] = avatar_url
+        self.request.patch(self.url, self.body, uuid=self.app.uuid)
+        self.app.refresh_from_db()
+        self.assertEqual(self.app.config["profileAvatar"], avatar_url)
+
+        self.body["config"]["profileAvatar"] = ""
+        response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.app.refresh_from_db()
+        self.assertNotIn("profileAvatar", self.app.config)
+
+    @patch("marketplace.core.types.channels.weni_web_chat.serializers.FlowsClient")
+    @patch(
+        "marketplace.core.types.channels.weni_web_chat.serializers.AppStorage",
+        MockAppStorage,
+    )
+    def test_configure_removes_open_launcher_image_with_empty_string(
+        self, mock_flows_client
+    ):
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+
+        mock_flows_client.return_value.create_channel.return_value = {
+            "uuid": str(uuid.uuid4()),
+        }
+
+        launcher_url = "https://example.com/launcher.png"
+        self.body["config"]["openLauncherImage"] = launcher_url
+        self.request.patch(self.url, self.body, uuid=self.app.uuid)
+        self.app.refresh_from_db()
+        self.assertEqual(self.app.config["openLauncherImage"], launcher_url)
+
+        self.body["config"]["openLauncherImage"] = ""
+        response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.app.refresh_from_db()
+        self.assertNotIn("openLauncherImage", self.app.config)
+
+    @patch("marketplace.core.types.channels.weni_web_chat.serializers.FlowsClient")
+    @patch(
+        "marketplace.core.types.channels.weni_web_chat.serializers.AppStorage",
+        MockAppStorage,
+    )
+    def test_configure_removes_custom_css_with_empty_string(self, mock_flows_client):
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+
+        mock_flows_client.return_value.create_channel.return_value = {
+            "uuid": str(uuid.uuid4()),
+        }
+
+        self.body["config"]["customCss"] = "body { background-color: red; }"
+        self.request.patch(self.url, self.body, uuid=self.app.uuid)
+        self.app.refresh_from_db()
+        self.assertIn("customCss", self.app.config)
+
+        self.body["config"]["customCss"] = ""
+        response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.app.refresh_from_db()
+        self.assertNotIn("customCss", self.app.config)
+
+    @patch("marketplace.core.types.channels.weni_web_chat.serializers.FlowsClient")
+    @patch(
+        "marketplace.core.types.channels.weni_web_chat.serializers.AppStorage",
+        MockAppStorage,
+    )
+    def test_configure_empty_avatar_on_app_without_avatar_is_noop(
+        self, mock_flows_client
+    ):
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+
+        mock_flows_client.return_value.create_channel.return_value = {
+            "uuid": str(uuid.uuid4()),
+        }
+
+        self.body["config"]["profileAvatar"] = ""
+        response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.app.refresh_from_db()
+        self.assertNotIn("profileAvatar", self.app.config)
