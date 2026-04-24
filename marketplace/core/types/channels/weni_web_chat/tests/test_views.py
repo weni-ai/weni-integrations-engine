@@ -645,3 +645,41 @@ class ConfigureWeniWebChatTestCase(PermissionTestCaseMixin, APIBaseTestCase):
 
         self.app.refresh_from_db()
         self.assertNotIn("profileAvatar", self.app.config)
+
+    @patch("marketplace.core.types.channels.weni_web_chat.serializers.FlowsClient")
+    @patch(
+        "marketplace.core.types.channels.weni_web_chat.serializers.AppStorage",
+        MockAppStorage,
+    )
+    def test_configure_clears_text_fields_with_empty_string(self, mock_flows_client):
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+
+        mock_flows_client.return_value.create_channel.return_value = {
+            "uuid": str(uuid.uuid4()),
+        }
+
+        clearable_fields = {
+            "subtitle": "Any subtitle",
+            "initPayload": "start",
+            "tooltipMessage": "Need help?",
+            "inputTextFieldHint": "Type here...",
+        }
+
+        for field_name, field_value in clearable_fields.items():
+            with self.subTest(field=field_name):
+                self.body["config"][field_name] = field_value
+                self.request.patch(self.url, self.body, uuid=self.app.uuid)
+                self.app.refresh_from_db()
+                self.assertEqual(self.app.config.get(field_name), field_value)
+
+                self.body["config"][field_name] = ""
+                response = self.request.patch(
+                    self.url, self.body, uuid=self.app.uuid
+                )
+                self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+                self.app.refresh_from_db()
+                self.assertEqual(self.app.config.get(field_name), "")

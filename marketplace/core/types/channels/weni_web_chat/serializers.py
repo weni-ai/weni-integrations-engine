@@ -94,18 +94,20 @@ class OpenLauncherImageField(serializers.Field):
 
 class ConfigSerializer(serializers.Serializer):
     title = serializers.CharField(required=True)
-    subtitle = serializers.CharField(required=False)
-    inputTextFieldHint = serializers.CharField(default="Type a message...")
+    subtitle = serializers.CharField(required=False, allow_blank=True)
+    inputTextFieldHint = serializers.CharField(
+        default="Type a message...", allow_blank=True
+    )
     showFullScreenButton = serializers.BooleanField(default=True)
     displayUnreadCount = serializers.BooleanField(default=False)
     keepHistory = serializers.BooleanField(default=False)
-    initPayload = serializers.CharField(required=False)
+    initPayload = serializers.CharField(required=False, allow_blank=True)
     mainColor = serializers.CharField(default="#00DED3")
     profileAvatar = AvatarImageField(required=False)
     openLauncherImage = OpenLauncherImageField(required=False)
     customCss = serializers.CharField(required=False, allow_blank=True)
     timeBetweenMessages = serializers.IntegerField(default=1)
-    tooltipMessage = serializers.CharField(required=False)
+    tooltipMessage = serializers.CharField(required=False, allow_blank=True)
     startFullScreen = serializers.BooleanField(default=False)
     showVoiceRecordingButton = serializers.BooleanField(default=False)
     showCameraButton = serializers.BooleanField(default=False)

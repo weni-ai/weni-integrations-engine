@@ -1,3 +1,7 @@
+v4.18.2
+----------
+* fix(wwc): allow clearing subtitle, initPayload, tooltipMessage and inputTextFieldHint
+
 v4.18.1
 ----------
 * fix(wwc): allow clearing profileAvatar, openLauncherImage and customCss
