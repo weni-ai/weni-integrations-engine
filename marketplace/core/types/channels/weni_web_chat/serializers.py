@@ -198,7 +198,7 @@ class ConfigSerializer(serializers.Serializer):
             "storage": "local" if attrs["keepHistory"] else "session",
         }
 
-        version = attrs.get("version", "2")
+        version = attrs.get("version", "3")
         if self.app.flow_object_uuid is None:
             self.app.flow_object_uuid = self._create_channel(version).get("uuid")
 
@@ -267,9 +267,13 @@ class ConfigSerializer(serializers.Serializer):
             if custom_css:
                 attrs.pop("customCss")
 
-            # For WWC version 2, enforce connectOn rule based on useConnectionOptimization
-            version_value = str(attrs.pop("version", "1"))
-            if version_value == "2":
+            # For WWC version 2 and above, enforce connectOn rule based on useConnectionOptimization
+            raw_version = attrs.pop("version", "1")
+            try:
+                version_int = int(str(raw_version))
+            except (TypeError, ValueError):
+                version_int = 1
+            if version_int >= 2:
                 use_conn_opt = bool(attrs.get("useConnectionOptimization", False))
                 attrs["connectOn"] = "demand" if use_conn_opt else "mount"
 

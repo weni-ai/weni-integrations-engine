@@ -226,6 +226,27 @@ class MockAppStorage(MagicMock):
         return f"https://weni-test.invalidurl.com/apptypes/{str(uuid.uuid4)}/{str(uuid.uuid4)}/{name}"
 
 
+# Module-level capture so patched classes (MagicMock subclasses) can share state
+# across test instances without conflicting with MagicMock's attribute protocol.
+CAPTURED_WRITES: dict = {}
+
+
+class CapturingMockAppStorage(MagicMock):
+    def open(self, name, mode):
+        mock_file = MagicMock()
+        mock_file.name = name
+
+        def _capture(content):
+            CAPTURED_WRITES[name] = content
+
+        mock_file.write = _capture
+        mock_file.__enter__.return_value = mock_file
+        return mock_file
+
+    def url(self, name):
+        return f"https://weni-test.invalidurl.com/{name}"
+
+
 class ConfigureWeniWebChatTestCase(PermissionTestCaseMixin, APIBaseTestCase):
     view_class = WeniWebChatViewSet
 
@@ -683,3 +704,214 @@ class ConfigureWeniWebChatTestCase(PermissionTestCaseMixin, APIBaseTestCase):
 
                 self.app.refresh_from_db()
                 self.assertEqual(self.app.config.get(field_name), "")
+
+
+class WeniWebChatVersionTestCase(PermissionTestCaseMixin, APIBaseTestCase):
+    """Verify how ConfigSerializer handles WWC `version` across v1, v2 and v3.
+
+    - `version` must be preserved on `app.config` exactly as it came in.
+    - `connectOn` is enforced for v2 and above (numeric comparison).
+    - `version` itself is stripped from the generated script content.
+    """
+
+    view_class = WeniWebChatViewSet
+
+    def setUp(self):
+        super().setUp()
+        CAPTURED_WRITES.clear()
+        self.app = WeniWebChatType().create_app(
+            created_by=self.user, project_uuid=str(uuid.uuid4())
+        )
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+        self.url = reverse("wwc-app-configure", kwargs={"uuid": self.app.uuid})
+        self.body = {
+            "config": {
+                "title": "teste",
+                "inputTextFieldHint": "teste",
+                "timeBetweenMessages": 1,
+                "mainColor": "#009E96",
+            }
+        }
+
+    @property
+    def view(self):
+        return self.view_class.as_view({"patch": "configure"})
+
+    @staticmethod
+    def _get_script_content():
+        return CAPTURED_WRITES.get("script.js", "")
+
+    @patch("marketplace.core.types.channels.weni_web_chat.serializers.FlowsClient")
+    @patch(
+        "marketplace.core.types.channels.weni_web_chat.serializers.AppStorage",
+        CapturingMockAppStorage,
+    )
+    def test_configure_with_version_1_preserves_version_and_skips_connect_on(
+        self, mock_flows_client
+    ):
+        mock_flows_client.return_value.create_channel.return_value = {
+            "uuid": str(uuid.uuid4()),
+        }
+
+        self.body["config"]["version"] = "1"
+        response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.app.refresh_from_db()
+        self.assertEqual(self.app.config.get("version"), "1")
+
+        script_content = self._get_script_content()
+        self.assertNotIn("connectOn", script_content)
+
+    @patch("marketplace.core.types.channels.weni_web_chat.serializers.FlowsClient")
+    @patch(
+        "marketplace.core.types.channels.weni_web_chat.serializers.AppStorage",
+        CapturingMockAppStorage,
+    )
+    def test_configure_with_version_2_defaults_connect_on_to_mount(
+        self, mock_flows_client
+    ):
+        mock_flows_client.return_value.create_channel.return_value = {
+            "uuid": str(uuid.uuid4()),
+        }
+
+        self.body["config"]["version"] = "2"
+        response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.app.refresh_from_db()
+        self.assertEqual(self.app.config.get("version"), "2")
+
+        script_content = self._get_script_content()
+        self.assertIn('"connectOn": "mount"', script_content)
+
+    @patch("marketplace.core.types.channels.weni_web_chat.serializers.FlowsClient")
+    @patch(
+        "marketplace.core.types.channels.weni_web_chat.serializers.AppStorage",
+        CapturingMockAppStorage,
+    )
+    def test_configure_with_version_2_and_optimization_sets_connect_on_to_demand(
+        self, mock_flows_client
+    ):
+        mock_flows_client.return_value.create_channel.return_value = {
+            "uuid": str(uuid.uuid4()),
+        }
+
+        self.body["config"]["version"] = "2"
+        self.body["config"]["useConnectionOptimization"] = True
+        response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.app.refresh_from_db()
+        self.assertEqual(self.app.config.get("version"), "2")
+
+        script_content = self._get_script_content()
+        self.assertIn('"connectOn": "demand"', script_content)
+
+    @patch("marketplace.core.types.channels.weni_web_chat.serializers.FlowsClient")
+    @patch(
+        "marketplace.core.types.channels.weni_web_chat.serializers.AppStorage",
+        CapturingMockAppStorage,
+    )
+    def test_configure_with_version_3_preserves_version_and_applies_connect_on_rule(
+        self, mock_flows_client
+    ):
+        mock_flows_client.return_value.create_channel.return_value = {
+            "uuid": str(uuid.uuid4()),
+        }
+
+        self.body["config"]["version"] = "3"
+        self.body["config"]["useConnectionOptimization"] = True
+        response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.app.refresh_from_db()
+        self.assertEqual(self.app.config.get("version"), "3")
+
+        script_content = self._get_script_content()
+        self.assertIn('"connectOn": "demand"', script_content)
+
+    @patch("marketplace.core.types.channels.weni_web_chat.serializers.FlowsClient")
+    @patch(
+        "marketplace.core.types.channels.weni_web_chat.serializers.AppStorage",
+        CapturingMockAppStorage,
+    )
+    def test_configure_with_version_3_without_optimization_defaults_connect_on_to_mount(
+        self, mock_flows_client
+    ):
+        mock_flows_client.return_value.create_channel.return_value = {
+            "uuid": str(uuid.uuid4()),
+        }
+
+        self.body["config"]["version"] = "3"
+        response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.app.refresh_from_db()
+        self.assertEqual(self.app.config.get("version"), "3")
+
+        script_content = self._get_script_content()
+        self.assertIn('"connectOn": "mount"', script_content)
+
+    @patch("marketplace.core.types.channels.weni_web_chat.serializers.FlowsClient")
+    @patch(
+        "marketplace.core.types.channels.weni_web_chat.serializers.AppStorage",
+        CapturingMockAppStorage,
+    )
+    def test_configure_without_version_defaults_to_v1_via_field_default(
+        self, mock_flows_client
+    ):
+        mock_flows_client.return_value.create_channel.return_value = {
+            "uuid": str(uuid.uuid4()),
+        }
+
+        response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.app.refresh_from_db()
+        self.assertEqual(self.app.config.get("version"), "1")
+
+        script_content = self._get_script_content()
+        self.assertNotIn("connectOn", script_content)
+
+    @patch("marketplace.core.types.channels.weni_web_chat.serializers.FlowsClient")
+    @patch(
+        "marketplace.core.types.channels.weni_web_chat.serializers.AppStorage",
+        CapturingMockAppStorage,
+    )
+    def test_configure_strips_version_from_generated_script(self, mock_flows_client):
+        mock_flows_client.return_value.create_channel.return_value = {
+            "uuid": str(uuid.uuid4()),
+        }
+
+        self.body["config"]["version"] = "3"
+        response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        script_content = self._get_script_content()
+        self.assertNotIn('"version"', script_content)
+
+    @patch("marketplace.core.types.channels.weni_web_chat.serializers.FlowsClient")
+    @patch(
+        "marketplace.core.types.channels.weni_web_chat.serializers.AppStorage",
+        CapturingMockAppStorage,
+    )
+    def test_configure_with_non_numeric_version_does_not_apply_connect_on(
+        self, mock_flows_client
+    ):
+        mock_flows_client.return_value.create_channel.return_value = {
+            "uuid": str(uuid.uuid4()),
+        }
+
+        self.body["config"]["version"] = "not-a-number"
+        response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.app.refresh_from_db()
+        self.assertEqual(self.app.config.get("version"), "not-a-number")
+
+        script_content = self._get_script_content()
+        self.assertNotIn("connectOn", script_content)
