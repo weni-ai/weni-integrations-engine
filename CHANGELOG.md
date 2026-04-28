@@ -1,3 +1,7 @@
+v4.18.3
+----------
+* feat(wwc): support v3 webchat and apply connectOn rule for v2+
+
 v4.18.2
 ----------
 * fix(wwc): allow clearing subtitle, initPayload, tooltipMessage and inputTextFieldHint
