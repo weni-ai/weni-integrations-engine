@@ -1,3 +1,11 @@
+v4.18.2
+----------
+* fix(wwc): allow clearing subtitle, initPayload, tooltipMessage and inputTextFieldHint
+
+v4.18.1
+----------
+* fix(wwc): allow clearing profileAvatar, openLauncherImage and customCss
+
 v4.18.0
 ----------
 * feat: Add PAYMENT_REQUEST button support for WhatsApp templates
