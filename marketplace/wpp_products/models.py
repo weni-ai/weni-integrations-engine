@@ -229,6 +229,32 @@ class UploadProduct(models.Model):
         return cls.objects.filter(id__in=list(ids))
 
 
+class CatalogUploadCounter(models.Model):
+    """
+    Aggregated counters of upload outcomes per catalog.
+
+    Used to track upload progress without keeping per-product success rows
+    in `UploadProduct`. Successful uploads are deleted right after Meta
+    confirms them and the totals are bumped here via atomic `F()` updates.
+    """
+
+    catalog = models.OneToOneField(
+        Catalog,
+        on_delete=models.CASCADE,
+        related_name="upload_counter",
+    )
+    total_success = models.BigIntegerField(default=0)
+    total_error = models.BigIntegerField(default=0)
+    last_success_at = models.DateTimeField(null=True, blank=True)
+    last_error_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return (
+            f"{self.catalog.name} "
+            f"(success={self.total_success}, error={self.total_error})"
+        )
+
+
 class WebhookLog(models.Model):
     sku_id = models.IntegerField()
     data = JSONField()
