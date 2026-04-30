@@ -7,7 +7,7 @@ class WeniWebChatType(AppType):
     view_class = views.WeniWebChatViewSet
     code = "wwc"
     flows_type_code = "WWC"
-    name = "Web Chat"
+    name = "Shopping Assistant"
     description = "weniWebChat.data.description"
     summary = "weniWebChat.data.summary"
     category = AppType.CATEGORY_CHANNEL

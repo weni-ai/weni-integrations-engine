@@ -15,7 +15,7 @@ class FakeType:
 class AppTypesDictTestCase(TestCase):
     def setUp(self):
         self.apptypes = AppTypesDict()
-        self.apptypes["wwc"] = FakeType("wwc", "channel", "Weni Web Chat")
+        self.apptypes["wwc"] = FakeType("wwc", "channel", "Shopping Assistant")
         self.apptypes["tg"] = FakeType("tg", "channel", "Telegram")
         self.apptypes["rc"] = FakeType("rc", "chat", "Rocket Chat")
 
