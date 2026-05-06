@@ -77,6 +77,39 @@ class SyncMmliteStatusUseCase:
         finally:
             self._release_lock()
 
+    def sync_for_app(self, app: App) -> Dict[str, int]:
+        """Reconcile mmlite_status for a single app.
+
+        Used during channel creation and the manual PATCH to immediately check
+        Meta + propagate active status to Flows. Reuses the same WABA-deduplication
+        logic as the daily batch sync (sibling short-circuit + single Meta call).
+        """
+        summary = {
+            "candidates": 0,
+            "wabas": 0,
+            "propagated": 0,
+            "activated_via_meta": 0,
+            "skipped_not_onboarded": 0,
+            "errors": 0,
+        }
+        config = app.config or {}
+        if config.get("mmlite_status") == MMLITE_STATUS_ACTIVE:
+            return summary
+        waba_id = config.get("wa_waba_id")
+        if not waba_id:
+            logger.info(f"App {app.uuid} has no wa_waba_id; skipping MMLite sync.")
+            return summary
+
+        summary["candidates"] = 1
+        summary["wabas"] = 1
+        try:
+            self._process_waba_group(waba_id, [app], summary)
+        except Exception as exc:
+            summary["errors"] += 1
+            logger.error(f"Error syncing mmlite status for app {app.uuid}: {exc}")
+            sentry_sdk.capture_exception(exc)
+        return summary
+
     def _is_locked(self) -> bool:
         return bool(self.redis.get(SYNC_WHATSAPP_CLOUD_MMLITE_STATUS_LOCK_KEY))
 

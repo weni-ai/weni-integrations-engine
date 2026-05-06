@@ -341,3 +341,181 @@ class SyncMmliteStatusUseCaseTestCase(TestCase):
         # ensure the app was fetched (sanity check)
         app.refresh_from_db()
         self.assertEqual(app.config["mmlite_status"], "in_progress")
+
+
+class SyncMmliteStatusForAppTestCase(TestCase):
+    def setUp(self) -> None:
+        self.admin_user = User.objects.get_admin_user()
+        self.wpp_cloud_type = APPTYPES.get("wpp-cloud")
+        self.waba_id = "waba-123"
+
+        self.redis_mock = MagicMock()
+        self.redis_mock.get.return_value = None
+
+        self.business_service_mock = MagicMock()
+        self.business_service_factory_mock = MagicMock(
+            return_value=self.business_service_mock
+        )
+
+        self.flows_client_mock = MagicMock()
+        self.flows_client_mock.detail_channel.return_value = {"config": {}}
+
+        return super().setUp()
+
+    def _build_use_case(self) -> SyncMmliteStatusUseCase:
+        return SyncMmliteStatusUseCase(
+            business_service_factory=self.business_service_factory_mock,
+            flows_client=self.flows_client_mock,
+            redis_connection=self.redis_mock,
+        )
+
+    _UNSET = object()
+
+    def _create_app(
+        self,
+        waba_id=None,
+        mmlite_status=None,
+        flow_object_uuid=_UNSET,
+        extra_config=None,
+    ) -> App:
+        config = {}
+        if waba_id is not None:
+            config["wa_waba_id"] = waba_id
+        if mmlite_status is not None:
+            config["mmlite_status"] = mmlite_status
+        if extra_config:
+            config.update(extra_config)
+
+        if flow_object_uuid is self._UNSET:
+            flow_object_uuid = uuid4()
+
+        return self.wpp_cloud_type.create_app(
+            config=config,
+            project_uuid=uuid4(),
+            flow_object_uuid=flow_object_uuid,
+            created_by=self.admin_user,
+        )
+
+    def test_sync_for_app_returns_early_when_already_active(self):
+        app = self._create_app(waba_id=self.waba_id, mmlite_status="active")
+
+        summary = self._build_use_case().sync_for_app(app)
+
+        self.assertEqual(summary["candidates"], 0)
+        self.assertEqual(summary["wabas"], 0)
+        self.assertEqual(summary["activated_via_meta"], 0)
+        self.assertEqual(summary["propagated"], 0)
+        self.business_service_factory_mock.assert_not_called()
+        self.business_service_mock.get_mmlite_status.assert_not_called()
+        self.flows_client_mock.detail_channel.assert_not_called()
+        self.flows_client_mock.update_config.assert_not_called()
+
+    def test_sync_for_app_returns_early_when_no_waba_id(self):
+        app = self._create_app(waba_id=None, mmlite_status="in_progress")
+
+        summary = self._build_use_case().sync_for_app(app)
+
+        self.assertEqual(summary["candidates"], 0)
+        self.assertEqual(summary["wabas"], 0)
+        self.business_service_factory_mock.assert_not_called()
+        self.business_service_mock.get_mmlite_status.assert_not_called()
+        self.flows_client_mock.detail_channel.assert_not_called()
+
+    def test_sync_for_app_returns_early_when_empty_waba_id(self):
+        app = self._create_app(waba_id="", mmlite_status="in_progress")
+
+        summary = self._build_use_case().sync_for_app(app)
+
+        self.assertEqual(summary["candidates"], 0)
+        self.business_service_mock.get_mmlite_status.assert_not_called()
+
+    def test_sync_for_app_promotes_when_meta_onboarded(self):
+        app = self._create_app(waba_id=self.waba_id, mmlite_status="in_progress")
+        self.business_service_mock.get_mmlite_status.return_value = {
+            "marketing_messages_onboarding_status": "ONBOARDED"
+        }
+        self.flows_client_mock.detail_channel.return_value = {
+            "config": {"existing_key": "existing_value"}
+        }
+
+        summary = self._build_use_case().sync_for_app(app)
+
+        app.refresh_from_db()
+        self.assertEqual(app.config["mmlite_status"], "active")
+        self.assertEqual(summary["candidates"], 1)
+        self.assertEqual(summary["wabas"], 1)
+        self.assertEqual(summary["activated_via_meta"], 1)
+        self.assertEqual(summary["propagated"], 0)
+
+        self.business_service_mock.get_mmlite_status.assert_called_once_with(
+            self.waba_id
+        )
+        self.flows_client_mock.update_config.assert_called_once_with(
+            data={"existing_key": "existing_value", "mmlite": True},
+            flow_object_uuid=app.flow_object_uuid,
+        )
+
+    def test_sync_for_app_propagates_from_active_sibling(self):
+        self._create_app(waba_id=self.waba_id, mmlite_status="active")
+        new_app = self._create_app(waba_id=self.waba_id, mmlite_status="in_progress")
+
+        summary = self._build_use_case().sync_for_app(new_app)
+
+        new_app.refresh_from_db()
+        self.assertEqual(new_app.config["mmlite_status"], "active")
+        self.assertEqual(summary["propagated"], 1)
+        self.assertEqual(summary["activated_via_meta"], 0)
+        self.business_service_factory_mock.assert_not_called()
+        self.business_service_mock.get_mmlite_status.assert_not_called()
+        self.flows_client_mock.update_config.assert_called_once()
+
+    def test_sync_for_app_skips_when_meta_not_onboarded(self):
+        app = self._create_app(waba_id=self.waba_id, mmlite_status="in_progress")
+        self.business_service_mock.get_mmlite_status.return_value = {
+            "marketing_messages_onboarding_status": "NOT_ONBOARDED"
+        }
+
+        summary = self._build_use_case().sync_for_app(app)
+
+        app.refresh_from_db()
+        self.assertEqual(app.config["mmlite_status"], "in_progress")
+        self.assertEqual(summary["skipped_not_onboarded"], 1)
+        self.assertEqual(summary["activated_via_meta"], 0)
+        self.flows_client_mock.update_config.assert_not_called()
+
+    def test_sync_for_app_captures_meta_exception(self):
+        app = self._create_app(waba_id=self.waba_id, mmlite_status="in_progress")
+        self.business_service_mock.get_mmlite_status.side_effect = Exception(
+            "meta down"
+        )
+
+        with patch(
+            "marketplace.core.types.channels.whatsapp_cloud."
+            "usecases.mmlite_status_sync.sentry_sdk.capture_exception"
+        ) as mock_capture:
+            summary = self._build_use_case().sync_for_app(app)
+
+        app.refresh_from_db()
+        self.assertEqual(app.config["mmlite_status"], "in_progress")
+        self.assertEqual(summary["errors"], 1)
+        self.assertEqual(summary["activated_via_meta"], 0)
+        self.flows_client_mock.update_config.assert_not_called()
+        mock_capture.assert_called_once()
+
+    def test_sync_for_app_skips_flows_when_no_flow_object_uuid(self):
+        app = self._create_app(
+            waba_id=self.waba_id,
+            mmlite_status="in_progress",
+            flow_object_uuid=None,
+        )
+        self.business_service_mock.get_mmlite_status.return_value = {
+            "marketing_messages_onboarding_status": "ONBOARDED"
+        }
+
+        summary = self._build_use_case().sync_for_app(app)
+
+        app.refresh_from_db()
+        self.assertEqual(app.config["mmlite_status"], "active")
+        self.assertEqual(summary["activated_via_meta"], 1)
+        self.flows_client_mock.detail_channel.assert_not_called()
+        self.flows_client_mock.update_config.assert_not_called()
