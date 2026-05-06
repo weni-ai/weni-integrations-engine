@@ -4,7 +4,12 @@ from marketplace.celery import app as celery_app
 from marketplace.clients.flows.client import FlowsClient
 from marketplace.applications.models import App
 from marketplace.accounts.models import ProjectAuthorization
-from marketplace.core.types.channels.whatsapp_cloud.factories import create_account_update_webhook_event_processor
+from marketplace.core.types.channels.whatsapp_cloud.factories import (
+    create_account_update_webhook_event_processor,
+)
+from marketplace.core.types.channels.whatsapp_cloud.usecases.mmlite_status_sync import (
+    SyncMmliteStatusUseCase,
+)
 from marketplace.core.types.channels.whatsapp_cloud.usecases.whatsapp_cloud_sync import (
     SyncWhatsAppCloudAppsUseCase,
 )
@@ -18,6 +23,13 @@ User = get_user_model()
 def sync_whatsapp_cloud_apps():
     """Synchronize WhatsApp Cloud apps with Flows channels."""
     use_case = SyncWhatsAppCloudAppsUseCase()
+    return use_case.execute()
+
+
+@celery_app.task(name="sync_whatsapp_cloud_mmlite_status")
+def sync_whatsapp_cloud_mmlite_status():
+    """Reconcile mmlite_status for wpp-cloud apps against Meta, deduped by WABA."""
+    use_case = SyncMmliteStatusUseCase()
     return use_case.execute()
 
 
@@ -83,7 +95,9 @@ def update_account_info_by_webhook(**kwargs):  # pragma: no cover
 
             whatsapp_business_account_id = value.get("waba_info", {}).get("waba_id")
             if not whatsapp_business_account_id:
-                logger.info(f"Whatsapp business account id not found in webhook data: {webhook_data}")
+                logger.info(
+                    f"Whatsapp business account id not found in webhook data: {webhook_data}"
+                )
                 continue
 
             if field in allowed_event_types:

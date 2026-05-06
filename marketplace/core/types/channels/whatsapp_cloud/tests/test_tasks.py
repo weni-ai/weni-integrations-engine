@@ -10,6 +10,7 @@ from django.contrib.auth import get_user_model
 from marketplace.core.types import APPTYPES
 from ..tasks import (
     sync_whatsapp_cloud_apps,
+    sync_whatsapp_cloud_mmlite_status,
     check_apps_uncreated_on_flow,
     update_account_info_by_webhook,
 )
@@ -610,3 +611,19 @@ class UpdateAccountInfoByWebhookTaskTestCase(TestCase):
         )
         mock_logger.info.assert_any_call("-" * 50)
         self.mock_processor.process_event.assert_not_called()
+
+
+class SyncWhatsAppCloudMmliteStatusTaskTestCase(TestCase):
+    @patch(
+        "marketplace.core.types.channels.whatsapp_cloud.tasks.SyncMmliteStatusUseCase"
+    )
+    def test_task_delegates_to_use_case(self, mock_use_case_cls):
+        mock_use_case = MagicMock()
+        mock_use_case.execute.return_value = {"candidates": 0}
+        mock_use_case_cls.return_value = mock_use_case
+
+        result = sync_whatsapp_cloud_mmlite_status()
+
+        mock_use_case_cls.assert_called_once_with()
+        mock_use_case.execute.assert_called_once_with()
+        self.assertEqual(result, {"candidates": 0})
