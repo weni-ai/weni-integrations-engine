@@ -1,3 +1,7 @@
+v4.19.0
+----------
+* feat(whatsapp): add sync task for mmlite status and implement use case
+
 v4.18.3
 ----------
 * feat(wwc): support v3 webchat and apply connectOn rule for v2+
