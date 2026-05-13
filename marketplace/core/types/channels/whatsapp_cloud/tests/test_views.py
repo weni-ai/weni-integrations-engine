@@ -66,6 +66,39 @@ class RetrieveWhatsAppCloudTestCase(APIBaseTestCase):
         self.assertIn("created_on", response.json)
         self.assertEqual(response.json["config"], {})
 
+    def test_retrieve_exposes_phone_number_id_and_waba_id(self):
+        self.app.config = {
+            "title": "+55 11 2148-4999",
+            "waba": {
+                "id": "912460154934195",
+                "name": "Agentic CX Staging",
+                "timezone_id": "24",
+                "message_template_namespace": "08097e0b_5d0c_4661_8f59_467c55225a22",
+            },
+            "phone_number": {
+                "id": "1089390800916485",
+                "display_name": "Agentic CX Staging",
+                "display_phone_number": "+55 11 2148-4999",
+            },
+            "wa_business_id": "1064679703605727",
+            "wa_phone_number_id": "1089390800916485",
+        }
+        self.app.save()
+
+        response = self.request.get(self.url, uuid=self.app.uuid)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        config = response.json["config"]
+        self.assertEqual(config["phone_number"]["id"], "1089390800916485")
+        self.assertEqual(
+            config["phone_number"]["display_phone_number"], "+55 11 2148-4999"
+        )
+        self.assertEqual(config["phone_number"]["display_name"], "Agentic CX Staging")
+        self.assertEqual(config["waba"]["id"], "912460154934195")
+
+        self.assertNotIn("wa_phone_number_id", config)
+
 
 class DestroyWhatsAppCloudTestCase(APIBaseTestCase):
     view_class = WhatsAppCloudViewSet
