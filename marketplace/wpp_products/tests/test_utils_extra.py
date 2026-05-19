@@ -24,25 +24,67 @@ class TestExtractSkuId(SimpleTestCase):
 
 
 class TestProductUploadManager(SimpleTestCase):
+    @patch("marketplace.wpp_products.utils.CatalogUploadCounter")
     @patch("marketplace.wpp_products.utils.UploadProduct")
-    def test_mark_products_as_sent(self, mock_upload):
-        mock_upload.objects.filter.return_value.update.return_value = 3
-        mgr = ProductUploadManager()
-        mgr.mark_products_as_sent(["1", "2"])
-        mock_upload.objects.filter.assert_called_once()
-        mock_upload.objects.filter.return_value.update.assert_called_once_with(
-            status="success"
-        )
+    def test_mark_products_as_sent_deletes_and_bumps_counter(
+        self, mock_upload, mock_counter
+    ):
+        mock_upload.objects.filter.return_value.delete.return_value = (3, {})
+        catalog = MagicMock(name="Catalog")
 
-    @patch("marketplace.wpp_products.utils.UploadProduct")
-    def test_mark_products_as_error(self, mock_upload):
-        mock_upload.objects.filter.return_value.update.return_value = 2
         mgr = ProductUploadManager()
-        mgr.mark_products_as_error(["1", "2"])
-        mock_upload.objects.filter.assert_called_once()
+        result = mgr.mark_products_as_sent(catalog, ["1", "2"])
+
+        self.assertEqual(result, 3)
+        mock_upload.objects.filter.assert_called_once_with(
+            facebook_product_id__in=["1", "2"],
+            catalog=catalog,
+            status="processing",
+        )
+        mock_upload.objects.filter.return_value.delete.assert_called_once()
+        mock_counter.objects.get_or_create.assert_called_once_with(catalog=catalog)
+        mock_counter.objects.filter.assert_called_once_with(catalog=catalog)
+        mock_counter.objects.filter.return_value.update.assert_called_once()
+
+    @patch("marketplace.wpp_products.utils.CatalogUploadCounter")
+    @patch("marketplace.wpp_products.utils.UploadProduct")
+    def test_mark_products_as_sent_no_rows_skips_counter(
+        self, mock_upload, mock_counter
+    ):
+        mock_upload.objects.filter.return_value.delete.return_value = (0, {})
+        mgr = ProductUploadManager()
+        result = mgr.mark_products_as_sent(MagicMock(), ["1"])
+        self.assertEqual(result, 0)
+        mock_counter.objects.filter.assert_not_called()
+
+    @patch("marketplace.wpp_products.utils.CatalogUploadCounter")
+    @patch("marketplace.wpp_products.utils.UploadProduct")
+    def test_mark_products_as_error_updates_and_bumps_counter(
+        self, mock_upload, mock_counter
+    ):
+        mock_upload.objects.filter.return_value.update.return_value = 2
+        catalog = MagicMock(name="Catalog")
+
+        mgr = ProductUploadManager()
+        result = mgr.mark_products_as_error(catalog, ["1", "2"])
+
+        self.assertEqual(result, 2)
         mock_upload.objects.filter.return_value.update.assert_called_once_with(
             status="error"
         )
+        mock_counter.objects.get_or_create.assert_called_once_with(catalog=catalog)
+        mock_counter.objects.filter.assert_called_once_with(catalog=catalog)
+
+    @patch("marketplace.wpp_products.utils.CatalogUploadCounter")
+    @patch("marketplace.wpp_products.utils.UploadProduct")
+    def test_mark_products_as_error_no_rows_skips_counter(
+        self, mock_upload, mock_counter
+    ):
+        mock_upload.objects.filter.return_value.update.return_value = 0
+        mgr = ProductUploadManager()
+        result = mgr.mark_products_as_error(MagicMock(), ["1"])
+        self.assertEqual(result, 0)
+        mock_counter.objects.filter.assert_not_called()
 
 
 class QuerySetFake:
@@ -348,24 +390,18 @@ class TestProductBatchUploader(SimpleTestCase):
 
         uploader.product_manager = DummyPM()
         redis = MagicMock()
-        uploader.log_sent_products = MagicMock()
 
         uploader.process_and_upload(
             redis_client=redis, lock_key="lk", lock_expiration_time=60
         )
 
-        uploader.product_manager.mark_products_as_sent.assert_called_once_with(["11#x"])
+        uploader.product_manager.mark_products_as_sent.assert_called_once_with(
+            uploader.catalog, ["11#x"]
+        )
         uploader.product_manager.mark_products_as_error.assert_called_once_with(
-            ["22#y"]
+            uploader.catalog, ["22#y"]
         )
         self.assertEqual(redis.expire.call_count, 2)
-        uploader.log_sent_products.assert_called_once()
-
-    @patch("marketplace.wpp_products.utils.ProductUploadLog")
-    def test_log_sent_products(self, mock_log):
-        uploader = ProductBatchUploader(self._make_catalog())
-        uploader.log_sent_products(["11#x", "22#y"])
-        self.assertEqual(mock_log.objects.create.call_count, 2)
 
 
 class TestRedisQueue(SimpleTestCase):

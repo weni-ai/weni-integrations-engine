@@ -4,13 +4,14 @@ import time
 
 from typing import List, Dict, Any
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone as dt_timezone
 
 from django.conf import settings
+from django.utils import timezone
 
 from marketplace.services.vtex.utils.enums import ProductPriority
 
-from django.db.models import QuerySet
+from django.db.models import F, QuerySet
 
 from django_redis import get_redis_connection
 
@@ -21,7 +22,7 @@ from marketplace.clients.rapidpro.client import RapidproClient
 from marketplace.services.rapidpro.service import RapidproService
 from marketplace.wpp_products.models import (
     Catalog,
-    ProductUploadLog,
+    CatalogUploadCounter,
     ProductValidation,
     UploadProduct,
 )
@@ -35,19 +36,81 @@ logger = logging.getLogger(__name__)
 
 
 class ProductUploadManager:
-    def mark_products_as_sent(self, product_ids: List[str]):
-        updated_count = UploadProduct.objects.filter(
-            facebook_product_id__in=product_ids, status="processing"
-        ).update(status="success")
+    def mark_products_as_sent(self, catalog: Catalog, product_ids: List[str]) -> int:
+        """
+        Delete successfully uploaded products and bump the catalog counter.
 
-        print(f"{updated_count} products successfully marked as sent.")
+        Successful uploads are not kept in `UploadProduct` since nothing
+        consumes them after Meta confirms; persisting them only inflates
+        the table. The aggregated count is preserved in
+        `CatalogUploadCounter` for observability.
+        """
+        deleted_count, _ = UploadProduct.objects.filter(
+            facebook_product_id__in=product_ids,
+            catalog=catalog,
+            status="processing",
+        ).delete()
 
-    def mark_products_as_error(self, product_ids: List[str]):
+        if deleted_count:
+            self._bump_counter(
+                catalog=catalog,
+                success_delta=deleted_count,
+                last_success_at=timezone.now(),
+            )
+
+        logger.info(
+            f"{deleted_count} products successfully marked as sent "
+            f"for catalog {catalog.name}."
+        )
+        return deleted_count
+
+    def mark_products_as_error(self, catalog: Catalog, product_ids: List[str]) -> int:
+        """
+        Mark products as `error` so the cleanup task can recycle them to
+        `pending` later, and bump the catalog error counter.
+        """
         updated_count = UploadProduct.objects.filter(
-            facebook_product_id__in=product_ids, status="processing"
+            facebook_product_id__in=product_ids,
+            catalog=catalog,
+            status="processing",
         ).update(status="error")
 
-        print(f"{updated_count} products marked as error.")
+        if updated_count:
+            self._bump_counter(
+                catalog=catalog,
+                error_delta=updated_count,
+                last_error_at=timezone.now(),
+            )
+
+        logger.info(
+            f"{updated_count} products marked as error " f"for catalog {catalog.name}."
+        )
+        return updated_count
+
+    @staticmethod
+    def _bump_counter(
+        catalog: Catalog,
+        success_delta: int = 0,
+        error_delta: int = 0,
+        last_success_at=None,
+        last_error_at=None,
+    ) -> None:
+        """Atomically bump the catalog upload counter via `F()` expressions."""
+        updates = {}
+        if success_delta:
+            updates["total_success"] = F("total_success") + success_delta
+        if error_delta:
+            updates["total_error"] = F("total_error") + error_delta
+        if last_success_at is not None:
+            updates["last_success_at"] = last_success_at
+        if last_error_at is not None:
+            updates["last_error_at"] = last_error_at
+
+        if not updates:
+            return
+
+        CatalogUploadCounter.objects.get_or_create(catalog=catalog)
+        CatalogUploadCounter.objects.filter(catalog=catalog).update(**updates)
 
 
 class ProductBatchFetcher(ProductUploadManager):
@@ -90,7 +153,7 @@ class SellerSyncUtils:
             {
                 "app_uuid": app_uuid,
                 "sellers": sellers,
-                "start_time": datetime.now(timezone.utc).isoformat(),
+                "start_time": datetime.now(dt_timezone.utc).isoformat(),
             }
         )
 
@@ -303,10 +366,13 @@ class ProductBatchUploader:
                 payload = self.create_batch_payload(products)
                 # Sends data to Meta and processes the results
                 if self.send_to_meta(payload):
-                    self.product_manager.mark_products_as_sent(product_ids)
-                    self.log_sent_products(product_ids)
+                    self.product_manager.mark_products_as_sent(
+                        self.catalog, product_ids
+                    )
                 else:
-                    self.product_manager.mark_products_as_error(product_ids)
+                    self.product_manager.mark_products_as_error(
+                        self.catalog, product_ids
+                    )
 
                 # Apply delay based on priority
                 # If priority is DEFAULT, apply delay from settings
@@ -326,7 +392,7 @@ class ProductBatchUploader:
                 exc_info=True,
                 stack_info=True,
             )
-            self.product_manager.mark_products_as_error(product_ids)
+            self.product_manager.mark_products_as_error(self.catalog, product_ids)
             try:
                 # Send notification error to Rapidpro
                 self.rapidpro_service.create_notification(
@@ -379,17 +445,6 @@ class ProductBatchUploader:
                 stack_info=True,
             )
             return False
-
-    def log_sent_products(self, product_ids: List[str]):
-        """
-        Logs the successfully sent products to the log table.
-        """
-        for product_id in product_ids:
-            sku_id = extract_sku_id(product_id)
-            ProductUploadLog.objects.create(
-                sku_id=sku_id, vtex_app=self.catalog.vtex_app
-            )
-        print(f"Logged {len(product_ids)} products as sent.")
 
 
 class RedisQueue:
