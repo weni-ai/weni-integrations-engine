@@ -1,3 +1,7 @@
+v4.19.1
+----------
+* feat: Expose phone_number.id on wpp-cloud app detail
+
 v4.19.0
 ----------
 * feat(whatsapp): add sync task for mmlite status and implement use case
