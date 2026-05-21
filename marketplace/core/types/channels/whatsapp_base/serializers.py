@@ -29,6 +29,7 @@ class WhatsAppConfigWABASerializer(serializers.Serializer):
 
 
 class WhatsAppConfigPhoneNumberSerializer(serializers.Serializer):
+    id = serializers.CharField()
     display_name = serializers.CharField()
     display_phone_number = serializers.CharField()
     consent_status = serializers.CharField(required=False)
