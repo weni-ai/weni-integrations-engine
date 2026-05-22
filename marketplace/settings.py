@@ -359,6 +359,13 @@ CELERY_BEAT_SCHEDULE = {
         "task": "sync_whatsapp_cloud_apps",
         "schedule": timedelta(hours=2),
     },
+    "sync-whatsapp-cloud-mmlite-status": {
+        "task": "sync_whatsapp_cloud_mmlite_status",
+        "schedule": crontab(
+            minute=0,
+            hour=env.int("SYNC_WHATSAPP_CLOUD_MMLITE_STATUS_HOUR", default=1),
+        ),
+    },
     "sync-whatsapp-wabas": {
         "task": "sync_whatsapp_wabas",
         "schedule": crontab(

@@ -1,3 +1,15 @@
+v4.19.1
+----------
+* feat: Expose phone_number.id on wpp-cloud app detail
+
+v4.19.0
+----------
+* feat(whatsapp): add sync task for mmlite status and implement use case
+
+v4.18.3
+----------
+* feat(wwc): support v3 webchat and apply connectOn rule for v2+
+
 v4.18.2
 ----------
 * fix(wwc): allow clearing subtitle, initPayload, tooltipMessage and inputTextFieldHint
