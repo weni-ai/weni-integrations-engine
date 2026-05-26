@@ -93,7 +93,7 @@ def update_account_info_by_webhook(**kwargs):  # pragma: no cover
             if value.get("reason", None) is None:
                 value["reason"] = ""
 
-            whatsapp_business_account_id = value.get("waba_info", {}).get("waba_id")
+            whatsapp_business_account_id = value.get("waba_info", {}).get("waba_id") or entry.get("id", "")
             if not whatsapp_business_account_id:
                 logger.info(
                     f"Whatsapp business account id not found in webhook data: {webhook_data}"
