@@ -141,3 +141,26 @@ class GetAccountVerificationStatusUseCaseTestCase(TestCase):
 
         self.assertEqual(state.status, VerificationStatus.APPROVED)
         self.service.list_submissions.assert_not_called()
+
+    def test_raises_when_app_does_not_exist(self):
+        from rest_framework.exceptions import ValidationError
+
+        with self.assertRaises(ValidationError):
+            self.use_case.execute(str(uuid.uuid4()))
+
+    def test_raises_when_app_is_not_wpp_cloud(self):
+        from rest_framework.exceptions import ValidationError
+
+        self.app.code = "wpp"
+        self.app.save()
+        with self.assertRaises(ValidationError):
+            self.use_case.execute(str(self.app.uuid))
+
+    def test_returns_local_state_when_business_id_missing(self):
+        self.app.config = {}
+        self.app.save()
+
+        state = self.use_case.execute(str(self.app.uuid))
+
+        self.assertEqual(state.ui_state, "not_started")
+        self.service.list_submissions.assert_not_called()

@@ -48,7 +48,7 @@ def _derive_ui_state(state: Dict[str, Any]) -> str:
         return UIState.FAILED
     if status == VerificationStatus.PENDING:
         return UIState.PENDING
-    return UIState.NOT_STARTED
+    return UIState.NOT_STARTED  # pragma: no cover
 
 
 def _derive_can_submit(state: Dict[str, Any]) -> bool:

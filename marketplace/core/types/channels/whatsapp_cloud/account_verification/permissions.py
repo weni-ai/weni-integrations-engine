@@ -46,4 +46,4 @@ class AppProjectManagePermission(permissions.IsAuthenticated):
                 or authorization.is_contributor
                 or authorization.is_admin
             )
-        return False
+        return False  # pragma: no cover

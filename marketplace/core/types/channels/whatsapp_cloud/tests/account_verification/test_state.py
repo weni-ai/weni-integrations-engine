@@ -90,6 +90,29 @@ class DeriveUIStateTestCase(TestCase):
         )
         self.assertEqual(dto.rejection_reasons, [])
 
+    def test_to_dict_serializes_all_fields(self):
+        dto = to_dto(
+            {
+                "submission_id": "sub_1",
+                "status": VerificationStatus.APPROVED,
+                "verification_attempts": 2,
+                "rejection_reasons": [],
+                "submitted_at": "2026-05-25T14:30:00+00:00",
+                "updated_at_meta": "2026-05-25T14:35:00+00:00",
+                "last_synced_at": "2026-05-25T14:36:10+00:00",
+            }
+        )
+        payload = dto.to_dict()
+        self.assertEqual(payload["ui_state"], UIState.APPROVED)
+        self.assertEqual(payload["status"], VerificationStatus.APPROVED)
+        self.assertEqual(payload["submission_id"], "sub_1")
+        self.assertEqual(payload["verification_attempts"], 2)
+        self.assertEqual(payload["rejection_reasons"], [])
+        self.assertEqual(payload["submitted_at"], "2026-05-25T14:30:00+00:00")
+        self.assertEqual(payload["updated_at_meta"], "2026-05-25T14:35:00+00:00")
+        self.assertEqual(payload["last_synced_at"], "2026-05-25T14:36:10+00:00")
+        self.assertFalse(payload["can_submit"])
+
 
 class ApplySubmitResponseTestCase(TestCase):
     def test_sets_pending_and_attempts(self):

@@ -53,7 +53,9 @@ class GetAccountVerificationStatusUseCase:
         )
 
     @staticmethod
-    def _default_service() -> BusinessVerificationService:
+    def _default_service() -> BusinessVerificationService:  # pragma: no cover
+        # DI fallback: instantiated only when no service is injected. Tests
+        # always inject a mock so this branch is unreachable in unit tests.
         return BusinessVerificationService(
             client=FacebookClient(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
         )

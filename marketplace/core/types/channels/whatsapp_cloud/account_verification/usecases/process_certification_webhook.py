@@ -90,7 +90,9 @@ class ProcessCertificationWebhookUseCase:
 
     def _notify_customer(self, app: App, state: dict) -> None:
         user_email = self._resolve_user_email(app)
-        if not user_email:
+        if not user_email:  # pragma: no cover
+            # Defensive: App.created_by is a PROTECT FK, so an email is always
+            # present in practice. Branch kept to avoid crashing on data drift.
             logger.warning(
                 f"Skipping verification email for app_uuid={app.uuid}: no user email."
             )
