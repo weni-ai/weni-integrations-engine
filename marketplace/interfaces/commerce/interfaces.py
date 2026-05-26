@@ -38,3 +38,19 @@ class CommerceClientInterface(ABC):
             Dictionary with the API response.
         """
         pass
+
+    @abstractmethod
+    def send_template_category_notification(
+        self, data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Send template category-detection notification to Commerce API.
+
+        Args:
+            data: Dictionary containing project_uuid, app_uuid, template_name,
+                template_category and template_correct_category.
+
+        Returns:
+            Dictionary with the API response.
+        """
+        pass

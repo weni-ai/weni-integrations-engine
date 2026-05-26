@@ -33,3 +33,16 @@ class CommerceService:
         Send template version to Commerce API.
         """
         return self.client.send_gallery_template_version(gallery_version_uuid, status)
+
+    def send_template_category_notification(self, data: dict) -> dict:
+        """
+        Forward a template category-detection notification to Commerce API.
+
+        Args:
+            data: Payload with project_uuid, app_uuid, template_name,
+                template_category and template_correct_category.
+
+        Returns:
+            Dictionary with the API response.
+        """
+        return self.client.send_template_category_notification(data)
