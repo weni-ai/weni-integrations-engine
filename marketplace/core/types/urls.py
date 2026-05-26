@@ -30,6 +30,15 @@ urlpatterns.append(
 
 urlpatterns.append(
     path(
+        "apptypes/wpp-cloud/",
+        include(
+            "marketplace.core.types.channels.whatsapp_cloud.account_verification.urls"
+        ),
+    )
+)
+
+urlpatterns.append(
+    path(
         "apptypes/wpp-cloud/list_wpp-cloud/<uuid:project_uuid>/",
         WhatsAppCloudInsights.as_view(),
         name="wpp-cloud-insights",
