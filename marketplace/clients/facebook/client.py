@@ -9,6 +9,7 @@ from marketplace.clients.base import RequestClient
 
 from marketplace.interfaces.facebook.interfaces import (
     BusinessMetaRequestsInterface,
+    BusinessVerificationRequestsInterface,
     CloudProfileRequestsInterface,
     PhoneNumbersRequestsInterface,
     PhotoAPIRequestsInterface,
@@ -589,11 +590,50 @@ class BusinessMetaRequests(
             "code_verification_status": "VERIFIED",
             "availability_status": "AVAILABLE",
         }
-        response = self.make_request(
-            url, method="GET", headers=headers, params=params
-        )
+        response = self.make_request(url, method="GET", headers=headers, params=params)
         body = response.json()
         return {"data": body.get("data") or []}
+
+
+class BusinessVerificationRequests(
+    FacebookAuthorization, RequestClient, BusinessVerificationRequestsInterface
+):
+    """Partner-led Business Verification (Solution Partner) Graph API calls."""
+
+    def submit_self_certify_whatsapp_business(
+        self,
+        partner_business_id: str,
+        end_business_id: str,
+        documents: list,
+    ) -> dict:
+        url = f"{self.get_url}/{partner_business_id}/self_certify_whatsapp_business"
+        files = [
+            (
+                "business_documents[]",
+                (document.name, document.read(), document.content_type),
+            )
+            for document in documents
+        ]
+        data = {"end_business_id": end_business_id}
+        response = self.make_request(
+            url, method="POST", headers=self._get_headers(), data=data, files=files
+        )
+        return response.json()
+
+    def list_self_certified_whatsapp_business_submissions(
+        self,
+        partner_business_id: str,
+        end_business_id: str = None,
+    ) -> dict:
+        url = (
+            f"{self.get_url}/{partner_business_id}"
+            "/self_certified_whatsapp_business_submissions"
+        )
+        params = {"end_business_id": end_business_id} if end_business_id else None
+        response = self.make_request(
+            url, method="GET", headers=self._get_headers(), params=params
+        )
+        return response.json()
 
 
 class FacebookClient(
@@ -604,6 +644,7 @@ class FacebookClient(
     PhotoAPIRequests,
     BusinessMetaRequests,
     CallingRequests,
+    BusinessVerificationRequests,
 ):
     def __init__(self, access_token):
         # Initialize FacebookAuthorization with access_token

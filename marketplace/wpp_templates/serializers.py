@@ -42,6 +42,7 @@ class ButtonSerializer(serializers.ModelSerializer):
     phone_number = serializers.CharField(required=False)
     url = serializers.CharField(required=False)
     example = serializers.ListField(required=False)
+    payment_setting = serializers.JSONField(required=False)
 
     class Meta:
         model = TemplateButton
@@ -52,6 +53,7 @@ class ButtonSerializer(serializers.ModelSerializer):
             "phone_number",
             "url",
             "example",
+            "payment_setting",
         ]
 
 
@@ -143,7 +145,16 @@ class TemplateTranslationSerializer(serializers.Serializer):
             if button_component.get("country_code"):
                 button_component.pop("country_code")
 
-            buttons_component.get("buttons").append(button_component)
+            if button_component["type"] == "PAYMENT_REQUEST":
+                meta_button = {
+                    "type": "PAYMENT_REQUEST",
+                    "text": button_component.get("text"),
+                }
+                if button_component.get("payment_setting"):
+                    meta_button["payment_setting"] = button_component["payment_setting"]
+                buttons_component.get("buttons").append(meta_button)
+            else:
+                buttons_component.get("buttons").append(button_component)
 
         if buttons_component.get("buttons"):
             components = self.append_to_components(components, buttons_component)

@@ -49,9 +49,12 @@ class OpenLauncherBase64ImageField(Base64ImageField):
 
 
 class AvatarImageField(serializers.Field):
-    """Accepts either a base64-encoded image or a direct URL."""
+    """Accepts a base64-encoded image, a direct URL, or an empty string to clear it."""
 
     def to_internal_value(self, data):
+        if data == "":
+            return ""
+
         if isinstance(data, str) and data.startswith("data:"):
             base64_field = AvatarBase64ImageField()
             return base64_field.to_internal_value(data)
@@ -68,9 +71,12 @@ class AvatarImageField(serializers.Field):
 
 
 class OpenLauncherImageField(serializers.Field):
-    """Accepts either a base64-encoded image or a direct URL."""
+    """Accepts a base64-encoded image, a direct URL, or an empty string to clear it."""
 
     def to_internal_value(self, data):
+        if data == "":
+            return ""
+
         if isinstance(data, str) and data.startswith("data:"):
             base64_field = OpenLauncherBase64ImageField()
             return base64_field.to_internal_value(data)
@@ -88,18 +94,20 @@ class OpenLauncherImageField(serializers.Field):
 
 class ConfigSerializer(serializers.Serializer):
     title = serializers.CharField(required=True)
-    subtitle = serializers.CharField(required=False)
-    inputTextFieldHint = serializers.CharField(default="Type a message...")
+    subtitle = serializers.CharField(required=False, allow_blank=True)
+    inputTextFieldHint = serializers.CharField(
+        default="Type a message...", allow_blank=True
+    )
     showFullScreenButton = serializers.BooleanField(default=True)
     displayUnreadCount = serializers.BooleanField(default=False)
     keepHistory = serializers.BooleanField(default=False)
-    initPayload = serializers.CharField(required=False)
+    initPayload = serializers.CharField(required=False, allow_blank=True)
     mainColor = serializers.CharField(default="#00DED3")
     profileAvatar = AvatarImageField(required=False)
     openLauncherImage = OpenLauncherImageField(required=False)
-    customCss = serializers.CharField(required=False)
+    customCss = serializers.CharField(required=False, allow_blank=True)
     timeBetweenMessages = serializers.IntegerField(default=1)
-    tooltipMessage = serializers.CharField(required=False)
+    tooltipMessage = serializers.CharField(required=False, allow_blank=True)
     startFullScreen = serializers.BooleanField(default=False)
     showVoiceRecordingButton = serializers.BooleanField(default=False)
     showCameraButton = serializers.BooleanField(default=False)
@@ -113,6 +121,7 @@ class ConfigSerializer(serializers.Serializer):
         required=False, min_value=0, max_value=100
     )
     voiceMode = serializers.JSONField(required=False)
+    addToCart = serializers.BooleanField(default=False)
 
     @staticmethod
     def _is_stored_url(value):
@@ -137,6 +146,12 @@ class ConfigSerializer(serializers.Serializer):
 
         data = super().to_internal_value(data)
         storage = AppStorage(self.app)
+
+        # An empty string on these fields means "clear the value" — drop the
+        # key so the stored config no longer keeps the previous URL.
+        for clearable_field in ("profileAvatar", "openLauncherImage", "customCss"):
+            if data.get(clearable_field) == "":
+                data.pop(clearable_field)
 
         if data.get("profileAvatar"):
             avatar = data["profileAvatar"]
@@ -183,7 +198,7 @@ class ConfigSerializer(serializers.Serializer):
             "storage": "local" if attrs["keepHistory"] else "session",
         }
 
-        version = attrs.get("version", "2")
+        version = attrs.get("version", "3")
         if self.app.flow_object_uuid is None:
             self.app.flow_object_uuid = self._create_channel(version).get("uuid")
 
@@ -252,9 +267,13 @@ class ConfigSerializer(serializers.Serializer):
             if custom_css:
                 attrs.pop("customCss")
 
-            # For WWC version 2, enforce connectOn rule based on useConnectionOptimization
-            version_value = str(attrs.pop("version", "1"))
-            if version_value == "2":
+            # For WWC version 2 and above, enforce connectOn rule based on useConnectionOptimization
+            raw_version = attrs.pop("version", "1")
+            try:
+                version_int = int(str(raw_version))
+            except (TypeError, ValueError):
+                version_int = 1
+            if version_int >= 2:
                 use_conn_opt = bool(attrs.get("useConnectionOptimization", False))
                 attrs["connectOn"] = "demand" if use_conn_opt else "mount"
 

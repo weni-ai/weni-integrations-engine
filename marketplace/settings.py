@@ -237,6 +237,9 @@ CORS_ALLOW_HEADERS = list(default_headers) + ["project-uuid"]
 # gRPC Connect Client
 CONNECT_ENGINE_BASE_URL = env.str("CONNECT_ENGINE_BASE_URL", "http://localhost:8080/v1")
 
+# REST Connect Client (weni-engine internal API)
+CONNECT_REST_ENDPOINT = env.str("CONNECT_REST_ENDPOINT", default="")
+
 
 SOCKET_BASE_URL = env.str("SOCKET_BASE_URL", "")
 FLOWS_HOST_URL = env.str("FLOWS_HOST_URL", "")
@@ -316,6 +319,7 @@ APPTYPES_CLASSES = [
 WHATSAPP_SYSTEM_USER_ACCESS_TOKEN = env.str("WHATSAPP_SYSTEM_USER_ACCESS_TOKEN")
 WHATSAPP_BSP_BUSINESS_ID = env.str("WHATSAPP_BSP_BUSINESS_ID", default="")
 WHATSAPP_VERSION = env.str("WHATSAPP_VERSION", default="v16.0")
+ACCOUNT_VERIFICATION_CACHE_TTL = env.int("ACCOUNT_VERIFICATION_CACHE_TTL", default=60)
 WHATSAPP_API_URL = urllib.parse.urljoin(
     env.str("WHATSAPP_API_URL", default="https://graph.facebook.com/"), WHATSAPP_VERSION
 )
@@ -358,6 +362,13 @@ CELERY_BEAT_SCHEDULE = {
     "sync-whatsapp-cloud-apps": {
         "task": "sync_whatsapp_cloud_apps",
         "schedule": timedelta(hours=2),
+    },
+    "sync-whatsapp-cloud-mmlite-status": {
+        "task": "sync_whatsapp_cloud_mmlite_status",
+        "schedule": crontab(
+            minute=0,
+            hour=env.int("SYNC_WHATSAPP_CLOUD_MMLITE_STATUS_HOUR", default=1),
+        ),
     },
     "sync-whatsapp-wabas": {
         "task": "sync_whatsapp_wabas",

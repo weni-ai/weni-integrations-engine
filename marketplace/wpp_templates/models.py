@@ -122,6 +122,10 @@ class TemplateButton(models.Model):
         ("QUICK_REPLY", "WhatsApp.data.templates.buttons.type.quick_reply"),
         ("PHONE_NUMBER", "WhatsApp.data.templates.buttons.type.phone_number"),
         ("URL", "WhatsApp.data.templates.buttons.type.url"),
+        (
+            "PAYMENT_REQUEST",
+            "WhatsApp.data.templates.buttons.type.payment_request",
+        ),
     )
 
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
@@ -136,6 +140,7 @@ class TemplateButton(models.Model):
     phone_number = models.CharField(max_length=20, null=True)
     url = models.CharField(max_length=2000, null=True)
     example = models.CharField(max_length=2000, default=None, null=True)
+    payment_setting = models.JSONField(null=True, blank=True, default=None)
 
 
 class TemplateHeader(models.Model):

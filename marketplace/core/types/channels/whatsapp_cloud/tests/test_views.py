@@ -66,6 +66,39 @@ class RetrieveWhatsAppCloudTestCase(APIBaseTestCase):
         self.assertIn("created_on", response.json)
         self.assertEqual(response.json["config"], {})
 
+    def test_retrieve_exposes_phone_number_id_and_waba_id(self):
+        self.app.config = {
+            "title": "+55 11 2148-4999",
+            "waba": {
+                "id": "912460154934195",
+                "name": "Agentic CX Staging",
+                "timezone_id": "24",
+                "message_template_namespace": "08097e0b_5d0c_4661_8f59_467c55225a22",
+            },
+            "phone_number": {
+                "id": "1089390800916485",
+                "display_name": "Agentic CX Staging",
+                "display_phone_number": "+55 11 2148-4999",
+            },
+            "wa_business_id": "1064679703605727",
+            "wa_phone_number_id": "1089390800916485",
+        }
+        self.app.save()
+
+        response = self.request.get(self.url, uuid=self.app.uuid)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        config = response.json["config"]
+        self.assertEqual(config["phone_number"]["id"], "1089390800916485")
+        self.assertEqual(
+            config["phone_number"]["display_phone_number"], "+55 11 2148-4999"
+        )
+        self.assertEqual(config["phone_number"]["display_name"], "Agentic CX Staging")
+        self.assertEqual(config["waba"]["id"], "912460154934195")
+
+        self.assertNotIn("wa_phone_number_id", config)
+
 
 class DestroyWhatsAppCloudTestCase(APIBaseTestCase):
     view_class = WhatsAppCloudViewSet
@@ -461,6 +494,16 @@ class CreateWhatsAppCloudTestCase(APIBaseTestCase):
             "status": "success"
         }
 
+        self.mock_mmlite_sync = Mock()
+        self.mock_mmlite_sync.sync_for_app.return_value = {
+            "candidates": 0,
+            "wabas": 0,
+            "propagated": 0,
+            "activated_via_meta": 0,
+            "skipped_not_onboarded": 0,
+            "errors": 0,
+        }
+
         # Mock services
         self.mock_business_meta_service = MockBusinessMetaService()
         self.mock_phone_numbers_service = MockPhoneNumbersService()
@@ -481,6 +524,11 @@ class CreateWhatsAppCloudTestCase(APIBaseTestCase):
             new=Mock(return_value=self.mock_insights_sync),
         )
 
+        patcher_mmlite_sync = patch(
+            "marketplace.core.types.channels.whatsapp_cloud.views.SyncMmliteStatusUseCase",
+            new=Mock(return_value=self.mock_mmlite_sync),
+        )
+
         patcher_biz_meta = patch(
             "marketplace.core.types.channels.whatsapp_cloud.views.BusinessMetaService",
             new=Mock(return_value=self.mock_business_meta_service),
@@ -498,6 +546,7 @@ class CreateWhatsAppCloudTestCase(APIBaseTestCase):
         patcher_waba_sync.start()
         patcher_phone_sync.start()
         patcher_insights_sync.start()
+        patcher_mmlite_sync.start()
         patcher_biz_meta.start()
         patcher_phone.start()
         patcher_flows.start()
@@ -506,6 +555,7 @@ class CreateWhatsAppCloudTestCase(APIBaseTestCase):
         self.addCleanup(patcher_waba_sync.stop)
         self.addCleanup(patcher_phone_sync.stop)
         self.addCleanup(patcher_insights_sync.stop)
+        self.addCleanup(patcher_mmlite_sync.stop)
         self.addCleanup(patcher_biz_meta.stop)
         self.addCleanup(patcher_phone.stop)
         self.addCleanup(patcher_flows.stop)
@@ -563,6 +613,15 @@ class CreateWhatsAppCloudTestCase(APIBaseTestCase):
         response = self.request.post(self.url, body=self.payload)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.json, ["Registration failed"])
+
+    def test_create_whatsapp_cloud_calls_mmlite_sync_for_new_app(self):
+        response = self.request.post(self.url, body=self.payload)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        app = App.objects.get(project_uuid=self.payload["project_uuid"])
+        self.mock_mmlite_sync.sync_for_app.assert_called_once()
+        called_app = self.mock_mmlite_sync.sync_for_app.call_args.args[0]
+        self.assertEqual(called_app.uuid, app.uuid)
 
 
 class MockCloudProfileContactFacade:
@@ -706,16 +765,20 @@ class UpdateMmliteStatusTestCase(APIBaseTestCase):
             "config": {"existing_flow_key": "existing_flow_value"}
         }
 
+        usecase_module = (
+            "marketplace.core.types.channels.whatsapp_cloud."
+            "usecases.mmlite_status_sync"
+        )
         patcher_facebook = patch(
-            "marketplace.core.types.channels.whatsapp_cloud.views.FacebookClient",
+            f"{usecase_module}.FacebookClient",
             return_value=self.mock_facebook_client,
         )
         patcher_business_service = patch(
-            "marketplace.core.types.channels.whatsapp_cloud.views.BusinessMetaService",
+            f"{usecase_module}.BusinessMetaService",
             return_value=self.mock_business_service,
         )
         patcher_flows_client = patch(
-            "marketplace.core.types.channels.whatsapp_cloud.views.FlowsClient",
+            f"{usecase_module}.FlowsClient",
             return_value=self.mock_flows_client,
         )
 
@@ -891,6 +954,24 @@ class UpdateMmliteStatusTestCase(APIBaseTestCase):
         self.request.patch(self.url, data, uuid=self.app.uuid)
 
         self.mock_flows_client.detail_channel.assert_not_called()
+        self.mock_flows_client.update_config.assert_not_called()
+
+    def test_update_mmlite_status_falls_back_to_user_status_when_meta_errors(self):
+        self.mock_business_service.get_mmlite_status.side_effect = Exception(
+            "meta down"
+        )
+
+        with patch(
+            "marketplace.core.types.channels.whatsapp_cloud."
+            "usecases.mmlite_status_sync.sentry_sdk.capture_exception"
+        ):
+            response = self.request.patch(
+                self.url, {"status": "in_progress"}, uuid=self.app.uuid
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        app = App.objects.get(uuid=self.app.uuid)
+        self.assertEqual(app.config["mmlite_status"], "in_progress")
         self.mock_flows_client.update_config.assert_not_called()
 
     def test_update_mmlite_status_nonexistent_app(self):

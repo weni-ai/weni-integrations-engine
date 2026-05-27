@@ -1,3 +1,32 @@
+v4.19.1
+----------
+* feat: Expose phone_number.id on wpp-cloud app detail
+
+v4.19.0
+----------
+* feat(whatsapp): add sync task for mmlite status and implement use case
+
+v4.18.3
+----------
+* feat(wwc): support v3 webchat and apply connectOn rule for v2+
+
+v4.18.2
+----------
+* fix(wwc): allow clearing subtitle, initPayload, tooltipMessage and inputTextFieldHint
+
+v4.18.1
+----------
+* fix(wwc): allow clearing profileAvatar, openLauncherImage and customCss
+
+v4.18.0
+----------
+* feat: Add PAYMENT_REQUEST button support for WhatsApp templates
+* feat: Add addToCart field to ConfigSerializer
+
+v4.17.0
+----------
+* feat: Adds VTEX IO proxy support for retail-setup integration
+
 v4.16.0
 ----------
 * fix: Preserve WWC config fields not sent on PATCH configure

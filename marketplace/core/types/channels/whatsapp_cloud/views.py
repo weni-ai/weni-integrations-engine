@@ -22,6 +22,9 @@ from marketplace.core.types.channels.whatsapp.usecases.phone_number_sync import 
     PhoneNumberSyncUseCase,
 )
 from marketplace.core.types.channels.whatsapp.usecases.waba_sync import WABASyncUseCase
+from marketplace.core.types.channels.whatsapp_cloud.usecases.mmlite_status_sync import (
+    SyncMmliteStatusUseCase,
+)
 from marketplace.core.types.channels.whatsapp_cloud.usecases.whatsapp_insights_sync import (
     WhatsAppInsightsSyncUseCase,
 )
@@ -169,6 +172,7 @@ class WhatsAppCloudViewSet(
         WABASyncUseCase(app).sync_whatsapp_cloud_waba()
         PhoneNumberSyncUseCase(app).sync_whatsapp_cloud_phone_number()
         WhatsAppInsightsSyncUseCase(app).sync()
+        SyncMmliteStatusUseCase().sync_for_app(app)
 
         response_data = {
             **serializer.validated_data,
@@ -244,35 +248,16 @@ class WhatsAppCloudViewSet(
     def update_mmlite_status(self, request: "Request", **kwargs):
         app = self.get_object()
 
-        status = request.data.get("status")
+        requested_status = request.data.get("status")
 
-        if status not in ["in_progress", "active"]:
+        if requested_status not in ["in_progress", "active"]:
             raise ValidationError("Invalid status")
 
-        # request meta to check if mmlite is already active
-        facebook_client = FacebookClient(app.apptype.get_access_token(app))
-        business_service = BusinessMetaService(client=facebook_client)
+        summary = SyncMmliteStatusUseCase().sync_for_app(app)
 
-        waba_id = app.config.get("wa_waba_id")
-        mmlite_status = business_service.get_mmlite_status(waba_id)
-
-        # if mmlite is already active, update locally and flows channel config
-        if mmlite_status.get("marketing_messages_onboarding_status") == "ONBOARDED":
-            app.config["mmlite_status"] = "active"
-
-            flows_client = FlowsClient()
-            detail_channel = flows_client.detail_channel(app.flow_object_uuid)
-
-            flows_config = detail_channel["config"]
-            updated_config = flows_config
-            updated_config["mmlite"] = True
-            flows_client.update_config(
-                data=updated_config, flow_object_uuid=app.flow_object_uuid
-            )
-        else:
-            app.config["mmlite_status"] = request.data.get("status")
-
-        app.save()
+        if summary["activated_via_meta"] == 0 and summary["propagated"] == 0:
+            app.config["mmlite_status"] = requested_status
+            app.save()
 
         serializer = self.get_serializer(app)
         return Response(serializer.data)
