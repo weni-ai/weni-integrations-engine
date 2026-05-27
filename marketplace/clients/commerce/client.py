@@ -33,3 +33,11 @@ class CommerceClient(RequestClient, CommerceClientInterface):
             json=payload,
         )
         return response
+
+    def send_template_category_notification(self, data):
+        url = f"{self.base_url}/webhook/templates-status/api/category-notification/"
+
+        response = self.make_request(
+            url, method="POST", headers=self.authentication_instance.headers, json=data
+        )
+        return response.json()

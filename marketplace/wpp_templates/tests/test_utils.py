@@ -3,6 +3,7 @@ from unittest.mock import patch, MagicMock
 from datetime import datetime
 
 from marketplace.wpp_templates.utils import (
+    TemplateCategoryChangeHandler,
     TemplateWebhookEventProcessor,
     extract_template_data,
 )
@@ -19,14 +20,18 @@ class TestTemplateWebhookEventProcessor(TestCase):
         self.mock_template_filter = patch(
             "marketplace.wpp_templates.utils.TemplateMessage.objects.filter"
         ).start()
-        self.handler = MagicMock()
-        self.processor = TemplateWebhookEventProcessor(handler=self.handler)
+        self.status_update_handler = MagicMock()
+        self.category_change_handler = MagicMock()
+        self.processor = TemplateWebhookEventProcessor(
+            status_update_handler=self.status_update_handler,
+            category_change_handler=self.category_change_handler,
+        )
         self.addCleanup(patch.stopall)
 
     def test_process_template_status_update_no_apps(self):
         self.mock_app_filter.return_value.exists.return_value = False
         self.processor.process_template_status_update("123", {}, {})
-        self.handler.handle.assert_not_called()
+        self.status_update_handler.handle.assert_not_called()
 
     def test_process_template_status_update_with_apps(self):
         mock_app = MagicMock()
@@ -49,7 +54,7 @@ class TestTemplateWebhookEventProcessor(TestCase):
             {},
         )
 
-        self.handler.handle.assert_called_once()
+        self.status_update_handler.handle.assert_called_once()
 
     def test_skips_if_template_is_none(self):
         mock_app = MagicMock()
@@ -67,7 +72,7 @@ class TestTemplateWebhookEventProcessor(TestCase):
             },
             {},
         )
-        self.handler.handle.assert_not_called()
+        self.status_update_handler.handle.assert_not_called()
 
     def test_unexpected_error_logs(self):
         mock_app = MagicMock()
@@ -95,6 +100,100 @@ class TestTemplateWebhookEventProcessor(TestCase):
             "waba", {"event": "APPROVED"}, "message_template_status_update", {}
         )
         self.processor.process_template_status_update.assert_called_once()
+
+    def test_process_template_category_change_no_apps(self):
+        self.mock_app_filter.return_value.exists.return_value = False
+
+        self.processor.process_template_category_change(
+            "waba-1",
+            {
+                "message_template_name": "order_confirmation",
+                "category": "UTILITY",
+                "correct_category": "MARKETING",
+            },
+        )
+
+        self.category_change_handler.handle.assert_not_called()
+
+    def test_process_template_category_change_delegates_per_app(self):
+        app_one = MagicMock()
+        app_two = MagicMock()
+
+        self.mock_app_filter.return_value.exists.return_value = True
+        self.mock_app_filter.return_value.__iter__.return_value = [app_one, app_two]
+
+        value = {
+            "message_template_name": "order_confirmation",
+            "category": "UTILITY",
+            "correct_category": "MARKETING",
+        }
+        self.processor.process_template_category_change("waba-1", value)
+
+        self.assertEqual(self.category_change_handler.handle.call_count, 2)
+        self.category_change_handler.handle.assert_any_call(app=app_one, value=value)
+        self.category_change_handler.handle.assert_any_call(app=app_two, value=value)
+
+    def test_process_event_routes_template_correct_category_detection(self):
+        self.processor.process_template_category_change = MagicMock()
+
+        self.processor.process_event(
+            "waba-1",
+            {
+                "message_template_name": "order_confirmation",
+                "category": "UTILITY",
+                "correct_category": "MARKETING",
+            },
+            "template_correct_category_detection",
+            {},
+        )
+
+        self.processor.process_template_category_change.assert_called_once_with(
+            "waba-1",
+            {
+                "message_template_name": "order_confirmation",
+                "category": "UTILITY",
+                "correct_category": "MARKETING",
+            },
+        )
+
+
+class TestTemplateCategoryChangeHandler(TestCase):
+    def setUp(self):
+        self.commerce_service = MagicMock()
+        self.handler = TemplateCategoryChangeHandler(
+            commerce_service=self.commerce_service
+        )
+        self.app = MagicMock()
+        self.app.uuid = "app-uuid-1"
+        self.app.project_uuid = "proj-uuid-1"
+        self.value = {
+            "message_template_name": "order_confirmation",
+            "category": "UTILITY",
+            "correct_category": "MARKETING",
+        }
+
+    def test_handle_sends_payload_to_commerce(self):
+        self.handler.handle(app=self.app, value=self.value)
+
+        self.commerce_service.send_template_category_notification.assert_called_once_with(
+            {
+                "project_uuid": "proj-uuid-1",
+                "app_uuid": "app-uuid-1",
+                "template_name": "order_confirmation",
+                "template_category": "UTILITY",
+                "template_correct_category": "MARKETING",
+            }
+        )
+
+    def test_handle_logs_and_does_not_raise_on_commerce_error(self):
+        self.commerce_service.send_template_category_notification.side_effect = (
+            Exception("commerce down")
+        )
+        self.handler.logger = MagicMock()
+
+        self.handler.handle(app=self.app, value=self.value)
+
+        self.handler.logger.error.assert_called_once()
 
 
 class TestExtractTemplateData(TestCase):

@@ -125,13 +125,56 @@ class TemplateStatusUpdateHandler:
             )
 
 
+class TemplateCategoryChangeHandler:
+    def __init__(
+        self,
+        commerce_service: "CommerceService",
+        logger: Optional[logging.Logger] = None,
+    ):
+        self.commerce_service = commerce_service
+        self.logger = logger or logging.getLogger(__name__)
+
+    def handle(self, app: App, value: dict) -> None:
+        """
+        Proxy a Facebook `template_correct_category_detection` event to Commerce.
+
+        No local DB writes are performed; the event is forwarded so Commerce can
+        react to category mismatches. Errors from Commerce are logged and
+        swallowed so a single app failure does not break processing for sibling
+        apps sharing the same WABA.
+        """
+        payload = self._build_payload(app, value)
+        try:
+            self.commerce_service.send_template_category_notification(payload)
+            self.logger.info(
+                f"[Commerce] Template category notification sent for App {str(app.uuid)}, "
+                f"template: {payload['template_name']}."
+            )
+        except Exception as e:
+            self.logger.error(
+                f"[Commerce] Failed to send template category notification for App {str(app.uuid)}, "
+                f"template: {payload['template_name']}, error: {e}"
+            )
+
+    def _build_payload(self, app: App, value: dict) -> dict:
+        return {
+            "project_uuid": str(app.project_uuid),
+            "app_uuid": str(app.uuid),
+            "template_name": value.get("message_template_name"),
+            "template_category": value.get("category"),
+            "template_correct_category": value.get("correct_category"),
+        }
+
+
 class TemplateWebhookEventProcessor:
     def __init__(
         self,
-        handler: TemplateStatusUpdateHandler,
+        status_update_handler: TemplateStatusUpdateHandler,
+        category_change_handler: TemplateCategoryChangeHandler,
         logger: Optional[logging.Logger] = None,
     ):
-        self.handler = handler
+        self.status_update_handler = status_update_handler
+        self.category_change_handler = category_change_handler
         self.logger = logger or logging.getLogger(__name__)
 
     def get_apps_by_waba_id(self, waba_id: str):
@@ -163,7 +206,7 @@ class TemplateWebhookEventProcessor:
                     message_template_id=message_template_id,
                 )
                 for translation in translations:
-                    self.handler.handle(
+                    self.status_update_handler.handle(
                         app=app,
                         template=template,
                         translation=translation,
@@ -175,11 +218,22 @@ class TemplateWebhookEventProcessor:
                     f"Unexpected error processing template status update for App {str(app.uuid)}: {e}"
                 )
 
+    def process_template_category_change(self, waba_id: str, value: dict) -> None:
+        apps = self.get_apps_by_waba_id(waba_id)
+        if not apps.exists():
+            self.logger.info(f"There are no applications linked to waba: {waba_id}")
+            return
+
+        for app in apps:
+            self.category_change_handler.handle(app=app, value=value)
+
     def process_event(
         self, waba_id: str, value: dict, event_type: str, webhook: dict
     ) -> None:
         if event_type == "message_template_status_update":
             self.process_template_status_update(waba_id, value, webhook)
+        elif event_type == "template_correct_category_detection":
+            self.process_template_category_change(waba_id, value)
 
 
 def extract_template_data(translation: TemplateTranslation) -> dict:
