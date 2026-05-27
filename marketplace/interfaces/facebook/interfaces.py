@@ -244,3 +244,24 @@ class CallingRequestsInterface(ABC):
     @abstractmethod
     def update_calling_settings(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         pass
+
+
+class BusinessVerificationRequestsInterface(ABC):
+    """Partner-led Business Verification endpoints under the partner's business portfolio."""
+
+    @abstractmethod
+    def submit_self_certify_whatsapp_business(
+        self,
+        partner_business_id: str,
+        end_business_id: str,
+        documents: List[Any],
+    ) -> Dict[str, Any]:
+        pass
+
+    @abstractmethod
+    def list_self_certified_whatsapp_business_submissions(
+        self,
+        partner_business_id: str,
+        end_business_id: str = None,
+    ) -> Dict[str, Any]:
+        pass

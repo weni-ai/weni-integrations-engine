@@ -11,6 +11,7 @@ from marketplace.interfaces.facebook.interfaces import (
     PhoneNumbersRequestsInterface,
     CloudProfileRequestsInterface,
     BusinessMetaRequestsInterface,
+    BusinessVerificationRequestsInterface,
     CatalogsRequestsInterface,
     CallingRequestsInterface,
 )
@@ -376,3 +377,32 @@ class CallingService:
             "calling": {"status": "DISABLED"},
         }
         return self.client.update_calling_settings(payload)
+
+
+class BusinessVerificationService:
+    """Wraps the Partner-led Business Verification Graph API calls."""
+
+    def __init__(self, client: BusinessVerificationRequestsInterface):
+        self.client = client
+
+    def submit(
+        self,
+        partner_business_id: str,
+        end_business_id: str,
+        documents: List[Any],
+    ) -> Dict[str, Any]:
+        return self.client.submit_self_certify_whatsapp_business(
+            partner_business_id=partner_business_id,
+            end_business_id=end_business_id,
+            documents=documents,
+        )
+
+    def list_submissions(
+        self,
+        partner_business_id: str,
+        end_business_id: str = None,
+    ) -> Dict[str, Any]:
+        return self.client.list_self_certified_whatsapp_business_submissions(
+            partner_business_id=partner_business_id,
+            end_business_id=end_business_id,
+        )
