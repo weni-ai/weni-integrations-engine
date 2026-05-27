@@ -4,7 +4,8 @@ import uuid
 from unittest.mock import MagicMock
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.core.cache import cache
+from django.test import TestCase, override_settings
 
 from marketplace.applications.models import App
 from marketplace.core.types.channels.whatsapp_cloud.account_verification.constants import (
@@ -19,8 +20,17 @@ from marketplace.core.types.channels.whatsapp_cloud.account_verification.usecase
 User = get_user_model()
 
 
+@override_settings(
+    CACHES={
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "process-certification-webhook-tests",
+        }
+    }
+)
 class ProcessCertificationWebhookUseCaseTestCase(TestCase):
     def setUp(self):
+        cache.clear()
         self.user = User.objects.create_user(email="owner@marketplace.ai")
         self.app = App.objects.create(
             code="wpp-cloud",
@@ -33,6 +43,9 @@ class ProcessCertificationWebhookUseCaseTestCase(TestCase):
         self.use_case = ProcessCertificationWebhookUseCase(
             connect_service=self.connect_service
         )
+
+    def tearDown(self):
+        cache.clear()
 
     def _value(self, status=VerificationStatus.APPROVED, reasons=None):
         return {
