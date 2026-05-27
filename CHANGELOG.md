@@ -1,3 +1,9 @@
+v4.20.0
+----------
+* feat: Adds Partner-led business verification API
+* feat(whatsapp): add direct_send field to WhatsAppConfigSerializer
+* feat: Implement template category notification handling
+
 v4.19.1
 ----------
 * feat: Expose phone_number.id on wpp-cloud app detail
