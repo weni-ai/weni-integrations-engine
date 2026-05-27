@@ -82,7 +82,10 @@ def update_templates_by_webhook(**kwargs):  # pragma: no cover
         - Mapped and unmapped event types.
         - Processing results for each app/template.
     """
-    allowed_event_types = ["message_template_status_update"]
+    allowed_event_types = [
+        "message_template_status_update",
+        "template_correct_category_detection",
+    ]
     webhook_data = kwargs.get("webhook_data")
 
     logger.info(f"Update templates by webhook data received: {webhook_data}")
