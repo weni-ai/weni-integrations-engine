@@ -17,6 +17,10 @@ from . import type as type_
 from marketplace.clients.flows.client import FlowsClient
 
 
+WIDGET_POSITIONS = ("bottom-right", "bottom-left")
+DEFAULT_WIDGET_POSITION = "bottom-right"
+
+
 class WeniWebChatSerializer(AppTypeBaseSerializer):
     class Meta:
         model = App
@@ -92,6 +96,19 @@ class OpenLauncherImageField(serializers.Field):
         raise ValidationError("Expected a base64 image string or a URL.")
 
 
+class WidgetPositionField(serializers.ChoiceField):
+    """Page corner where the widget is anchored.
+
+    An empty value falls back to the default so apps that send an empty
+    string keep rendering at the default corner instead of being rejected.
+    """
+
+    def to_internal_value(self, data):
+        if data == "":
+            return self.default
+        return super().to_internal_value(data)
+
+
 class ConfigSerializer(serializers.Serializer):
     title = serializers.CharField(required=True)
     subtitle = serializers.CharField(required=False, allow_blank=True)
@@ -122,6 +139,9 @@ class ConfigSerializer(serializers.Serializer):
     )
     voiceMode = serializers.JSONField(required=False)
     addToCart = serializers.BooleanField(default=False)
+    position = WidgetPositionField(
+        choices=WIDGET_POSITIONS, default=DEFAULT_WIDGET_POSITION
+    )
 
     @staticmethod
     def _is_stored_url(value):
