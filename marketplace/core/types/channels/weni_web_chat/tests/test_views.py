@@ -545,6 +545,107 @@ class ConfigureWeniWebChatTestCase(PermissionTestCaseMixin, APIBaseTestCase):
         self.app.refresh_from_db()
         self.assertEqual(self.app.config.get("renderPercentage"), 10)
 
+    @patch("marketplace.core.types.channels.weni_web_chat.serializers.FlowsClient")
+    @patch(
+        "marketplace.core.types.channels.weni_web_chat.serializers.AppStorage",
+        MockAppStorage,
+    )
+    def test_configure_with_position_bottom_left(self, mock_flows_client):
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+
+        mock_flows_client.return_value.create_channel.return_value = {
+            "uuid": str(uuid.uuid4()),
+        }
+
+        self.body["config"]["position"] = "bottom-left"
+        response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.app.refresh_from_db()
+        self.assertEqual(self.app.config.get("position"), "bottom-left")
+
+    @patch("marketplace.core.types.channels.weni_web_chat.serializers.FlowsClient")
+    @patch(
+        "marketplace.core.types.channels.weni_web_chat.serializers.AppStorage",
+        MockAppStorage,
+    )
+    def test_configure_with_position_bottom_right(self, mock_flows_client):
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+
+        mock_flows_client.return_value.create_channel.return_value = {
+            "uuid": str(uuid.uuid4()),
+        }
+
+        self.body["config"]["position"] = "bottom-right"
+        response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.app.refresh_from_db()
+        self.assertEqual(self.app.config.get("position"), "bottom-right")
+
+    @patch("marketplace.core.types.channels.weni_web_chat.serializers.FlowsClient")
+    @patch(
+        "marketplace.core.types.channels.weni_web_chat.serializers.AppStorage",
+        MockAppStorage,
+    )
+    def test_configure_without_position_defaults_to_bottom_right(
+        self, mock_flows_client
+    ):
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+
+        mock_flows_client.return_value.create_channel.return_value = {
+            "uuid": str(uuid.uuid4()),
+        }
+
+        response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.app.refresh_from_db()
+        self.assertEqual(self.app.config.get("position"), "bottom-right")
+
+    @patch("marketplace.core.types.channels.weni_web_chat.serializers.FlowsClient")
+    @patch(
+        "marketplace.core.types.channels.weni_web_chat.serializers.AppStorage",
+        MockAppStorage,
+    )
+    def test_configure_with_empty_position_defaults_to_bottom_right(
+        self, mock_flows_client
+    ):
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+
+        mock_flows_client.return_value.create_channel.return_value = {
+            "uuid": str(uuid.uuid4()),
+        }
+
+        self.body["config"]["position"] = ""
+        response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.app.refresh_from_db()
+        self.assertEqual(self.app.config.get("position"), "bottom-right")
+
+    def test_configure_with_invalid_position(self):
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+
+        self.body["config"]["position"] = "top-left"
+        response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_configure_with_invalid_avatar(self):
         self.user_authorization = self.user.authorizations.create(
             project_uuid=self.app.project_uuid
@@ -697,9 +798,7 @@ class ConfigureWeniWebChatTestCase(PermissionTestCaseMixin, APIBaseTestCase):
                 self.assertEqual(self.app.config.get(field_name), field_value)
 
                 self.body["config"][field_name] = ""
-                response = self.request.patch(
-                    self.url, self.body, uuid=self.app.uuid
-                )
+                response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
                 self.assertEqual(response.status_code, status.HTTP_200_OK)
 
                 self.app.refresh_from_db()
@@ -893,6 +992,23 @@ class WeniWebChatVersionTestCase(PermissionTestCaseMixin, APIBaseTestCase):
 
         script_content = self._get_script_content()
         self.assertNotIn('"version"', script_content)
+
+    @patch("marketplace.core.types.channels.weni_web_chat.serializers.FlowsClient")
+    @patch(
+        "marketplace.core.types.channels.weni_web_chat.serializers.AppStorage",
+        CapturingMockAppStorage,
+    )
+    def test_configure_propagates_position_to_generated_script(self, mock_flows_client):
+        mock_flows_client.return_value.create_channel.return_value = {
+            "uuid": str(uuid.uuid4()),
+        }
+
+        self.body["config"]["position"] = "bottom-left"
+        response = self.request.patch(self.url, self.body, uuid=self.app.uuid)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        script_content = self._get_script_content()
+        self.assertIn('"position": "bottom-left"', script_content)
 
     @patch("marketplace.core.types.channels.weni_web_chat.serializers.FlowsClient")
     @patch(
