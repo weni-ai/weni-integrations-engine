@@ -1,3 +1,7 @@
+v4.20.1
+----------
+* feat: Add position attribute to WWC widget configuration
+
 v4.20.0
 ----------
 * feat: Adds Partner-led business verification API
