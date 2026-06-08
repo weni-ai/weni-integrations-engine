@@ -32,4 +32,5 @@ def create_template_webhook_event_processor() -> TemplateWebhookEventProcessor:
     return TemplateWebhookEventProcessor(
         status_update_handler=status_update_handler,
         category_change_handler=category_change_handler,
+        flows_service=flows_service,
     )

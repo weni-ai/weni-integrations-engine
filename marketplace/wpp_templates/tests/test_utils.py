@@ -22,9 +22,11 @@ class TestTemplateWebhookEventProcessor(TestCase):
         ).start()
         self.status_update_handler = MagicMock()
         self.category_change_handler = MagicMock()
+        self.flows_service = MagicMock()
         self.processor = TemplateWebhookEventProcessor(
             status_update_handler=self.status_update_handler,
             category_change_handler=self.category_change_handler,
+            flows_service=self.flows_service,
         )
         self.addCleanup(patch.stopall)
 
@@ -155,6 +157,138 @@ class TestTemplateWebhookEventProcessor(TestCase):
                 "correct_category": "MARKETING",
             },
         )
+
+    def test_process_event_routes_template_category_update(self):
+        self.processor.process_template_category_update = MagicMock()
+
+        value = {
+            "message_template_name": "promo",
+            "previous_category": "UTILITY",
+            "new_category": "MARKETING",
+        }
+        self.processor.process_event(
+            "waba-1", value, "template_category_update", {"entry": []}
+        )
+
+        self.processor.process_template_category_update.assert_called_once_with(
+            "waba-1", value, {"entry": []}
+        )
+
+    def test_process_template_category_update_skips_impending(self):
+        self.processor.logger = MagicMock()
+
+        value = {
+            "message_template_name": "promo",
+            "correct_category": "MARKETING",
+            "new_category": "UTILITY",
+            "category_update_timestamp": 1746169200,
+        }
+        self.processor.process_template_category_update("waba-1", value, {})
+
+        self.mock_app_filter.return_value.exists.assert_not_called()
+        self.processor.logger.info.assert_called()
+
+    def test_process_template_category_update_no_apps(self):
+        self.mock_app_filter.return_value.exists.return_value = False
+
+        value = {
+            "message_template_name": "promo",
+            "previous_category": "UTILITY",
+            "new_category": "MARKETING",
+        }
+        self.processor.process_template_category_update("waba-1", value, {})
+
+        self.mock_template_filter.assert_not_called()
+
+    @patch("marketplace.wpp_templates.utils.extract_template_data")
+    def test_process_template_category_update_updates_and_notifies(
+        self, mock_extract
+    ):
+        mock_extract.return_value = {"mocked": "data"}
+        mock_app = MagicMock()
+        mock_app.uuid = "app-uuid-1"
+        mock_app.flow_object_uuid = "flow-uuid-1"
+        self.mock_app_filter.return_value.exists.return_value = True
+        self.mock_app_filter.return_value.__iter__.return_value = [mock_app]
+
+        mock_template = MagicMock()
+        mock_template.name = "promo"
+        mock_translation = MagicMock()
+        mock_template.translations.all.return_value = [mock_translation]
+        self.mock_template_filter.return_value.first.return_value = mock_template
+
+        value = {
+            "message_template_name": "promo",
+            "previous_category": "UTILITY",
+            "new_category": "MARKETING",
+        }
+        webhook = {"entry": [{"changes": []}]}
+        self.processor.process_template_category_update("waba-1", value, webhook)
+
+        self.assertEqual(mock_template.category, "MARKETING")
+        mock_template.save.assert_called_once()
+        self.flows_service.update_facebook_templates_webhook.assert_called_once_with(
+            flow_object_uuid="flow-uuid-1",
+            template_data={"mocked": "data"},
+            template_name="promo",
+            webhook=webhook,
+        )
+
+    def test_process_template_category_update_skips_missing_template(self):
+        mock_app = MagicMock()
+        mock_app.uuid = "app-uuid-1"
+        self.mock_app_filter.return_value.exists.return_value = True
+        self.mock_app_filter.return_value.__iter__.return_value = [mock_app]
+        self.mock_template_filter.return_value.first.return_value = None
+
+        value = {
+            "message_template_name": "missing",
+            "previous_category": "UTILITY",
+            "new_category": "MARKETING",
+        }
+        self.processor.process_template_category_update("waba-1", value, {})
+
+        self.flows_service.update_facebook_templates_webhook.assert_not_called()
+
+    @patch("marketplace.wpp_templates.utils.extract_template_data")
+    def test_process_template_category_update_error_does_not_stop_others(
+        self, mock_extract
+    ):
+        mock_extract.return_value = {"mocked": "data"}
+        app_one = MagicMock()
+        app_one.uuid = "app-1"
+        app_one.flow_object_uuid = "flow-1"
+        app_two = MagicMock()
+        app_two.uuid = "app-2"
+        app_two.flow_object_uuid = "flow-2"
+
+        self.mock_app_filter.return_value.exists.return_value = True
+        self.mock_app_filter.return_value.__iter__.return_value = [app_one, app_two]
+
+        template_one = MagicMock()
+        template_one.name = "promo"
+        template_one.translations.all.side_effect = Exception("DB error")
+
+        template_two = MagicMock()
+        template_two.name = "promo"
+        mock_translation = MagicMock()
+        template_two.translations.all.return_value = [mock_translation]
+
+        self.mock_template_filter.return_value.first.side_effect = [
+            template_one,
+            template_two,
+        ]
+
+        self.processor.logger = MagicMock()
+        value = {
+            "message_template_name": "promo",
+            "previous_category": "UTILITY",
+            "new_category": "MARKETING",
+        }
+        self.processor.process_template_category_update("waba-1", value, {"entry": []})
+
+        self.processor.logger.error.assert_called_once()
+        self.flows_service.update_facebook_templates_webhook.assert_called_once()
 
 
 class TestTemplateCategoryChangeHandler(TestCase):
