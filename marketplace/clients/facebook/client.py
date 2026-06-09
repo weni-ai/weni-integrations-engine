@@ -236,15 +236,15 @@ class TemplatesRequests(
     def create_template_message(
         self, waba_id: str, name: str, category: str, components: list, language: str
     ) -> dict:
-        params = dict(
+        payload = dict(
             name=name,
             category=category,
-            components=str(components),
+            components=components,
             language=language,
         )
         url = f"{self.get_url}/{waba_id}/message_templates"
         response = self.make_request(
-            url, method="POST", params=params, headers=self._get_headers()
+            url, method="POST", json=payload, headers=self._get_headers()
         )
 
         return response.json()
@@ -307,11 +307,11 @@ class TemplatesRequests(
         self, message_template_id: str, name: str, components: str
     ) -> dict:
         url = f"{self.get_url}/{message_template_id}"
-        params = dict(
-            name=name, components=str(components)
+        payload = dict(
+            name=name, components=components
         )  # TODO: test without token in params
         response = self.make_request(
-            url, method="POST", headers=self._get_headers(), params=params
+            url, method="POST", headers=self._get_headers(), json=payload
         )
         return response.json()
 
