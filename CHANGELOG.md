@@ -1,3 +1,7 @@
+v4.20.2
+----------
+* fix: Avoid double-applying area multiplier on VTEX sale_price
+
 v4.20.1
 ----------
 * feat: Add position attribute to WWC widget configuration
