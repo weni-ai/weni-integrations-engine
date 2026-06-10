@@ -28,7 +28,31 @@ class TestCalculateByArea(TestCase):
 
         self.assertTrue(result)
         self.assertEqual(product.price, 25000)  # 10000 * 2.5
-        self.assertEqual(product.sale_price, 20000)  # 8000 * 2.5
+        # sale_price is left untouched: VTEX already applies the multiplier to it
+        self.assertEqual(product.sale_price, 8000)
+
+    def test_apply_does_not_double_apply_multiplier_on_sale_price(self):
+        """sale_price already comes multiplied from VTEX; only price is converted."""
+        product = FacebookProductDTO(
+            id="45418",
+            title="Revestimento Venatino Lux",
+            description="Revestimento por metro quadrado",
+            availability="in stock",
+            status="active",
+            condition="new",
+            price=12900,  # listPrice per m² (R$129.00)
+            sale_price=10449,  # sellingPrice already per box (12900 * 0.81)
+            link="http://example.com/product",
+            image_link="http://example.com/image.jpg",
+            brand="Incepa",
+            product_details={"MeasurementUnit": "m²", "UnitMultiplier": 0.81},
+        )
+
+        result = self.rule.apply(product)
+
+        self.assertTrue(result)
+        self.assertEqual(product.price, 10449.0)  # 12900 * 0.81
+        self.assertEqual(product.sale_price, 10449)  # unchanged
 
     def test_apply_without_area_calculation(self):
         """Test apply method when product should not be calculated by area"""
