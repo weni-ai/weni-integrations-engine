@@ -41,7 +41,12 @@ from marketplace.internal.permissions import CanCommunicateInternally
 
 from ..whatsapp_base import mixins
 from ..whatsapp_base.serializers import WhatsAppSerializer
-from .serializers import WhatsAppCloudConfigureSerializer
+from .serializers import (
+    WhatsAppCloudConfigureSerializer,
+    WhatsAppCloudChannelSerializer,
+    WhatsAppCloudChannelsQueryParamsSerializer,
+)
+from .usecases.list_channels import ListWhatsAppCloudChannelsUseCase
 from .facades import CloudProfileFacade, CloudProfileContactFacade
 
 if TYPE_CHECKING:
@@ -297,6 +302,29 @@ class WhatsAppCloudViewSet(
             return Response(
                 {"app": serializer.data, "calling": details}, status=status.HTTP_200_OK
             )
+
+
+class WhatsAppCloudChannelsView(APIView):
+    """List every WhatsApp Cloud channel of a project for the channel-selection
+    screen consumed by internal services (e.g. retail).
+
+    Always scoped to the required `project_uuid`, so other projects' channels
+    are never leaked.
+    """
+
+    permission_classes = [CanCommunicateInternally]
+
+    def get(self, request, *args, **kwargs):
+        serializer = WhatsAppCloudChannelsQueryParamsSerializer(
+            data=request.query_params
+        )
+        serializer.is_valid(raise_exception=True)
+
+        apps = ListWhatsAppCloudChannelsUseCase().execute(
+            project_uuid=serializer.validated_data["project_uuid"]
+        )
+
+        return Response(WhatsAppCloudChannelSerializer(apps, many=True).data)
 
 
 class WhatsAppCloudInsights(APIView):
