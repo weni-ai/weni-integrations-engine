@@ -519,3 +519,7 @@ SKU_VALIDATOR_TIMEOUT = env.int("SKU_VALIDATOR_TIMEOUT", default=1200)
 META_UPLOAD_PRODUCT_DELAY_DEFAULT = env.int(
     "META_UPLOAD_PRODUCT_DELAY_DEFAULT", default=30
 )
+
+# Maximum number of pre-formatted products accepted per on-demand upload request.
+# Matches Meta's items_batch ceiling of 5000 items per call.
+VTEX_UPLOAD_PRODUCTS_MAX_BATCH = env.int("VTEX_UPLOAD_PRODUCTS_MAX_BATCH", default=5000)
