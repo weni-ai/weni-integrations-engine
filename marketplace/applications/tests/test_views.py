@@ -577,6 +577,124 @@ class PreverifiedPhoneNumberViewTestCase(PermissionTestCaseMixin, APIBaseTestCas
         call_url = mock_make_request.call_args[0][0]
         self.assertIn("preverified_numbers", call_url)
 
+    @override_settings(WHATSAPP_BSP_BUSINESS_ID="123456")
+    @patch("marketplace.applications.views.cache.get", return_value=None)
+    @patch("marketplace.applications.views.cache.set")
+    @patch("marketplace.applications.views.cache.ttl", return_value=300)
+    @patch("marketplace.applications.views.FacebookClient")
+    def test_meta_success_sets_both_primary_and_stale_cache(
+        self, mock_client_class, mock_ttl, mock_cache_set, mock_cache_get
+    ):
+        mock_client = Mock()
+        mock_client.get_preverified_numbers.return_value = {
+            "data": [{"id": "777", "phone_number": "5511777777777"}],
+        }
+        mock_client_class.return_value = mock_client
+        response = self.request.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(mock_cache_set.call_count, 2)
+        keys_set = [call[0][0] for call in mock_cache_set.call_args_list]
+        self.assertIn(PreverifiedPhoneNumber.CACHE_KEY, keys_set)
+        self.assertIn(PreverifiedPhoneNumber.STALE_CACHE_KEY, keys_set)
+        stale_call = next(c for c in mock_cache_set.call_args_list if c[0][0] == PreverifiedPhoneNumber.STALE_CACHE_KEY)
+        self.assertEqual(stale_call[1]["timeout"], PreverifiedPhoneNumber.STALE_CACHE_TTL_SECONDS)
+
+    @override_settings(WHATSAPP_BSP_BUSINESS_ID="123456")
+    @patch("marketplace.applications.views.cache.get")
+    @patch("marketplace.applications.views.cache.set")
+    @patch("marketplace.applications.views.cache.ttl", return_value=300)
+    @patch("marketplace.applications.views.FacebookClient")
+    def test_uses_stale_cache_when_meta_raises_custom_api_exception(
+        self, mock_client_class, mock_ttl, mock_cache_set, mock_cache_get
+    ):
+        stale_data = {
+            "data_list": [{"id": "stale1", "phone_number": "5511000000001"}],
+            "chosen_ids": [],
+            "expires_at": None,
+        }
+        past = timezone.now() - timedelta(seconds=60)
+        primary_expired = {
+            "data_list": [{"id": "old", "phone_number": "5511"}],
+            "chosen_ids": [],
+            "expires_at": past,
+        }
+        mock_cache_get.side_effect = lambda key: (
+            primary_expired if key == PreverifiedPhoneNumber.CACHE_KEY else stale_data
+        )
+        mock_client = Mock()
+        mock_client.get_preverified_numbers.side_effect = CustomAPIException(
+            detail={"error": "Service unavailable"},
+            status_code=503,
+        )
+        mock_client_class.return_value = mock_client
+        response = self.request.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json["data"], ["stale1"])
+
+    @override_settings(WHATSAPP_BSP_BUSINESS_ID="123456")
+    @patch("marketplace.applications.views.cache.get")
+    @patch("marketplace.applications.views.cache.set")
+    @patch("marketplace.applications.views.cache.ttl", return_value=300)
+    @patch("marketplace.applications.views.FacebookClient")
+    def test_uses_stale_cache_when_meta_raises_unexpected_exception(
+        self, mock_client_class, mock_ttl, mock_cache_set, mock_cache_get
+    ):
+        stale_data = {
+            "data_list": [{"id": "stale2", "phone_number": "5511000000002"}],
+            "chosen_ids": [],
+            "expires_at": None,
+        }
+        past = timezone.now() - timedelta(seconds=60)
+        primary_expired = {
+            "data_list": [],
+            "chosen_ids": [],
+            "expires_at": past,
+        }
+        mock_cache_get.side_effect = lambda key: (
+            primary_expired if key == PreverifiedPhoneNumber.CACHE_KEY else stale_data
+        )
+        mock_client = Mock()
+        mock_client.get_preverified_numbers.side_effect = ValueError("unexpected")
+        mock_client_class.return_value = mock_client
+        response = self.request.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json["data"], ["stale2"])
+
+    @override_settings(WHATSAPP_BSP_BUSINESS_ID="123456")
+    @patch("marketplace.applications.views.cache.get")
+    @patch("marketplace.applications.views.cache.set")
+    @patch("marketplace.applications.views.cache.ttl", return_value=300)
+    @patch("marketplace.applications.views.FacebookClient")
+    def test_stale_cache_excludes_already_chosen_ids(
+        self, mock_client_class, mock_ttl, mock_cache_set, mock_cache_get
+    ):
+        stale_data = {
+            "data_list": [
+                {"id": "stale_used", "phone_number": "5511000000003"},
+                {"id": "stale_free", "phone_number": "5511000000004"},
+            ],
+            "chosen_ids": ["stale_used"],
+            "expires_at": None,
+        }
+        past = timezone.now() - timedelta(seconds=60)
+        primary_expired = {
+            "data_list": [],
+            "chosen_ids": [],
+            "expires_at": past,
+        }
+        mock_cache_get.side_effect = lambda key: (
+            primary_expired if key == PreverifiedPhoneNumber.CACHE_KEY else stale_data
+        )
+        mock_client = Mock()
+        mock_client.get_preverified_numbers.side_effect = CustomAPIException(
+            detail={"error": "timeout"},
+            status_code=503,
+        )
+        mock_client_class.return_value = mock_client
+        response = self.request.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json["data"], ["stale_free"])
+
 
 class FacebookClientGetPreverifiedNumbersTestCase(TestCase):
     """Tests for FacebookClient.get_preverified_numbers (BusinessMetaRequests)."""
