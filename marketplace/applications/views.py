@@ -173,21 +173,23 @@ class CheckAppIsIntegrated(views.APIView):
 class PreverifiedPhoneNumber(views.APIView):
     """
     Returns a random pre-verified phone number from the BSP business for
-    embedded signup. Cache stores the list from Meta plus IDs already chosen
-    in the last 5 minutes, so we avoid returning the same number twice in that
-    window (e.g. concurrent requests). After 5 min the cache is rebuilt from Meta.
+    embedded signup.
 
-    A stale cache (1 hour TTL) is kept as fallback: if Meta is unavailable when
-    the primary cache expires, the last known list is used so the popup can still
-    open. chosen_ids from the stale snapshot are preserved, reducing the chance
-    of handing out an already-used number.
+    Primary cache (1 hour TTL): stores the list from Meta plus the IDs already
+    chosen in that window, so the same number is never handed out twice within
+    the hour. After 1 hour the cache is rebuilt from Meta.
+
+    Stale cache (24 hour TTL): keeps the last known list as a fallback. If Meta
+    is unavailable when the primary cache expires, the stale is used so the
+    popup can still open. chosen_ids are synced to the stale on every pick,
+    keeping the available pool accurate even when the fallback is in use.
     """
 
     permission_classes = [CanCommunicateInternally]
     CACHE_KEY = "preverified_numbers"
     STALE_CACHE_KEY = "preverified_numbers_stale"
-    CACHE_TTL_SECONDS = 300  # 5 minutes
-    STALE_CACHE_TTL_SECONDS = 3600  # 1 hour
+    CACHE_TTL_SECONDS = 3600  # 1 hour
+    STALE_CACHE_TTL_SECONDS = 86400  # 24 hours
 
     def _fetch_from_meta(self):
         client = FacebookClient(django_settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
@@ -247,10 +249,12 @@ class PreverifiedPhoneNumber(views.APIView):
         chosen = random.choice(available)
         chosen_id = chosen["id"]
         chosen_ids.add(chosen_id)
+        updated_cache = {**cached, "chosen_ids": list(chosen_ids)}
         remaining = getattr(cache, "ttl", lambda k: None)(self.CACHE_KEY)
         cache.set(
             self.CACHE_KEY,
-            {**cached, "chosen_ids": list(chosen_ids)},
+            updated_cache,
             timeout=remaining if remaining and remaining > 0 else self.CACHE_TTL_SECONDS + 60,
         )
+        cache.set(self.STALE_CACHE_KEY, updated_cache, timeout=self.STALE_CACHE_TTL_SECONDS)
         return Response({"data": [chosen_id]}, status=status.HTTP_200_OK)

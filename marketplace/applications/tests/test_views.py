@@ -451,10 +451,14 @@ class PreverifiedPhoneNumberViewTestCase(PermissionTestCaseMixin, APIBaseTestCas
         response = self.request.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json["data"], ["222"])
-        mock_cache_set.assert_called_once()
-        call_args = mock_cache_set.call_args
-        self.assertIn("111", call_args[0][1]["chosen_ids"])
-        self.assertIn("222", call_args[0][1]["chosen_ids"])
+        # primary + stale are both updated on every pick
+        self.assertEqual(mock_cache_set.call_count, 2)
+        primary_call = next(
+            c for c in mock_cache_set.call_args_list
+            if c[0][0] == PreverifiedPhoneNumber.CACHE_KEY
+        )
+        self.assertIn("111", primary_call[0][1]["chosen_ids"])
+        self.assertIn("222", primary_call[0][1]["chosen_ids"])
 
     @override_settings(WHATSAPP_BSP_BUSINESS_ID="123456")
     @patch("marketplace.applications.views.cache.get")
@@ -553,9 +557,18 @@ class PreverifiedPhoneNumberViewTestCase(PermissionTestCaseMixin, APIBaseTestCas
         response = self.request.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn(response.json["data"][0], ("111", "222"))
-        mock_cache_set.assert_called_once()
-        call_kwargs = mock_cache_set.call_args[1]
-        self.assertEqual(call_kwargs["timeout"], 200)
+        # primary uses remaining TTL; stale uses STALE_CACHE_TTL_SECONDS
+        self.assertEqual(mock_cache_set.call_count, 2)
+        primary_call = next(
+            c for c in mock_cache_set.call_args_list
+            if c[0][0] == PreverifiedPhoneNumber.CACHE_KEY
+        )
+        self.assertEqual(primary_call[1]["timeout"], 200)
+        stale_call = next(
+            c for c in mock_cache_set.call_args_list
+            if c[0][0] == PreverifiedPhoneNumber.STALE_CACHE_KEY
+        )
+        self.assertEqual(stale_call[1]["timeout"], PreverifiedPhoneNumber.STALE_CACHE_TTL_SECONDS)
 
     @override_settings(WHATSAPP_BSP_BUSINESS_ID="123456")
     @patch("marketplace.applications.views.cache.get", return_value=None)
@@ -592,11 +605,38 @@ class PreverifiedPhoneNumberViewTestCase(PermissionTestCaseMixin, APIBaseTestCas
         mock_client_class.return_value = mock_client
         response = self.request.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(mock_cache_set.call_count, 2)
-        keys_set = [call[0][0] for call in mock_cache_set.call_args_list]
+        # 2 sets on Meta success (primary + stale) + 2 sets on pick (primary + stale sync)
+        self.assertEqual(mock_cache_set.call_count, 4)
+        keys_set = [c[0][0] for c in mock_cache_set.call_args_list]
         self.assertIn(PreverifiedPhoneNumber.CACHE_KEY, keys_set)
         self.assertIn(PreverifiedPhoneNumber.STALE_CACHE_KEY, keys_set)
-        stale_call = next(c for c in mock_cache_set.call_args_list if c[0][0] == PreverifiedPhoneNumber.STALE_CACHE_KEY)
+        stale_calls = [c for c in mock_cache_set.call_args_list if c[0][0] == PreverifiedPhoneNumber.STALE_CACHE_KEY]
+        for stale_call in stale_calls:
+            self.assertEqual(stale_call[1]["timeout"], PreverifiedPhoneNumber.STALE_CACHE_TTL_SECONDS)
+
+    @override_settings(WHATSAPP_BSP_BUSINESS_ID="123456")
+    @patch("marketplace.applications.views.cache.get")
+    @patch("marketplace.applications.views.cache.set")
+    @patch("marketplace.applications.views.cache.ttl", return_value=300)
+    def test_chosen_ids_synced_to_stale_on_every_pick(
+        self, mock_ttl, mock_cache_set, mock_cache_get
+    ):
+        mock_cache_get.return_value = {
+            "data_list": [
+                {"id": "aaa", "phone_number": "5511000000010"},
+                {"id": "bbb", "phone_number": "5511000000011"},
+            ],
+            "chosen_ids": [],
+            "expires_at": None,
+        }
+        response = self.request.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        chosen_id = response.json["data"][0]
+        stale_call = next(
+            c for c in mock_cache_set.call_args_list
+            if c[0][0] == PreverifiedPhoneNumber.STALE_CACHE_KEY
+        )
+        self.assertIn(chosen_id, stale_call[0][1]["chosen_ids"])
         self.assertEqual(stale_call[1]["timeout"], PreverifiedPhoneNumber.STALE_CACHE_TTL_SECONDS)
 
     @override_settings(WHATSAPP_BSP_BUSINESS_ID="123456")
