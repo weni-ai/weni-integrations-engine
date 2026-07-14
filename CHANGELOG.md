@@ -1,3 +1,8 @@
+v4.21.0
+----------
+* feat: Add internal endpoint to list WhatsApp Cloud channels by project
+* fix: Send WhatsApp template components as JSON body instead of query
+
 v4.20.2
 ----------
 * fix: Avoid double-applying area multiplier on VTEX sale_price
