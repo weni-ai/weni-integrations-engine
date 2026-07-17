@@ -576,7 +576,7 @@ class CreateWhatsAppCloudTestCase(APIBaseTestCase):
         self.assertEqual(app.config["wa_number"], "mock_display_phone_number")
         self.assertEqual(app.config["wa_verified_name"], "mock_verified_name")
         self.assertEqual(app.config["wa_waba_id"], self.payload["waba_id"])
-        self.assertEqual(app.config["wa_currency"], "USD")
+        self.assertEqual(app.config["wa_currency"], "BRL")
         self.assertEqual(app.config["wa_business_id"], "mock_business_id")
         self.assertEqual(
             app.config["wa_message_template_namespace"],

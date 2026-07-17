@@ -113,7 +113,7 @@ class WhatsAppCloudViewSet(
         waba_id = serializer.validated_data.get("waba_id")
         phone_number_id = serializer.validated_data.get("phone_number_id")
         auth_code = serializer.validated_data.get("auth_code")
-        waba_currency = "USD"
+        waba_currency = "BRL"
 
         whatsapp_system_user_access_token = settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
         facebook_client = FacebookClient(whatsapp_system_user_access_token)
