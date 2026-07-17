@@ -1,3 +1,7 @@
+v4.21.1
+----------
+* fix: Update WhatsApp currency from USD to BRL across multiple components
+
 v4.21.0
 ----------
 * feat: Add internal endpoint to list WhatsApp Cloud channels by project
