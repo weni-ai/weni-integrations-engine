@@ -171,10 +171,12 @@ class TemplateWebhookEventProcessor:
         self,
         status_update_handler: TemplateStatusUpdateHandler,
         category_change_handler: TemplateCategoryChangeHandler,
+        flows_service: "FlowsService",
         logger: Optional[logging.Logger] = None,
     ):
         self.status_update_handler = status_update_handler
         self.category_change_handler = category_change_handler
+        self.flows_service = flows_service
         self.logger = logger or logging.getLogger(__name__)
 
     def get_apps_by_waba_id(self, waba_id: str):
@@ -227,6 +229,68 @@ class TemplateWebhookEventProcessor:
         for app in apps:
             self.category_change_handler.handle(app=app, value=value)
 
+    def process_template_category_update(
+        self, waba_id: str, value: dict, webhook: dict
+    ) -> None:
+        """
+        Handles template_category_update events from Meta.
+        Only processes completed category changes (when previous_category is present).
+        Updates category locally and notifies Flows via POST /template-sync/.
+        """
+        previous_category = value.get("previous_category")
+        if not previous_category:
+            self.logger.info(
+                f"Impending category change for template "
+                f"{value.get('message_template_name')}, skipping."
+            )
+            return
+
+        new_category = value.get("new_category")
+        template_name = value.get("message_template_name")
+
+        apps = self.get_apps_by_waba_id(waba_id)
+        if not apps.exists():
+            self.logger.info(f"There are no applications linked to waba: {waba_id}")
+            return
+
+        for app in apps:
+            try:
+                template = TemplateMessage.objects.filter(
+                    app=app, name=template_name
+                ).first()
+                if not template:
+                    continue
+
+                template.category = new_category
+                template.save()
+                self.logger.info(
+                    f"Template {template_name} category updated from "
+                    f"{previous_category} to {new_category} for app {app.uuid}"
+                )
+
+                for translation in template.translations.all():
+                    try:
+                        template_data = extract_template_data(translation)
+                        self.flows_service.update_facebook_templates_webhook(
+                            flow_object_uuid=str(app.flow_object_uuid),
+                            template_data=template_data,
+                            template_name=template.name,
+                            webhook=webhook,
+                        )
+                        self.logger.info(
+                            f"[Flows] Category update for {template.name}/"
+                            f"{translation.language} sent."
+                        )
+                    except Exception as e:
+                        self.logger.error(
+                            f"[Flows] Failed to send category update for "
+                            f"{template.name}/{translation.language}: {e}"
+                        )
+            except Exception as e:
+                self.logger.error(
+                    f"Error processing category update for App {str(app.uuid)}: {e}"
+                )
+
     def process_event(
         self, waba_id: str, value: dict, event_type: str, webhook: dict
     ) -> None:
@@ -234,6 +298,8 @@ class TemplateWebhookEventProcessor:
             self.process_template_status_update(waba_id, value, webhook)
         elif event_type == "template_correct_category_detection":
             self.process_template_category_change(waba_id, value)
+        elif event_type == "template_category_update":
+            self.process_template_category_update(waba_id, value, webhook)
 
 
 def extract_template_data(translation: TemplateTranslation) -> dict:
