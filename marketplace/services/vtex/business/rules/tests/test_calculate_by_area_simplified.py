@@ -38,7 +38,8 @@ class TestCalculateByArea(TestCase):
 
         self.assertTrue(result)
         self.assertEqual(product.price, 25000)  # 10000 * 2.5
-        self.assertEqual(product.sale_price, 20000)  # 8000 * 2.5
+        # sale_price is left untouched: VTEX already applies the multiplier to it
+        self.assertEqual(product.sale_price, 8000)
 
     def test_apply_without_area_calculation(self):
         """Test apply method when product should not be calculated by area"""

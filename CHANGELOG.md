@@ -1,3 +1,20 @@
+v4.21.1
+----------
+* fix: Update WhatsApp currency from USD to BRL across multiple components
+
+v4.21.0
+----------
+* feat: Add internal endpoint to list WhatsApp Cloud channels by project
+* fix: Send WhatsApp template components as JSON body instead of query
+
+v4.20.2
+----------
+* fix: Avoid double-applying area multiplier on VTEX sale_price
+
+v4.20.1
+----------
+* feat: Add position attribute to WWC widget configuration
+
 v4.20.0
 ----------
 * feat: Adds Partner-led business verification API

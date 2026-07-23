@@ -19,7 +19,7 @@ from marketplace.core.types.channels.whatsapp_base.exceptions import (
 from marketplace.core.types.channels.whatsapp_base.serializers import (
     WhatsAppBusinessContactSerializer,
 )
-from ..views import WhatsAppCloudViewSet
+from ..views import WhatsAppCloudViewSet, WhatsAppCloudChannelsView
 from rest_framework.exceptions import ValidationError
 
 
@@ -576,7 +576,7 @@ class CreateWhatsAppCloudTestCase(APIBaseTestCase):
         self.assertEqual(app.config["wa_number"], "mock_display_phone_number")
         self.assertEqual(app.config["wa_verified_name"], "mock_verified_name")
         self.assertEqual(app.config["wa_waba_id"], self.payload["waba_id"])
-        self.assertEqual(app.config["wa_currency"], "USD")
+        self.assertEqual(app.config["wa_currency"], "BRL")
         self.assertEqual(app.config["wa_business_id"], "mock_business_id")
         self.assertEqual(
             app.config["wa_message_template_namespace"],
@@ -999,3 +999,129 @@ class UpdateMmliteStatusTestCase(APIBaseTestCase):
 
         response = self.request.patch(url, data, uuid=app_without_auth.uuid)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class ListWhatsAppCloudChannelsTestCase(PermissionTestCaseMixin, APIBaseTestCase):
+    view_class = WhatsAppCloudChannelsView
+
+    def setUp(self):
+        super().setUp()
+
+        self.project_uuid = str(uuid.uuid4())
+        self.other_project_uuid = str(uuid.uuid4())
+        self.url = reverse("wpp-cloud-channels")
+
+        self.grant_permission(self.user, "can_communicate_internally")
+
+    @property
+    def view(self):
+        return self.view_class.as_view()
+
+    def _create_app(self, project_uuid, config=None, flow_object_uuid=None):
+        return App.objects.create(
+            code="wpp-cloud",
+            created_by=self.user,
+            project_uuid=project_uuid,
+            platform=App.PLATFORM_WENI_FLOWS,
+            flow_object_uuid=flow_object_uuid or str(uuid.uuid4()),
+            config=config or {},
+        )
+
+    def test_list_returns_all_channels_of_the_project(self):
+        self._create_app(self.project_uuid)
+        self._create_app(self.project_uuid)
+        self._create_app(self.project_uuid)
+
+        response = self.request.get(
+            self.url, params={"project_uuid": self.project_uuid}
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.json), 3)
+
+    def test_list_returns_empty_list_when_project_has_no_channels(self):
+        response = self.request.get(
+            self.url, params={"project_uuid": self.project_uuid}
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json, [])
+
+    def test_list_does_not_leak_channels_from_other_projects(self):
+        app = self._create_app(self.project_uuid)
+        self._create_app(self.other_project_uuid)
+
+        response = self.request.get(
+            self.url, params={"project_uuid": self.project_uuid}
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.json), 1)
+        self.assertEqual(response.json[0]["app_uuid"], str(app.uuid))
+
+    def test_list_requires_project_uuid(self):
+        response = self.request.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_list_denies_non_internal_user(self):
+        self.revoke_permission(self.user, "can_communicate_internally")
+
+        response = self.request.get(
+            self.url, params={"project_uuid": self.project_uuid}
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_list_exposes_channel_identifiers_from_nested_config(self):
+        flow_object_uuid = str(uuid.uuid4())
+        app = self._create_app(
+            self.project_uuid,
+            flow_object_uuid=flow_object_uuid,
+            config={
+                "title": "+55 11 2148-4999",
+                "waba": {"id": "912460154934195", "name": "Agentic CX Staging"},
+                "phone_number": {
+                    "id": "1089390800916485",
+                    "display_name": "Agentic CX Staging",
+                    "display_phone_number": "+55 11 2148-4999",
+                },
+            },
+        )
+
+        response = self.request.get(
+            self.url, params={"project_uuid": self.project_uuid}
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        channel = response.json[0]
+        self.assertEqual(channel["app_uuid"], str(app.uuid))
+        self.assertEqual(channel["channel_uuid"], flow_object_uuid)
+        self.assertEqual(channel["phone_number"], "+55 11 2148-4999")
+        self.assertEqual(channel["phone_number_id"], "1089390800916485")
+        self.assertEqual(channel["waba_id"], "912460154934195")
+        self.assertEqual(channel["name"], "Agentic CX Staging")
+        self.assertNotIn("config", channel)
+
+    def test_list_exposes_channel_identifiers_from_flat_config(self):
+        app = self._create_app(
+            self.project_uuid,
+            config={
+                "wa_number": "+55 84 99999-0000",
+                "wa_phone_number_id": "111222333",
+                "wa_waba_id": "444555666",
+                "wa_verified_name": "Order Status",
+            },
+        )
+
+        response = self.request.get(
+            self.url, params={"project_uuid": self.project_uuid}
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        channel = response.json[0]
+        self.assertEqual(channel["app_uuid"], str(app.uuid))
+        self.assertEqual(channel["phone_number"], "+55 84 99999-0000")
+        self.assertEqual(channel["phone_number_id"], "111222333")
+        self.assertEqual(channel["waba_id"], "444555666")
+        self.assertEqual(channel["name"], "Order Status")
