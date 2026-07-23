@@ -234,6 +234,41 @@ class TestTemplateWebhookEventProcessor(TestCase):
             webhook=webhook,
         )
 
+    @patch("marketplace.wpp_templates.utils.extract_template_data")
+    def test_process_template_category_update_logs_flows_error_on_webhook_failure(
+        self, mock_extract
+    ):
+        mock_extract.return_value = {"mocked": "data"}
+        mock_app = MagicMock()
+        mock_app.uuid = "app-uuid-1"
+        mock_app.flow_object_uuid = "flow-uuid-1"
+        self.mock_app_filter.return_value.exists.return_value = True
+        self.mock_app_filter.return_value.__iter__.return_value = [mock_app]
+
+        mock_template = MagicMock()
+        mock_template.name = "promo"
+        mock_translation = MagicMock()
+        mock_translation.language = "en_US"
+        mock_template.translations.all.return_value = [mock_translation]
+        self.mock_template_filter.return_value.first.return_value = mock_template
+
+        self.flows_service.update_facebook_templates_webhook.side_effect = Exception(
+            "flows down"
+        )
+        self.processor.logger = MagicMock()
+
+        value = {
+            "message_template_name": "promo",
+            "previous_category": "UTILITY",
+            "new_category": "MARKETING",
+        }
+        self.processor.process_template_category_update("waba-1", value, {"entry": []})
+
+        self.processor.logger.error.assert_called_once_with(
+            "[Flows] Failed to send category update for promo/en_US: flows down"
+        )
+        mock_template.save.assert_called_once()
+
     def test_process_template_category_update_skips_missing_template(self):
         mock_app = MagicMock()
         mock_app.uuid = "app-uuid-1"
