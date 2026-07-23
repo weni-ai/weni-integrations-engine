@@ -175,9 +175,9 @@ class PreverifiedPhoneNumber(views.APIView):
     Returns a random pre-verified phone number from the BSP business for
     embedded signup.
 
-    Primary cache (1 hour TTL): stores the list from Meta plus the IDs already
+    Primary cache (30 minutes TTL): stores the list from Meta plus the IDs already
     chosen in that window, so the same number is never handed out twice within
-    the hour. After 1 hour the cache is rebuilt from Meta.
+    that period. After 30 minutes the cache is rebuilt from Meta.
 
     Stale cache (24 hour TTL): keeps the last known list as a fallback. If Meta
     is unavailable when the primary cache expires, the stale is used so the
@@ -188,7 +188,7 @@ class PreverifiedPhoneNumber(views.APIView):
     permission_classes = [CanCommunicateInternally]
     CACHE_KEY = "preverified_numbers"
     STALE_CACHE_KEY = "preverified_numbers_stale"
-    CACHE_TTL_SECONDS = 3600  # 1 hour
+    CACHE_TTL_SECONDS = 1800  # 30 minutes
     STALE_CACHE_TTL_SECONDS = 86400  # 24 hours
 
     def _fetch_from_meta(self):
