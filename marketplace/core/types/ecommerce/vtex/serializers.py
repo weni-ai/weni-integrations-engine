@@ -1,3 +1,5 @@
+from django.conf import settings
+
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
@@ -132,3 +134,54 @@ class FacebookProductDTOSerializer(serializers.Serializer):
     sale_price = serializers.CharField()
     additional_image_link = serializers.CharField(required=False)
     rich_text_description = serializers.CharField(required=False)
+
+
+class InlineProductItemSerializer(serializers.Serializer):
+    """
+    Validates a single pre-formatted product (inline shape) before uploading it to Meta.
+
+    The `id` is expected already unified as "sku#seller". Required fields mirror the Meta
+    business rules enforced by `ProductValidator`: they must be present and non-empty, and
+    `price` is required whenever the product is "in stock". Remaining optional fields default
+    to an empty string and are stripped from the payload downstream.
+    """
+
+    id = serializers.CharField()
+    title = serializers.CharField()
+    description = serializers.CharField()
+    availability = serializers.CharField()
+    status = serializers.CharField()
+    condition = serializers.CharField()
+    link = serializers.CharField()
+    image_link = serializers.CharField()
+    brand = serializers.CharField()
+    price = serializers.CharField(required=False, allow_blank=True, default="")
+    sale_price = serializers.CharField(required=False, allow_blank=True, default="")
+    additional_image_link = serializers.CharField(
+        required=False, allow_blank=True, default=""
+    )
+    rich_text_description = serializers.CharField(
+        required=False, allow_blank=True, default=""
+    )
+
+    def validate(self, attrs):
+        if attrs.get("availability") == "in stock" and not attrs.get("price"):
+            raise ValidationError(
+                {"price": "Price is required when availability is 'in stock'."}
+            )
+        return attrs
+
+
+class UploadInlineProductsSerializer(serializers.Serializer):
+    products = serializers.ListField(
+        child=InlineProductItemSerializer(),
+        allow_empty=False,
+    )
+
+    def validate_products(self, value):
+        max_batch = settings.VTEX_UPLOAD_PRODUCTS_MAX_BATCH
+        if len(value) > max_batch:
+            raise ValidationError(
+                f"A maximum of {max_batch} products can be uploaded per request."
+            )
+        return value
