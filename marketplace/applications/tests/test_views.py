@@ -8,8 +8,16 @@ from django.test import override_settings, TestCase
 from django.utils import timezone
 from rest_framework import status
 
+from weni_commons.auth import WeniAuthContext
+
 from marketplace.applications.models import AppTypeAsset, AppTypeFeatured, App
-from marketplace.applications.views import AppTypeViewSet, MyAppViewSet, PreverifiedPhoneNumber
+from marketplace.applications.views import (
+    AppTypeViewSet,
+    CheckAppIsIntegrated,
+    CheckWebChatIntegrationView,
+    MyAppViewSet,
+    PreverifiedPhoneNumber,
+)
 from marketplace.clients.exceptions import CustomAPIException
 from marketplace.clients.facebook.client import FacebookClient
 from marketplace.interactions.models import Rating
@@ -454,7 +462,8 @@ class PreverifiedPhoneNumberViewTestCase(PermissionTestCaseMixin, APIBaseTestCas
         # primary + stale are both updated on every pick
         self.assertEqual(mock_cache_set.call_count, 2)
         primary_call = next(
-            c for c in mock_cache_set.call_args_list
+            c
+            for c in mock_cache_set.call_args_list
             if c[0][0] == PreverifiedPhoneNumber.CACHE_KEY
         )
         self.assertIn("111", primary_call[0][1]["chosen_ids"])
@@ -560,15 +569,19 @@ class PreverifiedPhoneNumberViewTestCase(PermissionTestCaseMixin, APIBaseTestCas
         # primary uses remaining TTL; stale uses STALE_CACHE_TTL_SECONDS
         self.assertEqual(mock_cache_set.call_count, 2)
         primary_call = next(
-            c for c in mock_cache_set.call_args_list
+            c
+            for c in mock_cache_set.call_args_list
             if c[0][0] == PreverifiedPhoneNumber.CACHE_KEY
         )
         self.assertEqual(primary_call[1]["timeout"], 200)
         stale_call = next(
-            c for c in mock_cache_set.call_args_list
+            c
+            for c in mock_cache_set.call_args_list
             if c[0][0] == PreverifiedPhoneNumber.STALE_CACHE_KEY
         )
-        self.assertEqual(stale_call[1]["timeout"], PreverifiedPhoneNumber.STALE_CACHE_TTL_SECONDS)
+        self.assertEqual(
+            stale_call[1]["timeout"], PreverifiedPhoneNumber.STALE_CACHE_TTL_SECONDS
+        )
 
     @override_settings(WHATSAPP_BSP_BUSINESS_ID="123456")
     @patch("marketplace.applications.views.cache.get", return_value=None)
@@ -610,9 +623,15 @@ class PreverifiedPhoneNumberViewTestCase(PermissionTestCaseMixin, APIBaseTestCas
         keys_set = [c[0][0] for c in mock_cache_set.call_args_list]
         self.assertIn(PreverifiedPhoneNumber.CACHE_KEY, keys_set)
         self.assertIn(PreverifiedPhoneNumber.STALE_CACHE_KEY, keys_set)
-        stale_calls = [c for c in mock_cache_set.call_args_list if c[0][0] == PreverifiedPhoneNumber.STALE_CACHE_KEY]
+        stale_calls = [
+            c
+            for c in mock_cache_set.call_args_list
+            if c[0][0] == PreverifiedPhoneNumber.STALE_CACHE_KEY
+        ]
         for stale_call in stale_calls:
-            self.assertEqual(stale_call[1]["timeout"], PreverifiedPhoneNumber.STALE_CACHE_TTL_SECONDS)
+            self.assertEqual(
+                stale_call[1]["timeout"], PreverifiedPhoneNumber.STALE_CACHE_TTL_SECONDS
+            )
 
     @override_settings(WHATSAPP_BSP_BUSINESS_ID="123456")
     @patch("marketplace.applications.views.cache.get")
@@ -633,11 +652,14 @@ class PreverifiedPhoneNumberViewTestCase(PermissionTestCaseMixin, APIBaseTestCas
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         chosen_id = response.json["data"][0]
         stale_call = next(
-            c for c in mock_cache_set.call_args_list
+            c
+            for c in mock_cache_set.call_args_list
             if c[0][0] == PreverifiedPhoneNumber.STALE_CACHE_KEY
         )
         self.assertIn(chosen_id, stale_call[0][1]["chosen_ids"])
-        self.assertEqual(stale_call[1]["timeout"], PreverifiedPhoneNumber.STALE_CACHE_TTL_SECONDS)
+        self.assertEqual(
+            stale_call[1]["timeout"], PreverifiedPhoneNumber.STALE_CACHE_TTL_SECONDS
+        )
 
     @override_settings(WHATSAPP_BSP_BUSINESS_ID="123456")
     @patch("marketplace.applications.views.cache.get")
@@ -779,3 +801,100 @@ class FacebookClientGetPreverifiedNumbersTestCase(TestCase):
         result = client.get_preverified_numbers()
         self.assertEqual(result, {"data": []})
         mock_make_request.assert_called_once()
+
+
+class CheckAppIsIntegratedViewTestCase(PermissionTestCaseMixin, APIBaseTestCase):
+    url = reverse("check-whatsapp-integration")
+    view_class = CheckAppIsIntegrated
+
+    @property
+    def view(self):
+        return self.view_class.as_view()
+
+    def setUp(self):
+        super().setUp()
+        self.project_uuid = str(uuid.uuid4())
+        self.grant_permission(self.user, "can_communicate_internally")
+        self.request.set_auth(WeniAuthContext(project_uuid=self.project_uuid))
+
+    def test_returns_has_whatsapp_false_when_no_app(self):
+        response = self.request.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.json["data"]["has_whatsapp"])
+
+    def test_returns_has_whatsapp_true_when_app_exists(self):
+        app = App.objects.create(
+            code="wpp-cloud",
+            config={"wa_number": "+55 84 90000-0000"},
+            project_uuid=self.project_uuid,
+            platform=App.PLATFORM_WENI_FLOWS,
+            created_by=self.user,
+            flow_object_uuid=uuid.uuid4(),
+        )
+
+        response = self.request.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json["data"]
+        self.assertTrue(data["has_whatsapp"])
+        self.assertEqual(data["wpp_cloud_app_uuid"], str(app.uuid))
+        self.assertEqual(data["phone_number"], "+55 84 90000-0000")
+
+    def test_denies_when_token_has_no_project_uuid(self):
+        self.request.set_auth(WeniAuthContext())
+
+        response = self.request.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_denies_non_internal_caller(self):
+        self.revoke_permission(self.user, "can_communicate_internally")
+
+        response = self.request.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class CheckWebChatIntegrationViewTestCase(PermissionTestCaseMixin, APIBaseTestCase):
+    url = reverse("check-webchat-integration")
+    view_class = CheckWebChatIntegrationView
+
+    @property
+    def view(self):
+        return self.view_class.as_view()
+
+    def setUp(self):
+        super().setUp()
+        self.project_uuid = str(uuid.uuid4())
+        self.grant_permission(self.user, "can_communicate_internally")
+        self.request.set_auth(WeniAuthContext(project_uuid=self.project_uuid))
+
+    def test_returns_has_webchat_false_when_no_app(self):
+        response = self.request.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.json["has_webchat"])
+
+    def test_returns_has_webchat_true_when_app_exists(self):
+        app = App.objects.create(
+            code="wwc",
+            config={},
+            project_uuid=self.project_uuid,
+            platform=App.PLATFORM_WENI_FLOWS,
+            created_by=self.user,
+            flow_object_uuid=uuid.uuid4(),
+        )
+
+        response = self.request.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.json["has_webchat"])
+        self.assertEqual(response.json["webchat_app_uuid"], str(app.uuid))
+
+    def test_denies_when_token_has_no_project_uuid(self):
+        self.request.set_auth(WeniAuthContext())
+
+        response = self.request.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

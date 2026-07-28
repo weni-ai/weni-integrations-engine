@@ -12,9 +12,14 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import views
 
+from weni_commons.auth import (
+    CanCommunicateInternally as WeniCanCommunicateInternally,
+    WeniAuthViewMixin,
+)
+
+from marketplace.accounts.authentication import WeniModuleAuthentication
 from marketplace.applications.serializers import (
     AppTypeSerializer,
-    CheckWebChatIntegrationSerializer,
     MyAppSerializer,
 )
 from marketplace.applications.usecases.check_webchat_integration import (
@@ -24,7 +29,6 @@ from marketplace.core import types
 from marketplace.applications.models import App, AppTypeFeatured
 from marketplace.accounts.models import ProjectAuthorization
 from marketplace.accounts.permissions import is_crm_user
-from marketplace.internal.permissions import CanCommunicateInternally
 from marketplace.clients.facebook.client import FacebookClient
 from marketplace.clients.exceptions import CustomAPIException
 
@@ -117,32 +121,23 @@ class MyAppViewSet(viewsets.ReadOnlyModelViewSet):
         return queryset
 
 
-class CheckWebChatIntegrationView(views.APIView):
-    permission_classes = [CanCommunicateInternally]
+class CheckWebChatIntegrationView(WeniAuthViewMixin, views.APIView):
+    authentication_classes = [WeniModuleAuthentication]
+    permission_classes = [WeniCanCommunicateInternally]
 
     def get(self, request):
-        serializer = CheckWebChatIntegrationSerializer(data=request.query_params)
-        serializer.is_valid(raise_exception=True)
-
         use_case = CheckWebChatIntegrationUseCase()
-        result = use_case.execute(
-            project_uuid=str(serializer.validated_data["project_uuid"])
-        )
+        result = use_case.execute(project_uuid=self.auth.project_uuid)
 
         return Response(result)
 
 
-class CheckAppIsIntegrated(views.APIView):
-    permission_classes = [CanCommunicateInternally]
+class CheckAppIsIntegrated(WeniAuthViewMixin, views.APIView):
+    authentication_classes = [WeniModuleAuthentication]
+    permission_classes = [WeniCanCommunicateInternally]
 
     def get(self, request):
-        project_uuid = request.query_params.get("project_uuid", None)
-
-        if not project_uuid:
-            return Response(
-                {"error": "project_uuid is required on query params"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        project_uuid = self.auth.project_uuid
 
         apps = App.objects.filter(code="wpp-cloud", project_uuid=project_uuid)
 
@@ -170,7 +165,7 @@ class CheckAppIsIntegrated(views.APIView):
         )
 
 
-class PreverifiedPhoneNumber(views.APIView):
+class PreverifiedPhoneNumber(WeniAuthViewMixin, views.APIView):
     """
     Returns a random pre-verified phone number from the BSP business for
     embedded signup.
@@ -185,7 +180,8 @@ class PreverifiedPhoneNumber(views.APIView):
     keeping the available pool accurate even when the fallback is in use.
     """
 
-    permission_classes = [CanCommunicateInternally]
+    authentication_classes = [WeniModuleAuthentication]
+    permission_classes = [WeniCanCommunicateInternally]
     CACHE_KEY = "preverified_numbers"
     STALE_CACHE_KEY = "preverified_numbers_stale"
     CACHE_TTL_SECONDS = 1800  # 30 minutes
@@ -237,7 +233,9 @@ class PreverifiedPhoneNumber(views.APIView):
                     "expires_at": now + timedelta(seconds=self.CACHE_TTL_SECONDS),
                 }
                 cache.set(self.CACHE_KEY, cached, timeout=self.CACHE_TTL_SECONDS + 60)
-                cache.set(self.STALE_CACHE_KEY, cached, timeout=self.STALE_CACHE_TTL_SECONDS)
+                cache.set(
+                    self.STALE_CACHE_KEY, cached, timeout=self.STALE_CACHE_TTL_SECONDS
+                )
 
         data_list = cached.get("data_list") or []
         chosen_ids = set(cached.get("chosen_ids") or [])
@@ -254,7 +252,11 @@ class PreverifiedPhoneNumber(views.APIView):
         cache.set(
             self.CACHE_KEY,
             updated_cache,
-            timeout=remaining if remaining and remaining > 0 else self.CACHE_TTL_SECONDS + 60,
+            timeout=remaining
+            if remaining and remaining > 0
+            else self.CACHE_TTL_SECONDS + 60,
         )
-        cache.set(self.STALE_CACHE_KEY, updated_cache, timeout=self.STALE_CACHE_TTL_SECONDS)
+        cache.set(
+            self.STALE_CACHE_KEY, updated_cache, timeout=self.STALE_CACHE_TTL_SECONDS
+        )
         return Response({"data": [chosen_id]}, status=status.HTTP_200_OK)

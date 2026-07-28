@@ -3,6 +3,8 @@ from rest_framework import permissions
 from django.contrib.auth.models import AnonymousUser
 from django.conf import settings
 
+from weni_commons.auth import get_auth_context
+
 from .models import ProjectAuthorization
 
 
@@ -29,10 +31,7 @@ class ProjectManagePermission(permissions.IsAuthenticated):
             return False
 
         if request.method in WRITE_METHODS:
-            project_uuid = request.data.get("project_uuid")
-
-            if project_uuid is None:
-                project_uuid = request.headers.get("Project-Uuid")
+            project_uuid = self._resolve_project_uuid(request)
 
             if project_uuid is None:
                 return False
@@ -49,6 +48,25 @@ class ProjectManagePermission(permissions.IsAuthenticated):
             return authorization.is_contributor or authorization.is_admin
 
         return True
+
+    def _resolve_project_uuid(self, request):
+        """Return the project this request acts on, preferring the auth context.
+
+        Views wired with ``WeniAuthentication`` act on
+        ``request.auth.project_uuid``, which the library resolves with its own
+        precedence (URL, query, headers, body). Reading the body first here
+        would let a caller authorize against one project while the view writes
+        to another, so the context wins whenever it is available.
+        """
+        auth = get_auth_context(request)
+        if auth is not None and auth.has_project_uuid:
+            return auth.project_uuid
+
+        project_uuid = request.data.get("project_uuid")
+        if project_uuid is None:
+            project_uuid = request.headers.get("Project-Uuid")
+
+        return project_uuid
 
     def has_object_permission(self, request, view, obj):
         if request.method not in WRITE_METHODS:

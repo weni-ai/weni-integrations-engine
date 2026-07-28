@@ -5,6 +5,10 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from weni_commons.auth import WeniAuthViewMixin
+
+from marketplace.accounts.authentication import WeniModuleAuthentication
+
 from .dto import SubmitAccountVerificationDTO
 from .permissions import AppProjectManagePermission
 from .serializers import (
@@ -17,9 +21,10 @@ from .usecases import (
 )
 
 
-class AccountVerificationView(APIView):
+class AccountVerificationView(WeniAuthViewMixin, APIView):
     """POST submits documents to Meta; GET returns the current state."""
 
+    authentication_classes = [WeniModuleAuthentication]
     permission_classes = [AppProjectManagePermission]
     parser_classes = [MultiPartParser, FormParser]
 
