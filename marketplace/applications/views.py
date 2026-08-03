@@ -13,10 +13,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import views
 
 from weni_commons.auth import (
-    CanCommunicateInternally as WeniCanCommunicateInternally,
     WeniAuthViewMixin,
 )
 
+from marketplace.accounts.permissions import ProjectManagePermission
 from marketplace.accounts.authentication import WeniModuleAuthentication
 from marketplace.applications.serializers import (
     AppTypeSerializer,
@@ -123,7 +123,7 @@ class MyAppViewSet(viewsets.ReadOnlyModelViewSet):
 
 class CheckWebChatIntegrationView(WeniAuthViewMixin, views.APIView):
     authentication_classes = [WeniModuleAuthentication]
-    permission_classes = [WeniCanCommunicateInternally]
+    permission_classes = [ProjectManagePermission]
 
     def get(self, request):
         use_case = CheckWebChatIntegrationUseCase()
@@ -134,7 +134,7 @@ class CheckWebChatIntegrationView(WeniAuthViewMixin, views.APIView):
 
 class CheckAppIsIntegrated(WeniAuthViewMixin, views.APIView):
     authentication_classes = [WeniModuleAuthentication]
-    permission_classes = [WeniCanCommunicateInternally]
+    permission_classes = [ProjectManagePermission]
 
     def get(self, request):
         project_uuid = self.auth.project_uuid
@@ -181,7 +181,7 @@ class PreverifiedPhoneNumber(WeniAuthViewMixin, views.APIView):
     """
 
     authentication_classes = [WeniModuleAuthentication]
-    permission_classes = [WeniCanCommunicateInternally]
+    permission_classes = [ProjectManagePermission]
     CACHE_KEY = "preverified_numbers"
     STALE_CACHE_KEY = "preverified_numbers_stale"
     CACHE_TTL_SECONDS = 1800  # 30 minutes
