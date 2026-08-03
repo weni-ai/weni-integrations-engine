@@ -12,6 +12,12 @@ from rest_framework.exceptions import APIException
 from django.conf import settings
 from django.utils.crypto import get_random_string
 
+from weni_commons.auth import (
+    CanCommunicateInternally as WeniCanCommunicateInternally,
+    WeniAuthViewMixin,
+)
+
+from marketplace.accounts.authentication import WeniModuleAuthentication
 from marketplace.core.types import views
 from marketplace.applications.models import App
 
@@ -44,7 +50,6 @@ from ..whatsapp_base.serializers import WhatsAppSerializer
 from .serializers import (
     WhatsAppCloudConfigureSerializer,
     WhatsAppCloudChannelSerializer,
-    WhatsAppCloudChannelsQueryParamsSerializer,
 )
 from .usecases.list_channels import ListWhatsAppCloudChannelsUseCase
 from .facades import CloudProfileFacade, CloudProfileContactFacade
@@ -54,12 +59,14 @@ if TYPE_CHECKING:
 
 
 class WhatsAppCloudViewSet(
+    WeniAuthViewMixin,
     views.BaseAppTypeViewSet,
     mixins.WhatsAppConversationsMixin,
     mixins.WhatsAppContactMixin,
     mixins.WhatsAppProfileMixin,
 ):
     serializer_class = WhatsAppSerializer
+    authentication_classes = [WeniModuleAuthentication]
     permission_classes = [ProjectManagePermission | IsCRMUser]
 
     business_profile_class = CloudProfileContactFacade
@@ -109,11 +116,11 @@ class WhatsAppCloudViewSet(
         serializer = WhatsAppCloudConfigureSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        project_uuid = request.data.get("project_uuid")
+        project_uuid = self.auth.project_uuid
         waba_id = serializer.validated_data.get("waba_id")
         phone_number_id = serializer.validated_data.get("phone_number_id")
         auth_code = serializer.validated_data.get("auth_code")
-        waba_currency = "USD"
+        waba_currency = "BRL"
 
         whatsapp_system_user_access_token = settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
         facebook_client = FacebookClient(whatsapp_system_user_access_token)
@@ -304,7 +311,7 @@ class WhatsAppCloudViewSet(
             )
 
 
-class WhatsAppCloudChannelsView(APIView):
+class WhatsAppCloudChannelsView(WeniAuthViewMixin, APIView):
     """List every WhatsApp Cloud channel of a project for the channel-selection
     screen consumed by internal services (e.g. retail).
 
@@ -312,16 +319,12 @@ class WhatsAppCloudChannelsView(APIView):
     are never leaked.
     """
 
-    permission_classes = [CanCommunicateInternally]
+    authentication_classes = [WeniModuleAuthentication]
+    permission_classes = [WeniCanCommunicateInternally]
 
     def get(self, request, *args, **kwargs):
-        serializer = WhatsAppCloudChannelsQueryParamsSerializer(
-            data=request.query_params
-        )
-        serializer.is_valid(raise_exception=True)
-
         apps = ListWhatsAppCloudChannelsUseCase().execute(
-            project_uuid=serializer.validated_data["project_uuid"]
+            project_uuid=self.auth.project_uuid
         )
 
         return Response(WhatsAppCloudChannelSerializer(apps, many=True).data)

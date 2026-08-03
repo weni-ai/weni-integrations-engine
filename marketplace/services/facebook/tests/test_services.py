@@ -435,7 +435,7 @@ class TestBusinessMetaService(TestCase):
         self.assertEqual(response, {"success": True})
 
     def test_share_credit_line(self):
-        response = self.service.share_credit_line("waba_id", "USD")
+        response = self.service.share_credit_line("waba_id", "BRL")
         self.assertEqual(response, {"allocation_config_id": "mock_allocation_id"})
 
     def test_subscribe_app(self):
@@ -450,7 +450,7 @@ class TestBusinessMetaService(TestCase):
 
     def test_configure_whatsapp_cloud(self):
         response = self.service.configure_whatsapp_cloud(
-            "auth_code", "waba_id", "phone_number_id", "USD"
+            "auth_code", "waba_id", "phone_number_id", "BRL"
         )
         self.assertEqual(
             response,
@@ -469,7 +469,7 @@ class TestBusinessMetaService(TestCase):
         try:
             self.service.create_dataset = Mock(side_effect=Exception("dataset failure"))
             response = self.service.configure_whatsapp_cloud(
-                "auth_code", "waba_id", "phone_number_id", "USD"
+                "auth_code", "waba_id", "phone_number_id", "BRL"
             )
             self.assertEqual(
                 response,

@@ -1,3 +1,12 @@
+v4.22.0
+----------
+* feat: Implement stale cache mechanism for preverified phone numbers
+* feat: Implement template category update handling in TemplateWebhookEventProcessor
+
+v4.21.1
+----------
+* fix: Update WhatsApp currency from USD to BRL across multiple components
+
 v4.21.0
 ----------
 * feat: Add internal endpoint to list WhatsApp Cloud channels by project

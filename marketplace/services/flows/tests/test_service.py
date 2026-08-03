@@ -14,7 +14,7 @@ MOCK_CONFIG = {
     "wa_pin": "12345678",
     "wa_number": "+55 84 99999-9999",
     "wa_waba_id": "123456789",
-    "wa_currency": "USD",
+    "wa_currency": "BRL",
     "wa_business_id": "202020202020",
     "wa_phone_number_id": "0123456789",
 }

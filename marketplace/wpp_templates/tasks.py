@@ -85,6 +85,7 @@ def update_templates_by_webhook(**kwargs):  # pragma: no cover
     allowed_event_types = [
         "message_template_status_update",
         "template_correct_category_detection",
+        "template_category_update",
     ]
     webhook_data = kwargs.get("webhook_data")
 
