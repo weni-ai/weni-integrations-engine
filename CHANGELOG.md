@@ -1,3 +1,8 @@
+v4.23.0
+----------
+* feat: Adopt weni-commons JWT authentication on channel routes
+* feat: Add CurrencyRON rule for price formatting in Romanian lei 
+
 v4.22.0
 ----------
 * feat: Implement stale cache mechanism for preverified phone numbers
