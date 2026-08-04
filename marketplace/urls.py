@@ -13,6 +13,7 @@ from marketplace.swagger import view as swagger_view
 from marketplace.applications import urls as applications_urls
 from marketplace.interactions import urls as interactions_urls
 from marketplace.webhooks import urls as webhooks_urls
+from marketplace.internal import urls as internal_urls
 
 
 def index(request):
@@ -34,6 +35,7 @@ urlpatterns = [
     path("docs", swagger_view),
     path("admin", admin.site.urls),
     path("api/v1/", include(api_urls)),
+    path("", include(internal_urls)),
 ]
 
 # Static files

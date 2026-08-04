@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 
 import os
+import sys
 import urllib
 import environ
 import sentry_sdk
@@ -76,6 +77,7 @@ INSTALLED_APPS = [
     "storages",
     "corsheaders",
     "drf_yasg",
+    "weni.eda.django.eda_app",
 ]
 
 MIDDLEWARE = [
@@ -448,6 +450,11 @@ IMPORTANCE_CHANNELS_ORDER = env.list("IMPORTANCE_CHANNELS_ORDER", default=[])
 
 USE_EDA = env.bool("USE_EDA", default=False)
 
+APP_MIGRATION_EXPECTED_MODULES = env.list("APP_MIGRATION_EXPECTED_MODULES", default=[])
+
+# Detect Django test runs so publishers become no-ops without a live broker.
+TESTING = len(sys.argv) > 1 and sys.argv[1] == "test"
+
 if USE_EDA:
     EDA_CONNECTION_BACKEND = "marketplace.event_driven.backends.PyAMQPConnectionBackend"
     EDA_CONSUMERS_HANDLE = "marketplace.event_driven.handle.handle_consumers"
@@ -457,6 +464,15 @@ if USE_EDA:
     EDA_BROKER_PORT = env.int("EDA_BROKER_PORT", default=5672)
     EDA_BROKER_USER = env("EDA_BROKER_USER", default="guest")
     EDA_BROKER_PASSWORD = env("EDA_BROKER_PASSWORD", default="guest")
+
+# AmazonMQ (SSL) settings — used by weni-eda EDAPublisher / AMQConnectionParamsFactory.
+AMQ_BROKER_HOST = env.str("AMQ_BROKER_HOST", default="localhost")
+AMQ_BROKER_PORT = env.int("AMQ_BROKER_PORT", default=5671)
+AMQ_BROKER_USER = env.str("AMQ_BROKER_USER", default="guest")
+AMQ_BROKER_PASSWORD = env.str("AMQ_BROKER_PASSWORD", default="guest")
+AMQ_VIRTUAL_HOST = env.str("AMQ_VIRTUAL_HOST", default="/")
+AMQ_BROKER_SSL_SERVER_HOSTNAME = env("AMQ_BROKER_SSL_SERVER_HOSTNAME", default=None)
+AMQ_BROKER_HEARTBEAT = env.int("AMQ_BROKER_HEARTBEAT", default=300)
 
 
 ALLOW_CRM_ACCESS = env.bool("ALLOW_CRM_ACCESS", default=False)
