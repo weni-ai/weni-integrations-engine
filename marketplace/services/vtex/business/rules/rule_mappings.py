@@ -18,6 +18,7 @@ from .currency_ars import CurrencyARS
 from .currency_gtq import CurrencyGTQ
 from .currency_eur import CurrencyEUR
 from .currency_mxn import CurrencyMXN
+from .currency_ron import CurrencyRON
 
 
 """
@@ -45,4 +46,5 @@ RULE_MAPPINGS = {
     "currency_gtq": CurrencyGTQ,
     "currency_eur": CurrencyEUR,
     "currency_mxn": CurrencyMXN,
+    "currency_ron": CurrencyRON,
 }
