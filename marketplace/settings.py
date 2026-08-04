@@ -500,16 +500,9 @@ RETAIL_PROXY_URL = env.str("RETAIL_PROXY_URL", default="")
 # Lambda no token validation
 LAMBDA_ALLOWED_ROLES = env.list("LAMBDA_ALLOWED_ROLES", default=[])
 
-# Path to the JWT public key
-JWT_PUBLIC_KEY_PATH = BASE_DIR / "marketplace" / "jwt_keys" / "public_key.pem"
-
-# The public key is loaded a single time at application startup.
-try:
-    with open(JWT_PUBLIC_KEY_PATH, "rb") as f:
-        JWT_PUBLIC_KEY = f.read()
-except FileNotFoundError:
-    JWT_PUBLIC_KEY = None
-
+# RS256 PEM keys used to validate (public) and sign (private) inter-module /
+# App IO JWTs. Both are secrets and must be provided by the environment.
+JWT_PUBLIC_KEY = env.str("JWT_PUBLIC_KEY", default="")
 JWT_PRIVATE_KEY = env.str("JWT_PRIVATE_KEY", default="")
 
 # SKU Validator timeout

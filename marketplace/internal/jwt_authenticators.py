@@ -29,7 +29,7 @@ class JWTModuleAuthentication(BaseAuthentication):
             Tuple of (user, auth) where user is None (no user model needed)
             and auth is None (no auth object needed)
         """
-        public_key: Optional[bytes] = getattr(settings, "JWT_PUBLIC_KEY", None)
+        public_key: Optional[str] = getattr(settings, "JWT_PUBLIC_KEY", None)
         if not public_key:
             raise AuthenticationFailed(
                 "JWT_PUBLIC_KEY not configured in Django settings. "

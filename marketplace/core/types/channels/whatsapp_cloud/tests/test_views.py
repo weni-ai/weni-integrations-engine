@@ -9,6 +9,8 @@ from unittest.mock import patch, MagicMock, Mock
 
 from django.contrib.auth import get_user_model
 
+from weni_commons.auth import WeniAuthContext
+
 from marketplace.core.tests.base import APIBaseTestCase
 from marketplace.applications.models import App
 from marketplace.accounts.models import ProjectAuthorization
@@ -479,6 +481,14 @@ class CreateWhatsAppCloudTestCase(APIBaseTestCase):
         )
         self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
         self.url = reverse("wpp-cloud-app-list")
+
+        # Tenant scope now comes from the signed token (self.auth), not the body.
+        self.request.set_auth(
+            WeniAuthContext(
+                project_uuid=self.payload["project_uuid"],
+                user_email=self.user.email,
+            )
+        )
 
         # Mock usecases
         self.mock_waba_sync = Mock()
@@ -1012,6 +1022,7 @@ class ListWhatsAppCloudChannelsTestCase(PermissionTestCaseMixin, APIBaseTestCase
         self.url = reverse("wpp-cloud-channels")
 
         self.grant_permission(self.user, "can_communicate_internally")
+        self.request.set_auth(WeniAuthContext(project_uuid=self.project_uuid))
 
     @property
     def view(self):
@@ -1059,10 +1070,12 @@ class ListWhatsAppCloudChannelsTestCase(PermissionTestCaseMixin, APIBaseTestCase
         self.assertEqual(len(response.json), 1)
         self.assertEqual(response.json[0]["app_uuid"], str(app.uuid))
 
-    def test_list_requires_project_uuid(self):
+    def test_list_denies_when_token_has_no_project_uuid(self):
+        self.request.set_auth(WeniAuthContext())
+
         response = self.request.get(self.url)
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_list_denies_non_internal_user(self):
         self.revoke_permission(self.user, "can_communicate_internally")
