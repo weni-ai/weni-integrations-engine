@@ -23,7 +23,6 @@ from marketplace.clients.facebook.client import FacebookClient
 from marketplace.interactions.models import Rating
 from marketplace.core import types
 from marketplace.core.tests.base import APIBaseTestCase
-from marketplace.core.tests.mixis.permissions import PermissionTestCaseMixin
 
 
 User = get_user_model()
@@ -332,17 +331,13 @@ class ListMyAppViewTestCase(AppTypeViewTestCase):
 # --- PreverifiedPhoneNumber view and FacebookClient.get_preverified_numbers ---
 
 
-class PreverifiedPhoneNumberViewTestCase(PermissionTestCaseMixin, APIBaseTestCase):
+class PreverifiedPhoneNumberViewTestCase(APIBaseTestCase):
     url = "/commerce/preverified-phone-number"
     view_class = PreverifiedPhoneNumber
 
     @property
     def view(self):
         return self.view_class.as_view()
-
-    def setUp(self):
-        super().setUp()
-        self.grant_permission(self.user, "can_communicate_internally")
 
     @override_settings(WHATSAPP_BSP_BUSINESS_ID="123456")
     @patch("marketplace.applications.views.cache.get", return_value=None)
@@ -484,10 +479,10 @@ class PreverifiedPhoneNumberViewTestCase(PermissionTestCaseMixin, APIBaseTestCas
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json, {"data": []})
 
-    def test_returns_403_without_can_communicate_internally_permission(self):
-        self.clear_permissions(self.user)
+    def test_returns_401_when_unauthenticated(self):
+        self.request.set_user(None)
         response = self.request.get(self.url)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     @override_settings(WHATSAPP_BSP_BUSINESS_ID="123456")
     @patch("marketplace.applications.views.cache.get", return_value=None)
@@ -803,7 +798,7 @@ class FacebookClientGetPreverifiedNumbersTestCase(TestCase):
         mock_make_request.assert_called_once()
 
 
-class CheckAppIsIntegratedViewTestCase(PermissionTestCaseMixin, APIBaseTestCase):
+class CheckAppIsIntegratedViewTestCase(APIBaseTestCase):
     url = reverse("check-whatsapp-integration")
     view_class = CheckAppIsIntegrated
 
@@ -814,7 +809,6 @@ class CheckAppIsIntegratedViewTestCase(PermissionTestCaseMixin, APIBaseTestCase)
     def setUp(self):
         super().setUp()
         self.project_uuid = str(uuid.uuid4())
-        self.grant_permission(self.user, "can_communicate_internally")
         self.request.set_auth(WeniAuthContext(project_uuid=self.project_uuid))
 
     def test_returns_has_whatsapp_false_when_no_app(self):
@@ -848,15 +842,15 @@ class CheckAppIsIntegratedViewTestCase(PermissionTestCaseMixin, APIBaseTestCase)
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_denies_non_internal_caller(self):
-        self.revoke_permission(self.user, "can_communicate_internally")
+    def test_returns_403_when_unauthenticated(self):
+        self.request.set_user(None)
 
         response = self.request.get(self.url)
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
-class CheckWebChatIntegrationViewTestCase(PermissionTestCaseMixin, APIBaseTestCase):
+class CheckWebChatIntegrationViewTestCase(APIBaseTestCase):
     url = reverse("check-webchat-integration")
     view_class = CheckWebChatIntegrationView
 
@@ -867,7 +861,6 @@ class CheckWebChatIntegrationViewTestCase(PermissionTestCaseMixin, APIBaseTestCa
     def setUp(self):
         super().setUp()
         self.project_uuid = str(uuid.uuid4())
-        self.grant_permission(self.user, "can_communicate_internally")
         self.request.set_auth(WeniAuthContext(project_uuid=self.project_uuid))
 
     def test_returns_has_webchat_false_when_no_app(self):
