@@ -60,9 +60,11 @@ class TestTemplateWebhookEventProcessor(TestCase):
 
     def test_skips_if_template_is_none(self):
         mock_app = MagicMock()
+        mock_app.uuid = "app-uuid-1"
         self.mock_app_filter.return_value.exists.return_value = True
         self.mock_app_filter.return_value.__iter__.return_value = [mock_app]
         self.mock_template_filter.return_value.first.return_value = None
+        self.processor.logger = MagicMock()
 
         self.processor.process_template_status_update(
             "123",
@@ -75,6 +77,66 @@ class TestTemplateWebhookEventProcessor(TestCase):
             {},
         )
         self.status_update_handler.handle.assert_not_called()
+        self.processor.logger.warning.assert_called_once()
+        warning_msg = self.processor.logger.warning.call_args.args[0]
+        self.assertIn("template not found", warning_msg)
+        self.assertIn("missing", warning_msg)
+        self.assertIn("APPROVED", warning_msg)
+        self.assertIn("app-uuid-1", warning_msg)
+
+    def test_skips_if_no_matching_translation(self):
+        mock_app = MagicMock()
+        mock_app.uuid = "app-uuid-1"
+        self.mock_app_filter.return_value.exists.return_value = True
+        self.mock_app_filter.return_value.__iter__.return_value = [mock_app]
+
+        mock_template = MagicMock()
+        mock_template.translations.filter.return_value = []
+        self.mock_template_filter.return_value.first.return_value = mock_template
+        self.processor.logger = MagicMock()
+
+        self.processor.process_template_status_update(
+            "123",
+            {
+                "event": "REJECTED",
+                "message_template_name": "order_confirmation",
+                "message_template_language": "pt_BR",
+                "message_template_id": "999",
+            },
+            {},
+        )
+
+        self.status_update_handler.handle.assert_not_called()
+        self.processor.logger.warning.assert_called_once()
+        warning_msg = self.processor.logger.warning.call_args.args[0]
+        self.assertIn("no matching translation", warning_msg)
+        self.assertIn("pt_BR", warning_msg)
+        self.assertIn("999", warning_msg)
+
+    def test_warns_when_message_template_id_is_missing(self):
+        mock_app = MagicMock()
+        mock_app.uuid = "app-uuid-1"
+        self.mock_app_filter.return_value.exists.return_value = True
+        self.mock_app_filter.return_value.__iter__.return_value = [mock_app]
+        self.mock_template_filter.return_value.first.return_value = None
+        self.processor.logger = MagicMock()
+
+        self.processor.process_template_status_update(
+            "123",
+            {
+                "event": "APPROVED",
+                "message_template_name": "order_confirmation",
+                "message_template_language": "en_US",
+            },
+            {},
+        )
+
+        warning_messages = [
+            call.args[0] for call in self.processor.logger.warning.call_args_list
+        ]
+        self.assertTrue(
+            any("missing message_template_id" in msg for msg in warning_messages)
+        )
 
     def test_unexpected_error_logs(self):
         mock_app = MagicMock()
@@ -95,6 +157,7 @@ class TestTemplateWebhookEventProcessor(TestCase):
             {},
         )
         self.processor.logger.error.assert_called_once()
+        self.assertTrue(self.processor.logger.error.call_args.kwargs.get("exc_info"))
 
     def test_process_event_delegates_correctly(self):
         self.processor.process_template_status_update = MagicMock()
@@ -201,9 +264,7 @@ class TestTemplateWebhookEventProcessor(TestCase):
         self.mock_template_filter.assert_not_called()
 
     @patch("marketplace.wpp_templates.utils.extract_template_data")
-    def test_process_template_category_update_updates_and_notifies(
-        self, mock_extract
-    ):
+    def test_process_template_category_update_updates_and_notifies(self, mock_extract):
         mock_extract.return_value = {"mocked": "data"}
         mock_app = MagicMock()
         mock_app.uuid = "app-uuid-1"
