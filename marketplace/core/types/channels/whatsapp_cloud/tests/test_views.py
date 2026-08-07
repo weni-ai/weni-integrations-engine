@@ -66,7 +66,7 @@ class RetrieveWhatsAppCloudTestCase(APIBaseTestCase):
         self.assertIn("project_uuid", response.json)
         self.assertIn("platform", response.json)
         self.assertIn("created_on", response.json)
-        self.assertEqual(response.json["config"], {})
+        self.assertEqual(response.json["config"], {"currency_migration": None})
 
     def test_retrieve_exposes_phone_number_id_and_waba_id(self):
         self.app.config = {
@@ -100,6 +100,42 @@ class RetrieveWhatsAppCloudTestCase(APIBaseTestCase):
         self.assertEqual(config["waba"]["id"], "912460154934195")
 
         self.assertNotIn("wa_phone_number_id", config)
+        self.assertIsNone(config["currency_migration"])
+
+    def test_retrieve_exposes_currency_migration(self):
+        migrated_at = "2026-08-06T18:00:00.123456+00:00"
+        old_waba_id = "111222333444"
+        self.app.config = {
+            "wa_waba_id": "999888777666",
+            "currency_migration_previous_waba_info": {
+                "wa_waba_id": old_waba_id,
+                "wa_currency": "USD",
+                "wa_message_template_namespace": "old-namespace",
+                "waba": {"id": old_waba_id, "name": "Old WABA"},
+                "migrated_at": migrated_at,
+                "template_id_mappings": [
+                    {
+                        "template_name": "hello",
+                        "language": "en",
+                        "old_message_template_id": "1",
+                        "new_message_template_id": "2",
+                    }
+                ],
+            },
+        }
+        self.app.save()
+
+        response = self.request.get(self.url, uuid=self.app.uuid)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        config = response.json["config"]
+        self.assertEqual(
+            config["currency_migration"],
+            {"migration_date": migrated_at, "old_waba_id": old_waba_id},
+        )
+        self.assertNotIn("currency_migration_previous_waba_info", config)
+        self.assertNotIn("template_id_mappings", config["currency_migration"])
 
 
 class DestroyWhatsAppCloudTestCase(APIBaseTestCase):

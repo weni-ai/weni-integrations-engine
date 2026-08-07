@@ -1,3 +1,7 @@
+v4.23.1
+----------
+* feat(whatsapp): expose currency_migration info in config serializer
+
 v4.23.0
 ----------
 * feat: Adopt weni-commons JWT authentication on channel routes
