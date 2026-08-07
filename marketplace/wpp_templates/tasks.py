@@ -16,6 +16,42 @@ from marketplace.applications.models import App
 
 logger = logging.getLogger(__name__)
 
+ALLOWED_TEMPLATE_WEBHOOK_EVENTS = frozenset(
+    {
+        "message_template_status_update",
+        "template_correct_category_detection",
+        "template_category_update",
+    }
+)
+
+
+def _process_webhook_change(processor, waba_id, change, webhook_data) -> None:
+    """Handle one change in isolation so a malformed or failing change never
+    aborts the remaining changes in the same Meta batch."""
+    field = change.get("field")
+
+    if field not in ALLOWED_TEMPLATE_WEBHOOK_EVENTS:
+        logger.info(f"Event: {field}, not mapped to usage")
+        return
+
+    value = change.get("value")
+    if value is None:
+        logger.warning(
+            f"Webhook change for field {field} has no value, skipping. waba_id={waba_id}"
+        )
+        return
+
+    if value.get("reason") is None:
+        value["reason"] = ""
+
+    try:
+        processor.process_event(waba_id, value, field, webhook_data)
+    except Exception as e:
+        logger.error(
+            f"Failed to process webhook event field={field} waba_id={waba_id}: {e}",
+            exc_info=True,
+        )
+
 
 @shared_task(track_started=True, name="refresh_whatsapp_templates_from_facebook")
 def refresh_whatsapp_templates_from_facebook():
@@ -37,8 +73,13 @@ def refresh_whatsapp_templates_from_facebook():
             logger.error(f"Error processing app {app.uuid}: {str(e)}")
 
 
-@shared_task(track_started=True, name="update_templates_by_webhook")
-def update_templates_by_webhook(**kwargs):  # pragma: no cover
+@shared_task(
+    track_started=True,
+    name="update_templates_by_webhook",
+    acks_late=True,
+    reject_on_worker_lost=True,
+)
+def update_templates_by_webhook(**kwargs):
     """
     Celery task to handle WhatsApp webhook events related to message template status updates.
 
@@ -73,8 +114,9 @@ def update_templates_by_webhook(**kwargs):  # pragma: no cover
         }
 
     Notes:
-        - Only events with `field` equal to "message_template_status_update" are processed.
+        - Only events in ALLOWED_TEMPLATE_WEBHOOK_EVENTS are processed.
         - If the `reason` field is null, it is defaulted to an empty string.
+        - Each change is processed in isolation so one failure does not abort the batch.
         - The processor handles each app linked to the provided WABA ID.
 
     Logs:
@@ -82,31 +124,16 @@ def update_templates_by_webhook(**kwargs):  # pragma: no cover
         - Mapped and unmapped event types.
         - Processing results for each app/template.
     """
-    allowed_event_types = [
-        "message_template_status_update",
-        "template_correct_category_detection",
-        "template_category_update",
-    ]
-    webhook_data = kwargs.get("webhook_data")
+    webhook_data = kwargs.get("webhook_data") or {}
 
     logger.info(f"Update templates by webhook data received: {webhook_data}")
 
     processor = create_template_webhook_event_processor()
 
     for entry in webhook_data.get("entry", []):
-        whatsapp_business_account_id = entry.get("id")
+        waba_id = entry.get("id")
         for change in entry.get("changes", []):
-            field = change.get("field")
-            value = change.get("value")
-            if value.get("reason", None) is None:
-                value["reason"] = ""
-
-            if field in allowed_event_types:
-                processor.process_event(
-                    whatsapp_business_account_id, value, field, webhook_data
-                )
-            else:
-                logger.info(f"Event: {field}, not mapped to usage")
+            _process_webhook_change(processor, waba_id, change, webhook_data)
 
     logger.info("-" * 50)
 
