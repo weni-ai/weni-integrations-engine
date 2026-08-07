@@ -207,18 +207,39 @@ class TemplateWebhookEventProcessor:
         template_language = value.get("message_template_language")
         message_template_id = value.get("message_template_id")
 
+        if message_template_id is None:
+            self.logger.warning(
+                f"Webhook status update missing message_template_id for "
+                f"template={template_name!r} language={template_language!r} "
+                f"status={status!r} waba_id={waba_id}"
+            )
+
         for app in apps:
             try:
                 template = TemplateMessage.objects.filter(
                     app=app, name=template_name
                 ).first()
                 if not template:
+                    self.logger.warning(
+                        f"Dropping status update: template not found. "
+                        f"app={app.uuid} waba_id={waba_id} "
+                        f"template={template_name!r} status={status!r}"
+                    )
                     continue
 
                 translations = template.translations.filter(
                     language=template_language,
                     message_template_id=message_template_id,
                 )
+                if not translations:
+                    self.logger.warning(
+                        f"Dropping status update: no matching translation. "
+                        f"app={app.uuid} waba_id={waba_id} "
+                        f"template={template_name!r} language={template_language!r} "
+                        f"message_template_id={message_template_id!r} status={status!r}"
+                    )
+                    continue
+
                 for translation in translations:
                     self.status_update_handler.handle(
                         app=app,
@@ -229,7 +250,8 @@ class TemplateWebhookEventProcessor:
                     )
             except Exception as e:
                 self.logger.error(
-                    f"Unexpected error processing template status update for App {str(app.uuid)}: {e}"
+                    f"Unexpected error processing template status update for App {str(app.uuid)}: {e}",
+                    exc_info=True,
                 )
 
     def process_template_category_change(self, waba_id: str, value: dict) -> None:
