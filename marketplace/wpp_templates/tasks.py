@@ -191,3 +191,12 @@ def sync_pending_templates(app_uuid: str):
 
     except Exception as e:
         logger.error(f"Error syncing templates for app {app_uuid}: {str(e)}")
+
+
+@shared_task(track_started=True, name="task_sync_templates_from_meta")
+def task_sync_templates_from_meta(app_uuid: str):
+    try:
+        app = App.objects.get(uuid=app_uuid)
+        TemplateSyncUseCase(app).sync_templates()
+    except Exception as e:
+        logger.error(f"Error syncing templates from Meta for app {app_uuid}: {e}")

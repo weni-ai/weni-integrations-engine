@@ -15,11 +15,12 @@ class TestTemplateLibraryStatusUseCase(SimpleTestCase):
         app.uuid = "app-uuid-123"
         return app
 
-    def _make_uc(self, redis_conn=None, commerce_service=None):
+    def _make_uc(self, redis_conn=None, commerce_service=None, sync_scheduler=None):
         return TemplateLibraryStatusUseCase(
             app=self._make_app(),
             redis_conn=redis_conn or MagicMock(),
             commerce_service=commerce_service or MagicMock(),
+            sync_scheduler=sync_scheduler or MagicMock(),
         )
 
     def test_update_template_status_no_redis_entry(self):
@@ -99,29 +100,33 @@ class TestTemplateLibraryStatusUseCase(SimpleTestCase):
         self.assertTrue(args[1])
 
     def test_complete_sync_no_pending_with_fb_sync(self):
-        """No pending and not skipping -> sync from FB, notify commerce and cleanup Redis."""
+        """No pending and not skipping -> schedule Meta sync, notify commerce and cleanup Redis."""
         statuses = {"a": "APPROVED", "b": "APPROVED"}
         redis_conn = MagicMock()
-        uc = self._make_uc(redis_conn=redis_conn)
+        sync_scheduler = MagicMock()
+        uc = self._make_uc(redis_conn=redis_conn, sync_scheduler=sync_scheduler)
         uc.sync_templates_from_facebook = MagicMock()
         uc.notify_commerce_module = MagicMock()
 
         uc._complete_sync_process_if_no_pending(statuses, skip_facebook_sync=False)
 
-        uc.sync_templates_from_facebook.assert_called_once_with(uc.app)
+        sync_scheduler.schedule.assert_called_once_with("app-uuid-123")
+        uc.sync_templates_from_facebook.assert_not_called()
         uc.notify_commerce_module.assert_called_once_with(statuses)
         redis_conn.delete.assert_called_once_with(uc.redis_key)
 
     def test_complete_sync_no_pending_skip_fb(self):
-        """No pending and skipping -> only notify and cleanup; no FB sync."""
+        """No pending and skipping -> only notify and cleanup; no Meta sync scheduled."""
         statuses = {"a": "APPROVED"}
         redis_conn = MagicMock()
-        uc = self._make_uc(redis_conn=redis_conn)
+        sync_scheduler = MagicMock()
+        uc = self._make_uc(redis_conn=redis_conn, sync_scheduler=sync_scheduler)
         uc.sync_templates_from_facebook = MagicMock()
         uc.notify_commerce_module = MagicMock()
 
         uc._complete_sync_process_if_no_pending(statuses, skip_facebook_sync=True)
 
+        sync_scheduler.schedule.assert_not_called()
         uc.sync_templates_from_facebook.assert_not_called()
         uc.notify_commerce_module.assert_called_once_with(statuses)
         redis_conn.delete.assert_called_once_with(uc.redis_key)
@@ -130,12 +135,14 @@ class TestTemplateLibraryStatusUseCase(SimpleTestCase):
         """Has pending -> do not sync/notify/delete."""
         statuses = {"a": "PENDING", "b": "APPROVED"}
         redis_conn = MagicMock()
-        uc = self._make_uc(redis_conn=redis_conn)
+        sync_scheduler = MagicMock()
+        uc = self._make_uc(redis_conn=redis_conn, sync_scheduler=sync_scheduler)
         uc.sync_templates_from_facebook = MagicMock()
         uc.notify_commerce_module = MagicMock()
 
         uc._complete_sync_process_if_no_pending(statuses, skip_facebook_sync=False)
 
+        sync_scheduler.schedule.assert_not_called()
         uc.sync_templates_from_facebook.assert_not_called()
         uc.notify_commerce_module.assert_not_called()
         redis_conn.delete.assert_not_called()
