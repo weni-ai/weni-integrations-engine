@@ -6,9 +6,13 @@ from rest_framework.decorators import action
 from rest_framework.views import APIView
 
 from marketplace.core.types.ecommerce.dtos.sync_on_demand_dto import SyncOnDemandDTO
+from marketplace.core.types.ecommerce.dtos.upload_inline_products_dto import (
+    UploadInlineProductsDTO,
+)
 from marketplace.core.types.ecommerce.vtex.serializers import (
     FacebookProductDTOSerializer,
     FirstProductInsertSerializer,
+    UploadInlineProductsSerializer,
     VtexAdsSerializer,
     VtexIOSerializer,
     VtexSerializer,
@@ -23,6 +27,9 @@ from marketplace.core.types.ecommerce.vtex.usecases.link_catalog_start_sync impo
 )
 from marketplace.core.types.ecommerce.vtex.usecases.sync_on_demand_in_line import (
     SyncOnDemandInlineUseCase,
+)
+from marketplace.core.types.ecommerce.vtex.usecases.upload_inline_products import (
+    UploadInlineProductsUseCase,
 )
 from marketplace.core.types.ecommerce.vtex.usecases.vtex_integration import (
     VtexIntegration,
@@ -261,7 +268,7 @@ class VtexIntegrationDetailsView(APIView):
         return Response(status=status.HTTP_200_OK, data=integration_details)
 
 
-class VtexSyncOnDemandView(JWTModuleAuthMixin, APIView):  # pragma: no cover
+class VtexSyncOnDemandView(JWTModuleAuthMixin, APIView):
     def post(self, request, *args, **kwargs) -> Response:
         serializer = SyncOnDemandSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -354,4 +361,58 @@ class VtexSyncOnDemandInlineView(JWTModuleAuthMixin, APIView):  # pragma: no cov
                 "invalid_skus": invalid_skus,
             },
             status=status.HTTP_200_OK,
+        )
+
+
+class VtexUploadInlineProductsView(JWTModuleAuthMixin, APIView):
+    """
+    Uploads a list of pre-formatted (optionally edited) inline products to Meta.
+
+    Reuses the inline endpoint credentials: the VTEX app is resolved from the JWT
+    project_uuid and its linked catalog drives the Meta upload. Products are expected in the
+    same shape returned by the inline endpoint (with `id` already unified as "sku#seller").
+    They are persisted with on-demand priority and uploaded asynchronously to Meta.
+
+    Example request:
+        {
+            "products": [
+                {
+                    "id": "1047#1",
+                    "title": "Laranja Bahia Importada - Saco (15Kg)",
+                    "description": "Laranja Bahia Importada - Saco (15Kg)",
+                    "availability": "in stock",
+                    "status": "active",
+                    "condition": "new",
+                    "price": "10.00 BRL",
+                    "link": "https://www.site.com.br/laranja-bahia-importada-1/p?idsku=1047",
+                    "image_link": "https://site.vteximg.com.br/arquivos/ids/158691/868140a9.jpg",
+                    "brand": "Arado",
+                    "sale_price": "8.00 BRL",
+                    "additional_image_link": "",
+                    "rich_text_description": ""
+                }
+            ]
+        }
+
+    Example response:
+        {
+            "message": "Products queued for upload to Meta.",
+            "total_products": 1
+        }
+    """
+
+    def post(self, request, *args, **kwargs) -> Response:
+        serializer = UploadInlineProductsSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        dto = UploadInlineProductsDTO(products=serializer.validated_data["products"])
+        use_case = UploadInlineProductsUseCase()
+        total_products = use_case.execute(dto, self.project_uuid)
+
+        return Response(
+            {
+                "message": "Products queued for upload to Meta.",
+                "total_products": total_products,
+            },
+            status=status.HTTP_202_ACCEPTED,
         )
