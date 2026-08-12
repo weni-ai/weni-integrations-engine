@@ -1,3 +1,7 @@
+v4.23.2
+----------
+* fix(whatsapp_cloud): replace internal permission with ProjectManagePermission on channels view
+
 v4.23.1
 ----------
 * feat(whatsapp): expose currency_migration info in config serializer
