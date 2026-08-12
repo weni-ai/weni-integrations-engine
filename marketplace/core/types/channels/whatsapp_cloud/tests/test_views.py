@@ -1047,7 +1047,7 @@ class UpdateMmliteStatusTestCase(APIBaseTestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
-class ListWhatsAppCloudChannelsTestCase(PermissionTestCaseMixin, APIBaseTestCase):
+class ListWhatsAppCloudChannelsTestCase(APIBaseTestCase):
     view_class = WhatsAppCloudChannelsView
 
     def setUp(self):
@@ -1057,7 +1057,6 @@ class ListWhatsAppCloudChannelsTestCase(PermissionTestCaseMixin, APIBaseTestCase
         self.other_project_uuid = str(uuid.uuid4())
         self.url = reverse("wpp-cloud-channels")
 
-        self.grant_permission(self.user, "can_communicate_internally")
         self.request.set_auth(WeniAuthContext(project_uuid=self.project_uuid))
 
     @property
@@ -1113,14 +1112,11 @@ class ListWhatsAppCloudChannelsTestCase(PermissionTestCaseMixin, APIBaseTestCase
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_list_denies_non_internal_user(self):
-        self.revoke_permission(self.user, "can_communicate_internally")
+    def test_list_allows_authenticated_jwt_user_without_internal_permission(self):
+        response = self.request.get(self.url)
 
-        response = self.request.get(
-            self.url, params={"project_uuid": self.project_uuid}
-        )
-
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json, [])
 
     def test_list_exposes_channel_identifiers_from_nested_config(self):
         flow_object_uuid = str(uuid.uuid4())
