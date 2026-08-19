@@ -8,7 +8,6 @@ from ..usecases import (
     ProjectCreationDTO,
 )
 from marketplace.applications.usecases import AppConfigurationUseCase
-from marketplace.clients.flows.client import FlowsClient
 from marketplace.clients.router.client import WPPRouterChannelClient
 from marketplace.event_driven.parsers import JSONParser
 from marketplace.event_driven.consumers import EDAConsumer
@@ -31,9 +30,8 @@ class ProjectConsumer(EDAConsumer):  # pragma: no cover
                 authorizations=body.get("authorizations", []),
             )
 
-            client = FlowsClient()
             wpp_router_client = WPPRouterChannelClient()
-            app_configuration = AppConfigurationUseCase(client, wpp_router_client)
+            app_configuration = AppConfigurationUseCase(wpp_router_client)
 
             app_setup_handler = AppSetupHandlerUseCase(app_configuration)
             template_type_integration = TemplateTypeIntegrationUseCase(
