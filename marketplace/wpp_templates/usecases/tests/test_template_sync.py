@@ -39,9 +39,11 @@ class TestTemplateSyncUseCase(SimpleTestCase):
         with patch(
             "marketplace.wpp_templates.usecases.template_sync.handle_error_and_update_config"
         ) as mock_handle:
-            uc.sync_templates()
+            result = uc.sync_templates()
             mock_handle.assert_called_once()
             uc.flows_client.update_facebook_templates.assert_not_called()
+            self.assertFalse(result)
+            self.assertNotIn("templates_last_synced_at", app.config)
 
     def test_sync_templates_success_existing_translation(self):
         """Successful sync with existing translation and all component types present."""
@@ -112,9 +114,12 @@ class TestTemplateSyncUseCase(SimpleTestCase):
                 True,
             )
 
-            uc.sync_templates()
+            result = uc.sync_templates()
 
             uc.flows_client.update_facebook_templates.assert_called_once()
+            self.assertTrue(result)
+            self.assertIn("templates_last_synced_at", app.config)
+            app.save.assert_called()
             mock_extract.assert_called_once()
             # Header created
             mock_header.objects.get_or_create.assert_called()

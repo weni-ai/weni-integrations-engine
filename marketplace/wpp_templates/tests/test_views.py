@@ -726,3 +726,66 @@ class WhatsappTemplateDetailsTestCase(APIBaseTestCase):
         response = self.request.get(self.url, {"project_uuid": "test_project_uuid"})
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.data[0], "Missing required parameter: template_id")
+
+
+class WhatsappTemplateSyncTestCase(APIBaseTestCase):
+    view_class = TemplateMessageViewSet
+
+    def setUp(self):
+        super().setUp()
+        self.app = App.objects.create(
+            config=dict(wa_waba_id="432321321"),
+            project_uuid=uuid.uuid4(),
+            platform=App.PLATFORM_WENI_FLOWS,
+            code="wpp-cloud",
+            created_on=datetime.now(pytz.UTC),
+            created_by=self.user,
+        )
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+        self.url = reverse("app-template-sync", kwargs={"app_uuid": str(self.app.uuid)})
+
+    @property
+    def view(self):
+        return self.view_class.as_view({"get": "sync", "post": "sync"})
+
+    def test_get_sync_status_without_previous_sync(self):
+        response = self.request.get(self.url, app_uuid=str(self.app.uuid))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNone(response.json["last_synced_at"])
+
+    @patch("marketplace.wpp_templates.views.TemplateSyncUseCase")
+    def test_post_sync_templates_successfully(self, mock_use_case):
+        last_synced_at = "2026-08-20T15:00:00+00:00"
+
+        def fake_sync():
+            self.app.config["templates_last_synced_at"] = last_synced_at
+            self.app.save(update_fields=["config"])
+            return True
+
+        mock_use_case.return_value.sync_templates.side_effect = fake_sync
+
+        response = self.request.post(self.url, app_uuid=str(self.app.uuid), body={})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json["last_synced_at"], last_synced_at)
+
+    @patch("marketplace.wpp_templates.views.TemplateSyncUseCase")
+    def test_post_sync_templates_within_cooldown(self, mock_use_case):
+        self.app.config["templates_last_synced_at"] = datetime.now(
+            pytz.UTC
+        ).isoformat()
+        self.app.save(update_fields=["config"])
+
+        response = self.request.post(self.url, app_uuid=str(self.app.uuid), body={})
+        self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertIn("retry_after_seconds", response.json)
+        mock_use_case.assert_not_called()
+
+    def test_post_sync_templates_ignored_meta_sync(self):
+        self.app.config["ignores_meta_sync"] = {"code": 100}
+        self.app.save(update_fields=["config"])
+
+        response = self.request.post(self.url, app_uuid=str(self.app.uuid), body={})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
