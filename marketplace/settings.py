@@ -264,6 +264,27 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
 
+META_SYNC_CELERY_QUEUE = env.str("META_SYNC_CELERY_QUEUE", default="celery")
+META_SYNC_TEMPLATES_DRAIN_BUDGET = env.int(
+    "META_SYNC_TEMPLATES_DRAIN_BUDGET", default=60
+)
+META_SYNC_CATALOGS_DRAIN_BUDGET = env.int("META_SYNC_CATALOGS_DRAIN_BUDGET", default=60)
+META_SYNC_PRODUCT_POLICIES_DRAIN_BUDGET = env.int(
+    "META_SYNC_PRODUCT_POLICIES_DRAIN_BUDGET", default=30
+)
+META_SYNC_WABAS_DRAIN_BUDGET = env.int("META_SYNC_WABAS_DRAIN_BUDGET", default=60)
+META_SYNC_PHONE_NUMBERS_DRAIN_BUDGET = env.int(
+    "META_SYNC_PHONE_NUMBERS_DRAIN_BUDGET", default=60
+)
+
+CELERY_TASK_ROUTES = {
+    "task_sync_whatsapp_templates_item": {"queue": META_SYNC_CELERY_QUEUE},
+    "task_sync_facebook_catalog_item": {"queue": META_SYNC_CELERY_QUEUE},
+    "task_sync_product_policies_item": {"queue": META_SYNC_CELERY_QUEUE},
+    "task_sync_whatsapp_cloud_waba_item": {"queue": META_SYNC_CELERY_QUEUE},
+    "task_sync_whatsapp_cloud_phone_number_item": {"queue": META_SYNC_CELERY_QUEUE},
+}
+
 
 # Cache
 
@@ -335,6 +356,18 @@ if APPTYPE_WHATSAPP_PATH in APPTYPES_CLASSES:
         * 60
         * 60
     )
+
+WHATSAPP_TIME_BETWEEN_SYNC_TEMPLATES_IN_HOURS = (
+    env.int("WHATSAPP_TIME_BETWEEN_SYNC_TEMPLATES_IN_HOURS", default=10) * 60 * 60
+)
+WHATSAPP_TIME_BETWEEN_SYNC_CATALOGS_IN_HOURS = (
+    env.int("WHATSAPP_TIME_BETWEEN_SYNC_CATALOGS_IN_HOURS", default=10) * 60 * 60
+)
+WHATSAPP_TIME_BETWEEN_SYNC_PRODUCT_POLICIES_IN_HOURS = (
+    env.int("WHATSAPP_TIME_BETWEEN_SYNC_PRODUCT_POLICIES_IN_HOURS", default=10)
+    * 60
+    * 60
+)
 
 
 if APPTYPE_WHATSAPP_CLOUD_PATH in APPTYPES_CLASSES:
@@ -417,6 +450,51 @@ CELERY_BEAT_SCHEDULE = {
     "task-sync-product-policies": {
         "task": "task_sync_product_policies",
         "schedule": crontab(minute=30),
+    },
+    "drain-whatsapp-templates": {
+        "task": "task_drain_paced_queue",
+        "schedule": crontab(minute="*"),
+        "kwargs": {
+            "queue_key": "paced:whatsapp-templates",
+            "item_task_name": "task_sync_whatsapp_templates_item",
+            "budget": META_SYNC_TEMPLATES_DRAIN_BUDGET,
+        },
+    },
+    "drain-facebook-catalogs": {
+        "task": "task_drain_paced_queue",
+        "schedule": crontab(minute="*"),
+        "kwargs": {
+            "queue_key": "paced:facebook-catalogs",
+            "item_task_name": "task_sync_facebook_catalog_item",
+            "budget": META_SYNC_CATALOGS_DRAIN_BUDGET,
+        },
+    },
+    "drain-product-policies": {
+        "task": "task_drain_paced_queue",
+        "schedule": crontab(minute="*"),
+        "kwargs": {
+            "queue_key": "paced:product-policies",
+            "item_task_name": "task_sync_product_policies_item",
+            "budget": META_SYNC_PRODUCT_POLICIES_DRAIN_BUDGET,
+        },
+    },
+    "drain-whatsapp-cloud-wabas": {
+        "task": "task_drain_paced_queue",
+        "schedule": crontab(minute="*"),
+        "kwargs": {
+            "queue_key": "paced:whatsapp-cloud-wabas",
+            "item_task_name": "task_sync_whatsapp_cloud_waba_item",
+            "budget": META_SYNC_WABAS_DRAIN_BUDGET,
+        },
+    },
+    "drain-whatsapp-cloud-phone-numbers": {
+        "task": "task_drain_paced_queue",
+        "schedule": crontab(minute="*"),
+        "kwargs": {
+            "queue_key": "paced:whatsapp-cloud-phone-numbers",
+            "item_task_name": "task_sync_whatsapp_cloud_phone_number_item",
+            "budget": META_SYNC_PHONE_NUMBERS_DRAIN_BUDGET,
+        },
     },
 }
 

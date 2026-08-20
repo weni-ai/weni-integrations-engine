@@ -1,122 +1,160 @@
 import logging
+from copy import deepcopy
+from typing import Any, Callable, Dict, List, Optional
 
-from typing import Dict, Any, Optional
-
-from redis import Redis
-
-from django_redis import get_redis_connection
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django_redis import get_redis_connection
+from redis import Redis
 
 from marketplace.applications.models import App
+from marketplace.core.pacing.constants import TTL_WHATSAPP_CLOUD_WABAS
+from marketplace.core.pacing.ttl import is_recently_synced, mark_synced
 from marketplace.core.types.channels.whatsapp.apis import FacebookWABAApi
 
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
 
-# Redis lock key for WABA synchronization
-SYNC_WHATSAPP_WABA_LOCK_KEY = "sync_whatsapp_waba_lock:{app_uuid}"
+WPP_CLOUD_CODE = "wpp-cloud"
 
 
 class WABASyncUseCase:
-    """
-    Handles synchronization of WABA (WhatsApp Business Account) data from Facebook for a given app.
-    """
+    """Synchronize WABA metadata from Meta once per WABA, then fan-out to sibling apps."""
 
-    def __init__(self, app: App, redis_conn: Optional[Redis] = None):
-        """
-        Initialize the use case with an app and optional Redis connection.
-
-        Args:
-            app: The WhatsApp app to sync WABA for
-            redis_conn: Optional Redis connection, will create one if not provided
-        """
+    def __init__(
+        self,
+        app: Optional[App] = None,
+        redis_conn: Optional[Redis] = None,
+        api_factory: Optional[Callable[[str], FacebookWABAApi]] = None,
+        token_factory: Optional[Callable[[App], str]] = None,
+    ):
         self.app = app
         self.redis_conn = redis_conn or get_redis_connection()
+        self._api_factory = api_factory or self._default_api_factory
+        self._token_factory = token_factory or self._default_token_factory
 
-    def sync_whatsapp_cloud_waba(self) -> Dict[str, Any]:
-        """
-        Synchronizes the WABA for the given app from Facebook.
+    def sync_waba(self, waba_id: str) -> Dict[str, Any]:
+        """Fetch WABA data once and write `config.waba` on every eligible sibling."""
+        eligible_apps = self._eligible_apps(waba_id)
+        if not eligible_apps:
+            logger.info(f"No eligible apps found for WABA sync: {waba_id}")
+            return {"status": "skipped", "reason": "no_eligible_apps"}
 
-        Returns:
-            A dictionary with the result of the synchronization.
-        """
-        skip_result = self._check_sync_eligibility()
-        if skip_result:
-            return skip_result
+        api = self._build_api(eligible_apps)
+        if api is None:
+            logger.error(f"No access token available for WABA sync: {waba_id}")
+            return {"status": "error", "error": "no_access_token"}
 
         try:
-            # Get access token and initialize API
-            access_token = self.app.apptype.get_access_token(self.app)
-            api = FacebookWABAApi(access_token)
-
-            # Fetch waba_id from config
-            waba_id = self.app.config.get("wa_waba_id")
             waba_data = api.get_waba(waba_id)
+        except Exception as exc:
+            logger.error(f"Error fetching WABA {waba_id}: {exc}")
+            return {"status": "error", "error": str(exc)}
 
-            # Update app configuration
-            self._update_app_config_with_waba_data(waba_data)
+        admin = User.objects.get_admin_user()
+        for app in eligible_apps:
+            self._write_waba(app, deepcopy(waba_data), admin)
 
-            # Set lock to prevent frequent synchronizations
-            self._set_sync_lock()
+        mark_synced(
+            self._ttl_key(waba_id),
+            settings.WHATSAPP_TIME_BETWEEN_SYNC_WABA_IN_HOURS,
+            redis=self.redis_conn,
+        )
+        logger.info(
+            f"Successfully synced WABA {waba_id} onto {len(eligible_apps)} app(s)."
+        )
+        return {
+            "status": "synced",
+            "waba": waba_data,
+            "updated": len(eligible_apps),
+        }
 
-            logger.info(f"Successfully synced WABA for app {self.app.uuid}.")
-            return {"status": "synced", "waba": self.app.config["waba"]}
+    def sync_whatsapp_cloud_waba(self) -> Dict[str, Any]:
+        """Ensure `self.app` has `config.waba`, reusing a sibling cache when TTL is fresh."""
+        app = self.app
+        if app is None:
+            return {"status": "error", "error": "app is required"}
 
-        except Exception as e:
-            logger.info(f"Error syncing WABA for app {self.app.uuid}: {str(e)}")
-            return {"status": "error", "error": str(e)}
-
-    def _get_lock_key(self) -> str:
-        """Generate the Redis lock key for the current app."""
-        return SYNC_WHATSAPP_WABA_LOCK_KEY.format(app_uuid=str(self.app.uuid))
-
-    def _check_sync_eligibility(self) -> Optional[Dict[str, Any]]:
-        """
-        Check if the app is eligible for synchronization.
-        Returns:
-            None if eligible, otherwise a dict with skip status and reason
-        """
-        key = self._get_lock_key()
-
-        # Check if sync should be ignored
-        if "ignores_meta_sync" in self.app.config:
+        config = app.config or {}
+        if "ignores_meta_sync" in config:
             logger.info(
-                f"Skipping WABA sync for app {self.app.uuid} based on previous error: "
-                f"{self.app.config['ignores_meta_sync']}"
+                f"Skipping WABA sync for app {app.uuid} based on previous error: "
+                f"{config['ignores_meta_sync']}"
             )
             return {"status": "skipped", "reason": "ignores_meta_sync_flag"}
 
-        # Check for recent sync lock
-        if self.redis_conn.get(key) is not None:
-            ttl = self.redis_conn.ttl(key)
-            logger.info(
-                f"Skipping WABA sync for app {self.app.uuid} (lock active, {ttl} seconds left)."
-            )
-            return {"status": "skipped", "reason": "recently_synced"}
-
-        # Check for waba_id
-        waba_id = self.app.config.get("wa_waba_id")
+        waba_id = config.get("wa_waba_id")
         if not waba_id:
             logger.info(
-                f"Skipping WABA sync for app {self.app.uuid} because 'wa_waba_id' is missing."
+                f"Skipping WABA sync for app {app.uuid} because 'wa_waba_id' is missing."
             )
             return {"status": "skipped", "reason": "missing_wa_waba_id"}
 
+        if is_recently_synced(self._ttl_key(waba_id), redis=self.redis_conn):
+            copied_waba = self._copy_sibling_waba_cache(app, waba_id)
+            if copied_waba is not None:
+                logger.info(
+                    f"Copied cached WABA {waba_id} onto app {app.uuid} (TTL still fresh)."
+                )
+                return {"status": "copied", "waba": copied_waba}
+
+        return self.sync_waba(waba_id)
+
+    def _eligible_apps(self, waba_id: str) -> List[App]:
+        apps = App.objects.filter(
+            code=WPP_CLOUD_CODE,
+            configured=True,
+            config__wa_waba_id=waba_id,
+        )
+        return [app for app in apps if "ignores_meta_sync" not in (app.config or {})]
+
+    def _copy_sibling_waba_cache(
+        self, app: App, waba_id: str
+    ) -> Optional[Dict[str, Any]]:
+        siblings = App.objects.filter(
+            code=WPP_CLOUD_CODE,
+            configured=True,
+            config__wa_waba_id=waba_id,
+        ).exclude(uuid=app.uuid)
+
+        for sibling in siblings:
+            sibling_config = sibling.config or {}
+            if "ignores_meta_sync" in sibling_config:
+                continue
+            cached_waba = sibling_config.get("waba")
+            if not cached_waba:
+                continue
+            self._write_waba(app, deepcopy(cached_waba), User.objects.get_admin_user())
+            return cached_waba
         return None
 
-    def _update_app_config_with_waba_data(self, waba_data: Dict[str, Any]) -> None:
-        """Update app configuration with WABA data from Facebook."""
-        self.app.config["waba"] = waba_data
-        self.app.modified_by = User.objects.get_admin_user()
-        self.app.save()
+    def _build_api(self, apps: List[App]) -> Optional[FacebookWABAApi]:
+        for app in apps:
+            try:
+                token = self._token_factory(app)
+            except Exception as exc:
+                logger.warning(f"Failed to get access token for app {app.uuid}: {exc}")
+                continue
+            if not token:
+                continue
+            return self._api_factory(token)
+        return None
 
-    def _set_sync_lock(self) -> None:
-        """Set Redis lock to prevent frequent synchronizations."""
-        key = self._get_lock_key()
-        self.redis_conn.set(
-            key,
-            "synced",
-            ex=settings.WHATSAPP_TIME_BETWEEN_SYNC_WABA_IN_HOURS,
-        )
+    def _write_waba(self, app: App, waba_data: Dict[str, Any], admin) -> None:
+        config = dict(app.config or {})
+        config["waba"] = waba_data
+        app.config = config
+        app.modified_by = admin
+        app.save()
+
+    def _ttl_key(self, waba_id: str) -> str:
+        return TTL_WHATSAPP_CLOUD_WABAS.format(waba_id=waba_id)
+
+    @staticmethod
+    def _default_token_factory(app: App) -> str:
+        return app.apptype.get_access_token(app)
+
+    @staticmethod
+    def _default_api_factory(access_token: str) -> FacebookWABAApi:
+        return FacebookWABAApi(access_token)

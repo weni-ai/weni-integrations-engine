@@ -1,7 +1,17 @@
 import logging
 
 from celery import shared_task
+from django.conf import settings
+from django.db.models import Q
 
+from marketplace.applications.models import App
+from marketplace.core.pacing.constants import (
+    QUEUE_WHATSAPP_TEMPLATES,
+    TTL_WHATSAPP_TEMPLATES,
+)
+from marketplace.core.pacing.queue import enqueue_item
+from marketplace.core.pacing.ttl import is_recently_synced, mark_synced
+from marketplace.wpp_templates.error_handlers import handle_error_and_update_config
 from marketplace.wpp_templates.factories import create_template_webhook_event_processor
 from marketplace.wpp_templates.usecases.template_library_creation import (
     TemplateCreationUseCase,
@@ -11,30 +21,97 @@ from marketplace.wpp_templates.usecases.template_library_status import (
 )
 from marketplace.wpp_templates.usecases.template_sync import TemplateSyncUseCase
 
-from marketplace.applications.models import App
-
 
 logger = logging.getLogger(__name__)
+
+TEMPLATE_SYNC_APP_CODES = ["wpp", "wpp-cloud"]
+
+
+def _resolve_waba_id(app: App):
+    waba = app.config.get("waba") or {}
+    return app.config.get("wa_waba_id") or waba.get("id")
+
+
+def _apps_for_waba(waba_id: str):
+    apps = App.objects.filter(code__in=TEMPLATE_SYNC_APP_CODES).filter(
+        Q(config__wa_waba_id=waba_id) | Q(config__waba__id=waba_id)
+    )
+    return [app for app in apps if "ignores_meta_sync" not in app.config]
 
 
 @shared_task(track_started=True, name="refresh_whatsapp_templates_from_facebook")
 def refresh_whatsapp_templates_from_facebook():
-    for app in App.objects.filter(code__in=["wpp", "wpp-cloud"]):
+    enqueued = 0
+    skipped_ttl = 0
+    seen_waba_ids = set()
+
+    for app in App.objects.filter(code__in=TEMPLATE_SYNC_APP_CODES):
         try:
-            if not (app.config.get("wa_waba_id") or app.config.get("waba")):
+            waba_id = _resolve_waba_id(app)
+            if not waba_id:
                 continue
 
             if "ignores_meta_sync" in app.config:
                 logger.info(
-                    f"Skipping sync for app {app.uuid} based on previous error: {app.config['ignores_meta_sync']}"
+                    f"Skipping sync for app {app.uuid} based on previous error: "
+                    f"{app.config['ignores_meta_sync']}"
                 )
                 continue
 
-            service = TemplateSyncUseCase(app)
-            service.sync_templates()
+            if waba_id in seen_waba_ids:
+                continue
+            seen_waba_ids.add(waba_id)
 
+            ttl_key = TTL_WHATSAPP_TEMPLATES.format(waba_id=waba_id)
+            if is_recently_synced(ttl_key):
+                skipped_ttl += 1
+                continue
+
+            if enqueue_item(QUEUE_WHATSAPP_TEMPLATES, waba_id):
+                enqueued += 1
         except Exception as e:
-            logger.error(f"Error processing app {app.uuid}: {str(e)}")
+            logger.error(f"Error enqueueing template sync for app {app.uuid}: {str(e)}")
+
+    logger.info(
+        f"Template sync dispatch: enqueued={enqueued} skipped_ttl={skipped_ttl} "
+        f"unique_wabas={len(seen_waba_ids)}"
+    )
+
+
+@shared_task(track_started=True, name="task_sync_whatsapp_templates_item")
+def task_sync_whatsapp_templates_item(waba_id: str):
+    apps = _apps_for_waba(waba_id)
+    if not apps:
+        logger.info(f"No eligible apps found for waba {waba_id}")
+        return
+
+    try:
+        representative = apps[0]
+        use_case = TemplateSyncUseCase(representative)
+        response = use_case.template_service.list_template_messages(waba_id)
+        if response.get("error"):
+            logger.error(
+                f"A error occurred with waba_id: {waba_id}. "
+                f"The error was: {response['error']}"
+            )
+            handle_error_and_update_config(representative, response["error"])
+            return
+
+        templates = response.get("data", [])
+        for app in apps:
+            try:
+                TemplateSyncUseCase(app).sync_templates(templates=templates)
+            except Exception as e:
+                logger.error(
+                    f"Error applying templates for app {app.uuid} on waba {waba_id}: {e}"
+                )
+
+        mark_synced(
+            TTL_WHATSAPP_TEMPLATES.format(waba_id=waba_id),
+            settings.WHATSAPP_TIME_BETWEEN_SYNC_TEMPLATES_IN_HOURS,
+        )
+    except Exception as e:
+        logger.error(f"Error processing template sync for waba {waba_id}: {e}")
 
 
 @shared_task(track_started=True, name="update_templates_by_webhook")

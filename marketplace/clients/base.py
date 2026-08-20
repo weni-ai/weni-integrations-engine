@@ -1,5 +1,7 @@
-import requests
+import json
 import logging
+
+import requests
 
 from django.conf import settings
 
@@ -7,6 +9,9 @@ from marketplace.clients.exceptions import CustomAPIException
 
 
 logger = logging.getLogger(__name__)
+
+META_APP_USAGE_HEADER = "x-app-usage"
+META_BUSINESS_USE_CASE_USAGE_HEADER = "x-business-use-case-usage"
 
 
 class RequestClient:
@@ -64,9 +69,66 @@ class RequestClient:
                 detail = response.json()
             except ValueError:
                 detail = response.text
+            self._log_meta_usage(
+                response, url, body=detail if isinstance(detail, dict) else None
+            )
             raise CustomAPIException(detail=detail, status_code=response.status_code)
 
+        self._log_meta_usage(response, url)
         return response
+
+    def _log_meta_usage(self, response, url, body=None):
+        headers = response.headers or {}
+        app_usage = self._parse_meta_usage_header(headers.get(META_APP_USAGE_HEADER))
+        business_usage = self._parse_meta_usage_header(
+            headers.get(META_BUSINESS_USE_CASE_USAGE_HEADER)
+        )
+        error_info = self._extract_meta_error_info(body)
+
+        if not (app_usage or business_usage or error_info):
+            return
+
+        extra = {
+            "url": url,
+            "status_code": response.status_code,
+            META_APP_USAGE_HEADER: app_usage,
+            META_BUSINESS_USE_CASE_USAGE_HEADER: business_usage,
+        }
+        extra.update(error_info)
+
+        if response.status_code >= 400:
+            logger.warning(
+                f"Meta API error for {url}: code={error_info.get('error_code')}",
+                extra=extra,
+            )
+            return
+
+        logger.info(f"Meta API usage for {url}", extra=extra)
+
+    @staticmethod
+    def _parse_meta_usage_header(value):
+        if not value:
+            return None
+        try:
+            return json.loads(value)
+        except (TypeError, ValueError):
+            return value
+
+    @staticmethod
+    def _extract_meta_error_info(body):
+        if not isinstance(body, dict):
+            return {}
+        error = body.get("error")
+        if not isinstance(error, dict):
+            return {}
+        error_data = error.get("error_data") or {}
+        return {
+            "error_code": error.get("code"),
+            "error_subcode": error.get("error_subcode"),
+            "estimated_time_to_regain_access": error_data.get(
+                "estimated_time_to_regain_access"
+            ),
+        }
 
     def _generate_log(self, response, url, method, headers, json, data, params, files):
         if response is None:
