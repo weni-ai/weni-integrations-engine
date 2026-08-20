@@ -12,10 +12,7 @@ from rest_framework.exceptions import APIException
 from django.conf import settings
 from django.utils.crypto import get_random_string
 
-from weni_commons.auth import (
-    CanCommunicateInternally as WeniCanCommunicateInternally,
-    WeniAuthViewMixin,
-)
+from weni_commons.auth import WeniAuthViewMixin
 
 from marketplace.accounts.authentication import WeniModuleAuthentication
 from marketplace.core.types import views
@@ -313,14 +310,14 @@ class WhatsAppCloudViewSet(
 
 class WhatsAppCloudChannelsView(WeniAuthViewMixin, APIView):
     """List every WhatsApp Cloud channel of a project for the channel-selection
-    screen consumed by internal services (e.g. retail).
+    screen consumed by authenticated callers (e.g. agentic-cx).
 
-    Always scoped to the required `project_uuid`, so other projects' channels
+    Always scoped to ``self.auth.project_uuid``, so other projects' channels
     are never leaked.
     """
 
     authentication_classes = [WeniModuleAuthentication]
-    permission_classes = [WeniCanCommunicateInternally]
+    permission_classes = [ProjectManagePermission]
 
     def get(self, request, *args, **kwargs):
         apps = ListWhatsAppCloudChannelsUseCase().execute(
