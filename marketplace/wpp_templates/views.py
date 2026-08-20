@@ -3,6 +3,7 @@ import re
 import base64
 import pytz
 import dataclasses
+from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.conf import settings
@@ -32,6 +33,12 @@ from .usecases import TemplateDetailUseCase
 from marketplace.wpp_templates.usecases.template_library_creation import (
     TemplateCreationUseCase,
 )
+from marketplace.wpp_templates.usecases.template_sync import (
+    TEMPLATES_LAST_SYNCED_AT_KEY,
+    TemplateSyncUseCase,
+)
+
+TEMPLATES_SYNC_COOLDOWN = timedelta(hours=1)
 
 
 WHATSAPP_VERSION = settings.WHATSAPP_VERSION
@@ -310,6 +317,66 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         response = use_case.create_library_template_single(request.data)
 
         return Response(response, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["GET", "POST"], url_path="sync")
+    def sync(self, request, app_uuid=None, uuid=None):
+        app = get_object_or_404(App, uuid=app_uuid)
+        last_synced_at = app.config.get(TEMPLATES_LAST_SYNCED_AT_KEY)
+
+        if request.method == "GET":
+            return Response(
+                {"last_synced_at": last_synced_at}, status=status.HTTP_200_OK
+            )
+
+        if "ignores_meta_sync" in app.config:
+            return Response(
+                {"error": "Template sync is disabled for this app"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        last_synced_dt = self._parse_last_synced_at(last_synced_at)
+        if last_synced_dt is not None:
+            elapsed = datetime.datetime.now(datetime.timezone.utc) - last_synced_dt
+            if elapsed < TEMPLATES_SYNC_COOLDOWN:
+                retry_after_seconds = int(
+                    (TEMPLATES_SYNC_COOLDOWN - elapsed).total_seconds()
+                )
+                return Response(
+                    {
+                        "error": "Templates were synced less than 1 hour ago",
+                        "last_synced_at": last_synced_at,
+                        "retry_after_seconds": max(retry_after_seconds, 1),
+                    },
+                    status=status.HTTP_429_TOO_MANY_REQUESTS,
+                )
+
+        try:
+            synced = TemplateSyncUseCase(app).sync_templates()
+        except ValueError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not synced:
+            return Response(
+                {"error": "Couldn't sync templates due to a Meta API error"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        app.refresh_from_db()
+        return Response(
+            {"last_synced_at": app.config.get(TEMPLATES_LAST_SYNCED_AT_KEY)},
+            status=status.HTTP_200_OK,
+        )
+
+    def _parse_last_synced_at(self, last_synced_at):
+        if not last_synced_at:
+            return None
+        try:
+            parsed = datetime.datetime.fromisoformat(last_synced_at)
+        except (TypeError, ValueError):
+            return None
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=datetime.timezone.utc)
+        return parsed.astimezone(datetime.timezone.utc)
 
     @action(detail=False, methods=["GET"])
     def template_detail(self, request, app_uuid=None, uuid=None):

@@ -9,8 +9,12 @@ from marketplace.wpp_templates.models import (
     TemplateMessage,
     TemplateTranslation,
 )
+from django.utils import timezone
+
 from marketplace.wpp_templates.error_handlers import handle_error_and_update_config
 from marketplace.wpp_templates.template_helpers import extract_body_example
+
+TEMPLATES_LAST_SYNCED_AT_KEY = "templates_last_synced_at"
 
 
 logger = logging.getLogger(__name__)
@@ -62,7 +66,7 @@ class TemplateSyncUseCase:
                 f"A error occurred with waba_id: {waba_id}. \nThe error was:  {template_error}\n"
             )
             handle_error_and_update_config(self.app, template_error)
-            return
+            return False
 
         templates = templates.get("data", [])
         try:
@@ -188,7 +192,15 @@ class TemplateSyncUseCase:
                 )
                 continue
 
+        self._mark_templates_synced()
         logger.info(f"Task sync_templates completed for app {str(self.app.uuid)}")
+        return True
+
+    def _mark_templates_synced(self):
+        config = dict(self.app.config or {})
+        config[TEMPLATES_LAST_SYNCED_AT_KEY] = timezone.now().isoformat()
+        self.app.config = config
+        self.app.save(update_fields=["config"])
 
     def _delete_unexistent_translations(self, templates):
         """
