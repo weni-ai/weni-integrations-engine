@@ -103,6 +103,33 @@ class SyncWhatsappCloudWabaItemTestCase(SimpleTestCase):
         task_sync_whatsapp_cloud_waba_item(str(uuid4()))
         mock_use_case_cls.assert_not_called()
 
+    @patch("marketplace.core.types.channels.whatsapp.tasks.WABASyncUseCase")
+    @patch("marketplace.core.types.channels.whatsapp.tasks.App")
+    def test_uuid_shim_skips_when_app_has_no_waba_id(self, mock_app, mock_use_case_cls):
+        app = MagicMock()
+        app.config = {}
+        mock_app.objects.get.return_value = app
+
+        task_sync_whatsapp_cloud_waba_item(str(uuid4()))
+        mock_use_case_cls.assert_not_called()
+
+    @patch("marketplace.core.types.channels.whatsapp.tasks.WABASyncUseCase")
+    def test_logs_error_when_sync_returns_error_status(self, mock_use_case_cls):
+        mock_use_case_cls.return_value.sync_waba.return_value = {
+            "status": "error",
+            "error": "no_access_token",
+        }
+
+        task_sync_whatsapp_cloud_waba_item("waba-123")
+        mock_use_case_cls.return_value.sync_waba.assert_called_once_with("waba-123")
+
+    @patch("marketplace.core.types.channels.whatsapp.tasks.WABASyncUseCase")
+    def test_logs_error_when_sync_raises(self, mock_use_case_cls):
+        mock_use_case_cls.return_value.sync_waba.side_effect = Exception("graph down")
+
+        task_sync_whatsapp_cloud_waba_item("waba-123")
+        mock_use_case_cls.return_value.sync_waba.assert_called_once_with("waba-123")
+
 
 class SyncWhatsappCloudPhoneNumbersDispatcherTestCase(SimpleTestCase):
     @patch(
@@ -125,6 +152,25 @@ class SyncWhatsappCloudPhoneNumbersDispatcherTestCase(SimpleTestCase):
         mock_enqueue.assert_called_once()
         self.assertEqual(mock_enqueue.call_args.args[1], "app-1")
 
+    @patch("marketplace.core.types.channels.whatsapp.tasks.enqueue_item")
+    @patch("marketplace.core.types.channels.whatsapp.tasks.is_recently_synced")
+    @patch("marketplace.core.types.channels.whatsapp.tasks.App")
+    def test_skips_app_when_ttl_is_fresh(self, mock_app, mock_ttl, mock_enqueue):
+        due_app = MagicMock()
+        due_app.uuid = "app-due"
+        skipped_app = MagicMock()
+        skipped_app.uuid = "app-skipped"
+        qs = MagicMock()
+        qs.__iter__.return_value = iter([skipped_app, due_app])
+        qs.count.return_value = 2
+        mock_app.objects.filter.return_value = qs
+        mock_ttl.side_effect = lambda key: "app-skipped" in key
+
+        sync_whatsapp_cloud_phone_numbers()
+
+        mock_enqueue.assert_called_once()
+        self.assertEqual(mock_enqueue.call_args.args[1], "app-due")
+
 
 class SyncWhatsappCloudPhoneNumberItemTestCase(SimpleTestCase):
     @patch("marketplace.core.types.channels.whatsapp.tasks.PhoneNumberSyncUseCase")
@@ -138,4 +184,40 @@ class SyncWhatsappCloudPhoneNumberItemTestCase(SimpleTestCase):
 
         task_sync_whatsapp_cloud_phone_number_item("app-1")
 
+        mock_use_case_cls.return_value.sync_whatsapp_cloud_phone_number.assert_called_once()
+
+    @patch("marketplace.core.types.channels.whatsapp.tasks.PhoneNumberSyncUseCase")
+    @patch("marketplace.core.types.channels.whatsapp.tasks.App")
+    def test_logs_error_when_sync_returns_error_status(
+        self, mock_app, mock_use_case_cls
+    ):
+        app = MagicMock()
+        mock_app.objects.get.return_value = app
+        mock_use_case_cls.return_value.sync_whatsapp_cloud_phone_number.return_value = {
+            "status": "error",
+            "error": "missing token",
+        }
+
+        task_sync_whatsapp_cloud_phone_number_item("app-1")
+        mock_use_case_cls.return_value.sync_whatsapp_cloud_phone_number.assert_called_once()
+
+    @patch("marketplace.core.types.channels.whatsapp.tasks.PhoneNumberSyncUseCase")
+    @patch("marketplace.core.types.channels.whatsapp.tasks.App")
+    def test_skips_when_app_missing(self, mock_app, mock_use_case_cls):
+        mock_app.DoesNotExist = App.DoesNotExist
+        mock_app.objects.get.side_effect = App.DoesNotExist()
+
+        task_sync_whatsapp_cloud_phone_number_item("app-missing")
+        mock_use_case_cls.assert_not_called()
+
+    @patch("marketplace.core.types.channels.whatsapp.tasks.PhoneNumberSyncUseCase")
+    @patch("marketplace.core.types.channels.whatsapp.tasks.App")
+    def test_logs_error_when_sync_raises(self, mock_app, mock_use_case_cls):
+        mock_app.DoesNotExist = App.DoesNotExist
+        mock_app.objects.get.return_value = MagicMock()
+        mock_use_case_cls.return_value.sync_whatsapp_cloud_phone_number.side_effect = (
+            Exception("graph down")
+        )
+
+        task_sync_whatsapp_cloud_phone_number_item("app-1")
         mock_use_case_cls.return_value.sync_whatsapp_cloud_phone_number.assert_called_once()
