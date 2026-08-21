@@ -4,6 +4,9 @@ import importlib
 import sys
 import types
 
+from marketplace.applications.models import App
+from marketplace.wpp_products.models import Catalog
+
 
 def import_tasks_module():
     """
@@ -61,52 +64,18 @@ class TestFacebookCatalogSyncService(SimpleTestCase):
         app.catalogs.values_list.return_value = []
         return app
 
-    def test_sync_catalogs_already_locked(self):
-        app = self._make_app()
-        with patch(
-            "marketplace.wpp_products.tasks.get_redis_connection"
-        ) as mock_conn, patch("marketplace.wpp_products.tasks.FacebookClient"):
-            redis = MagicMock()
-            redis.get.return_value = "locked"
-            mock_conn.return_value = redis
-            tasks = import_tasks_module()
-            svc = tasks.FacebookCatalogSyncService(app)
-            svc.sync_catalogs()
-            # Should return early
-            self.assertFalse(redis.lock.called)
-
     def test_sync_catalogs_missing_ids(self):
         app = self._make_app(config={"wa_business_id": None, "wa_waba_id": None})
-        with patch(
-            "marketplace.wpp_products.tasks.get_redis_connection"
-        ) as mock_conn, patch("marketplace.wpp_products.tasks.FacebookClient"):
-            # Lock context
-            cm = MagicMock()
-            cm.__enter__.return_value = True
-            cm.__exit__.return_value = False
-            redis = MagicMock()
-            redis.get.return_value = None
-            redis.lock.return_value = cm
-            mock_conn.return_value = redis
+        with patch("marketplace.wpp_products.tasks.FacebookClient"):
             tasks = import_tasks_module()
             svc = tasks.FacebookCatalogSyncService(app)
             svc.client = MagicMock()
-            svc.sync_catalogs()
+            self.assertFalse(svc.sync_catalogs())
             svc.client.list_all_catalogs.assert_not_called()
 
     def test_sync_catalogs_happy_path(self):
         app = self._make_app()
-        with patch(
-            "marketplace.wpp_products.tasks.get_redis_connection"
-        ) as mock_conn, patch("marketplace.wpp_products.tasks.FacebookClient"):
-            cm = MagicMock()
-            cm.__enter__.return_value = True
-            cm.__exit__.return_value = False
-            redis = MagicMock()
-            redis.get.return_value = None
-            redis.lock.return_value = cm
-            mock_conn.return_value = redis
-
+        with patch("marketplace.wpp_products.tasks.FacebookClient"):
             tasks = import_tasks_module()
             svc = tasks.FacebookCatalogSyncService(app)
             svc.client = MagicMock()
@@ -117,7 +86,7 @@ class TestFacebookCatalogSyncService(SimpleTestCase):
             svc._update_catalogs_on_flows = MagicMock()
             svc._sync_local_catalogs = MagicMock()
 
-            svc.sync_catalogs()
+            self.assertTrue(svc.sync_catalogs())
 
             svc._update_catalogs_on_flows.assert_called_once()
             svc._sync_local_catalogs.assert_called_once_with(["1"], set())
@@ -451,19 +420,171 @@ class TestTasks(SimpleTestCase):
             res = tasks.get_projects_with_vtex_app()
             self.assertEqual(res, ["p1"])
 
-        # sync_facebook_catalogs
+        # sync_facebook_catalogs enqueues due apps
         with patch(
             "marketplace.wpp_products.tasks.get_projects_with_vtex_app",
             return_value=["p"],
         ), patch("marketplace.wpp_products.tasks.App") as mock_app, patch(
-            "marketplace.wpp_products.tasks.FacebookCatalogSyncService"
-        ) as mock_service:
-            mock_app.objects.filter.return_value = [MagicMock(), MagicMock()]
-            instance = MagicMock()
-            mock_service.return_value = instance
+            "marketplace.wpp_products.tasks.is_recently_synced", return_value=False
+        ), patch(
+            "marketplace.wpp_products.tasks.enqueue_item", return_value=True
+        ) as mock_enqueue:
+            due_app = MagicMock()
+            due_app.uuid = "app-1"
+            due_app.config = {"wa_business_id": "B", "wa_waba_id": "W"}
+            skipped_app = MagicMock()
+            skipped_app.uuid = "app-2"
+            skipped_app.config = {"wa_business_id": None, "wa_waba_id": None}
+            mock_app.objects.filter.return_value = [due_app, skipped_app]
 
             tasks.sync_facebook_catalogs()
-            self.assertEqual(instance.sync_catalogs.call_count, 2)
+            mock_enqueue.assert_called_once_with("paced:facebook-catalogs", "app-1")
+
+    @patch("marketplace.wpp_products.tasks.enqueue_item")
+    @patch("marketplace.wpp_products.tasks.is_recently_synced")
+    def test_sync_facebook_catalogs_skips_when_ttl_is_fresh(
+        self, mock_ttl, mock_enqueue
+    ):
+        tasks = import_tasks_module()
+        with patch(
+            "marketplace.wpp_products.tasks.get_projects_with_vtex_app",
+            return_value=["p"],
+        ), patch("marketplace.wpp_products.tasks.App") as mock_app:
+            skipped_app = MagicMock()
+            skipped_app.uuid = "app-skipped"
+            skipped_app.config = {"wa_business_id": "B", "wa_waba_id": "W"}
+            due_app = MagicMock()
+            due_app.uuid = "app-due"
+            due_app.config = {"wa_business_id": "B", "wa_waba_id": "W"}
+            mock_app.objects.filter.return_value = [skipped_app, due_app]
+            mock_ttl.side_effect = lambda key: "app-skipped" in key
+
+            tasks.sync_facebook_catalogs()
+            mock_enqueue.assert_called_once_with("paced:facebook-catalogs", "app-due")
+
+    @patch("marketplace.wpp_products.tasks.mark_synced")
+    def test_task_sync_facebook_catalog_item_marks_ttl_on_success(self, mock_mark):
+        tasks = import_tasks_module()
+        with patch("marketplace.wpp_products.tasks.App") as mock_app, patch(
+            "marketplace.wpp_products.tasks.FacebookCatalogSyncService"
+        ) as mock_service:
+            app = MagicMock()
+            app.uuid = "app-1"
+            mock_app.objects.get.return_value = app
+            mock_service.return_value.sync_catalogs.return_value = True
+
+            tasks.task_sync_facebook_catalog_item("app-1")
+            mock_mark.assert_called_once()
+
+    @patch("marketplace.wpp_products.tasks.mark_synced")
+    def test_task_sync_facebook_catalog_item_skips_when_app_missing(self, mock_mark):
+        tasks = import_tasks_module()
+        with patch("marketplace.wpp_products.tasks.App") as mock_app:
+            mock_app.DoesNotExist = App.DoesNotExist
+            mock_app.objects.get.side_effect = App.DoesNotExist()
+
+            tasks.task_sync_facebook_catalog_item("missing-app")
+            mock_mark.assert_not_called()
+
+    @patch("marketplace.wpp_products.tasks.mark_synced")
+    def test_task_sync_facebook_catalog_item_logs_error_when_sync_raises(
+        self, mock_mark
+    ):
+        tasks = import_tasks_module()
+        with patch("marketplace.wpp_products.tasks.App") as mock_app, patch(
+            "marketplace.wpp_products.tasks.FacebookCatalogSyncService"
+        ) as mock_service:
+            mock_app.DoesNotExist = App.DoesNotExist
+            mock_app.objects.get.return_value = MagicMock()
+            mock_service.return_value.sync_catalogs.side_effect = Exception("boom")
+
+            tasks.task_sync_facebook_catalog_item("app-1")
+            mock_mark.assert_not_called()
+
+    @patch("marketplace.wpp_products.tasks.enqueue_item", return_value=True)
+    @patch("marketplace.wpp_products.tasks.is_recently_synced", return_value=False)
+    def test_task_sync_product_policies_enqueues_catalogs(self, mock_ttl, mock_enqueue):
+        tasks = import_tasks_module()
+        with patch("marketplace.wpp_products.tasks.App") as mock_app:
+            catalog = MagicMock()
+            catalog.uuid = "cat-1"
+            vtex_app = MagicMock()
+            vtex_app.vtex_catalogs.all.return_value = [catalog]
+            mock_app.objects.filter.return_value = [vtex_app]
+
+            tasks.task_sync_product_policies()
+            mock_enqueue.assert_called_once_with("paced:product-policies", "cat-1")
+
+    @patch("marketplace.wpp_products.tasks.enqueue_item")
+    @patch("marketplace.wpp_products.tasks.is_recently_synced")
+    def test_task_sync_product_policies_skips_when_ttl_is_fresh(
+        self, mock_ttl, mock_enqueue
+    ):
+        tasks = import_tasks_module()
+        with patch("marketplace.wpp_products.tasks.App") as mock_app:
+            skipped = MagicMock()
+            skipped.uuid = "cat-skipped"
+            due = MagicMock()
+            due.uuid = "cat-due"
+            vtex_app = MagicMock()
+            vtex_app.vtex_catalogs.all.return_value = [skipped, due]
+            mock_app.objects.filter.return_value = [vtex_app]
+            mock_ttl.side_effect = lambda key: "cat-skipped" in key
+
+            tasks.task_sync_product_policies()
+            mock_enqueue.assert_called_once_with("paced:product-policies", "cat-due")
+
+    @patch("marketplace.wpp_products.tasks.enqueue_item")
+    def test_task_sync_product_policies_logs_error_and_returns(self, mock_enqueue):
+        tasks = import_tasks_module()
+        with patch("marketplace.wpp_products.tasks.App") as mock_app:
+            mock_app.objects.filter.side_effect = Exception("db down")
+
+            tasks.task_sync_product_policies()
+            mock_enqueue.assert_not_called()
+
+    @patch("marketplace.wpp_products.tasks.mark_synced")
+    def test_task_sync_product_policies_item_marks_ttl_on_success(self, mock_mark):
+        tasks = import_tasks_module()
+        with patch("marketplace.wpp_products.tasks.Catalog") as mock_catalog, patch(
+            "marketplace.wpp_products.tasks.ProductSyncMetaPolices"
+        ) as mock_service:
+            catalog = MagicMock()
+            catalog.uuid = "cat-1"
+            mock_catalog.objects.get.return_value = catalog
+            mock_service.return_value.sync_products_polices.return_value = True
+
+            tasks.task_sync_product_policies_item("cat-1")
+            mock_mark.assert_called_once()
+
+    @patch("marketplace.wpp_products.tasks.mark_synced")
+    def test_task_sync_product_policies_item_skips_when_catalog_missing(
+        self, mock_mark
+    ):
+        tasks = import_tasks_module()
+        with patch("marketplace.wpp_products.tasks.Catalog") as mock_catalog:
+            mock_catalog.DoesNotExist = Catalog.DoesNotExist
+            mock_catalog.objects.get.side_effect = Catalog.DoesNotExist()
+
+            tasks.task_sync_product_policies_item("missing-cat")
+            mock_mark.assert_not_called()
+
+    @patch("marketplace.wpp_products.tasks.mark_synced")
+    def test_task_sync_product_policies_item_logs_error_when_sync_raises(
+        self, mock_mark
+    ):
+        tasks = import_tasks_module()
+        with patch("marketplace.wpp_products.tasks.Catalog") as mock_catalog, patch(
+            "marketplace.wpp_products.tasks.ProductSyncMetaPolices"
+        ) as mock_service:
+            mock_catalog.DoesNotExist = Catalog.DoesNotExist
+            mock_catalog.objects.get.return_value = MagicMock()
+            mock_service.return_value.sync_products_polices.side_effect = Exception(
+                "boom"
+            )
+
+            tasks.task_sync_product_policies_item("cat-1")
+            mock_mark.assert_not_called()
 
     def test_extract_sellers_ids(self):
         tasks = import_tasks_module()
