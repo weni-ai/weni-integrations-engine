@@ -41,12 +41,17 @@ class TemplateSyncUseCase:
 
         self.flows_client = FlowsClient()
 
-    def sync_templates(self):
+    def sync_templates(self, templates=None):
         """
         Synchronize templates from Meta's platform to the local database.
 
         This method fetches all templates from Meta's API, updates the flows service,
         and creates or updates local database records for each template.
+
+        Args:
+            templates: Optional pre-fetched Meta template list. When provided, the
+                Graph API call is skipped so callers can reuse one response across
+                every app that shares a WABA.
         """
         waba_id = (
             self.app.config.get("waba").get("id")
@@ -54,17 +59,18 @@ class TemplateSyncUseCase:
             else self.app.config.get("wa_waba_id")
         )
 
-        templates = self.template_service.list_template_messages(waba_id)
+        if templates is None:
+            response = self.template_service.list_template_messages(waba_id)
 
-        if templates.get("error"):
-            template_error = templates["error"]
-            logger.error(
-                f"A error occurred with waba_id: {waba_id}. \nThe error was:  {template_error}\n"
-            )
-            handle_error_and_update_config(self.app, template_error)
-            return
+            if response.get("error"):
+                template_error = response["error"]
+                logger.error(
+                    f"A error occurred with waba_id: {waba_id}. \nThe error was:  {template_error}\n"
+                )
+                handle_error_and_update_config(self.app, template_error)
+                return
 
-        templates = templates.get("data", [])
+            templates = response.get("data", [])
         try:
             logger.info(f"Sending templates to flows for app {self.app.uuid}")
             self.flows_client.update_facebook_templates(

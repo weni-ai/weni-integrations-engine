@@ -242,6 +242,28 @@ class TestTemplateSyncUseCase(SimpleTestCase):
             uc.sync_templates()  # Should not raise
             self.assertEqual(mock_translation.objects.get_or_create.call_count, 2)
 
+    def test_sync_templates_reuses_prefetched_templates(self):
+        app = self._make_app()
+        uc = TemplateSyncUseCase(app)
+        uc.template_service = MagicMock()
+        uc.flows_client = MagicMock()
+
+        with patch(
+            "marketplace.wpp_templates.usecases.template_sync.TemplateTranslation"
+        ) as mock_translation, patch(
+            "marketplace.wpp_templates.usecases.template_sync.TemplateMessage"
+        ) as mock_message:
+            mock_translation.objects.filter.return_value = []
+            mock_message.objects.get_or_create.return_value = (MagicMock(), True)
+            mock_translation.objects.get_or_create.return_value = (MagicMock(), True)
+
+            uc.sync_templates(
+                templates=[{"id": "tpl-1", "name": "n", "components": []}]
+            )
+
+            uc.template_service.list_template_messages.assert_not_called()
+            mock_message.objects.get_or_create.assert_called_once()
+
     def test_delete_unexistent_translations(self):
         """Covers cleanup logic for missing translations and templates."""
         app = self._make_app()
