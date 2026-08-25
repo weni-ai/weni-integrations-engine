@@ -1,3 +1,8 @@
+v4.24.0
+----------
+* feat: Implement paced queue for WhatsApp synchronization tasks
+* refactor: Simplify AppConfigurationUseCase by removing channel_client dependency
+
 v4.23.2
 ----------
 * fix(whatsapp_cloud): replace internal permission with ProjectManagePermission on channels view
