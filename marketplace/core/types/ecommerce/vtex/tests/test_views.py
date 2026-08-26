@@ -4,14 +4,19 @@ from unittest.mock import patch
 from unittest.mock import Mock
 from unittest.mock import PropertyMock
 
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from rest_framework import status
+from rest_framework.test import APIClient
 
 from marketplace.core.tests.base import APIBaseTestCase
 from marketplace.accounts.models import ProjectAuthorization
 from marketplace.applications.models import App
 from marketplace.core.tests.mixis.permissions import PermissionTestCaseMixin
+from marketplace.core.types.ecommerce.vtex.usecases.upload_inline_products import (
+    UploadInlineProductsUseCase,
+)
 from marketplace.core.types.ecommerce.vtex.views import (
     VtexIntegrationDetailsView,
     VtexViewSet,
@@ -483,16 +488,136 @@ class VtexIntegrationDetailsViewTest(APIBaseTestCase):
         return self.view_class.as_view()
 
 
-# TODO: Fix this test
-# class VtexSyncOnDemandViewE2ETest(APITestCase):
-#     @patch("marketplace.core.types.ecommerce.vtex.views.SyncOnDemandUseCase.execute")
-#     def test_post_sync_on_demand_success(self, mock_execute):
-#         url = reverse("sync-on-demand", args=[uuid.uuid4()])
+@override_settings(JWT_PUBLIC_KEY=b"fake-public-key")
+class VtexUploadInlineProductsViewTest(TestCase):
+    """E2E tests for the inline products upload endpoint (JWT auth boundary)."""
 
-#         payload = {"seller": "seller1", "sku_ids": ["sku1", "sku2"]}
+    def setUp(self):
+        self.client = APIClient()
+        self.url = reverse("upload-inline-products")
+        self.project_uuid = str(uuid.uuid4())
+        self.auth_header = {"HTTP_AUTHORIZATION": "Bearer fake-token"}
+        self.payload = {
+            "products": [
+                {
+                    "id": "1047#1",
+                    "title": "Laranja Bahia Importada - Saco (15Kg)",
+                    "description": "Laranja Bahia Importada - Saco (15Kg)",
+                    "availability": "in stock",
+                    "status": "active",
+                    "condition": "new",
+                    "price": "10.00 BRL",
+                    "link": "https://www.arado.com.br/p?idsku=1047",
+                    "image_link": "https://arado.vteximg.com.br/arquivos/img.jpg",
+                    "brand": "Arado",
+                    "sale_price": "8.00 BRL",
+                }
+            ]
+        }
 
-#         response = self.client.post(url, payload, format="json")
+    @patch("marketplace.internal.jwt_authenticators.jwt.decode")
+    @patch.object(UploadInlineProductsUseCase, "execute")
+    def test_post_success_returns_202(self, mock_execute, mock_decode):
+        mock_decode.return_value = {"project_uuid": self.project_uuid}
+        mock_execute.return_value = 1
 
-#         self.assertEqual(response.status_code, status.HTTP_200_OK)
-#         self.assertEqual(response.data, {"message": "Products sent to sync."})
-#         mock_execute.assert_called_once()
+        response = self.client.post(
+            self.url, self.payload, format="json", **self.auth_header
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertEqual(response.json()["total_products"], 1)
+
+        called_dto, called_project = mock_execute.call_args.args
+        self.assertEqual(called_project, self.project_uuid)
+        self.assertEqual(len(called_dto.products), 1)
+        self.assertEqual(called_dto.products[0]["id"], "1047#1")
+
+    @patch("marketplace.internal.jwt_authenticators.jwt.decode")
+    @patch.object(UploadInlineProductsUseCase, "execute")
+    def test_post_empty_products_returns_400(self, mock_execute, mock_decode):
+        mock_decode.return_value = {"project_uuid": self.project_uuid}
+
+        response = self.client.post(
+            self.url, {"products": []}, format="json", **self.auth_header
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        mock_execute.assert_not_called()
+
+    @patch("marketplace.internal.jwt_authenticators.jwt.decode")
+    @patch.object(UploadInlineProductsUseCase, "execute")
+    def test_post_in_stock_without_price_returns_400(self, mock_execute, mock_decode):
+        mock_decode.return_value = {"project_uuid": self.project_uuid}
+        payload = {"products": [dict(self.payload["products"][0], price="")]}
+
+        response = self.client.post(
+            self.url, payload, format="json", **self.auth_header
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        mock_execute.assert_not_called()
+
+    def test_post_without_authentication_is_rejected(self):
+        response = self.client.post(self.url, self.payload, format="json")
+
+        self.assertIn(
+            response.status_code,
+            (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN),
+        )
+
+
+@override_settings(JWT_PUBLIC_KEY=b"fake-public-key")
+class VtexSyncOnDemandViewTest(TestCase):
+    """E2E tests for the async on-demand sync endpoint (JWT auth boundary)."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.url = reverse("sync-on-demand")
+        self.project_uuid = str(uuid.uuid4())
+        self.auth_header = {"HTTP_AUTHORIZATION": "Bearer fake-token"}
+        self.payload = {
+            "seller": "1",
+            "sku_ids": ["123", "456"],
+            "sales_channel": ["1"],
+        }
+
+    @patch(
+        "marketplace.core.types.ecommerce.vtex.views.task_sync_on_demand.apply_async"
+    )
+    @patch("marketplace.internal.jwt_authenticators.jwt.decode")
+    def test_post_success_dispatches_task(self, mock_decode, mock_apply_async):
+        mock_decode.return_value = {"project_uuid": self.project_uuid}
+
+        response = self.client.post(
+            self.url, self.payload, format="json", **self.auth_header
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()["message"], "Products sent to sync on demand.")
+        mock_apply_async.assert_called_once_with(
+            args=[self.project_uuid, ["123", "456"], "1", ["1"]],
+            queue="vtex-sync-on-demand",
+        )
+
+    @patch(
+        "marketplace.core.types.ecommerce.vtex.views.task_sync_on_demand.apply_async"
+    )
+    @patch("marketplace.internal.jwt_authenticators.jwt.decode")
+    def test_post_without_sku_ids_returns_400(self, mock_decode, mock_apply_async):
+        mock_decode.return_value = {"project_uuid": self.project_uuid}
+
+        response = self.client.post(
+            self.url, {"seller": "1"}, format="json", **self.auth_header
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        mock_apply_async.assert_not_called()
+
+    def test_post_without_authentication_is_rejected(self):
+        response = self.client.post(self.url, self.payload, format="json")
+
+        self.assertIn(
+            response.status_code,
+            (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN),
+        )
