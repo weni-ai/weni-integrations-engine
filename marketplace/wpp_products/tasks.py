@@ -9,6 +9,7 @@ from marketplace.services.vtex.utils.enums import ProductPriority
 from celery import shared_task
 
 from django_redis import get_redis_connection
+from django.conf import settings
 from django.db import close_old_connections
 from django.core.cache import cache
 from django.utils import timezone
@@ -34,26 +35,62 @@ from marketplace.applications.models import App
 
 from marketplace.wpp_products.utils import (
     ProductBatchUploader,
-    RedisQueue,
     SellerSyncUtils,
     UploadManager,
     ProductSyncMetaPolices,
 )
+from marketplace.core.pacing.constants import (
+    QUEUE_FACEBOOK_CATALOGS,
+    QUEUE_PRODUCT_POLICIES,
+    TTL_FACEBOOK_CATALOGS,
+    TTL_PRODUCT_POLICIES,
+)
+from marketplace.core.pacing.queue import RedisQueue, enqueue_item
+from marketplace.core.pacing.ttl import is_recently_synced, mark_synced
 
 
 logger = logging.getLogger(__name__)
-
-
-SYNC_WHATSAPP_CATALOGS_LOCK_KEY = "sync-whatsapp-catalogs-lock"
 
 
 @shared_task(name="sync_facebook_catalogs")
 def sync_facebook_catalogs():
     project_uuids = get_projects_with_vtex_app()
     apps = App.objects.filter(code="wpp-cloud", project_uuid__in=project_uuids)
+    enqueued = 0
+    skipped_ttl = 0
+
     for app in apps:
-        service = FacebookCatalogSyncService(app)
-        service.sync_catalogs()
+        config = app.config or {}
+        if not (config.get("wa_business_id") and config.get("wa_waba_id")):
+            continue
+
+        ttl_key = TTL_FACEBOOK_CATALOGS.format(app_uuid=str(app.uuid))
+        if is_recently_synced(ttl_key):
+            skipped_ttl += 1
+            continue
+
+        if enqueue_item(QUEUE_FACEBOOK_CATALOGS, str(app.uuid)):
+            enqueued += 1
+
+    logger.info(
+        f"Facebook catalog sync dispatch: enqueued={enqueued} skipped_ttl={skipped_ttl}"
+    )
+
+
+@shared_task(name="task_sync_facebook_catalog_item")
+def task_sync_facebook_catalog_item(app_uuid: str):
+    try:
+        app = App.objects.get(uuid=app_uuid, code="wpp-cloud")
+        synced = FacebookCatalogSyncService(app).sync_catalogs()
+        if synced:
+            mark_synced(
+                TTL_FACEBOOK_CATALOGS.format(app_uuid=str(app.uuid)),
+                settings.WHATSAPP_TIME_BETWEEN_SYNC_CATALOGS_IN_HOURS,
+            )
+    except App.DoesNotExist:
+        logger.error(f"Catalog sync item skipped, app not found: {app_uuid}")
+    except Exception as e:
+        logger.error(f"Error processing catalog sync for app {app_uuid}: {e}")
 
 
 def get_projects_with_vtex_app() -> list:
@@ -66,39 +103,33 @@ def get_projects_with_vtex_app() -> list:
 
 
 class FacebookCatalogSyncService:
-    SYNC_WHATSAPP_CATALOGS_LOCK_KEY = "sync-whatsapp-catalogs-lock"
-
     def __init__(self, app: App):
         self.app = app
         self.client = FacebookClient(app.apptype.get_system_access_token(app))
         self.flows_client = FlowsClient()
-        self.redis = get_redis_connection()
 
     def sync_catalogs(self):
-        if self.redis.get(self.SYNC_WHATSAPP_CATALOGS_LOCK_KEY):
-            print("The catalogs are already syncing by another task!")
-            return
+        wa_business_id = self.app.config.get("wa_business_id")
+        wa_waba_id = self.app.config.get("wa_waba_id")
 
-        with self.redis.lock(self.SYNC_WHATSAPP_CATALOGS_LOCK_KEY):
-            wa_business_id = self.app.config.get("wa_business_id")
-            wa_waba_id = self.app.config.get("wa_waba_id")
+        if not (wa_business_id and wa_waba_id):
+            logger.info(f"Business ID or WABA ID missing for app: {self.app.uuid}")
+            return False
 
-            if not (wa_business_id and wa_waba_id):
-                print(f"Business ID or WABA ID missing for app: {self.app.uuid}")
-                return
+        try:
+            local_catalog_ids = set(
+                self.app.catalogs.values_list("facebook_catalog_id", flat=True)
+            )
+            all_catalogs_id, all_catalogs = self._list_all_catalogs()
+            active_catalog = self._get_active_catalog(wa_waba_id)
 
-            try:
-                local_catalog_ids = set(
-                    self.app.catalogs.values_list("facebook_catalog_id", flat=True)
-                )
-                all_catalogs_id, all_catalogs = self._list_all_catalogs()
-                active_catalog = self._get_active_catalog(wa_waba_id)
-
-                if all_catalogs_id:
-                    self._update_catalogs_on_flows(all_catalogs, active_catalog)
-                    self._sync_local_catalogs(all_catalogs_id, local_catalog_ids)
-            except Exception as e:
-                logger.error(f"Error during sync process for App {self.app.name}: {e}")
+            if all_catalogs_id:
+                self._update_catalogs_on_flows(all_catalogs, active_catalog)
+                self._sync_local_catalogs(all_catalogs_id, local_catalog_ids)
+            return True
+        except Exception as e:
+            logger.error(f"Error during sync process for App {self.app.name}: {e}")
+            return False
 
     def _list_all_catalogs(self):
         try:
@@ -493,25 +524,50 @@ def task_insert_vtex_products_by_sellers(**kwargs):
 
 @celery_app.task(name="task_sync_product_policies")
 def task_sync_product_policies():
-    print("Starting synchronization of product policies")
+    enqueued = 0
+    skipped_ttl = 0
 
     try:
         vtex_apps = App.objects.filter(code="vtex", configured=True)
 
         for app in vtex_apps:
-            catalogs = app.vtex_catalogs.all()
-            for catalog in catalogs:
-                product_sync_service = ProductSyncMetaPolices(catalog)
-                product_sync_service.sync_products_polices()
-
+            for catalog in app.vtex_catalogs.all():
+                catalog_uuid = str(catalog.uuid)
+                ttl_key = TTL_PRODUCT_POLICIES.format(catalog_uuid=catalog_uuid)
+                if is_recently_synced(ttl_key):
+                    skipped_ttl += 1
+                    continue
+                if enqueue_item(QUEUE_PRODUCT_POLICIES, catalog_uuid):
+                    enqueued += 1
     except Exception as e:
         logger.exception(
             f"An error occurred during the 'task_sync_product_policies'. error: {e}"
         )
         return
 
-    print("finishing 'task_sync_product_policies'")
-    print("=" * 40)
+    logger.info(
+        f"Product policies dispatch: enqueued={enqueued} skipped_ttl={skipped_ttl}"
+    )
+
+
+@celery_app.task(name="task_sync_product_policies_item")
+def task_sync_product_policies_item(catalog_uuid: str):
+    try:
+        catalog = Catalog.objects.get(uuid=catalog_uuid)
+        synced = ProductSyncMetaPolices(catalog).sync_products_polices()
+        if synced:
+            mark_synced(
+                TTL_PRODUCT_POLICIES.format(catalog_uuid=str(catalog.uuid)),
+                settings.WHATSAPP_TIME_BETWEEN_SYNC_PRODUCT_POLICIES_IN_HOURS,
+            )
+    except Catalog.DoesNotExist:
+        logger.error(
+            f"Product policies item skipped, catalog not found: {catalog_uuid}"
+        )
+    except Exception as e:
+        logger.error(
+            f"Error processing product policies for catalog {catalog_uuid}: {e}"
+        )
 
 
 @celery_app.task(name="task_enqueue_webhook")

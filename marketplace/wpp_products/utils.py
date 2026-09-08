@@ -14,8 +14,6 @@ from django.db.models import QuerySet
 
 from django_redis import get_redis_connection
 
-from redis import exceptions
-
 from marketplace.clients.facebook.client import FacebookClient
 from marketplace.clients.rapidpro.client import RapidproClient
 from marketplace.services.rapidpro.service import RapidproService
@@ -29,6 +27,7 @@ from marketplace.services.facebook.service import (
     FacebookService,
 )
 from marketplace.celery import app as celery_app
+from marketplace.core.pacing.queue import RedisQueue  # noqa: F401
 
 
 logger = logging.getLogger(__name__)
@@ -132,44 +131,30 @@ class UploadManager:
 
 
 class ProductSyncMetaPolices:
-    SYNC_META_POLICES_LOCK_KEY = "sync-meta-polices-lock"
-
     def __init__(self, catalog: Any) -> None:
         self.catalog = catalog
         self.app = catalog.app
         self.client = FacebookClient(self.app.apptype.get_system_access_token(self.app))
-        self.redis = get_redis_connection()
 
-    def sync_products_polices(self) -> None:
-        if self.redis.get(self.SYNC_META_POLICES_LOCK_KEY):
-            logger.error(
-                "The catalogs are already syncing products polices by another task!"
-            )
-            return
+    def sync_products_polices(self) -> bool:
+        wa_business_id = self.app.config.get("wa_business_id")
+        wa_waba_id = self.app.config.get("wa_waba_id")
 
+        if not (wa_business_id and wa_waba_id):
+            logger.warning(f"Business ID or WABA ID missing for app: {self.app.uuid}")
+            return False
+
+        all_products = self._list_unapproved_products()
         try:
-            with self.redis.lock(self.SYNC_META_POLICES_LOCK_KEY, timeout=1200):
-                wa_business_id = self.app.config.get("wa_business_id")
-                wa_waba_id = self.app.config.get("wa_waba_id")
-
-                if not (wa_business_id and wa_waba_id):
-                    logger.warning(
-                        f"Business ID or WABA ID missing for app: {self.app.uuid}"
-                    )
-                    return
-
-                all_products = self._list_unapproved_products()
-                try:
-                    if all_products:
-                        self._sync_local_products(all_products)
-                except Exception as e:
-                    logger.error(
-                        f"Error during sync process for App {self.app.name}: {e}",
-                        exc_info=True,
-                        stack_info=True,
-                    )
-        except exceptions.LockError as e:
-            logger.error(f"Failed to acquire or release lock: {e}")
+            if all_products:
+                self._sync_local_products(all_products)
+            return True
+        except Exception as e:
+            logger.error(
+                f"Error during sync process for App {self.app.name}: {e}",
+                exc_info=True,
+            )
+            return False
 
     def _list_unapproved_products(self) -> List[Dict[str, Any]]:
         return self.client.list_unapproved_products(self.catalog.facebook_catalog_id)
@@ -390,47 +375,3 @@ class ProductBatchUploader:
                 sku_id=sku_id, vtex_app=self.catalog.vtex_app
             )
         print(f"Logged {len(product_ids)} products as sent.")
-
-
-class RedisQueue:
-    def __init__(self, queue_key):
-        self.queue_key = queue_key
-        self.redis = get_redis_connection()
-
-    def insert(self, value):
-        """Add an item to the ZSET queue with a timestamp score."""
-        # Check if the item already exists
-        if self.redis.zscore(self.queue_key, value) is not None:
-            print(value, "already exists")
-            return False  # Skip insertion if it exists
-
-        # Add the item with the current timestamp as the score
-        score = time.time()
-        self.redis.zadd(self.queue_key, {value: score})
-        self.redis.expire(self.queue_key, 3600 * 24)  # TTL of 24 hours
-        return True
-
-    def remove(self):
-        """Remove and return the first item from the queue (FIFO)."""
-        items = self.redis.zrange(
-            self.queue_key, 0, 0, withscores=False
-        )  # Get the first item
-        if not items:
-            return None
-        self.redis.zrem(self.queue_key, items[0])  # Remove the first item
-        return items[0].decode("utf-8")
-
-    def order(self):
-        """List all items in the queue in order."""
-        items = self.redis.zrange(self.queue_key, 0, -1, withscores=False)
-        return [item.decode("utf-8") for item in items]
-
-    def length(self):
-        """Returns the total number of items in the queue."""
-        return self.redis.zcard(self.queue_key)
-
-    def get_batch(self, batch_size):
-        items = self.redis.zrange(self.queue_key, 0, batch_size - 1, withscores=False)
-        if items:
-            self.redis.zrem(self.queue_key, *items)
-        return [item.decode("utf-8") for item in items]

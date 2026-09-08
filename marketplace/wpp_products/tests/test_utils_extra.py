@@ -10,7 +10,6 @@ from marketplace.wpp_products.utils import (
     extract_sku_id,
     ProductBatchUploader,
     RedisQueue,
-    exceptions,
 )
 
 
@@ -156,83 +155,32 @@ class TestProductSyncMetaPolices(SimpleTestCase):
         catalog.name = "CatalogName"
         return catalog
 
-    @patch("marketplace.wpp_products.utils.get_redis_connection")
     @patch("marketplace.wpp_products.utils.FacebookClient")
-    def test_sync_products_polices_already_running(self, mock_client, mock_conn):
-        redis = MagicMock()
-        redis.get.return_value = "locked"
-        mock_conn.return_value = redis
-
-        p = ProductSyncMetaPolices(self._make_catalog())
-        # Override heavy deps
-        p.client = MagicMock()
-        p.redis = redis
-
-        p.sync_products_polices()
-        p.client.list_unapproved_products.assert_not_called()
-
-    @patch("marketplace.wpp_products.utils.get_redis_connection")
-    @patch("marketplace.wpp_products.utils.FacebookClient")
-    def test_sync_products_polices_missing_ids(self, mock_client, mock_conn):
-        redis = MagicMock()
-        cm = MagicMock()
-        cm.__enter__.return_value = True
-        cm.__exit__.return_value = False
-        redis.get.return_value = None
-        redis.lock.return_value = cm
-        mock_conn.return_value = redis
-
+    def test_sync_products_polices_missing_ids(self, mock_client):
         p = ProductSyncMetaPolices(
             self._make_catalog(config={"wa_business_id": None, "wa_waba_id": None})
         )
         p.client = MagicMock()
-        p.redis = redis
 
-        p.sync_products_polices()
+        self.assertFalse(p.sync_products_polices())
         p.client.list_unapproved_products.assert_not_called()
 
-    @patch("marketplace.wpp_products.utils.get_redis_connection")
     @patch("marketplace.wpp_products.utils.FacebookClient")
     def test_sync_products_polices_calls_sync_local_and_handles_exception(
-        self, mock_client, mock_conn
+        self, mock_client
     ):
-        redis = MagicMock()
-        cm = MagicMock()
-        cm.__enter__.return_value = True
-        cm.__exit__.return_value = False
-        redis.get.return_value = None
-        redis.lock.return_value = cm
-        mock_conn.return_value = redis
-
         p = ProductSyncMetaPolices(self._make_catalog())
-        p.redis = redis
         p.client = MagicMock()
         p._list_unapproved_products = MagicMock(
             return_value=[{"id": "p1", "retailer_id": "1#x"}]
         )
         p._sync_local_products = MagicMock()
 
-        p.sync_products_polices()
+        self.assertTrue(p.sync_products_polices())
         p._sync_local_products.assert_called_once()
 
-        # Now simulate exception inside _sync_local_products
         p._sync_local_products.side_effect = Exception("fail")
-        p.sync_products_polices()  # logs error, no raise
-
-    @patch("marketplace.wpp_products.utils.get_redis_connection")
-    @patch("marketplace.wpp_products.utils.FacebookClient")
-    def test_sync_products_polices_lock_error(self, mock_client, mock_conn):
-        redis = MagicMock()
-        redis.get.return_value = None
-        # Simulate lock error
-        redis.lock.side_effect = exceptions.LockError("lock-fail")
-        mock_conn.return_value = redis
-
-        p = ProductSyncMetaPolices(self._make_catalog())
-        p.redis = redis
-        p.client = MagicMock()
-
-        p.sync_products_polices()  # should handle lock error
+        self.assertFalse(p.sync_products_polices())
 
     def test_list_unapproved_products_delegates(self):
         p = ProductSyncMetaPolices(self._make_catalog())
@@ -369,7 +317,7 @@ class TestProductBatchUploader(SimpleTestCase):
 
 
 class TestRedisQueue(SimpleTestCase):
-    @patch("marketplace.wpp_products.utils.get_redis_connection")
+    @patch("marketplace.core.pacing.queue.get_redis_connection")
     def test_insert_and_remove_and_order_and_length_and_get_batch(self, mock_conn):
         redis = MagicMock()
         mock_conn.return_value = redis
