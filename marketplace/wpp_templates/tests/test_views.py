@@ -756,23 +756,16 @@ class WhatsappTemplateSyncTestCase(APIBaseTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIsNone(response.json["last_synced_at"])
 
-    @patch("marketplace.wpp_templates.views.TemplateSyncUseCase")
-    def test_post_sync_templates_successfully(self, mock_use_case):
+    @patch("marketplace.wpp_templates.views.TemplateSyncUseCase.request_sync")
+    def test_post_sync_templates_successfully(self, mock_request_sync):
         last_synced_at = "2026-08-20T15:00:00+00:00"
-
-        def fake_sync():
-            self.app.config["templates_last_synced_at"] = last_synced_at
-            self.app.save(update_fields=["config"])
-            return True
-
-        mock_use_case.return_value.sync_templates.side_effect = fake_sync
+        mock_request_sync.return_value = {"last_synced_at": last_synced_at}
 
         response = self.request.post(self.url, app_uuid=str(self.app.uuid), body={})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json["last_synced_at"], last_synced_at)
 
-    @patch("marketplace.wpp_templates.views.TemplateSyncUseCase")
-    def test_post_sync_templates_within_cooldown(self, mock_use_case):
+    def test_post_sync_templates_within_cooldown(self):
         self.app.config["templates_last_synced_at"] = datetime.now(
             pytz.UTC
         ).isoformat()
@@ -781,7 +774,6 @@ class WhatsappTemplateSyncTestCase(APIBaseTestCase):
         response = self.request.post(self.url, app_uuid=str(self.app.uuid), body={})
         self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
         self.assertIn("retry_after_seconds", response.json)
-        mock_use_case.assert_not_called()
 
     def test_post_sync_templates_ignored_meta_sync(self):
         self.app.config["ignores_meta_sync"] = {"code": 100}
