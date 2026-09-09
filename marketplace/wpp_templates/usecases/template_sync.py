@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timedelta, timezone as dt_timezone
 
 from marketplace.clients.flows.client import FlowsClient
 from marketplace.clients.facebook.client import FacebookClient
@@ -9,11 +10,38 @@ from marketplace.wpp_templates.models import (
     TemplateMessage,
     TemplateTranslation,
 )
+from django.utils import timezone
+
 from marketplace.wpp_templates.error_handlers import handle_error_and_update_config
 from marketplace.wpp_templates.template_helpers import extract_body_example
 
+TEMPLATES_LAST_SYNCED_AT_KEY = "templates_last_synced_at"
+TEMPLATES_SYNC_COOLDOWN = timedelta(hours=1)
+
 
 logger = logging.getLogger(__name__)
+
+
+class TemplateSyncDisabledError(Exception):
+    pass
+
+
+class TemplateSyncCooldownError(Exception):
+    def __init__(self, retry_after_seconds, last_synced_at):
+        self.retry_after_seconds = retry_after_seconds
+        self.last_synced_at = last_synced_at
+        super().__init__("Templates were synced less than 1 hour ago")
+
+    def to_dict(self):
+        return {
+            "error": str(self),
+            "last_synced_at": self.last_synced_at,
+            "retry_after_seconds": self.retry_after_seconds,
+        }
+
+
+class TemplateSyncFailedError(Exception):
+    pass
 
 
 class TemplateSyncUseCase:
@@ -40,6 +68,53 @@ class TemplateSyncUseCase:
             raise
 
         self.flows_client = FlowsClient()
+
+    @classmethod
+    def get_sync_status(cls, app):
+        return {
+            "last_synced_at": (app.config or {}).get(TEMPLATES_LAST_SYNCED_AT_KEY)
+        }
+
+    @classmethod
+    def request_sync(cls, app):
+        if "ignores_meta_sync" in (app.config or {}):
+            raise TemplateSyncDisabledError("Template sync is disabled for this app")
+
+        last_synced_at = (app.config or {}).get(TEMPLATES_LAST_SYNCED_AT_KEY)
+        last_synced_dt = cls._parse_last_synced_at(last_synced_at)
+        if last_synced_dt is not None:
+            elapsed = timezone.now() - last_synced_dt
+            if elapsed < TEMPLATES_SYNC_COOLDOWN:
+                retry_after_seconds = int(
+                    (TEMPLATES_SYNC_COOLDOWN - elapsed).total_seconds()
+                )
+                raise TemplateSyncCooldownError(
+                    retry_after_seconds=max(retry_after_seconds, 1),
+                    last_synced_at=last_synced_at,
+                )
+
+        synced = cls(app).sync_templates()
+        if not synced:
+            raise TemplateSyncFailedError(
+                "Couldn't sync templates due to a Meta API error"
+            )
+
+        app.refresh_from_db()
+        return {
+            "last_synced_at": (app.config or {}).get(TEMPLATES_LAST_SYNCED_AT_KEY)
+        }
+
+    @staticmethod
+    def _parse_last_synced_at(last_synced_at):
+        if not last_synced_at:
+            return None
+        try:
+            parsed = datetime.fromisoformat(last_synced_at)
+        except (TypeError, ValueError):
+            return None
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=dt_timezone.utc)
+        return parsed.astimezone(dt_timezone.utc)
 
     def sync_templates(self, templates=None):
         """
@@ -68,7 +143,7 @@ class TemplateSyncUseCase:
                     f"A error occurred with waba_id: {waba_id}. \nThe error was:  {template_error}\n"
                 )
                 handle_error_and_update_config(self.app, template_error)
-                return
+                return False
 
             templates = response.get("data", [])
         try:
@@ -194,7 +269,15 @@ class TemplateSyncUseCase:
                 )
                 continue
 
+        self._mark_templates_synced()
         logger.info(f"Task sync_templates completed for app {str(self.app.uuid)}")
+        return True
+
+    def _mark_templates_synced(self):
+        config = dict(self.app.config or {})
+        config[TEMPLATES_LAST_SYNCED_AT_KEY] = timezone.now().isoformat()
+        self.app.config = config
+        self.app.save(update_fields=["config"])
 
     def _delete_unexistent_translations(self, templates):
         """
