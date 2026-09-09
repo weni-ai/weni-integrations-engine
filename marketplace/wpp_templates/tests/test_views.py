@@ -746,6 +746,7 @@ class WhatsappTemplateSyncTestCase(APIBaseTestCase):
         )
         self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
         self.url = reverse("app-template-sync", kwargs={"app_uuid": str(self.app.uuid)})
+        self.body = {"project_uuid": str(self.app.project_uuid)}
 
     @property
     def view(self):
@@ -761,7 +762,9 @@ class WhatsappTemplateSyncTestCase(APIBaseTestCase):
         last_synced_at = "2026-08-20T15:00:00+00:00"
         mock_request_sync.return_value = {"last_synced_at": last_synced_at}
 
-        response = self.request.post(self.url, app_uuid=str(self.app.uuid), body={})
+        response = self.request.post(
+            self.url, app_uuid=str(self.app.uuid), body=self.body
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json["last_synced_at"], last_synced_at)
 
@@ -771,7 +774,9 @@ class WhatsappTemplateSyncTestCase(APIBaseTestCase):
         ).isoformat()
         self.app.save(update_fields=["config"])
 
-        response = self.request.post(self.url, app_uuid=str(self.app.uuid), body={})
+        response = self.request.post(
+            self.url, app_uuid=str(self.app.uuid), body=self.body
+        )
         self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
         self.assertIn("retry_after_seconds", response.json)
 
@@ -779,5 +784,7 @@ class WhatsappTemplateSyncTestCase(APIBaseTestCase):
         self.app.config["ignores_meta_sync"] = {"code": 100}
         self.app.save(update_fields=["config"])
 
-        response = self.request.post(self.url, app_uuid=str(self.app.uuid), body={})
+        response = self.request.post(
+            self.url, app_uuid=str(self.app.uuid), body=self.body
+        )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
