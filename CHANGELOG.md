@@ -1,3 +1,7 @@
+v4.26.0
+----------
+* feat: Add unavailableProductNotify field to ConfigSerializer
+
 v4.25.0
 ----------
 * feat: Implement template synchronization feature in TemplateMessageViewSet
