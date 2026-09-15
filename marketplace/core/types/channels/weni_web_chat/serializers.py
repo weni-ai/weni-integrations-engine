@@ -139,6 +139,7 @@ class ConfigSerializer(serializers.Serializer):
     )
     voiceMode = serializers.JSONField(required=False)
     addToCart = serializers.BooleanField(default=False)
+    unavailableProductNotify = serializers.BooleanField(default=False)
     position = WidgetPositionField(
         choices=WIDGET_POSITIONS, default=DEFAULT_WIDGET_POSITION
     )
