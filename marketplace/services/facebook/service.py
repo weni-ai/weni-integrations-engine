@@ -2,7 +2,7 @@ import logging
 import requests
 
 from sentry_sdk import capture_exception
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from marketplace.wpp_products.models import Catalog
 from marketplace.interfaces.facebook.interfaces import (
@@ -264,8 +264,10 @@ class PhoneNumbersService:
     def get_phone_numbers(self, waba_id: str) -> List[Dict[str, Any]]:
         return self.client.get_phone_numbers(waba_id)
 
-    def get_phone_number(self, phone_number_id: str) -> Dict[str, Any]:
-        return self.client.get_phone_number(phone_number_id)
+    def get_phone_number(
+        self, phone_number_id: str, fields: Optional[str] = None
+    ) -> Dict[str, Any]:
+        return self.client.get_phone_number(phone_number_id, fields=fields)
 
 
 class CloudProfileService:
