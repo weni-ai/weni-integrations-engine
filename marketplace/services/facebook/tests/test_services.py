@@ -106,7 +106,7 @@ class MockClient:
     def get_phone_numbers(self, waba_id):
         return [{"phone_number": "1234567890"}]
 
-    def get_phone_number(self, phone_number_id):
+    def get_phone_number(self, phone_number_id, fields=None):
         return {"phone_number": "1234567890"}
 
     def get_profile(self):
@@ -392,6 +392,17 @@ class TestPhoneNumbersService(TestCase):
         response = self.service.get_phone_number("phone_number_id")
         self.assertEqual(response, {"phone_number": "1234567890"})
 
+    def test_get_phone_number_forwards_fields(self):
+        self.client.get_phone_number = Mock(
+            return_value={"status": "CONNECTED", "platform_type": "CLOUD_API"}
+        )
+        fields = "display_phone_number,verified_name,status,platform_type"
+        response = self.service.get_phone_number("phone_number_id", fields=fields)
+        self.client.get_phone_number.assert_called_once_with(
+            "phone_number_id", fields=fields
+        )
+        self.assertEqual(response["status"], "CONNECTED")
+
 
 class TestCloudProfileService(TestCase):
     def setUp(self):
@@ -486,4 +497,6 @@ class TestBusinessMetaService(TestCase):
 
     def test_get_mmlite_status(self):
         response = self.service.get_mmlite_status("waba_id")
-        self.assertEqual(response, {"marketing_messages_onboarding_status": "ONBOARDED"})
+        self.assertEqual(
+            response, {"marketing_messages_onboarding_status": "ONBOARDED"}
+        )

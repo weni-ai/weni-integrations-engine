@@ -1,5 +1,5 @@
 from uuid import uuid4
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -171,3 +171,75 @@ class WABASyncUseCaseTestCase(TestCase):
             result, {"status": "skipped", "reason": "ignores_meta_sync_flag"}
         )
         self.api_mock.get_waba.assert_not_called()
+
+    def test_create_path_requires_app(self):
+        result = self._build_use_case(app=None).sync_whatsapp_cloud_waba()
+
+        self.assertEqual(result, {"status": "error", "error": "app is required"})
+        self.api_mock.get_waba.assert_not_called()
+
+    def test_create_path_skips_unusable_siblings_before_copying_cache(self):
+        self._create_app(
+            waba_id=self.waba_id,
+            extra_config={"ignores_meta_sync": "err", "waba": WABA_PAYLOAD},
+        )
+        self._create_app(waba_id=self.waba_id)
+        self._create_app(waba_id=self.waba_id, extra_config={"waba": WABA_PAYLOAD})
+        new_app = self._create_app(waba_id=self.waba_id)
+        self.redis_mock.get.return_value = b"synced"
+
+        result = self._build_use_case(app=new_app).sync_whatsapp_cloud_waba()
+
+        self.assertEqual(result["status"], "copied")
+        self.api_mock.get_waba.assert_not_called()
+        new_app.refresh_from_db()
+        self.assertEqual(new_app.config["waba"], WABA_PAYLOAD)
+
+    def test_sync_waba_errors_when_no_access_token(self):
+        self._create_app(waba_id=self.waba_id)
+
+        result = WABASyncUseCase(
+            redis_conn=self.redis_mock,
+            api_factory=self.api_factory,
+            token_factory=lambda _app: "",
+        ).sync_waba(self.waba_id)
+
+        self.assertEqual(result, {"status": "error", "error": "no_access_token"})
+        self.api_factory.assert_not_called()
+        self.redis_mock.set.assert_not_called()
+
+    def test_sync_waba_skips_apps_without_usable_token(self):
+        failing_app = self._create_app(waba_id=self.waba_id)
+        empty_token_app = self._create_app(waba_id=self.waba_id)
+        good_app = self._create_app(waba_id=self.waba_id)
+
+        def token_factory(app):
+            if app.uuid == failing_app.uuid:
+                raise Exception("token lookup failed")
+            if app.uuid == empty_token_app.uuid:
+                return ""
+            if app.uuid == good_app.uuid:
+                return "token"
+            return None
+
+        result = WABASyncUseCase(
+            redis_conn=self.redis_mock,
+            api_factory=self.api_factory,
+            token_factory=token_factory,
+        ).sync_waba(self.waba_id)
+
+        self.assertEqual(result["status"], "synced")
+        self.api_factory.assert_called_once_with("token")
+        self.api_mock.get_waba.assert_called_once_with(self.waba_id)
+
+    def test_default_factories_build_token_and_api(self):
+        app = MagicMock()
+        app.apptype.get_access_token.return_value = "access-token"
+
+        self.assertEqual(WABASyncUseCase._default_token_factory(app), "access-token")
+
+        with patch(
+            "marketplace.core.types.channels.whatsapp.usecases.waba_sync.FacebookWABAApi"
+        ) as mock_api:
+            WABASyncUseCase._default_api_factory("access-token")
+            mock_api.assert_called_once_with("access-token")

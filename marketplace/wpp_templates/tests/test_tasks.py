@@ -4,6 +4,7 @@ from django.test import SimpleTestCase
 
 from marketplace.wpp_templates.tasks import (
     _apps_for_waba,
+    _resolve_waba_id,
     refresh_whatsapp_templates_from_facebook,
     task_sync_whatsapp_templates_item,
 )
@@ -50,6 +51,17 @@ class RefreshWhatsappTemplatesDispatcherTestCase(SimpleTestCase):
 
         enqueued_ids = [call.args[1] for call in mock_enqueue.call_args_list]
         self.assertEqual(enqueued_ids, ["waba-other"])
+
+    @patch("marketplace.wpp_templates.tasks.enqueue_item")
+    @patch("marketplace.wpp_templates.tasks._resolve_waba_id")
+    @patch("marketplace.wpp_templates.tasks.App")
+    def test_logs_error_when_enqueue_raises(self, mock_app, mock_resolve, mock_enqueue):
+        mock_app.objects.filter.return_value = [_app("a1", "waba-shared")]
+        mock_resolve.side_effect = Exception("redis down")
+
+        refresh_whatsapp_templates_from_facebook()
+
+        mock_enqueue.assert_not_called()
 
 
 class SyncWhatsappTemplatesItemTestCase(SimpleTestCase):
@@ -106,6 +118,42 @@ class SyncWhatsappTemplatesItemTestCase(SimpleTestCase):
         mock_handle.assert_called_once()
         mock_mark.assert_not_called()
 
+    @patch("marketplace.wpp_templates.tasks.mark_synced")
+    @patch("marketplace.wpp_templates.tasks.TemplateSyncUseCase")
+    @patch("marketplace.wpp_templates.tasks._apps_for_waba")
+    def test_continues_when_applying_templates_raises(
+        self, mock_apps_for_waba, mock_use_case_cls, mock_mark
+    ):
+        mock_apps_for_waba.return_value = [
+            _app("a1", "waba-shared"),
+            _app("a2", "waba-shared"),
+        ]
+        representative = MagicMock()
+        representative.template_service.list_template_messages.return_value = {
+            "data": [{"id": "1"}]
+        }
+        apply_use_case = MagicMock()
+        apply_use_case.sync_templates.side_effect = [Exception("apply failed"), None]
+        mock_use_case_cls.side_effect = [representative, apply_use_case, apply_use_case]
+
+        task_sync_whatsapp_templates_item("waba-shared")
+
+        self.assertEqual(apply_use_case.sync_templates.call_count, 2)
+        mock_mark.assert_called_once()
+
+    @patch("marketplace.wpp_templates.tasks.mark_synced")
+    @patch("marketplace.wpp_templates.tasks.TemplateSyncUseCase")
+    @patch("marketplace.wpp_templates.tasks._apps_for_waba")
+    def test_logs_error_when_item_processing_raises(
+        self, mock_apps_for_waba, mock_use_case_cls, mock_mark
+    ):
+        mock_apps_for_waba.return_value = [_app("a1", "waba-shared")]
+        mock_use_case_cls.side_effect = Exception("boom")
+
+        task_sync_whatsapp_templates_item("waba-shared")
+
+        mock_mark.assert_not_called()
+
 
 class AppsForWabaTestCase(SimpleTestCase):
     @patch("marketplace.wpp_templates.tasks.App")
@@ -118,3 +166,15 @@ class AppsForWabaTestCase(SimpleTestCase):
 
         apps = _apps_for_waba("waba-shared")
         self.assertEqual(apps, [eligible])
+
+
+class ResolveWabaIdTestCase(SimpleTestCase):
+    def test_prefers_wa_waba_id(self):
+        app = MagicMock()
+        app.config = {"wa_waba_id": "direct", "waba": {"id": "nested"}}
+        self.assertEqual(_resolve_waba_id(app), "direct")
+
+    def test_falls_back_to_nested_waba_id(self):
+        app = MagicMock()
+        app.config = {"waba": {"id": "nested"}}
+        self.assertEqual(_resolve_waba_id(app), "nested")

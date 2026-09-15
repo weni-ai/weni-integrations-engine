@@ -1,3 +1,13 @@
+v4.25.0
+----------
+* feat: Implement template synchronization feature in TemplateMessageViewSet
+* refactor: Enhance template synchronization logic and error handling
+
+v4.24.0
+----------
+* feat: Implement paced queue for WhatsApp synchronization tasks
+* refactor: Simplify AppConfigurationUseCase by removing channel_client dependency
+
 v4.23.2
 ----------
 * fix(whatsapp_cloud): replace internal permission with ProjectManagePermission on channels view

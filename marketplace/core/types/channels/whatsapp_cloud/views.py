@@ -1,5 +1,3 @@
-import string
-
 from typing import TYPE_CHECKING
 
 from rest_framework.views import APIView
@@ -10,7 +8,6 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import APIException
 
 from django.conf import settings
-from django.utils.crypto import get_random_string
 
 from weni_commons.auth import WeniAuthViewMixin
 
@@ -21,15 +18,12 @@ from marketplace.applications.models import App
 from marketplace.clients.flows.client import FlowsClient
 from marketplace.accounts.permissions import ProjectManagePermission, IsCRMUser
 from marketplace.clients.facebook.client import FacebookClient
-from marketplace.core.types.channels.whatsapp.usecases.phone_number_sync import (
-    PhoneNumberSyncUseCase,
+from marketplace.core.types.channels.whatsapp_cloud.usecases.create_app import (
+    CreateWhatsAppCloudAppDTO,
+    CreateWhatsAppCloudAppUseCase,
 )
-from marketplace.core.types.channels.whatsapp.usecases.waba_sync import WABASyncUseCase
 from marketplace.core.types.channels.whatsapp_cloud.usecases.mmlite_status_sync import (
     SyncMmliteStatusUseCase,
-)
-from marketplace.core.types.channels.whatsapp_cloud.usecases.whatsapp_insights_sync import (
-    WhatsAppInsightsSyncUseCase,
 )
 from marketplace.core.types.channels.whatsapp_cloud.usecases.whatsapp_calling import (
     WhatsAppCallingUseCase,
@@ -113,82 +107,31 @@ class WhatsAppCloudViewSet(
         serializer = WhatsAppCloudConfigureSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        project_uuid = self.auth.project_uuid
-        waba_id = serializer.validated_data.get("waba_id")
-        phone_number_id = serializer.validated_data.get("phone_number_id")
-        auth_code = serializer.validated_data.get("auth_code")
-        waba_currency = "BRL"
-
-        whatsapp_system_user_access_token = settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
-        facebook_client = FacebookClient(whatsapp_system_user_access_token)
-        business_service = BusinessMetaService(client=facebook_client)
-        template_service = TemplateService(client=facebook_client)
-
-        # Configure WhatsApp Cloud
-        config_data = business_service.configure_whatsapp_cloud(
-            auth_code, waba_id, phone_number_id, waba_currency
+        facebook_client = FacebookClient(settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
+        use_case = CreateWhatsAppCloudAppUseCase(
+            business_service=BusinessMetaService(client=facebook_client),
+            phone_numbers_service=PhoneNumbersService(client=facebook_client),
+            template_service=TemplateService(client=facebook_client),
+            flows_service=FlowsService(client=FlowsClient()),
+        )
+        app = use_case.execute(
+            CreateWhatsAppCloudAppDTO(
+                project_uuid=self.auth.project_uuid,
+                waba_id=serializer.validated_data["waba_id"],
+                phone_number_id=serializer.validated_data["phone_number_id"],
+                auth_code=serializer.validated_data["auth_code"],
+                created_by=request.user,
+                user_email=request.user.email,
+            )
         )
 
-        user_access_token = config_data["user_access_token"]
-        business_id = config_data["business_id"]
-        message_template_namespace = config_data["message_template_namespace"]
-        allocation_config_id = config_data["allocation_config_id"]
-        dataset_id = config_data["dataset_id"]
-
-        # Get phone number
-        phone_number_request = PhoneNumbersService(
-            client=FacebookClient(whatsapp_system_user_access_token)
+        return Response(
+            {
+                **serializer.validated_data,
+                "app_uuid": str(app.uuid),
+                "flow_object_uuid": str(app.flow_object_uuid),
+            }
         )
-        phone_number = phone_number_request.get_phone_number(phone_number_id)
-
-        # Register phone number
-        pin = get_random_string(6, string.digits)
-        data = dict(messaging_product="whatsapp", pin=pin)
-        business_service.register_phone_number(phone_number_id, user_access_token, data)
-
-        config = dict(
-            wa_number=phone_number.get("display_phone_number"),
-            wa_verified_name=phone_number.get("verified_name"),
-            wa_waba_id=waba_id,
-            wa_currency=waba_currency,
-            wa_business_id=business_id,
-            wa_message_template_namespace=message_template_namespace,
-            wa_pin=pin,
-            wa_user_token=user_access_token,
-            wa_dataset_id=dataset_id,
-        )
-
-        flows_service = FlowsService(client=FlowsClient())
-        channel = flows_service.create_wac_channel(
-            request.user.email, project_uuid, phone_number_id, config
-        )
-
-        config["title"] = config.get("wa_number")
-        config["wa_allocation_config_id"] = allocation_config_id
-        config["wa_phone_number_id"] = phone_number_id
-        config["has_insights"] = template_service.setup_insights(waba_id)
-
-        app = App.objects.create(
-            code=self.type_class.code,
-            config=config,
-            project_uuid=project_uuid,
-            platform=App.PLATFORM_WENI_FLOWS,
-            created_by=request.user,
-            flow_object_uuid=channel.get("uuid"),
-            configured=True,
-        )
-
-        WABASyncUseCase(app).sync_whatsapp_cloud_waba()
-        PhoneNumberSyncUseCase(app).sync_whatsapp_cloud_phone_number()
-        WhatsAppInsightsSyncUseCase(app).sync()
-        SyncMmliteStatusUseCase().sync_for_app(app)
-
-        response_data = {
-            **serializer.validated_data,
-            "app_uuid": str(app.uuid),
-            "flow_object_uuid": str(app.flow_object_uuid),
-        }
-        return Response(response_data)
 
     @action(detail=True, methods=["PATCH"])
     def update_webhook(self, request, uuid=None):
