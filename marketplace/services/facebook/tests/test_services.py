@@ -106,7 +106,7 @@ class MockClient:
     def get_phone_numbers(self, waba_id):
         return [{"phone_number": "1234567890"}]
 
-    def get_phone_number(self, phone_number_id):
+    def get_phone_number(self, phone_number_id, fields=None):
         return {"phone_number": "1234567890"}
 
     def get_profile(self):
@@ -336,6 +336,19 @@ class TestTemplateService(TestCase):
         response = self.service.enable_template_insights("waba_id")
         self.assertEqual(response, {"success": True})
 
+    def test_setup_insights_returns_true_when_enable_succeeds(self):
+        self.assertTrue(self.service.setup_insights("waba_id"))
+
+    def test_setup_insights_returns_false_when_enable_fails(self):
+        original_enable_template_insights = self.service.enable_template_insights
+        try:
+            self.service.enable_template_insights = Mock(
+                side_effect=Exception("insights failure")
+            )
+            self.assertFalse(self.service.setup_insights("waba_id"))
+        finally:
+            self.service.enable_template_insights = original_enable_template_insights
+
     def test_list_template_messages(self):
         response = self.service.list_template_messages("waba_id")
         self.assertEqual(response, {"messages": []})
@@ -391,6 +404,17 @@ class TestPhoneNumbersService(TestCase):
     def test_get_phone_number(self):
         response = self.service.get_phone_number("phone_number_id")
         self.assertEqual(response, {"phone_number": "1234567890"})
+
+    def test_get_phone_number_forwards_fields(self):
+        self.client.get_phone_number = Mock(
+            return_value={"status": "CONNECTED", "platform_type": "CLOUD_API"}
+        )
+        fields = "display_phone_number,verified_name,status,platform_type"
+        response = self.service.get_phone_number("phone_number_id", fields=fields)
+        self.client.get_phone_number.assert_called_once_with(
+            "phone_number_id", fields=fields
+        )
+        self.assertEqual(response["status"], "CONNECTED")
 
 
 class TestCloudProfileService(TestCase):
@@ -486,4 +510,6 @@ class TestBusinessMetaService(TestCase):
 
     def test_get_mmlite_status(self):
         response = self.service.get_mmlite_status("waba_id")
-        self.assertEqual(response, {"marketing_messages_onboarding_status": "ONBOARDED"})
+        self.assertEqual(
+            response, {"marketing_messages_onboarding_status": "ONBOARDED"}
+        )

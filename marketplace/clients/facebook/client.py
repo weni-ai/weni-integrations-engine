@@ -440,9 +440,12 @@ class PhoneNumbersRequests(
 
         raise Exception(f"Max retries reached for request : {url}, headers: {headers}")
 
-    def get_phone_number(self, phone_number_id: str) -> dict:
+    def get_phone_number(self, phone_number_id: str, fields: str = None) -> dict:
         url = self._get_url(phone_number_id)
-        response = self.make_request(method="GET", url=url, headers=self._headers)
+        params = {"fields": fields} if fields else None
+        response = self.make_request(
+            method="GET", url=url, headers=self._headers, params=params
+        )
         return response.json()
 
 

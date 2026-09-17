@@ -488,7 +488,7 @@ class MockBusinessMetaService:
 
 
 class MockPhoneNumbersService:
-    def get_phone_number(self, phone_number_id):
+    def get_phone_number(self, phone_number_id, fields=None):
         return {
             "display_phone_number": "mock_display_phone_number",
             "verified_name": "mock_verified_name",
@@ -552,26 +552,29 @@ class CreateWhatsAppCloudTestCase(APIBaseTestCase):
 
         # Mock services
         self.mock_business_meta_service = MockBusinessMetaService()
+        self.mock_business_meta_service.register_phone_number = Mock()
         self.mock_phone_numbers_service = MockPhoneNumbersService()
         self.mock_flows_service = MockFlowsService()
+        self.mock_template_service = Mock()
+        self.mock_template_service.setup_insights.return_value = True
 
         patcher_waba_sync = patch(
-            "marketplace.core.types.channels.whatsapp_cloud.views.WABASyncUseCase",
+            "marketplace.core.types.channels.whatsapp_cloud.usecases.create_app.WABASyncUseCase",
             new=Mock(return_value=self.mock_waba_sync),
         )
 
         patcher_phone_sync = patch(
-            "marketplace.core.types.channels.whatsapp_cloud.views.PhoneNumberSyncUseCase",
+            "marketplace.core.types.channels.whatsapp_cloud.usecases.create_app.PhoneNumberSyncUseCase",
             new=Mock(return_value=self.mock_phone_sync),
         )
 
         patcher_insights_sync = patch(
-            "marketplace.core.types.channels.whatsapp_cloud.views.WhatsAppInsightsSyncUseCase",
+            "marketplace.core.types.channels.whatsapp_cloud.usecases.create_app.WhatsAppInsightsSyncUseCase",
             new=Mock(return_value=self.mock_insights_sync),
         )
 
         patcher_mmlite_sync = patch(
-            "marketplace.core.types.channels.whatsapp_cloud.views.SyncMmliteStatusUseCase",
+            "marketplace.core.types.channels.whatsapp_cloud.usecases.create_app.SyncMmliteStatusUseCase",
             new=Mock(return_value=self.mock_mmlite_sync),
         )
 
@@ -582,6 +585,10 @@ class CreateWhatsAppCloudTestCase(APIBaseTestCase):
         patcher_phone = patch(
             "marketplace.core.types.channels.whatsapp_cloud.views.PhoneNumbersService",
             new=Mock(return_value=self.mock_phone_numbers_service),
+        )
+        patcher_template = patch(
+            "marketplace.core.types.channels.whatsapp_cloud.views.TemplateService",
+            new=Mock(return_value=self.mock_template_service),
         )
         patcher_flows = patch(
             "marketplace.core.types.channels.whatsapp_cloud.views.FlowsService",
@@ -595,6 +602,7 @@ class CreateWhatsAppCloudTestCase(APIBaseTestCase):
         patcher_mmlite_sync.start()
         patcher_biz_meta.start()
         patcher_phone.start()
+        patcher_template.start()
         patcher_flows.start()
         patcher_celery.start()
 
@@ -604,6 +612,7 @@ class CreateWhatsAppCloudTestCase(APIBaseTestCase):
         self.addCleanup(patcher_mmlite_sync.stop)
         self.addCleanup(patcher_biz_meta.stop)
         self.addCleanup(patcher_phone.stop)
+        self.addCleanup(patcher_template.stop)
         self.addCleanup(patcher_flows.stop)
         self.addCleanup(patcher_celery.stop)
 
@@ -631,6 +640,37 @@ class CreateWhatsAppCloudTestCase(APIBaseTestCase):
         self.assertEqual(len(app.config["wa_pin"]), 6)
         self.assertEqual(app.config["wa_user_token"], "mock_user_access_token")
         self.assertEqual(app.config["wa_dataset_id"], "mock_dataset_id")
+        self.mock_business_meta_service.register_phone_number.assert_called_once()
+
+    def test_create_whatsapp_cloud_skips_register_when_already_connected(self):
+        self.mock_phone_numbers_service.get_phone_number = Mock(
+            return_value={
+                "display_phone_number": "mock_display_phone_number",
+                "verified_name": "mock_verified_name",
+                "status": "CONNECTED",
+                "platform_type": "CLOUD_API",
+            }
+        )
+        self.mock_business_meta_service.configure_whatsapp_cloud = Mock(
+            return_value={
+                "user_access_token": "mock_user_access_token",
+                "business_id": "mock_business_id",
+                "message_template_namespace": "mock_message_template_namespace",
+                "allocation_config_id": "mock_allocation_config_id",
+                "dataset_id": "mock_dataset_id",
+            }
+        )
+
+        response = self.request.post(self.url, body=self.payload)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        app = App.objects.get(project_uuid=self.payload["project_uuid"])
+        self.assertIsNone(app.config["wa_pin"])
+        self.assertEqual(
+            app.config["wa_phone_number_id"], self.payload["phone_number_id"]
+        )
+        self.mock_business_meta_service.configure_whatsapp_cloud.assert_called_once()
+        self.mock_business_meta_service.register_phone_number.assert_not_called()
 
     def test_create_whatsapp_cloud_failure_on_exchange_auth_code(self):
         self.mock_business_meta_service.configure_whatsapp_cloud = Mock(
