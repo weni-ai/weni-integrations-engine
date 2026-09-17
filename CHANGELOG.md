@@ -1,3 +1,7 @@
+v4.27.0
+----------
+* feat: Enhance WhatsApp Cloud app creation process with phone number registration logic
+
 v4.26.0
 ----------
 * feat: Add unavailableProductNotify field to ConfigSerializer
