@@ -336,6 +336,19 @@ class TestTemplateService(TestCase):
         response = self.service.enable_template_insights("waba_id")
         self.assertEqual(response, {"success": True})
 
+    def test_setup_insights_returns_true_when_enable_succeeds(self):
+        self.assertTrue(self.service.setup_insights("waba_id"))
+
+    def test_setup_insights_returns_false_when_enable_fails(self):
+        original_enable_template_insights = self.service.enable_template_insights
+        try:
+            self.service.enable_template_insights = Mock(
+                side_effect=Exception("insights failure")
+            )
+            self.assertFalse(self.service.setup_insights("waba_id"))
+        finally:
+            self.service.enable_template_insights = original_enable_template_insights
+
     def test_list_template_messages(self):
         response = self.service.list_template_messages("waba_id")
         self.assertEqual(response, {"messages": []})
