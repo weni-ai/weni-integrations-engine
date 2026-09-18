@@ -240,7 +240,13 @@ class TemplatesRequests(
         return settings.WHATSAPP_TEMPLATE_API_URL
 
     def create_template_message(
-        self, waba_id: str, name: str, category: str, components: list, language: str
+        self,
+        waba_id: str,
+        name: str,
+        category: str,
+        components: list,
+        language: str,
+        parameter_format=None,
     ) -> dict:
         payload = dict(
             name=name,
@@ -248,6 +254,8 @@ class TemplatesRequests(
             components=components,
             language=language,
         )
+        if parameter_format is not None:
+            payload["parameter_format"] = parameter_format
         url = f"{self.template_api_url}/{waba_id}/message_templates"
         response = self.make_request(
             url, method="POST", json=payload, headers=self._get_headers()

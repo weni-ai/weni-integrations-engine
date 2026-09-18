@@ -310,23 +310,23 @@ with an example per name; assert the Meta payload declares `parameter_format: "n
 a body with a missing example; assert each is rejected with a field-level error naming the offending
 parameter, that `create_template_message` was not called, and that zero rows were created.
 
-- [ ] T024 [P] [US3] Add the trailing `parameter_format: Optional[str] = None` to
+- [X] T024 [P] [US3] Add the trailing `parameter_format: Optional[str] = None` to
       `TemplatesRequestsInterface.create_template_message` in
       `marketplace/interfaces/facebook/interfaces.py` (line 31), matching
       `contracts/internal-python-api.md` § 2 exactly. `update_template_message` and
       `create_library_template_message` are unchanged
-- [ ] T025 [P] [US3] Add the same trailing `parameter_format=None` to
+- [X] T025 [P] [US3] Add the same trailing `parameter_format=None` to
       `TemplateService.create_template_message` in `marketplace/services/facebook/service.py` (line 161)
       and forward it to the client as a keyword argument
-- [ ] T026 [US3] Add the same trailing `parameter_format=None` to
+- [X] T026 [US3] Add the same trailing `parameter_format=None` to
       `TemplatesRequests.create_template_message` in `marketplace/clients/facebook/client.py` (line 236)
       and include the key in the payload **only when it is not `None`**, so a positional create stays
       byte-identical to today's request (FR-026, SC-008). Depends on T009 (same file)
-- [ ] T027 [P] [US3] Update the fake `create_template_message(self, waba_id, name, category, components,
+- [X] T027 [P] [US3] Update the fake `create_template_message(self, waba_id, name, category, components,
       language)` test double at `marketplace/services/facebook/tests/test_services.py:73` to accept the new
       trailing parameter, and assert the service forwards it unchanged. This is the one legitimate
       modification to an existing test caused by the signature change
-- [ ] T028 [US3] ⚠️ CT#1 Add named-body validation to `TemplateTranslationSerializer` in
+- [X] T028 [US3] ⚠️ CT#1 Add named-body validation to `TemplateTranslationSerializer` in
       `marketplace/wpp_templates/serializers.py` (class at line 60), delegating **all** grammar and rule
       logic to `parameters.py` so no new business logic enters the serializer: detect the format with
       `detect_authoring_format`; reject a mixed body with a field-level error stating that a template uses
@@ -339,7 +339,7 @@ parameter, that `create_template_message` was not called, and that zero rows wer
       Error messages name the field, the offending parameter and the condition (NFR-006); example values
       may appear in errors returned to the author but never in `INFO` logs (FR-044). Fold in the removal of
       the dead `WHATSAPP_VERSION = settings.WHATSAPP_VERSION` assignment at line 26
-- [ ] T029 [US3] Build and submit the named payload in
+- [X] T029 [US3] Build and submit the named payload in
       `marketplace/wpp_templates/serializers.py`: at the `create_template_message` call site (line 168),
       pass `parameter_format="named"` (lowercase, matching Meta's creation documentation) for a named body
       and **omit the argument entirely** for a positional body; assemble the BODY component's
@@ -347,25 +347,25 @@ parameter, that `create_template_message` was not called, and that zero rows wer
       created translation with `parameter_format = "NAMED"`, `body_named_params` and `variable_count =
       len(names)`. A positional create keeps the literal `variable_count=0` at line 189 and its existing
       `body_example` handling unchanged (FR-026). Depends on T025, T026 and T028
-- [ ] T030 [US3] Surface Meta's rejection correctly in `marketplace/wpp_templates/serializers.py`,
+- [X] T030 [US3] Surface Meta's rejection correctly in `marketplace/wpp_templates/serializers.py`,
       reusing `marketplace/wpp_templates/error_handlers.py` where it already applies: a `400` naming a body
       or parameter problem is surfaced **verbatim, not reinterpreted**, with no local record (FR-024, Story
       3 scenario 7); a `400` indicating `parameter_format` is unsupported is re-raised as a **configuration**
       error naming the unsupported capability rather than a template validation error (Edge Cases —
       Provider version). Depends on T029
-- [ ] T031 [P] [US3] Add the accept-path tests to `marketplace/wpp_templates/tests/test_serializers.py`
+- [X] T031 [P] [US3] Add the accept-path tests to `marketplace/wpp_templates/tests/test_serializers.py`
       with `TemplateService` mocked and `override_settings(WHATSAPP_NAMED_TEMPLATES_ENABLED=True)`: a
       three-parameter named body calls `create_template_message` with `parameter_format="named"` and a BODY
       component carrying three `{param_name, example}` entries in body order, and records the translation
       as `NAMED` with `variable_count == 3` and `body_named_params` populated. Depends on T029
-- [ ] T032 [US3] Add the reject matrix to `marketplace/wpp_templates/tests/test_serializers.py`, one case
+- [X] T032 [US3] Add the reject matrix to `marketplace/wpp_templates/tests/test_serializers.py`, one case
       per row of `quickstart.md` § Scenario 3 — `Olá {{nome}}, pedido {{1}}`,
       `Olá {{nome}}, tudo bem {{nome}}?`, `Olá {{Nome}}`, `Seu código {{2fa_code}}`, `Olá {{nome}}` with no
       example, and a body valid locally that Meta rejects. Each asserts a field-level error naming the
       offending parameter, `create_template_message.assert_not_called()` where applicable, and zero new
       `TemplateTranslation` rows (SC-004). Include the unsupported-`parameter_format` Meta error asserting
       a configuration-flavoured message. Depends on T030 and T031
-- [ ] T033 [US3] Add the flag and positional-parity tests to
+- [X] T033 [US3] Add the flag and positional-parity tests to
       `marketplace/wpp_templates/tests/test_serializers.py`: with
       `override_settings(WHATSAPP_NAMED_TEMPLATES_ENABLED=False)` a named body is rejected with a
       field-level error and makes no Meta call, while a positional body is unaffected; with the flag `True`

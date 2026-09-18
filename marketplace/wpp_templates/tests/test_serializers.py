@@ -1,12 +1,42 @@
 from unittest.mock import MagicMock, patch
-from django.core.exceptions import ValidationError as DjangoValidationError
-from django.test import TestCase
-from rest_framework import serializers as drf_serializers
 
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.test import TestCase, override_settings
+from rest_framework import serializers as drf_serializers
+from rest_framework.exceptions import APIException
+
+from marketplace.clients.exceptions import CustomAPIException
+from marketplace.wpp_templates.parameters import PARAMETER_FORMAT_NAMED
 from marketplace.wpp_templates.serializers import (
-    TemplateTranslationSerializer,
     TemplateMessageSerializer,
+    TemplateTranslationSerializer,
 )
+
+THREE_NAME_BODY = "Olá {{nome}}, sua cota {{cota}} vence em {{data}}"
+THREE_NAME_EXAMPLES = [
+    {"param_name": "nome", "example": "João"},
+    {"param_name": "cota", "example": "3/12"},
+    {"param_name": "data", "example": "20/10/2026"},
+]
+POSITIONAL_BODY = "Olá {{1}}, seu pedido {{2}} foi enviado."
+
+
+def _translation_payload(text, examples=None, language="pt_BR"):
+    body = {"type": "BODY", "text": text}
+    if examples is not None:
+        body["example"] = {"body_text_named_params": examples}
+    return {
+        "template_uuid": "uuid-named",
+        "language": language,
+        "body": body,
+    }
+
+
+def _body_error_text(serializer):
+    errors = serializer.errors["body"]
+    if isinstance(errors, list):
+        return " ".join(str(item) for item in errors)
+    return str(errors)
 
 
 class TestTemplateTranslationSerializer(TestCase):
@@ -265,3 +295,339 @@ class TestTemplateMessageSerializer(TestCase):
 
         with self.assertRaises(drf_serializers.ValidationError):
             serializer.create(payload)
+
+
+class TestNamedTemplateAuthoring(TestCase):
+    """Story 3: named authoring accept, reject matrix, flag and positional parity."""
+
+    def _stub_create_path(
+        self,
+        mock_template_message,
+        mock_template_service_cls,
+        mock_template_translation,
+        create_side_effect=None,
+    ):
+        template_instance = MagicMock()
+        template_instance.name = "order_update"
+        template_instance.category = "UTILITY"
+        template_instance.app.config = {"wa_waba_id": "waba-xyz"}
+        template_instance.app.apptype.get_access_token.return_value = "acc-1"
+        mock_template_message.objects.get.return_value = template_instance
+
+        svc_instance = MagicMock()
+        if create_side_effect is not None:
+            svc_instance.create_template_message.side_effect = create_side_effect
+        else:
+            svc_instance.create_template_message.return_value = {"id": "mid-named"}
+        mock_template_service_cls.return_value = svc_instance
+
+        translation_obj = MagicMock()
+        mock_template_translation.objects.create.return_value = translation_obj
+        return svc_instance
+
+    def _assert_rejected_without_meta(
+        self, serializer, mock_template_service_cls, mock_template_translation
+    ):
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("body", serializer.errors)
+        mock_template_service_cls.return_value.create_template_message.assert_not_called()
+        mock_template_translation.objects.create.assert_not_called()
+
+    @override_settings(WHATSAPP_NAMED_TEMPLATES_ENABLED=True)
+    @patch("marketplace.wpp_templates.serializers.TemplateHeader")
+    @patch("marketplace.wpp_templates.serializers.TemplateButton")
+    @patch("marketplace.wpp_templates.serializers.TemplateTranslation")
+    @patch("marketplace.wpp_templates.serializers.TemplateService")
+    @patch("marketplace.wpp_templates.serializers.FacebookClient")
+    @patch("marketplace.wpp_templates.serializers.TemplateMessage")
+    def test_named_body_submits_named_payload_and_records_parameters(
+        self,
+        mock_template_message,
+        mock_facebook_client,
+        mock_template_service_cls,
+        mock_template_translation,
+        mock_template_button,
+        mock_template_header,
+    ):
+        svc_instance = self._stub_create_path(
+            mock_template_message,
+            mock_template_service_cls,
+            mock_template_translation,
+        )
+        serializer = TemplateTranslationSerializer(
+            data=_translation_payload(THREE_NAME_BODY, THREE_NAME_EXAMPLES)
+        )
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        serializer.save()
+
+        svc_instance.create_template_message.assert_called_once()
+        call_kwargs = svc_instance.create_template_message.call_args.kwargs
+        self.assertEqual(call_kwargs["parameter_format"], "named")
+        body_component = call_kwargs["components"][0]
+        named_examples = body_component["example"]["body_text_named_params"]
+        self.assertEqual(
+            [entry["param_name"] for entry in named_examples],
+            ["nome", "cota", "data"],
+        )
+        self.assertEqual(
+            named_examples,
+            [
+                {"param_name": "nome", "example": "João"},
+                {"param_name": "cota", "example": "3/12"},
+                {"param_name": "data", "example": "20/10/2026"},
+            ],
+        )
+
+        create_kwargs = mock_template_translation.objects.create.call_args.kwargs
+        self.assertEqual(create_kwargs["parameter_format"], PARAMETER_FORMAT_NAMED)
+        self.assertEqual(create_kwargs["variable_count"], 3)
+        self.assertEqual(create_kwargs["body_named_params"], named_examples)
+
+    @override_settings(WHATSAPP_NAMED_TEMPLATES_ENABLED=True)
+    @patch("marketplace.wpp_templates.serializers.TemplateTranslation")
+    @patch("marketplace.wpp_templates.serializers.TemplateService")
+    def test_rejects_mixed_named_and_positional_body(
+        self, mock_template_service_cls, mock_template_translation
+    ):
+        serializer = TemplateTranslationSerializer(
+            data=_translation_payload("Olá {{nome}}, pedido {{1}}")
+        )
+        self._assert_rejected_without_meta(
+            serializer, mock_template_service_cls, mock_template_translation
+        )
+        error = _body_error_text(serializer)
+        self.assertIn("one parameter format", error.lower())
+        self.assertIn("nome", error)
+
+    @override_settings(WHATSAPP_NAMED_TEMPLATES_ENABLED=True)
+    @patch("marketplace.wpp_templates.serializers.TemplateTranslation")
+    @patch("marketplace.wpp_templates.serializers.TemplateService")
+    def test_rejects_duplicated_parameter_name(
+        self, mock_template_service_cls, mock_template_translation
+    ):
+        serializer = TemplateTranslationSerializer(
+            data=_translation_payload(
+                "Olá {{nome}}, tudo bem {{nome}}?",
+                [{"param_name": "nome", "example": "João"}],
+            )
+        )
+        self._assert_rejected_without_meta(
+            serializer, mock_template_service_cls, mock_template_translation
+        )
+        error = _body_error_text(serializer)
+        self.assertIn("nome", error)
+        self.assertIn("duplicated", error.lower())
+
+    @override_settings(WHATSAPP_NAMED_TEMPLATES_ENABLED=True)
+    @patch("marketplace.wpp_templates.serializers.TemplateTranslation")
+    @patch("marketplace.wpp_templates.serializers.TemplateService")
+    def test_rejects_uppercase_parameter_name(
+        self, mock_template_service_cls, mock_template_translation
+    ):
+        serializer = TemplateTranslationSerializer(
+            data=_translation_payload(
+                "Olá {{Nome}}", [{"param_name": "Nome", "example": "João"}]
+            )
+        )
+        self._assert_rejected_without_meta(
+            serializer, mock_template_service_cls, mock_template_translation
+        )
+        error = _body_error_text(serializer)
+        self.assertIn("Nome", error)
+        self.assertIn("^[a-z_][a-z0-9_]*$", error)
+
+    @override_settings(WHATSAPP_NAMED_TEMPLATES_ENABLED=True)
+    @patch("marketplace.wpp_templates.serializers.TemplateTranslation")
+    @patch("marketplace.wpp_templates.serializers.TemplateService")
+    def test_rejects_leading_digit_parameter_name(
+        self, mock_template_service_cls, mock_template_translation
+    ):
+        serializer = TemplateTranslationSerializer(
+            data=_translation_payload(
+                "Seu código {{2fa_code}}",
+                [{"param_name": "2fa_code", "example": "123456"}],
+            )
+        )
+        self._assert_rejected_without_meta(
+            serializer, mock_template_service_cls, mock_template_translation
+        )
+        error = _body_error_text(serializer)
+        self.assertIn("2fa_code", error)
+        self.assertIn("^[a-z_][a-z0-9_]*$", error)
+
+    @override_settings(WHATSAPP_NAMED_TEMPLATES_ENABLED=True)
+    @patch("marketplace.wpp_templates.serializers.TemplateTranslation")
+    @patch("marketplace.wpp_templates.serializers.TemplateService")
+    def test_rejects_named_parameter_without_example(
+        self, mock_template_service_cls, mock_template_translation
+    ):
+        serializer = TemplateTranslationSerializer(
+            data=_translation_payload("Olá {{nome}}")
+        )
+        self._assert_rejected_without_meta(
+            serializer, mock_template_service_cls, mock_template_translation
+        )
+        error = _body_error_text(serializer)
+        self.assertIn("nome", error)
+        self.assertIn("example", error.lower())
+
+    @override_settings(WHATSAPP_NAMED_TEMPLATES_ENABLED=True)
+    @patch("marketplace.wpp_templates.serializers.TemplateHeader")
+    @patch("marketplace.wpp_templates.serializers.TemplateButton")
+    @patch("marketplace.wpp_templates.serializers.TemplateTranslation")
+    @patch("marketplace.wpp_templates.serializers.TemplateService")
+    @patch("marketplace.wpp_templates.serializers.FacebookClient")
+    @patch("marketplace.wpp_templates.serializers.TemplateMessage")
+    def test_surfaces_meta_body_rejection_verbatim_without_local_record(
+        self,
+        mock_template_message,
+        mock_facebook_client,
+        mock_template_service_cls,
+        mock_template_translation,
+        mock_template_button,
+        mock_template_header,
+    ):
+        meta_reason = "Meta rejected body parameter 'nome' because example is too long"
+        self._stub_create_path(
+            mock_template_message,
+            mock_template_service_cls,
+            mock_template_translation,
+            create_side_effect=CustomAPIException(detail=meta_reason, status_code=400),
+        )
+        serializer = TemplateTranslationSerializer(
+            data=_translation_payload(THREE_NAME_BODY, THREE_NAME_EXAMPLES)
+        )
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        with self.assertRaises(drf_serializers.ValidationError) as ctx:
+            serializer.save()
+        self.assertIn("body", ctx.exception.detail)
+        self.assertIn(meta_reason, str(ctx.exception.detail["body"]))
+        mock_template_translation.objects.create.assert_not_called()
+
+    @override_settings(WHATSAPP_NAMED_TEMPLATES_ENABLED=True)
+    @patch("marketplace.wpp_templates.serializers.TemplateHeader")
+    @patch("marketplace.wpp_templates.serializers.TemplateButton")
+    @patch("marketplace.wpp_templates.serializers.TemplateTranslation")
+    @patch("marketplace.wpp_templates.serializers.TemplateService")
+    @patch("marketplace.wpp_templates.serializers.FacebookClient")
+    @patch("marketplace.wpp_templates.serializers.TemplateMessage")
+    def test_unsupported_parameter_format_is_configuration_error(
+        self,
+        mock_template_message,
+        mock_facebook_client,
+        mock_template_service_cls,
+        mock_template_translation,
+        mock_template_button,
+        mock_template_header,
+    ):
+        self._stub_create_path(
+            mock_template_message,
+            mock_template_service_cls,
+            mock_template_translation,
+            create_side_effect=CustomAPIException(
+                detail={
+                    "error": {"message": "(#100) parameter_format is not a valid field"}
+                },
+                status_code=400,
+            ),
+        )
+        serializer = TemplateTranslationSerializer(
+            data=_translation_payload(THREE_NAME_BODY, THREE_NAME_EXAMPLES)
+        )
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        with self.assertRaises(APIException) as ctx:
+            serializer.save()
+        self.assertNotIsInstance(ctx.exception, drf_serializers.ValidationError)
+        message = str(ctx.exception.detail).lower()
+        self.assertIn("parameter_format", message)
+        self.assertIn("does not support", message)
+        self.assertIn("capability", message)
+        mock_template_translation.objects.create.assert_not_called()
+
+    @override_settings(WHATSAPP_NAMED_TEMPLATES_ENABLED=False)
+    @patch("marketplace.wpp_templates.serializers.TemplateTranslation")
+    @patch("marketplace.wpp_templates.serializers.TemplateService")
+    def test_flag_off_rejects_named_body_without_downgrade(
+        self, mock_template_service_cls, mock_template_translation
+    ):
+        serializer = TemplateTranslationSerializer(
+            data=_translation_payload(THREE_NAME_BODY, THREE_NAME_EXAMPLES)
+        )
+        self._assert_rejected_without_meta(
+            serializer, mock_template_service_cls, mock_template_translation
+        )
+        error = _body_error_text(serializer)
+        self.assertIn("not enabled", error.lower())
+        self.assertNotIn("positional", error.lower())
+
+    @override_settings(WHATSAPP_NAMED_TEMPLATES_ENABLED=True)
+    @patch("marketplace.wpp_templates.serializers.TemplateTranslation")
+    @patch("marketplace.wpp_templates.serializers.TemplateService")
+    def test_flag_on_permits_named_body(
+        self, mock_template_service_cls, mock_template_translation
+    ):
+        serializer = TemplateTranslationSerializer(
+            data=_translation_payload(THREE_NAME_BODY, THREE_NAME_EXAMPLES)
+        )
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+
+    @override_settings(WHATSAPP_NAMED_TEMPLATES_ENABLED=False)
+    @patch("marketplace.wpp_templates.serializers.TemplateHeader")
+    @patch("marketplace.wpp_templates.serializers.TemplateButton")
+    @patch("marketplace.wpp_templates.serializers.TemplateTranslation")
+    @patch("marketplace.wpp_templates.serializers.TemplateService")
+    @patch("marketplace.wpp_templates.serializers.FacebookClient")
+    @patch("marketplace.wpp_templates.serializers.TemplateMessage")
+    def test_positional_create_omits_parameter_format_when_flag_off(
+        self,
+        mock_template_message,
+        mock_facebook_client,
+        mock_template_service_cls,
+        mock_template_translation,
+        mock_template_button,
+        mock_template_header,
+    ):
+        svc_instance = self._stub_create_path(
+            mock_template_message,
+            mock_template_service_cls,
+            mock_template_translation,
+        )
+        serializer = TemplateTranslationSerializer(
+            data=_translation_payload(POSITIONAL_BODY)
+        )
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        serializer.save()
+        call_kwargs = svc_instance.create_template_message.call_args.kwargs
+        self.assertNotIn("parameter_format", call_kwargs)
+        create_kwargs = mock_template_translation.objects.create.call_args.kwargs
+        self.assertEqual(create_kwargs["variable_count"], 0)
+        self.assertNotIn("parameter_format", create_kwargs)
+
+    @override_settings(WHATSAPP_NAMED_TEMPLATES_ENABLED=True)
+    @patch("marketplace.wpp_templates.serializers.TemplateHeader")
+    @patch("marketplace.wpp_templates.serializers.TemplateButton")
+    @patch("marketplace.wpp_templates.serializers.TemplateTranslation")
+    @patch("marketplace.wpp_templates.serializers.TemplateService")
+    @patch("marketplace.wpp_templates.serializers.FacebookClient")
+    @patch("marketplace.wpp_templates.serializers.TemplateMessage")
+    def test_positional_create_omits_parameter_format_when_flag_on(
+        self,
+        mock_template_message,
+        mock_facebook_client,
+        mock_template_service_cls,
+        mock_template_translation,
+        mock_template_button,
+        mock_template_header,
+    ):
+        svc_instance = self._stub_create_path(
+            mock_template_message,
+            mock_template_service_cls,
+            mock_template_translation,
+        )
+        serializer = TemplateTranslationSerializer(
+            data=_translation_payload(POSITIONAL_BODY)
+        )
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        serializer.save()
+        call_kwargs = svc_instance.create_template_message.call_args.kwargs
+        self.assertNotIn("parameter_format", call_kwargs)
