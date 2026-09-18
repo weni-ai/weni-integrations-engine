@@ -1,10 +1,21 @@
+import uuid
 from unittest.mock import MagicMock, patch, call
+
+from django.contrib.auth import get_user_model
 from django.test import TestCase
 
+from marketplace.applications.models import App
+from marketplace.clients.exceptions import CustomAPIException
+from marketplace.wpp_templates.models import (
+    PARAMETER_FORMAT_NAMED,
+    TemplateTranslation,
+)
 from marketplace.wpp_templates.usecases.template_library_creation import (
     TemplateCreationUseCase,
 )
-from marketplace.clients.exceptions import CustomAPIException
+from marketplace.wpp_templates.usecases.template_sync import TemplateSyncUseCase
+
+User = get_user_model()
 
 
 class TestTemplateCreationUseCase(TestCase):
@@ -314,3 +325,87 @@ class TestTemplateCreationUseCase(TestCase):
 
         # Returns translation
         self.assertIs(out, translation_obj)
+        defaults = mock_template_translation.objects.get_or_create.call_args.kwargs[
+            "defaults"
+        ]
+        self.assertEqual(defaults["variable_count"], 0)
+        self.assertNotIn("parameter_format", defaults)
+        self.assertNotIn("body_named_params", defaults)
+
+
+class TemplateLibraryParameterFormatTestCase(TestCase):
+    def setUp(self):
+        self.app = App.objects.create(
+            config={
+                "wa_waba_id": "waba-library",
+                "wa_user_token": "test-token",
+            },
+            project_uuid=uuid.uuid4(),
+            platform=App.PLATFORM_WENI_FLOWS,
+            code="wpp-cloud",
+            created_by=User.objects.get_admin_user(),
+            flow_object_uuid=uuid.uuid4(),
+        )
+        self.uc = TemplateCreationUseCase(
+            app=self.app,
+            service=MagicMock(),
+            status_use_case=MagicMock(),
+            commerce_service=MagicMock(),
+        )
+
+    def test_library_created_translation_leaves_format_unknown(self):
+        translation = self.uc._save_template_in_db(
+            {"name": "library_welcome", "language": "pt_BR"},
+            {"id": "1201", "status": "PENDING", "category": "UTILITY"},
+        )
+        translation.refresh_from_db()
+        self.assertIsNone(translation.parameter_format)
+        self.assertEqual(translation.body_named_params, [])
+        self.assertEqual(translation.variable_count, 0)
+
+    def test_post_creation_sync_resolves_library_translation_to_named(self):
+        translation = self.uc._save_template_in_db(
+            {"name": "library_welcome", "language": "pt_BR"},
+            {"id": "1201", "status": "PENDING", "category": "UTILITY"},
+        )
+        translation.refresh_from_db()
+        self.assertIsNone(translation.parameter_format)
+
+        sync = TemplateSyncUseCase(self.app)
+        sync.template_service = MagicMock()
+        sync.flows_client = MagicMock()
+        named_template = {
+            "id": "1201",
+            "name": "library_welcome",
+            "language": "pt_BR",
+            "status": "APPROVED",
+            "category": "UTILITY",
+            "parameter_format": "named",
+            "components": [
+                {
+                    "type": "BODY",
+                    "text": "Olá {{nome}}, sua cota {{cota}}",
+                    "example": {
+                        "body_text_named_params": [
+                            {"param_name": "nome", "example": "João"},
+                            {"param_name": "cota", "example": "3/12"},
+                        ]
+                    },
+                }
+            ],
+        }
+        with self.assertLogs(
+            "marketplace.wpp_templates.usecases.template_sync", level="INFO"
+        ):
+            sync.sync_templates(templates=[named_template])
+
+        translation.refresh_from_db()
+        self.assertEqual(translation.parameter_format, PARAMETER_FORMAT_NAMED)
+        self.assertEqual(
+            [entry["param_name"] for entry in translation.body_named_params],
+            ["nome", "cota"],
+        )
+        self.assertEqual(translation.variable_count, 2)
+        self.assertEqual(
+            TemplateTranslation.objects.filter(template__app=self.app).count(), 1
+        )
