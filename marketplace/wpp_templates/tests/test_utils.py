@@ -1,15 +1,27 @@
-from unittest import TestCase
-from unittest.mock import patch, MagicMock
+import uuid
+from copy import deepcopy
 from datetime import datetime
+from unittest import TestCase
+from unittest.mock import MagicMock, patch
+
+from django.contrib.auth import get_user_model
+from django.test import TestCase as DjangoTestCase
 
 from marketplace.wpp_templates.utils import (
     TemplateCategoryChangeHandler,
+    TemplateStatusUpdateHandler,
     TemplateWebhookEventProcessor,
     extract_template_data,
 )
 from marketplace.wpp_templates.template_helpers import extract_body_example
 from marketplace.wpp_templates.error_handlers import handle_error_and_update_config
 from marketplace.applications.models import App
+from marketplace.wpp_templates.models import (
+    PARAMETER_FORMAT_NAMED,
+    PARAMETER_FORMAT_POSITIONAL,
+    TemplateMessage,
+    TemplateTranslation,
+)
 
 
 class TestTemplateWebhookEventProcessor(TestCase):
@@ -430,10 +442,27 @@ class TestExtractTemplateData(TestCase):
     def setUp(self):
         self.translation = MagicMock()
         self.translation.template.name = "Template Name"
+        self.translation.template.category = "generic"
         self.translation.language = "en"
         self.translation.status = "active"
-        self.translation.category = "generic"
         self.translation.message_template_id = 123
+        self.translation.parameter_format = None
+        self.translation.body_named_params = []
+        self.translation.parameter_anomaly = None
+        self.translation.body = None
+        self.translation.footer = None
+        self.translation.headers.all.return_value = []
+        self.translation.buttons.all.return_value = []
+
+    def _payload_keys_without_format(self):
+        return {"name", "components", "language", "status", "category", "id"}
+
+    def _body_component(self, payload):
+        return next(
+            component
+            for component in payload["components"]
+            if component["type"] == "BODY"
+        )
 
     def test_extract_template_data_all_components(self):
         header = MagicMock(header_type="IMAGE", example="['example1']", text="Header")
@@ -491,6 +520,111 @@ class TestExtractTemplateData(TestCase):
         self.assertEqual(
             result["components"][0]["example"]["header_text"], ["Example Text"]
         )
+
+    def test_clean_named_translation_emits_format_and_named_examples(self):
+        named_params = [
+            {"param_name": "nome", "example": "João"},
+            {"param_name": "cota", "example": "3/12"},
+        ]
+        self.translation.parameter_format = PARAMETER_FORMAT_NAMED
+        self.translation.body_named_params = named_params
+        self.translation.parameter_anomaly = None
+        self.translation.body = "Olá {{nome}}, sua cota {{cota}}"
+
+        result = extract_template_data(self.translation)
+        body = self._body_component(result)
+
+        self.assertEqual(result["parameter_format"], PARAMETER_FORMAT_NAMED)
+        self.assertEqual(body["text"], "Olá {{nome}}, sua cota {{cota}}")
+        self.assertEqual(
+            body["example"]["body_text_named_params"],
+            named_params,
+        )
+        self.assertIs(body["example"]["body_text_named_params"], named_params)
+        self.assertEqual(result["name"], "Template Name")
+        self.assertEqual(result["language"], "en")
+        self.assertEqual(result["status"], "active")
+        self.assertEqual(result["category"], "generic")
+        self.assertEqual(result["id"], "123")
+
+    def test_anomalous_named_translation_omits_example_block(self):
+        self.translation.parameter_format = PARAMETER_FORMAT_NAMED
+        self.translation.body_named_params = [
+            {"param_name": "nome", "example": "João"},
+            {"param_name": "cota", "example": None},
+        ]
+        self.translation.parameter_anomaly = {
+            "type": "BODY_EXAMPLE_NAME_MISMATCH",
+            "body_param_names": ["nome", "cota"],
+            "example_param_names": ["nome", "quota"],
+        }
+        self.translation.body = "Olá {{nome}}, sua cota {{cota}}"
+
+        result = extract_template_data(self.translation)
+        body = self._body_component(result)
+
+        self.assertEqual(result["parameter_format"], PARAMETER_FORMAT_NAMED)
+        self.assertNotIn("example", body)
+
+    def test_positional_translation_gains_only_parameter_format(self):
+        self.translation.parameter_format = PARAMETER_FORMAT_POSITIONAL
+        self.translation.body_named_params = []
+        self.translation.parameter_anomaly = None
+        self.translation.body = "Olá {{1}}, seu pedido {{2}} foi enviado."
+        self.translation.body_example = ["João", "12345"]
+
+        result = extract_template_data(self.translation)
+        body = self._body_component(result)
+
+        self.assertEqual(result["parameter_format"], PARAMETER_FORMAT_POSITIONAL)
+        self.assertEqual(body, {"type": "BODY", "text": self.translation.body})
+        self.assertNotIn("example", body)
+        self.assertEqual(
+            self._payload_keys_without_format() | {"parameter_format"},
+            set(result),
+        )
+
+    def test_null_format_omits_parameter_format_key(self):
+        self.translation.parameter_format = None
+        self.translation.body = "Olá, tudo bem?"
+
+        result = extract_template_data(self.translation)
+
+        self.assertNotIn("parameter_format", result)
+        self.assertEqual(set(result), self._payload_keys_without_format())
+        self.assertEqual(result["name"], "Template Name")
+        self.assertEqual(result["language"], "en")
+        self.assertEqual(result["status"], "active")
+        self.assertEqual(result["category"], "generic")
+        self.assertEqual(result["id"], "123")
+
+    def test_sc006_named_webhook_payload_has_no_positional_keys(self):
+        named_params = [
+            {"param_name": "nome", "example": "João"},
+            {"param_name": "cota", "example": "3/12"},
+        ]
+        self.translation.parameter_format = PARAMETER_FORMAT_NAMED
+        self.translation.body_named_params = named_params
+        self.translation.parameter_anomaly = None
+        self.translation.body = "Olá {{nome}}, sua cota {{cota}}"
+
+        result = extract_template_data(self.translation)
+        body = self._body_component(result)
+        forwarded = body["example"]["body_text_named_params"]
+        self.assertIs(forwarded, named_params)
+        for entry in forwarded:
+            self.assertEqual(set(entry), {"param_name", "example"})
+        self._assert_no_positional_keys(result)
+
+    def _assert_no_positional_keys(self, node):
+        forbidden = {"index", "position", "slot", "order"}
+        if isinstance(node, dict):
+            self.assertEqual(forbidden & set(node), set())
+            for value in node.values():
+                self._assert_no_positional_keys(value)
+        elif isinstance(node, list):
+            for item in node:
+                self._assert_no_positional_keys(item)
 
 
 class TestHandleErrorAndUpdateConfig(TestCase):
@@ -761,3 +895,280 @@ class TestExtractBodyExample(TestCase):
 
         # Ensure it didn't take from the second group
         self.assertNotEqual(result, ["different", "order", "here"])
+
+    def test_named_example_keys_are_skipped(self):
+        result = extract_body_example(
+            {
+                "body_text_named_params": [
+                    {"param_name": "nome", "example": "João"},
+                    {"param_name": "cota", "example": "3/12"},
+                ]
+            }
+        )
+        self.assertEqual(result, [])
+
+    def test_header_text_named_params_are_skipped(self):
+        result = extract_body_example(
+            {"header_text_named_params": [{"param_name": "titulo", "example": "Promo"}]}
+        )
+        self.assertEqual(result, [])
+
+    def test_positional_examples_kept_when_named_keys_are_present(self):
+        result = extract_body_example(
+            {
+                "body_text": [["João", "12345"]],
+                "body_text_named_params": [
+                    {"param_name": "nome", "example": "João"},
+                ],
+                "header_text_named_params": [
+                    {"param_name": "titulo", "example": "Promo"}
+                ],
+            }
+        )
+        self.assertEqual(result, ["João", "12345"])
+
+    def test_unknown_keys_are_still_extracted(self):
+        result = extract_body_example({"custom_examples": ["alpha", "beta"]})
+        self.assertEqual(result, ["alpha", "beta"])
+
+    def test_existing_positional_payloads_are_unchanged(self):
+        cases = (
+            (
+                {"body_text": [["12345", "#123abc", "29 08 2025"]]},
+                ["12345", "#123abc", "29 08 2025"],
+            ),
+            (
+                {"body_text": [["sarah", "123456798", "Herman miller"]]},
+                ["sarah", "123456798", "Herman miller"],
+            ),
+            ({"body_text": ["simple", "list", "values"]}, ["simple", "list", "values"]),
+            ({"body_text": "single_string_value"}, ["single_string_value"]),
+        )
+        for payload, expected in cases:
+            with self.subTest(payload=payload):
+                self.assertEqual(extract_body_example(payload), expected)
+
+
+User = get_user_model()
+
+WABA_ID = "waba-shared"
+NAMED_TEMPLATE_NAME = "cota_aviso"
+NAMED_BODY = "Olá {{nome}}, sua cota {{cota}}"
+NAMED_LANGUAGE = "pt_BR"
+NAMED_MESSAGE_TEMPLATE_ID = "1001"
+NAMED_PARAMS = [
+    {"param_name": "nome", "example": "João"},
+    {"param_name": "cota", "example": "3/12"},
+]
+
+
+class TemplateWebhookParameterPreservationTestCase(DjangoTestCase):
+    def setUp(self):
+        self.flows_service = MagicMock()
+        self.commerce_service = MagicMock()
+        self.status_use_case = MagicMock()
+        self.status_update_handler = TemplateStatusUpdateHandler(
+            flows_service=self.flows_service,
+            commerce_service=self.commerce_service,
+            status_use_case_factory=lambda app: self.status_use_case,
+        )
+        self.processor = TemplateWebhookEventProcessor(
+            status_update_handler=self.status_update_handler,
+            category_change_handler=TemplateCategoryChangeHandler(
+                commerce_service=self.commerce_service
+            ),
+            flows_service=self.flows_service,
+        )
+
+    def _create_app(self, config, code="wpp-cloud"):
+        return App.objects.create(
+            config=config,
+            project_uuid=uuid.uuid4(),
+            platform=App.PLATFORM_WENI_FLOWS,
+            code=code,
+            created_by=User.objects.get_admin_user(),
+            flow_object_uuid=uuid.uuid4(),
+        )
+
+    def _create_named_translation(
+        self,
+        app,
+        name=NAMED_TEMPLATE_NAME,
+        anomaly=None,
+        parameter_format=PARAMETER_FORMAT_NAMED,
+        body=NAMED_BODY,
+        body_named_params=None,
+        variable_count=2,
+        message_template_id=NAMED_MESSAGE_TEMPLATE_ID,
+    ):
+        template = TemplateMessage.objects.create(
+            name=name,
+            app=app,
+            category="UTILITY",
+            template_type="TEXT",
+            created_by=User.objects.get_admin_user(),
+        )
+        translation = TemplateTranslation.objects.create(
+            template=template,
+            status="PENDING",
+            body=body,
+            language=NAMED_LANGUAGE,
+            country="BR",
+            variable_count=variable_count,
+            message_template_id=message_template_id,
+            parameter_format=parameter_format,
+            body_named_params=list(
+                NAMED_PARAMS if body_named_params is None else body_named_params
+            ),
+            parameter_anomaly=deepcopy(anomaly),
+        )
+        return template, translation
+
+    def _snapshot(self, translation):
+        translation.refresh_from_db()
+        return (
+            translation.parameter_format,
+            deepcopy(translation.body_named_params),
+            deepcopy(translation.parameter_anomaly),
+        )
+
+    def _status_value(self, event="APPROVED"):
+        return {
+            "event": event,
+            "message_template_name": NAMED_TEMPLATE_NAME,
+            "message_template_language": NAMED_LANGUAGE,
+            "message_template_id": NAMED_MESSAGE_TEMPLATE_ID,
+        }
+
+    def _category_update_value(self):
+        return {
+            "message_template_name": NAMED_TEMPLATE_NAME,
+            "previous_category": "UTILITY",
+            "new_category": "MARKETING",
+        }
+
+    def _assert_named_template_data(self, template_data, translation):
+        self.assertEqual(template_data["parameter_format"], PARAMETER_FORMAT_NAMED)
+        body = next(
+            component
+            for component in template_data["components"]
+            if component["type"] == "BODY"
+        )
+        self.assertEqual(
+            body["example"]["body_text_named_params"],
+            translation.body_named_params,
+        )
+
+    def test_status_update_preserves_named_params_and_posts_template_data(self):
+        app = self._create_app({"wa_waba_id": WABA_ID})
+        _, translation = self._create_named_translation(app)
+        before = self._snapshot(translation)
+
+        self.processor.process_event(
+            WABA_ID, self._status_value(), "message_template_status_update", {}
+        )
+
+        self.assertEqual(self._snapshot(translation), before)
+        self.flows_service.update_facebook_templates_webhook.assert_called_once()
+        template_data = (
+            self.flows_service.update_facebook_templates_webhook.call_args.kwargs[
+                "template_data"
+            ]
+        )
+        translation.refresh_from_db()
+        self._assert_named_template_data(template_data, translation)
+
+    def test_category_update_preserves_named_params_and_posts_template_data(self):
+        app = self._create_app({"wa_waba_id": WABA_ID})
+        _, translation = self._create_named_translation(app)
+        before = self._snapshot(translation)
+
+        self.processor.process_event(
+            WABA_ID, self._category_update_value(), "template_category_update", {}
+        )
+
+        self.assertEqual(self._snapshot(translation), before)
+        self.flows_service.update_facebook_templates_webhook.assert_called_once()
+        template_data = (
+            self.flows_service.update_facebook_templates_webhook.call_args.kwargs[
+                "template_data"
+            ]
+        )
+        translation.refresh_from_db()
+        self._assert_named_template_data(template_data, translation)
+
+    def test_correct_category_detection_does_not_call_flows(self):
+        app = self._create_app({"wa_waba_id": WABA_ID})
+        _, translation = self._create_named_translation(app)
+        before = self._snapshot(translation)
+
+        self.processor.process_event(
+            WABA_ID,
+            {
+                "message_template_name": NAMED_TEMPLATE_NAME,
+                "category": "UTILITY",
+                "correct_category": "MARKETING",
+            },
+            "template_correct_category_detection",
+            {},
+        )
+
+        self.assertEqual(self._snapshot(translation), before)
+        self.flows_service.update_facebook_templates_webhook.assert_not_called()
+        self.commerce_service.send_template_category_notification.assert_called_once()
+
+    def test_status_update_posts_positional_format_without_body_example(self):
+        app = self._create_app({"wa_waba_id": WABA_ID})
+        _, translation = self._create_named_translation(
+            app,
+            parameter_format=PARAMETER_FORMAT_POSITIONAL,
+            body="Olá {{1}}, seu pedido {{2}} foi enviado.",
+            body_named_params=[],
+            variable_count=0,
+        )
+        translation.body_example = ["João", "12345"]
+        translation.save(update_fields=["body_example"])
+        before = self._snapshot(translation)
+
+        self.processor.process_event(
+            WABA_ID, self._status_value(), "message_template_status_update", {}
+        )
+
+        self.assertEqual(self._snapshot(translation), before)
+        template_data = (
+            self.flows_service.update_facebook_templates_webhook.call_args.kwargs[
+                "template_data"
+            ]
+        )
+        body = next(
+            component
+            for component in template_data["components"]
+            if component["type"] == "BODY"
+        )
+        self.assertEqual(template_data["parameter_format"], PARAMETER_FORMAT_POSITIONAL)
+        self.assertNotIn("example", body)
+
+    def test_nested_waba_id_app_receives_status_update(self):
+        cloud_app = self._create_app({"wa_waba_id": WABA_ID})
+        onprem_app = self._create_app(
+            {"waba": {"id": WABA_ID}, "fb_access_token": "token"},
+            code="wpp",
+        )
+        self._create_named_translation(cloud_app)
+        self._create_named_translation(onprem_app)
+
+        self.processor.process_event(
+            WABA_ID, self._status_value(), "message_template_status_update", {}
+        )
+
+        self.assertEqual(
+            self.flows_service.update_facebook_templates_webhook.call_count, 2
+        )
+        posted_uuids = {
+            call.kwargs["flow_object_uuid"]
+            for call in self.flows_service.update_facebook_templates_webhook.call_args_list
+        }
+        self.assertEqual(
+            posted_uuids,
+            {str(cloud_app.flow_object_uuid), str(onprem_app.flow_object_uuid)},
+        )
