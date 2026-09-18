@@ -236,7 +236,7 @@ event for a template Flows already has and never re-reads `template_data`, so no
 still matters for the **first** webhook on a template Flows has not yet seen. Same work, lower severity than
 `spec.md` implies.
 
-- [ ] T018 [US2] Carry the format and the named examples in
+- [X] T018 [US2] Carry the format and the named examples in
       `marketplace/wpp_templates/utils.py::extract_template_data` (line 305): emit
       `parameter_format` at the payload root for `NAMED` and `POSITIONAL`, **omit the key entirely** when
       `translation.parameter_format` is `NULL` (emitting `null` would invite a consumer to record it as a
@@ -247,7 +247,7 @@ still matters for the **first** webhook on a template Flows has not yet seen. Sa
       of the positional `example.body_text` is **deliberately left in place** — Flows has no field for it
       and never reads it (`plan.md` § 9). `FlowsClient.update_facebook_templates_webhook` and
       `FlowsService` are unchanged
-- [ ] T019 [US2] ⚠️ CT#3 Widen the webhook app lookup in
+- [X] T019 [US2] ⚠️ CT#3 Widen the webhook app lookup in
       `marketplace/wpp_templates/utils.py::TemplateWebhookEventProcessor.get_apps_by_waba_id` (line 183)
       from `App.objects.filter(config__wa_waba_id=waba_id)` to
       `App.objects.filter(Q(config__wa_waba_id=waba_id) | Q(config__waba__id=waba_id))`, so `wpp`
@@ -255,14 +255,14 @@ still matters for the **first** webhook on a template Flows has not yet seen. Sa
       every webhook event. **Do not** extract a shared helper with `tasks.py::_apps_for_waba` (line 36):
       that function additionally filters by `code` and `ignores_meta_sync`, and a webhook must not be
       dropped because scheduled sync was disabled (Constitution III). Depends on T018 (same file)
-- [ ] T020 [P] [US2] Add `extract_template_data` tests to
+- [X] T020 [P] [US2] Add `extract_template_data` tests to
       `marketplace/wpp_templates/tests/test_utils.py`: a clean named translation emits
       `"parameter_format": "NAMED"` and a BODY `example.body_text_named_params` matching
       `body_named_params` exactly; an anomalous named translation emits the format but **no** example
       block; a positional translation gains only `parameter_format: "POSITIONAL"` with the BODY component
       otherwise unchanged and `example.body_text` still absent; a `NULL`-format translation omits the key;
       and `name`, `language`, `status`, `category` and `id` are unchanged. Depends on T018
-- [ ] T021 [US2] Add webhook-preservation tests across
+- [X] T021 [US2] Add webhook-preservation tests across
       `marketplace/wpp_templates/tests/test_utils.py` and
       `marketplace/wpp_templates/tests/test_template_status_update_handler.py`: for
       `message_template_status_update` and `template_category_update`, assert the locally recorded
@@ -273,7 +273,7 @@ still matters for the **first** webhook on a template Flows has not yet seen. Sa
       full re-sync instead of posting to Flows also preserves them (Story 2 scenario 5) — this case
       **Depends on T013**; and assert an app configured only at `config.waba.id` now receives the event
       while an app at `config.wa_waba_id` still does. Depends on T019, T020 and T013
-- [ ] T022 [US2] ⚠️ CT#1 Re-derive the stored names on the edit path in
+- [X] T022 [US2] ⚠️ CT#1 Re-derive the stored names on the edit path in
       `marketplace/wpp_templates/views.py::partial_update` (line 166), where `translation.body =
       body.get("text")` is assigned before `translation.save()` (lines 237–246): when the submitted body is
       named, recompute `body_named_params` and `variable_count` from it using `parameters.py` and clear a
@@ -287,7 +287,7 @@ still matters for the **first** webhook on a template Flows has not yet seen. Sa
       `TemplateTranslationSerializer.create()`. Do **not** extract a use case inside this task — that
       would rewrite the highest-traffic write path and directly endangers SC-008. Mitigation: no new
       business logic enters the view; re-derivation delegates to `parameters.py`
-- [ ] T023 [P] [US2] Add edit-path tests to `marketplace/wpp_templates/tests/test_views.py`: editing a named
+- [X] T023 [P] [US2] Add edit-path tests to `marketplace/wpp_templates/tests/test_views.py`: editing a named
       template's body to a different name set replaces `body_named_params` and `variable_count` in place;
       `parameter_format` is unchanged; the `update_template_message` call kwargs contain no
       `parameter_format` key; and editing a positional template's body behaves exactly as today

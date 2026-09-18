@@ -21,7 +21,12 @@ from django.core.exceptions import ValidationError
 from marketplace.applications.models import App
 from marketplace.clients.facebook.client import FacebookClient
 from marketplace.services.facebook.service import PhotoAPIService, TemplateService
-from marketplace.wpp_templates.models import TemplateMessage, TemplateTranslation
+from marketplace.wpp_templates.models import (
+    PARAMETER_FORMAT_NAMED,
+    PARAMETER_FORMAT_POSITIONAL,
+    TemplateMessage,
+    TemplateTranslation,
+)
 from marketplace.wpp_templates.views import TemplateMessageViewSet
 from marketplace.core.tests.base import APIBaseTestCase
 from marketplace.accounts.models import ProjectAuthorization
@@ -642,6 +647,98 @@ class WhatsappTemplateUpdateTestCase(APIBaseTestCase):
                             headers=self.headers,
                         )
 
+    def test_partial_update_named_body_rederives_params_in_place(self):
+        self.translation.parameter_format = PARAMETER_FORMAT_NAMED
+        self.translation.body = "Olá {{nome}}, sua cota {{cota}}"
+        self.translation.body_named_params = [
+            {"param_name": "nome", "example": "João"},
+            {"param_name": "cota", "example": "3/12"},
+        ]
+        self.translation.variable_count = 2
+        self.translation.parameter_anomaly = {
+            "type": "BODY_EXAMPLE_NAME_MISMATCH",
+            "body_param_names": ["nome", "cota"],
+            "example_param_names": ["nome", "quota"],
+        }
+        self.translation.save()
+
+        body = {
+            "message_template_id": "0123456789",
+            "language": "pt_br",
+            "body": {
+                "type": "BODY",
+                "text": "Olá {{cliente}}, pedido {{pedido}}",
+            },
+        }
+
+        with patch.object(
+            TemplateService,
+            "update_template_message",
+            return_value={"id": "0123456789", "status": "PENDING"},
+        ) as mock_update:
+            response = self.request.patch(
+                self.url,
+                body=body,
+                app_uuid=str(self.app.uuid),
+                uuid=str(self.template_message.uuid),
+                headers=self.headers,
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.translation.refresh_from_db()
+        self.assertEqual(self.translation.parameter_format, PARAMETER_FORMAT_NAMED)
+        self.assertEqual(
+            self.translation.body_named_params,
+            [
+                {"param_name": "cliente", "example": None},
+                {"param_name": "pedido", "example": None},
+            ],
+        )
+        self.assertEqual(self.translation.variable_count, 2)
+        self.assertIsNone(self.translation.parameter_anomaly)
+        self.assertNotIn("parameter_format", mock_update.call_args.kwargs)
+
+    def test_partial_update_positional_body_is_unchanged(self):
+        self.translation.parameter_format = PARAMETER_FORMAT_POSITIONAL
+        self.translation.body = "Olá {{1}}, seu pedido {{2}} foi enviado."
+        self.translation.body_named_params = []
+        self.translation.variable_count = 0
+        self.translation.parameter_anomaly = None
+        self.translation.save()
+
+        body = {
+            "message_template_id": "0123456789",
+            "language": "pt_br",
+            "body": {
+                "type": "BODY",
+                "text": "Olá {{1}}, seu pedido {{2}} saiu para entrega.",
+            },
+        }
+
+        with patch.object(
+            TemplateService,
+            "update_template_message",
+            return_value={"id": "0123456789", "status": "PENDING"},
+        ) as mock_update:
+            response = self.request.patch(
+                self.url,
+                body=body,
+                app_uuid=str(self.app.uuid),
+                uuid=str(self.template_message.uuid),
+                headers=self.headers,
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.translation.refresh_from_db()
+        self.assertEqual(self.translation.parameter_format, PARAMETER_FORMAT_POSITIONAL)
+        self.assertEqual(self.translation.body_named_params, [])
+        self.assertEqual(self.translation.variable_count, 0)
+        self.assertIsNone(self.translation.parameter_anomaly)
+        self.assertEqual(
+            self.translation.body, "Olá {{1}}, seu pedido {{2}} saiu para entrega."
+        )
+        self.assertNotIn("parameter_format", mock_update.call_args.kwargs)
+
 
 class WhatsappTemplateDetailsTestCase(APIBaseTestCase):
     view_class = TemplateMessageViewSet
@@ -769,9 +866,7 @@ class WhatsappTemplateSyncTestCase(APIBaseTestCase):
         self.assertEqual(response.json["last_synced_at"], last_synced_at)
 
     def test_post_sync_templates_within_cooldown(self):
-        self.app.config["templates_last_synced_at"] = datetime.now(
-            pytz.UTC
-        ).isoformat()
+        self.app.config["templates_last_synced_at"] = datetime.now(pytz.UTC).isoformat()
         self.app.save(update_fields=["config"])
 
         response = self.request.post(
