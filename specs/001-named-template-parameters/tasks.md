@@ -41,10 +41,10 @@ Single Django project. All paths are relative to the repository root and follow 
 
 **Purpose**: housekeeping in files this feature touches. Neither task changes runtime behaviour.
 
-- [ ] T001 [P] Add `WHATSAPP_TEMPLATE_VERSION="v25.0"` and `WHATSAPP_NAMED_TEMPLATES_ENABLED="False"` to the
+- [X] T001 [P] Add `WHATSAPP_TEMPLATE_VERSION="v25.0"` and `WHATSAPP_NAMED_TEMPLATES_ENABLED="False"` to the
       generated development env file in `contrib/gen_env.py`, directly after the existing
       `WHATSAPP_VERSION` / `WHATSAPP_API_URL` entries at lines 51–52
-- [ ] T002 [P] Remove the stale `marketplace/wpp_templates/requests.py` entry from the `omit` list in
+- [X] T002 [P] Remove the stale `marketplace/wpp_templates/requests.py` entry from the `omit` list in
       `.coveragerc` — the file does not exist (`plan.md` § Follow-up debt)
 
 **Checkpoint**: housekeeping done; foundational work can start.
@@ -57,7 +57,7 @@ Single Django project. All paths are relative to the repository root and follow 
 
 **⚠️ CRITICAL**: no user story work can begin until this phase is complete.
 
-- [ ] T003 [P] ⚠️ CT#2 Add the three template-scoped settings to `marketplace/settings.py`, after
+- [X] T003 [P] ⚠️ CT#2 Add the three template-scoped settings to `marketplace/settings.py`, after
       `WHATSAPP_API_URL` (line 345): `WHATSAPP_TEMPLATE_VERSION = env.str("WHATSAPP_TEMPLATE_VERSION",
       default="v25.0")`, `WHATSAPP_TEMPLATE_API_URL = urllib.parse.urljoin(env.str("WHATSAPP_API_URL",
       default="https://graph.facebook.com/"), WHATSAPP_TEMPLATE_VERSION)`, and
@@ -65,7 +65,7 @@ Single Django project. All paths are relative to the repository root and follow 
       Include the comment block from `contracts/meta-graph-templates.md` recording why the version diverges
       and that `v25.0` expires **2028-07-29** (FR-039, FR-040). `WHATSAPP_VERSION` and `WHATSAPP_API_URL`
       are **not** modified
-- [ ] T004 [P] Add the three columns to `TemplateTranslation` in `marketplace/wpp_templates/models.py`
+- [X] T004 [P] Add the three columns to `TemplateTranslation` in `marketplace/wpp_templates/models.py`
       (class at line 84), exactly as specified in `data-model.md`: `parameter_format =
       models.CharField(max_length=10, choices=PARAMETER_FORMAT_CHOICES, null=True, blank=True,
       default=None)`, `body_named_params = models.JSONField(default=list, blank=True)`, and
@@ -76,11 +76,11 @@ Single Django project. All paths are relative to the repository root and follow 
       `STATUS_CHOICES` and `CATEGORY_CHOICES` already use in this file. Declare the constants locally
       rather than importing them from `parameters.py` — the pure module must stay Django-free and the
       migration must not depend on it; T008 asserts the two declarations agree
-- [ ] T005 Create `marketplace/wpp_templates/migrations/0014_templatetranslation_parameters.py` with
+- [X] T005 Create `marketplace/wpp_templates/migrations/0014_templatetranslation_parameters.py` with
       `dependencies = [("wpp_templates", "0013_auto_20260410_1837")]` and the three `AddField` operations
       verbatim from `data-model.md` § Migration `0014`. No `RunPython`, no backfill, no index (NFR-005).
       Depends on T004
-- [ ] T006 [P] Create the pure module `marketplace/wpp_templates/parameters.py` implementing the full API in
+- [X] T006 [P] Create the pure module `marketplace/wpp_templates/parameters.py` implementing the full API in
       `contracts/internal-python-api.md` § 1: the `TranslationParameters` frozen dataclass,
       `normalize_parameter_format`, `extract_named_placeholders`, `extract_positional_placeholders`,
       `detect_authoring_format`, `validate_parameter_name`, `build_named_example_payload` and
@@ -93,7 +93,7 @@ Single Django project. All paths are relative to the repository root and follow 
       `MISSING_NAMED_EXAMPLE`, `DUPLICATE_BODY_PARAM_NAME`, `POSITIONAL_FORMAT_NAMED_BODY`), sets
       `variable_count` to `len(body_named_params)` for `NAMED` and literal `0` otherwise, ignores
       `header_text_named_params` entirely, and never infers a format from body text (FR-003)
-- [ ] T007 Create `marketplace/wpp_templates/tests/test_parameters.py` as a table-driven `SimpleTestCase`
+- [X] T007 Create `marketplace/wpp_templates/tests/test_parameters.py` as a table-driven `SimpleTestCase`
       suite covering: format normalisation across `"named"` / `"NAMED"` / `"Named"` / `"positional"` /
       absent / unrecognised; body grammar for named, positional, mixed, duplicated, zero-placeholder and
       literal-brace bodies (`{ not a param }` and `{{ }}` produce no parameters); the naming rule accepting
@@ -105,12 +105,12 @@ Single Django project. All paths are relative to the repository root and follow 
       placeholders recording `POSITIONAL` with `POSITIONAL_FORMAT_NAMED_BODY`; `header_text_named_params`
       ignored entirely; and determinism (NFR-008) by asserting the same input twice. Depends
       on T006
-- [ ] T008 Extend `marketplace/wpp_templates/tests/test_models.py` with a `TemplateTranslation` defaults
+- [X] T008 Extend `marketplace/wpp_templates/tests/test_models.py` with a `TemplateTranslation` defaults
       test asserting a freshly created row reads `parameter_format is None`, `body_named_params == []` and
       `parameter_anomaly is None`, plus a parity assertion that `models.PARAMETER_FORMAT_NAMED` /
       `PARAMETER_FORMAT_POSITIONAL` equal the constants in `parameters.py`, guarding the deliberate
       duplication from T004. Depends on T005 and T006
-- [ ] T009 ⚠️ CT#2 Scope the template Graph version without touching `BASE_URL`: in
+- [X] T009 ⚠️ CT#2 Scope the template Graph version without touching `BASE_URL`: in
       `marketplace/clients/facebook/client.py`, add a `template_api_url` property on
       `class TemplatesRequests` (line 233) that returns `settings.WHATSAPP_TEMPLATE_API_URL`, and switch
       every method in that class (`create_template_message`, `create_library_template_message`,
@@ -121,7 +121,7 @@ Single Django project. All paths are relative to the repository root and follow 
       `FacebookClient(token)` call (catalogs, VTEX product batch, commerce, onboarding, photos) silently
       move to `v25.0` (FR-039, SC-009). Sibling classes and `FacebookAuthorization.BASE_URL` (line 26)
       stay untouched. Depends on T003
-- [ ] T010 Create `marketplace/wpp_templates/tests/test_template_api_version.py`. Mock `make_request` on a
+- [X] T010 Create `marketplace/wpp_templates/tests/test_template_api_version.py`. Mock `make_request` on a
       `FacebookClient` instance and assert `create_template_message` / `list_template_messages` URLs start
       with `settings.WHATSAPP_TEMPLATE_API_URL` while a catalog method URL starts with
       `settings.WHATSAPP_API_URL`. Assert `"BASE_URL" not in TemplatesRequests.__dict__`. Assert
@@ -149,7 +149,7 @@ assert the list passed to `PATCH /template/{flow_object_uuid}/` is the object re
 
 **Ships without Stories 2–6.**
 
-- [ ] T011 [US1] Make `extract_body_example` format-aware in
+- [X] T011 [US1] Make `extract_body_example` format-aware in
       `marketplace/wpp_templates/template_helpers.py`: add
       `NAMED_EXAMPLE_KEYS = frozenset({"body_text_named_params", "header_text_named_params"})`, change the
       loop from `.values()` to `.items()` purely so the key can be tested, and `continue` on a named key.
@@ -157,13 +157,13 @@ assert the list passed to `PATCH /template/{flow_object_uuid}/` is the object re
       handling. This is a denylist, **not** an allowlist of `body_text`: the authoring call site passes an
       author-supplied dict whose keys are not guaranteed, and an allowlist would silently change today's
       positional behaviour (FR-007, FR-041, SC-008)
-- [ ] T012 [P] [US1] Extend the `extract_body_example` test class in
+- [X] T012 [P] [US1] Extend the `extract_body_example` test class in
       `marketplace/wpp_templates/tests/test_utils.py`: `body_text_named_params` and
       `header_text_named_params` are skipped rather than flattened into the `ArrayField(CharField)`; a
       payload carrying both `body_text` and `body_text_named_params` yields only the positional values; and
       every existing positional case still returns an identical list (regression assertion). Depends on
       T011
-- [ ] T013 [US1] Record the parameters in `TemplateSyncUseCase.sync_templates()` in
+- [X] T013 [US1] Record the parameters in `TemplateSyncUseCase.sync_templates()` in
       `marketplace/wpp_templates/usecases/template_sync.py`: call
       `build_translation_parameters(template)` and assign `parameter_format`, `body_named_params`,
       `parameter_anomaly` and `variable_count` onto `returned_translation`, replacing the unconditional
@@ -177,7 +177,7 @@ assert the list passed to `PATCH /template/{flow_object_uuid}/` is the object re
       `body_named_params`. Status and `message_template_id` may stay at INFO. **Never log example values at
       any level** (FR-043, FR-044, SC-011). The existing `body_example` *assignment* (line 220) is
       untouched; only that log is in scope
-- [ ] T014 [US1] Extend `marketplace/wpp_templates/usecases/tests/test_template_sync.py` with the recording
+- [X] T014 [US1] Extend `marketplace/wpp_templates/usecases/tests/test_template_sync.py` with the recording
       matrix for Story 1 scenarios 1–9, mocking `TemplateService` and `FlowsClient` at the client boundary:
       named records `NAMED` + `["nome", "cota"]` in body order + both examples + `variable_count == 2` +
       `parameter_anomaly is None`; absent `parameter_format` records `POSITIONAL`; `"NAMED"` and `"named"`
@@ -195,19 +195,19 @@ assert the list passed to `PATCH /template/{flow_object_uuid}/` is the object re
       `body_example`. Assert no example value appears in any `INFO` record — including the positional
       row's `body_example` strings and the named row's example strings — so the pre-existing post-save
       log at `template_sync.py:226-229` cannot be left in place (FR-044, SC-011). Depends on T013
-- [ ] T015 [US1] Add the FR-013 bulk-push regression test to
+- [X] T015 [US1] Add the FR-013 bulk-push regression test to
       `marketplace/wpp_templates/usecases/tests/test_template_sync.py`, asserting **identity** —
       `self.assertIs(flows_client.update_facebook_templates.call_args.args[1], meta_templates)` — so a
       later defensive `copy()` or comprehension cannot be introduced silently. `FlowsClient` and
       `update_facebook_templates` are **not** modified; this task is a test only. Depends on T013
-- [ ] T016 [P] [US1] Ensure the library creation path leaves the format unknown in
+- [X] T016 [P] [US1] Ensure the library creation path leaves the format unknown in
       `marketplace/wpp_templates/usecases/template_library_creation.py::_save_template_in_db` (line 256):
       the translation dict keeps `"variable_count": 0` (line 298) and must **not** set
       `parameter_format`, so the column stays `NULL`. Meta's creation response carries only `id`, `status`
       and `category`, and the request carries `library_template_name` rather than body text, so no format
       can be derived here (FR-014, FR-015, SC-012). The existing post-creation `sync_pending_templates`
       task resolves it; no new polling is added
-- [ ] T017 [P] [US1] Extend
+- [X] T017 [P] [US1] Extend
       `marketplace/wpp_templates/usecases/tests/test_template_library_creation.py` asserting a
       library-created translation has `parameter_format is None`, `body_named_params == []` and
       `variable_count == 0`, and that a subsequent `TemplateSyncUseCase` run over a Meta response declaring

@@ -233,6 +233,12 @@ class CatalogsRequests(FacebookAuthorization, RequestClient, CatalogsRequestsInt
 class TemplatesRequests(
     FacebookAuthorization, RequestClient, TemplatesRequestsInterface
 ):
+    @property
+    def template_api_url(self):
+        """Template Graph version. Not BASE_URL — FacebookClient MRO would leak a BASE_URL
+        override onto catalogs, commerce and onboarding (FR-039, SC-009)."""
+        return settings.WHATSAPP_TEMPLATE_API_URL
+
     def create_template_message(
         self, waba_id: str, name: str, category: str, components: list, language: str
     ) -> dict:
@@ -242,7 +248,7 @@ class TemplatesRequests(
             components=components,
             language=language,
         )
-        url = f"{self.get_url}/{waba_id}/message_templates"
+        url = f"{self.template_api_url}/{waba_id}/message_templates"
         response = self.make_request(
             url, method="POST", json=payload, headers=self._get_headers()
         )
@@ -252,7 +258,7 @@ class TemplatesRequests(
     def create_library_template_message(
         self, waba_id: str, template_data: dict
     ) -> dict:
-        url = f"{self.get_url}/{waba_id}/message_templates"
+        url = f"{self.template_api_url}/{waba_id}/message_templates"
         response = self.make_request(
             url, method="POST", json=template_data, headers=self._get_headers()
         )
@@ -260,7 +266,7 @@ class TemplatesRequests(
         return response.json()
 
     def get_template_analytics(self, waba_id, fields):
-        url = f"{self.get_url}/{waba_id}/template_analytics"
+        url = f"{self.template_api_url}/{waba_id}/template_analytics"
         headers = self._get_headers()
         combined_data = {"data": {"data_points": []}}
 
@@ -275,14 +281,14 @@ class TemplatesRequests(
         return combined_data
 
     def enable_template_insights(self, waba_id) -> dict:
-        url = f"{self.get_url}/{waba_id}"
+        url = f"{self.template_api_url}/{waba_id}"
         params = {"is_enabled_for_insights": "true"}
         headers = self._get_headers()
         response = self.make_request(url, method="POST", headers=headers, params=params)
         return response.json()
 
     def list_template_messages(self, waba_id: str) -> dict:
-        url = f"{self.get_url}/{waba_id}/message_templates"
+        url = f"{self.template_api_url}/{waba_id}/message_templates"
         params = dict(
             limit=9999,
             access_token=self.access_token,
@@ -293,7 +299,7 @@ class TemplatesRequests(
         return response.json()
 
     def get_template_namespace(self, waba_id: str) -> str:
-        url = f"{self.get_url}/{waba_id}/message_templates"
+        url = f"{self.template_api_url}/{waba_id}/message_templates"
         params = dict(
             fields="message_template_namespace",
             access_token=self.access_token,
@@ -306,7 +312,7 @@ class TemplatesRequests(
     def update_template_message(
         self, message_template_id: str, name: str, components: str
     ) -> dict:
-        url = f"{self.get_url}/{message_template_id}"
+        url = f"{self.template_api_url}/{message_template_id}"
         payload = dict(
             name=name, components=components
         )  # TODO: test without token in params
@@ -318,7 +324,7 @@ class TemplatesRequests(
     def delete_template_message(
         self, waba_id: str, name: str
     ) -> dict:  # TODO: check what response is returned
-        url = f"{self.get_url}/{waba_id}/message_templates"
+        url = f"{self.template_api_url}/{waba_id}/message_templates"
         params = dict(name=name, access_token=self.access_token)
         response = self.make_request(
             url, method="DELETE", headers=self._get_headers(), params=params

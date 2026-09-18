@@ -17,6 +17,8 @@ from marketplace.wpp_templates.models import (
     TemplateButton,
     TemplateHeader,
 )
+from marketplace.wpp_templates import models as wpp_models
+from marketplace.wpp_templates import parameters
 
 User = get_user_model()
 
@@ -266,3 +268,43 @@ class TemplateTranslationSerializerTestCase(TestCase):
             "text_preview": None,
         }
         self.assertEqual(serializer.data, expected_data)
+
+
+class TemplateTranslationDefaultsTestCase(TestCase):
+    def setUp(self):
+        self.app = App.objects.create(
+            config=dict(waba_id="432321321"),
+            project_uuid=uuid.uuid4(),
+            platform=App.PLATFORM_WENI_FLOWS,
+            code="wwc",
+            created_by=User.objects.get_admin_user(),
+        )
+        self.template_message = TemplateMessage.objects.create(
+            name="teste",
+            app=self.app,
+            category="ACCOUNT_UPDATE",
+            created_on=datetime.now(),
+            template_type="TEXT",
+            created_by_id=User.objects.get_admin_user().id,
+        )
+
+    def test_new_translation_defaults_to_format_not_yet_known(self):
+        translation = TemplateTranslation.objects.create(
+            template=self.template_message,
+            status="APPROVED",
+            language="pt_br",
+            variable_count=0,
+        )
+        translation.refresh_from_db()
+        self.assertIsNone(translation.parameter_format)
+        self.assertEqual(translation.body_named_params, [])
+        self.assertIsNone(translation.parameter_anomaly)
+
+    def test_parameter_format_constants_match_the_pure_module(self):
+        self.assertEqual(
+            wpp_models.PARAMETER_FORMAT_NAMED, parameters.PARAMETER_FORMAT_NAMED
+        )
+        self.assertEqual(
+            wpp_models.PARAMETER_FORMAT_POSITIONAL,
+            parameters.PARAMETER_FORMAT_POSITIONAL,
+        )
