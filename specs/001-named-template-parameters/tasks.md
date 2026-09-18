@@ -391,18 +391,18 @@ identical result and an identical artifact.
 **Depends on Story 1** only because it applies Meta's list through `TemplateSyncUseCase.sync_templates()` —
 the recording behaviour it converges to is T013's.
 
-- [ ] T034 [P] [US4] Create the management package scaffolding
+- [X] T034 [P] [US4] Create the management package scaffolding
       `marketplace/wpp_templates/management/__init__.py` and
       `marketplace/wpp_templates/management/commands/__init__.py`, following the repository's one precedent
       at `marketplace/event_driven/management/commands/edaconsume.py`
-- [ ] T035 [US4] Create `marketplace/wpp_templates/usecases/template_parameter_reconciliation.py` with
+- [X] T035 [US4] Create `marketplace/wpp_templates/usecases/template_parameter_reconciliation.py` with
       `TemplateParameterReconciliationUseCase` and the frozen `ReconciliationResult` dataclass exactly as
       specified in `contracts/internal-python-api.md` § 5: constructor injection for `redis_conn`,
       `sync_use_case_factory`, `apps_for_waba`, `sleep` and `logger`, each defaulting to the concrete
       collaborator; `execute(waba_ids=None, app_uuids=None, dry_run=False, restart=False, limit=None)`;
       and `ReconciliationResult(run_id, rows, counters, resumed)` with `to_dict()`. The use case is
       framework-agnostic — **no `rest_framework` import** (Constitution I, IV)
-- [ ] T036 [US4] ⚠️ CT#4 Implement the execution loop in
+- [X] T036 [US4] ⚠️ CT#4 Implement the execution loop in
       `marketplace/wpp_templates/usecases/template_parameter_reconciliation.py`: resolve target WABAs
       through `tasks.py::_apps_for_waba`, honouring `--waba-id` / `--app-uuid` / `--limit`; skip a WABA
       whose per-WABA TTL lock is held by a recent scheduled sync and record a **WABA-level**
@@ -414,7 +414,7 @@ the recording behaviour it converges to is T013's.
       by design — the existing drain hardcodes `task_sync_whatsapp_templates_item` and an async run could
       not produce FR-033's single artifact. A WABA whose Meta call fails, whose token is invalid or which no
       longer exists yields `unclassifiable` rows with the reason and the run continues. Depends on T035
-- [ ] T037 [US4] Implement snapshot, apply and classification in
+- [X] T037 [US4] Implement snapshot, apply and classification in
       `marketplace/wpp_templates/usecases/template_parameter_reconciliation.py`: capture the pre-state
       `(body, parameter_format, body_named_params, variable_count)` for every translation of every app on
       the WABA; apply Meta's list through `TemplateSyncUseCase(app).sync_templates(templates=...)` — skipped
@@ -426,28 +426,28 @@ the recording behaviour it converges to is T013's.
       excluded by `ignores_meta_sync` are `unclassifiable` with reason `sync_disabled` and are never counted
       as classified; `format_not_yet_known` and `unclassifiable` count as neither classified nor broken
       (FR-015, FR-034). Depends on T036
-- [ ] T038 [US4] Implement Redis progress and resumption in
+- [X] T038 [US4] Implement Redis progress and resumption in
       `marketplace/wpp_templates/usecases/template_parameter_reconciliation.py`: write the JSON document in
       `contracts/reconciliation-cli.md` § Progress (`run_id`, `started_at`, `done_waba_ids`, `counters`,
       `rows_written`) to `template_param_reconcile:progress` with `ex=60*60*24`, mirroring the
       `template_status:{app_uuid}` pattern; resume by skipping `done_waba_ids` unless `restart=True`, which
       deletes the key and starts a new `run_id`. All access goes through the injected `redis_conn`.
       Depends on T037
-- [ ] T039 [US4] Implement the CSV artifact and structured logging in
+- [X] T039 [US4] Implement the CSV artifact and structured logging in
       `marketplace/wpp_templates/usecases/template_parameter_reconciliation.py`: write the fixed column set
       from `contracts/reconciliation-cli.md` § Report artifact, one row per translation, appended **per
       WABA** rather than buffered, so an interrupted run leaves a usable partial report; name lists are
       semicolon-delimited; **no example value appears in the artifact or in any log record** (FR-044,
       SC-011). Emit the log points from § Logging at their specified levels, each attributable to project,
       app and template (FR-043). Depends on T038
-- [ ] T040 [US4] Create the operator entry point
+- [X] T040 [US4] Create the operator entry point
       `marketplace/wpp_templates/management/commands/reconcile_template_parameters.py` as a thin
       `BaseCommand` that parses `--waba-id` (repeatable), `--app-uuid` (repeatable), `--limit`,
       `--dry-run`, `--restart`, `--output` and `--budget` per `contracts/reconciliation-cli.md` §
       Invocation, delegates to the use case, and exits `0` on a completed run — a non-zero unclassifiable
       count is a finding, not a failure — or `1` when the run cannot start or the artifact cannot be
       written. No new model, endpoint or permission (FR-030). Depends on T034 and T039
-- [ ] T041 [US4] Create
+- [X] T041 [US4] Create
       `marketplace/wpp_templates/usecases/tests/test_template_parameter_reconciliation.py` with an injected
       fake Redis, `TemplateService` mocked at the client boundary and `sleep` injected so no test waits:
       one fixture per category asserting the five are never conflated; a named-body / `variable_count = 0`
@@ -462,7 +462,7 @@ the recording behaviour it converges to is T013's.
       translation counts asserted unchanged (no duplicates); and no
       example value present in the artifact or the captured logs. **No test reaches real Redis or a provider
       API.** Depends on T039
-- [ ] T042 [US4] Create
+- [X] T042 [US4] Create
       `marketplace/wpp_templates/tests/test_reconcile_template_parameters_command.py` exercising the
       command through `call_command` with the use case patched: argument parsing for every option including
       repeatable `--waba-id`, the artifact written to `--output`, exit code `0` on completion with a
