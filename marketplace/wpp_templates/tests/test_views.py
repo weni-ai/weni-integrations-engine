@@ -30,6 +30,7 @@ from marketplace.wpp_templates.models import (
 from marketplace.wpp_templates.views import TemplateMessageViewSet
 from marketplace.core.tests.base import APIBaseTestCase
 from marketplace.accounts.models import ProjectAuthorization
+from marketplace.accounts.permissions import ProjectManagePermission
 from marketplace.wpp_templates.usecases import TemplateDetailUseCase
 
 
@@ -883,3 +884,417 @@ class WhatsappTemplateSyncTestCase(APIBaseTestCase):
             self.url, app_uuid=str(self.app.uuid), body=self.body
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+NAMED_BODY = "Olá {{nome}}, sua cota {{cota}}"
+NAMED_PARAMS = [
+    {"param_name": "nome", "example": "João"},
+    {"param_name": "cota", "example": "3/12"},
+]
+POSITIONAL_BODY = "Olá {{1}}, seu pedido {{2}} foi enviado."
+POSITIONAL_FORMAT_NAMED_BODY_ANOMALY = {
+    "type": "POSITIONAL_FORMAT_NAMED_BODY",
+    "body_param_names": ["nome"],
+}
+BODY_EXAMPLE_NAME_MISMATCH_ANOMALY = {
+    "type": "BODY_EXAMPLE_NAME_MISMATCH",
+    "body_param_names": ["nome", "cota"],
+    "example_param_names": ["nome", "quota"],
+}
+
+
+class TemplateReadSurfaceTestCase(APIBaseTestCase):
+    view_class = TemplateMessageViewSet
+
+    def setUp(self):
+        super().setUp()
+        self.app = App.objects.create(
+            config=dict(wa_waba_id="432321321"),
+            project_uuid=uuid.uuid4(),
+            platform=App.PLATFORM_WENI_FLOWS,
+            code="wpp-cloud",
+            created_by=self.user,
+        )
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.app.project_uuid
+        )
+        self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
+        self.list_url = reverse(
+            "app-template-list", kwargs={"app_uuid": str(self.app.uuid)}
+        )
+
+        self.named_clean = self._create_template(
+            "cota_aviso",
+            body=NAMED_BODY,
+            parameter_format=PARAMETER_FORMAT_NAMED,
+            body_named_params=NAMED_PARAMS,
+            variable_count=2,
+        )
+        self.named_zero = self._create_template(
+            "named_empty",
+            body="Olá, tudo bem?",
+            parameter_format=PARAMETER_FORMAT_NAMED,
+            body_named_params=[],
+            variable_count=0,
+        )
+        self.named_anomalous = self._create_template(
+            "named_mismatch",
+            body=NAMED_BODY,
+            parameter_format=PARAMETER_FORMAT_NAMED,
+            body_named_params=[
+                {"param_name": "nome", "example": "João"},
+                {"param_name": "cota", "example": None},
+            ],
+            variable_count=2,
+            parameter_anomaly=BODY_EXAMPLE_NAME_MISMATCH_ANOMALY,
+        )
+        self.positional = self._create_template(
+            "pedido_enviado",
+            body=POSITIONAL_BODY,
+            parameter_format=PARAMETER_FORMAT_POSITIONAL,
+            body_named_params=[],
+            variable_count=0,
+            body_example=["João", "12345"],
+        )
+        self.positional_named_body = self._create_template(
+            "positional_named_body",
+            body="Olá {{nome}}",
+            parameter_format=PARAMETER_FORMAT_POSITIONAL,
+            body_named_params=[],
+            variable_count=0,
+            parameter_anomaly=POSITIONAL_FORMAT_NAMED_BODY_ANOMALY,
+        )
+        self.not_yet_known = self._create_template(
+            "library_pending",
+            body="",
+            parameter_format=None,
+            body_named_params=[],
+            variable_count=0,
+        )
+        self.legacy = self._create_template(
+            "legacy_row",
+            body=NAMED_BODY,
+            parameter_format=None,
+            body_named_params=[],
+            variable_count=0,
+        )
+        self.mixed = TemplateMessage.objects.create(
+            name="mixed_langs",
+            app=self.app,
+            category="UTILITY",
+            created_on=datetime.now(pytz.UTC),
+            template_type="TEXT",
+            created_by=self.user,
+        )
+        self._create_translation(
+            self.mixed,
+            language="pt_BR",
+            body=NAMED_BODY,
+            parameter_format=PARAMETER_FORMAT_NAMED,
+            body_named_params=NAMED_PARAMS,
+            variable_count=2,
+        )
+        self._create_translation(
+            self.mixed,
+            language="en_US",
+            body=POSITIONAL_BODY,
+            parameter_format=PARAMETER_FORMAT_POSITIONAL,
+            body_named_params=[],
+            variable_count=0,
+        )
+        self.named_with_null_sibling = TemplateMessage.objects.create(
+            name="named_plus_unknown",
+            app=self.app,
+            category="UTILITY",
+            created_on=datetime.now(pytz.UTC),
+            template_type="TEXT",
+            created_by=self.user,
+        )
+        self._create_translation(
+            self.named_with_null_sibling,
+            language="pt_BR",
+            body=NAMED_BODY,
+            parameter_format=PARAMETER_FORMAT_NAMED,
+            body_named_params=NAMED_PARAMS,
+            variable_count=2,
+        )
+        self._create_translation(
+            self.named_with_null_sibling,
+            language="es",
+            body="",
+            parameter_format=None,
+            body_named_params=[],
+            variable_count=0,
+        )
+        self.no_translations = TemplateMessage.objects.create(
+            name="no_translations",
+            app=self.app,
+            category="UTILITY",
+            created_on=datetime.now(pytz.UTC),
+            template_type="TEXT",
+            created_by=self.user,
+        )
+
+    @property
+    def view(self):
+        return self.view_class.as_view(APIBaseTestCase.ACTION_LIST)
+
+    def _create_template(self, name, **translation_kwargs):
+        template = TemplateMessage.objects.create(
+            name=name,
+            app=self.app,
+            category="UTILITY",
+            created_on=datetime.now(pytz.UTC),
+            template_type="TEXT",
+            created_by=self.user,
+        )
+        self._create_translation(template, **translation_kwargs)
+        return template
+
+    def _create_translation(self, template, **kwargs):
+        defaults = dict(
+            status="APPROVED",
+            language="pt_BR",
+            country="Brasil",
+            body="",
+            body_example=[],
+            variable_count=0,
+            body_named_params=[],
+            parameter_anomaly=None,
+        )
+        defaults.update(kwargs)
+        return TemplateTranslation.objects.create(template=template, **defaults)
+
+    def _detail_url(self, template):
+        return reverse(
+            "app-template-detail",
+            kwargs={"app_uuid": str(self.app.uuid), "uuid": str(template.uuid)},
+        )
+
+    def _list_payload(self):
+        self.request.set_view(self.view_class.as_view(APIBaseTestCase.ACTION_LIST))
+        response = self.request.get(
+            self.list_url, {"page_size": 100}, app_uuid=str(self.app.uuid)
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assert_no_positional_keys(response.json)
+        return response.json
+
+    def _detail_payload(self, template):
+        self.request.set_view(self.view_class.as_view(APIBaseTestCase.ACTION_RETRIEVE))
+        response = self.request.get(
+            self._detail_url(template),
+            app_uuid=str(self.app.uuid),
+            uuid=str(template.uuid),
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assert_no_positional_keys(response.json)
+        return response.json
+
+    def _list_item(self, name):
+        results = self._list_payload()["results"]
+        matches = [item for item in results if item["name"] == name]
+        self.assertEqual(len(matches), 1, msg=f"expected one list item named {name}")
+        return matches[0]
+
+    def assert_no_positional_keys(self, node):
+        forbidden = {"index", "position", "slot", "order"}
+        if isinstance(node, dict):
+            self.assertEqual(forbidden & set(node), set())
+            for value in node.values():
+                self.assert_no_positional_keys(value)
+        elif isinstance(node, list):
+            for item in node:
+                self.assert_no_positional_keys(item)
+
+    def _assert_translation_shape(
+        self,
+        translation,
+        parameter_format,
+        parameter_names,
+        variable_count,
+        has_parameter_anomaly,
+    ):
+        self.assertEqual(translation["parameter_format"], parameter_format)
+        self.assertEqual(translation["parameter_names"], parameter_names)
+        self.assertIsInstance(translation["parameter_names"], list)
+        for name in translation["parameter_names"]:
+            self.assertIsInstance(name, str)
+        self.assertEqual(translation["variable_count"], variable_count)
+        self.assertEqual(translation["has_parameter_anomaly"], has_parameter_anomaly)
+        self.assertIsInstance(translation["has_parameter_anomaly"], bool)
+        self.assertNotIn("parameter_anomaly", translation)
+        self.assertNotIn("body_named_params", translation)
+        self.assertIn("variable_count", translation)
+        self.assertIn("body_example", translation)
+
+    def _assert_template_on_list_and_detail(self, template, expected_format, assert_fn):
+        list_item = self._list_item(template.name)
+        detail = self._detail_payload(template)
+        self.assertEqual(list_item["parameter_format"], expected_format)
+        self.assertEqual(detail["parameter_format"], expected_format)
+        assert_fn(list_item)
+        assert_fn(detail)
+
+    def test_independent_test_named_and_positional_list_and_detail(self):
+        def assert_named(payload):
+            self.assertEqual(len(payload["translations"]), 1)
+            self._assert_translation_shape(
+                payload["translations"][0],
+                parameter_format=PARAMETER_FORMAT_NAMED,
+                parameter_names=["nome", "cota"],
+                variable_count=2,
+                has_parameter_anomaly=False,
+            )
+
+        def assert_positional(payload):
+            self.assertEqual(len(payload["translations"]), 1)
+            translation = payload["translations"][0]
+            self._assert_translation_shape(
+                translation,
+                parameter_format=PARAMETER_FORMAT_POSITIONAL,
+                parameter_names=[],
+                variable_count=0,
+                has_parameter_anomaly=False,
+            )
+            self.assertEqual(translation["body_example"], ["João", "12345"])
+
+        self._assert_template_on_list_and_detail(
+            self.named_clean, PARAMETER_FORMAT_NAMED, assert_named
+        )
+        self._assert_template_on_list_and_detail(
+            self.positional, PARAMETER_FORMAT_POSITIONAL, assert_positional
+        )
+
+    def test_named_zero_placeholders(self):
+        def assert_shape(payload):
+            self._assert_translation_shape(
+                payload["translations"][0],
+                parameter_format=PARAMETER_FORMAT_NAMED,
+                parameter_names=[],
+                variable_count=0,
+                has_parameter_anomaly=False,
+            )
+
+        self._assert_template_on_list_and_detail(
+            self.named_zero, PARAMETER_FORMAT_NAMED, assert_shape
+        )
+
+    def test_named_anomalous_publishes_boolean_not_evidence(self):
+        def assert_shape(payload):
+            translation = payload["translations"][0]
+            self._assert_translation_shape(
+                translation,
+                parameter_format=PARAMETER_FORMAT_NAMED,
+                parameter_names=["nome", "cota"],
+                variable_count=2,
+                has_parameter_anomaly=True,
+            )
+            self.assertNotIn("João", str(translation.get("parameter_names")))
+
+        self._assert_template_on_list_and_detail(
+            self.named_anomalous, PARAMETER_FORMAT_NAMED, assert_shape
+        )
+
+    def test_positional_with_named_body(self):
+        def assert_shape(payload):
+            self._assert_translation_shape(
+                payload["translations"][0],
+                parameter_format=PARAMETER_FORMAT_POSITIONAL,
+                parameter_names=[],
+                variable_count=0,
+                has_parameter_anomaly=True,
+            )
+
+        self._assert_template_on_list_and_detail(
+            self.positional_named_body, PARAMETER_FORMAT_POSITIONAL, assert_shape
+        )
+
+    def test_not_yet_known_and_legacy_rows(self):
+        def assert_unknown(payload):
+            self._assert_translation_shape(
+                payload["translations"][0],
+                parameter_format=None,
+                parameter_names=[],
+                variable_count=0,
+                has_parameter_anomaly=False,
+            )
+
+        self._assert_template_on_list_and_detail(
+            self.not_yet_known, None, assert_unknown
+        )
+        self._assert_template_on_list_and_detail(self.legacy, None, assert_unknown)
+
+    def test_mixed_template_level_keeps_per_translation_values(self):
+        def assert_shape(payload):
+            by_language = {item["language"]: item for item in payload["translations"]}
+            self._assert_translation_shape(
+                by_language["pt_BR"],
+                parameter_format=PARAMETER_FORMAT_NAMED,
+                parameter_names=["nome", "cota"],
+                variable_count=2,
+                has_parameter_anomaly=False,
+            )
+            self._assert_translation_shape(
+                by_language["en_US"],
+                parameter_format=PARAMETER_FORMAT_POSITIONAL,
+                parameter_names=[],
+                variable_count=0,
+                has_parameter_anomaly=False,
+            )
+
+        self._assert_template_on_list_and_detail(self.mixed, "MIXED", assert_shape)
+
+    def test_null_translation_does_not_force_mixed(self):
+        def assert_shape(payload):
+            by_language = {item["language"]: item for item in payload["translations"]}
+            self.assertEqual(
+                by_language["pt_BR"]["parameter_format"], PARAMETER_FORMAT_NAMED
+            )
+            self.assertIsNone(by_language["es"]["parameter_format"])
+
+        self._assert_template_on_list_and_detail(
+            self.named_with_null_sibling, PARAMETER_FORMAT_NAMED, assert_shape
+        )
+
+    def test_template_with_no_translations_reads_null_format(self):
+        def assert_shape(payload):
+            self.assertEqual(payload["translations"], [])
+
+        self._assert_template_on_list_and_detail(
+            self.no_translations, None, assert_shape
+        )
+
+    def test_tenancy_filters_by_app_behind_project_manage_permission(self):
+        other_app = App.objects.create(
+            config=dict(wa_waba_id="999"),
+            project_uuid=uuid.uuid4(),
+            platform=App.PLATFORM_WENI_FLOWS,
+            code="wpp-cloud",
+            created_by=self.user,
+        )
+        foreign = TemplateMessage.objects.create(
+            name="foreign_template",
+            app=other_app,
+            category="UTILITY",
+            created_on=datetime.now(pytz.UTC),
+            template_type="TEXT",
+            created_by=self.user,
+        )
+        self.assertEqual(
+            TemplateMessageViewSet.permission_classes, [ProjectManagePermission]
+        )
+        names = {item["name"] for item in self._list_payload()["results"]}
+        self.assertIn("cota_aviso", names)
+        self.assertNotIn("foreign_template", names)
+
+        self.request.set_view(self.view_class.as_view(APIBaseTestCase.ACTION_RETRIEVE))
+        response = self.request.get(
+            reverse(
+                "app-template-detail",
+                kwargs={"app_uuid": str(self.app.uuid), "uuid": str(foreign.uuid)},
+            ),
+            app_uuid=str(self.app.uuid),
+            uuid=str(foreign.uuid),
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

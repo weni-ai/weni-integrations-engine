@@ -535,6 +535,34 @@ class TestExtractTemplateData(TestCase):
         self.assertEqual(result["category"], "generic")
         self.assertEqual(result["id"], "123")
 
+    def test_sc006_named_webhook_payload_has_no_positional_keys(self):
+        named_params = [
+            {"param_name": "nome", "example": "João"},
+            {"param_name": "cota", "example": "3/12"},
+        ]
+        self.translation.parameter_format = PARAMETER_FORMAT_NAMED
+        self.translation.body_named_params = named_params
+        self.translation.parameter_anomaly = None
+        self.translation.body = "Olá {{nome}}, sua cota {{cota}}"
+
+        result = extract_template_data(self.translation)
+        body = self._body_component(result)
+        forwarded = body["example"]["body_text_named_params"]
+        self.assertIs(forwarded, named_params)
+        for entry in forwarded:
+            self.assertEqual(set(entry), {"param_name", "example"})
+        self._assert_no_positional_keys(result)
+
+    def _assert_no_positional_keys(self, node):
+        forbidden = {"index", "position", "slot", "order"}
+        if isinstance(node, dict):
+            self.assertEqual(forbidden & set(node), set())
+            for value in node.values():
+                self._assert_no_positional_keys(value)
+        elif isinstance(node, list):
+            for item in node:
+                self._assert_no_positional_keys(item)
+
 
 class TestHandleErrorAndUpdateConfig(TestCase):
     def setUp(self):

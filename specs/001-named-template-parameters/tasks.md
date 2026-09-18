@@ -484,7 +484,7 @@ appears beside a named parameter in either response.
 
 **Depends on Story 1** only for data to read.
 
-- [ ] T043 [US5] Add the three read-only fields to `TemplateTranslationSerializer` in
+- [X] T043 [US5] Add the three read-only fields to `TemplateTranslationSerializer` in
       `marketplace/wpp_templates/serializers.py` (class at line 60): `parameter_format` (the recorded
       value — `"NAMED"`, `"POSITIONAL"` or `null`), `parameter_names` (a `SerializerMethodField` returning
       the ordered `param_name` values as **bare strings**, `[]` for positional and not-yet-known), and
@@ -492,13 +492,13 @@ appears beside a named parameter in either response.
       read-only and never accepted as input. Example values and the anomaly evidence object are **not**
       published. `variable_count` and `body_example` keep their existing names, types and meanings
       (FR-035, FR-036, FR-037)
-- [ ] T044 [US5] Add the derived template-level `parameter_format` to `TemplateMessageSerializer` in
+- [X] T044 [US5] Add the derived template-level `parameter_format` to `TemplateMessageSerializer` in
       `marketplace/wpp_templates/serializers.py` (class at line 206) as a `SerializerMethodField`: `null`
       when there are no translations or every translation's format is `NULL`; the agreed value when all
       translations with a known format agree; `"MIXED"` when they disagree. Translations whose format is
       `NULL` are excluded from the agreement test rather than forcing `"MIXED"`. `"MIXED"` is derived on
       read only — never stored, never sent to Meta, never accepted as input (FR-008). Depends on T043
-- [ ] T045 [US5] Extend `marketplace/wpp_templates/tests/test_views.py` (using `APIBaseTestCase`) with the
+- [X] T045 [US5] Extend `marketplace/wpp_templates/tests/test_views.py` (using `APIBaseTestCase`) with the
       read-surface matrix from `contracts/read-surfaces.md` § Format matrix across both the list and the
       detail endpoint: named clean, named with zero placeholders, named anomalous, positional, positional
       with a named body, not-yet-known and legacy rows; a template whose translations disagree reading
@@ -521,25 +521,25 @@ app without interfering.
 confirm identical behaviour. Then sync an account containing both formats and confirm each is recorded in
 its own format with neither affecting the other.
 
-- [ ] T046 [US6] Run the existing suites unmodified — `poetry run python manage.py test
+- [X] T046 [US6] Run the existing suites unmodified — `poetry run python manage.py test
       marketplace.wpp_templates` plus `marketplace.services.facebook` — and record, in the pull request
       description, the complete inventory of test modifications. Only two categories are legitimate: a test
       asserting the absence of the new fields, and the `create_template_message` test double at
       `marketplace/services/facebook/tests/test_services.py:73` (T027). Any third modification is a
       behaviour change and must be justified or reverted (SC-008)
-- [ ] T047 [P] [US6] Add a coexistence test to
+- [X] T047 [P] [US6] Add a coexistence test to
       `marketplace/wpp_templates/usecases/tests/test_template_sync.py`: one Meta response containing both a
       named and a positional template for the same app records each in its own format, with the positional
       row's `parameter_format`, `body_named_params`, `variable_count` and `body_example` unaffected by the
       named row and vice versa (Story 6 scenario 2). Depends on T013
-- [ ] T048 [US6] Add the positional-parity and NFR-001 assertions in
+- [X] T048 [US6] Add the positional-parity and NFR-001 assertions in
       `marketplace/wpp_templates/tests/test_serializers.py` and
       `marketplace/wpp_templates/usecases/tests/test_template_sync.py`: a positional create's outbound
       payload is byte-identical to today's, carrying no `parameter_format` key; and syncing an account of
       positional templates issues exactly the same number of `TemplateService` calls as before — the new
       recording reads only the list response already in hand, with no additional Meta request per template
       (NFR-001, NFR-003). Depends on T029 and T013
-- [ ] T049 [US6] Add the SC-006 sweep: assert no positional index, slot or ordinal is computed, stored,
+- [X] T049 [US6] Add the SC-006 sweep: assert no positional index, slot or ordinal is computed, stored,
       published or transmitted for a named parameter — in the mirror (`body_named_params` entries carry only
       `param_name` and `example`), in the read surfaces (covered by T045), and in **both** Flows payloads —
       the bulk push forwards Meta verbatim (covered by T015) and the webhook payload emits
@@ -552,17 +552,17 @@ its own format with neither affecting the other.
 
 ## Phase 9: Polish & Cross-Cutting Concerns
 
-- [ ] T050 Perform the SC-009 endpoint-by-endpoint pre-release check by walking the version map table in
+- [X] T050 Perform the SC-009 endpoint-by-endpoint pre-release check by walking the version map table in
       `specs/001-named-template-parameters/contracts/meta-graph-templates.md` § Endpoint-by-endpoint version
       map: confirm `TemplatesRequests` calls `v25.0` and that catalogs, product batch upload, commerce
       settings, phone numbers, business profile, OAuth, credit sharing, onboarding and the on-premises WABA
       surfaces in `marketplace/core/types/channels/whatsapp/apis.py` and
       `whatsapp_base/requests/facebook.py` all still call their current version. Record the result in the
       pull request description. The automated half is T010; this is the manual half the requirement asks for
-- [ ] T051 Run every scenario in `specs/001-named-template-parameters/quickstart.md` — migration timing,
+- [X] T051 Run every scenario in `specs/001-named-template-parameters/quickstart.md` — migration timing,
       Scenarios 1–7 and the rollout preconditions — and confirm
       `poetry run python manage.py makemigrations --check --dry-run` reports no changes
-- [ ] T052 Run the full quality gate: `poetry run python contrib/code_check.py` (makemigrations + `flake8
+- [X] T052 Run the full quality gate: `poetry run python contrib/code_check.py` (makemigrations + `flake8
       marketplace/` at 119 columns + `coverage run manage.py test` + `coverage report -m`), plus
       `poetry run black --check marketplace/` — which `code_check.py` does not run but pre-commit and CI
       do — and `poetry run python contrib/compare_coverage.py`. Coverage must stay at or above the 75%

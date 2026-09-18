@@ -136,3 +136,49 @@ class ReconcileTemplateParametersCommandTestCase(SimpleTestCase):
                 "--output",
                 self.output_path,
             )
+
+    def test_rejects_non_positive_budget_and_limit(self):
+        self._patch_use_case()
+        with self.assertRaises(CommandError):
+            call_command("reconcile_template_parameters", "--budget", "0")
+        with self.assertRaises(CommandError):
+            call_command("reconcile_template_parameters", "--limit", "0")
+
+    def test_oserror_from_use_case_is_command_error(self):
+        self._patch_use_case(side_effect=OSError("disk full"))
+        with self.assertRaises(CommandError):
+            call_command(
+                "reconcile_template_parameters",
+                "--output",
+                self.output_path,
+            )
+
+    def test_rejects_unwritable_output_parent(self):
+        self._patch_use_case()
+        with patch("os.access", return_value=False):
+            with self.assertRaises(CommandError):
+                call_command(
+                    "reconcile_template_parameters",
+                    "--output",
+                    self.output_path,
+                )
+
+    def test_rejects_unwritable_output_file(self):
+        self._patch_use_case()
+        existing = os.path.join(self.output_dir.name, "existing.csv")
+        with open(existing, "w", encoding="utf-8") as handle:
+            handle.write("x")
+        real_access = os.access
+
+        def access(path, mode):
+            if os.path.abspath(path) == os.path.abspath(existing):
+                return False
+            return real_access(path, mode)
+
+        with patch("os.access", side_effect=access):
+            with self.assertRaises(CommandError):
+                call_command(
+                    "reconcile_template_parameters",
+                    "--output",
+                    existing,
+                )

@@ -345,3 +345,58 @@ class BuildTranslationParametersTestCase(SimpleTestCase):
         first = build_translation_parameters(template)
         second = build_translation_parameters(template)
         self.assertEqual(first, second)
+
+    def test_empty_body_and_malformed_components_are_ignored(self):
+        self.assertEqual(extract_positional_placeholders(""), [])
+        self.assertEqual(extract_positional_placeholders(None), [])
+        result = build_translation_parameters(
+            {
+                "parameter_format": "NAMED",
+                "components": [
+                    "not-a-dict",
+                    {
+                        "type": "BODY",
+                        "text": "Olá {{nome}}",
+                        "example": ["not-a-dict"],
+                    },
+                ],
+            }
+        )
+        self.assertEqual(result.parameter_format, PARAMETER_FORMAT_NAMED)
+        self.assertEqual(result.body_named_params[0]["param_name"], "nome")
+
+        not_a_list = build_translation_parameters(
+            {
+                "parameter_format": "NAMED",
+                "components": [
+                    {
+                        "type": "BODY",
+                        "text": "Olá {{nome}}",
+                        "example": {"body_text_named_params": "nome"},
+                    }
+                ],
+            }
+        )
+        self.assertEqual(not_a_list.body_named_params[0]["example"], None)
+
+        missing_name = build_translation_parameters(
+            {
+                "parameter_format": "NAMED",
+                "components": [
+                    {
+                        "type": "BODY",
+                        "text": "Olá {{nome}}",
+                        "example": {
+                            "body_text_named_params": [
+                                {"example": "João"},
+                                {"param_name": "nome", "example": "João"},
+                            ]
+                        },
+                    }
+                ],
+            }
+        )
+        self.assertEqual(
+            missing_name.body_named_params,
+            [{"param_name": "nome", "example": "João"}],
+        )

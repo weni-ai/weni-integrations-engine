@@ -854,3 +854,92 @@ class TemplateSyncRecordingTestCase(TestCase):
             )
             self.assertEqual(translation.variable_count, 2)
         self._assert_no_example_values(captured, NAMED_EXAMPLE_NOME, NAMED_EXAMPLE_COTA)
+
+    def test_named_and_positional_coexist_without_contamination(self):
+        named = _named_meta_template()
+        positional = _positional_meta_template()
+        self._sync([named, positional])
+
+        named_translation = self._translation("cota_aviso")
+        positional_translation = self._translation("pedido_enviado")
+
+        self.assertEqual(named_translation.parameter_format, PARAMETER_FORMAT_NAMED)
+        self.assertEqual(
+            named_translation.body_named_params,
+            [
+                {"param_name": "nome", "example": NAMED_EXAMPLE_NOME},
+                {"param_name": "cota", "example": NAMED_EXAMPLE_COTA},
+            ],
+        )
+        self.assertEqual(named_translation.variable_count, 2)
+        self.assertEqual(named_translation.body_example, [])
+        self.assertIsNone(named_translation.parameter_anomaly)
+
+        self.assertEqual(
+            positional_translation.parameter_format, PARAMETER_FORMAT_POSITIONAL
+        )
+        self.assertEqual(positional_translation.body_named_params, [])
+        self.assertEqual(positional_translation.variable_count, 0)
+        self.assertEqual(
+            positional_translation.body_example,
+            [NAMED_EXAMPLE_NOME, POSITIONAL_EXAMPLE_ORDER],
+        )
+        self.assertIsNone(positional_translation.parameter_anomaly)
+
+        named_names = {
+            entry["param_name"] for entry in named_translation.body_named_params
+        }
+        self.assertFalse(named_names & set(positional_translation.body_example or []))
+        self.assertNotIn(
+            PARAMETER_FORMAT_NAMED, [positional_translation.parameter_format]
+        )
+        self.assertNotIn(
+            PARAMETER_FORMAT_POSITIONAL, [named_translation.parameter_format]
+        )
+
+    def test_positional_sync_issues_one_list_call_for_many_templates(self):
+        templates = [
+            _positional_meta_template(
+                template_id=str(2000 + index), name=f"pedido_{index}"
+            )
+            for index in range(3)
+        ]
+        uc = self._use_case()
+        uc.template_service.list_template_messages.return_value = {"data": templates}
+
+        with self.assertLogs(
+            "marketplace.wpp_templates.usecases.template_sync", level="INFO"
+        ):
+            result = uc.sync_templates()
+
+        self.assertTrue(result)
+        uc.template_service.list_template_messages.assert_called_once()
+        uc.template_service.create_template_message.assert_not_called()
+        uc.template_service.update_template_message.assert_not_called()
+        uc.template_service.get_template_namespace.assert_not_called()
+        uc.template_service.get_template_analytics.assert_not_called()
+        uc.template_service.delete_template_message.assert_not_called()
+        for name in ("pedido_0", "pedido_1", "pedido_2"):
+            translation = self._translation(name)
+            self.assertEqual(translation.parameter_format, PARAMETER_FORMAT_POSITIONAL)
+            self.assertEqual(translation.body_named_params, [])
+            self.assertEqual(translation.variable_count, 0)
+
+    def test_sc006_named_mirror_entries_carry_only_param_name_and_example(self):
+        uc, _, _ = self._sync([_named_meta_template(), _positional_meta_template()])
+        translation = self._translation("cota_aviso")
+        self.assertTrue(translation.body_named_params)
+        for entry in translation.body_named_params:
+            self.assertEqual(set(entry), {"param_name", "example"})
+        forwarded = uc.flows_client.update_facebook_templates.call_args.args[1]
+        self._assert_no_positional_keys(forwarded)
+
+    def _assert_no_positional_keys(self, node):
+        forbidden = {"index", "position", "slot", "order"}
+        if isinstance(node, dict):
+            self.assertEqual(forbidden & set(node), set())
+            for value in node.values():
+                self._assert_no_positional_keys(value)
+        elif isinstance(node, list):
+            for item in node:
+                self._assert_no_positional_keys(item)

@@ -209,6 +209,7 @@ class TemplateTranslationSerializerTestCase(TestCase):
             "created_on": template_message.created_on.strftime("%Y-%m-%d %H:%M:%S.%f"),
             "category": template_message.category,
             "gallery_version": None,
+            "parameter_format": None,
             "translations": [
                 {
                     "uuid": str(template_translation.uuid),
@@ -221,6 +222,9 @@ class TemplateTranslationSerializerTestCase(TestCase):
                     "footer": None,
                     "buttons": [],
                     "variable_count": 1,
+                    "parameter_format": None,
+                    "parameter_names": [],
+                    "has_parameter_anomaly": False,
                     "header": {"header_type": "TEXT", "text": "new teste"},
                 }
             ],
@@ -261,6 +265,7 @@ class TemplateTranslationSerializerTestCase(TestCase):
             "created_on": template_message.created_on.strftime("%Y-%m-%d %H:%M:%S.%f"),
             "category": template_message.category,
             "gallery_version": None,
+            "parameter_format": None,
             "translations": [
                 TemplateTranslationSerializer(template_translation_1).data,
                 TemplateTranslationSerializer(template_translation_2).data,

@@ -18,6 +18,8 @@ from marketplace.wpp_templates.models import (
 from marketplace.wpp_templates.usecases.template_parameter_reconciliation import (
     PROGRESS_KEY,
     ReconciliationCannotStartError,
+    ReconciliationCannotWriteError,
+    ReconciliationError,
     TemplateParameterReconciliationUseCase,
 )
 from marketplace.wpp_templates.usecases.template_sync import TemplateSyncUseCase
@@ -69,13 +71,13 @@ class TemplateParameterReconciliationUseCaseTestCase(TestCase):
         self.output_dir = tempfile.TemporaryDirectory()
         self.addCleanup(self.output_dir.cleanup)
         self.output_path = os.path.join(self.output_dir.name, "reconciliation.csv")
-        run_id_patcher = patch.object(
+        self._run_id_patcher = patch.object(
             TemplateParameterReconciliationUseCase,
             "_new_run_id",
             return_value=RUN_ID,
         )
-        run_id_patcher.start()
-        self.addCleanup(run_id_patcher.stop)
+        self._run_id_patcher.start()
+        self.addCleanup(self._run_id_patcher.stop)
 
     def _create_app(self, waba_id, extra_config=None, code="wpp-cloud"):
         config = {"wa_waba_id": waba_id, "wa_user_token": "test-token"}
@@ -466,3 +468,347 @@ class TemplateParameterReconciliationUseCaseTestCase(TestCase):
         }
         with self.assertRaises(Exception):
             self._execute(output=self.output_dir.name)
+
+    def test_no_target_wabas_writes_header_only_and_to_dict(self):
+        result = self._execute()
+        self.assertEqual(result.rows, [])
+        self.assertFalse(result.resumed)
+        payload = result.to_dict()
+        self.assertEqual(payload["run_id"], RUN_ID)
+        self.assertEqual(payload["rows"], [])
+        with open(self.output_path, encoding="utf-8") as handle:
+            self.assertIn("run_id", handle.read())
+
+    def test_resume_reads_progress_stored_as_bytes(self):
+        app = self._create_app("waba-bytes")
+        self._create_translation(
+            app,
+            "pedido_enviado",
+            POSITIONAL_BODY,
+            "1002",
+            parameter_format=PARAMETER_FORMAT_POSITIONAL,
+        )
+        self.template_service.list_template_messages.return_value = {
+            "data": [_positional_meta_template()]
+        }
+        progress = {
+            "run_id": RUN_ID,
+            "started_at": RUN_ID,
+            "done_waba_ids": [],
+            "counters": {},
+            "rows_written": 0,
+        }
+        self.redis.set(PROGRESS_KEY, json.dumps(progress).encode("utf-8"))
+        result = self._execute(restart=False)
+        self.assertTrue(result.resumed)
+        self.assertEqual(
+            self._row_by_name(result, "pedido_enviado")["category"], "unchanged"
+        )
+
+    def test_waba_ids_intersect_app_uuids(self):
+        kept = self._create_app("waba-keep")
+        self._create_app("waba-drop")
+        self._create_translation(
+            kept,
+            "pedido_enviado",
+            POSITIONAL_BODY,
+            "1002",
+            parameter_format=PARAMETER_FORMAT_POSITIONAL,
+        )
+        self.template_service.list_template_messages.return_value = {
+            "data": [_positional_meta_template()]
+        }
+        result = self._execute(
+            waba_ids=["waba-keep", "waba-drop"],
+            app_uuids=[str(kept.uuid)],
+        )
+        listed = [
+            call.args[0]
+            for call in self.template_service.list_template_messages.call_args_list
+        ]
+        self.assertEqual(listed, ["waba-keep"])
+        self.assertEqual(len(result.rows), 1)
+
+    def test_app_uuid_filter_without_waba_ids(self):
+        kept = self._create_app("waba-app-only")
+        self._create_app("waba-ignored")
+        self._create_translation(
+            kept,
+            "pedido_enviado",
+            POSITIONAL_BODY,
+            "1002",
+            parameter_format=PARAMETER_FORMAT_POSITIONAL,
+        )
+        self.template_service.list_template_messages.return_value = {
+            "data": [_positional_meta_template()]
+        }
+        result = self._execute(app_uuids=[str(kept.uuid)])
+        listed = [
+            call.args[0]
+            for call in self.template_service.list_template_messages.call_args_list
+        ]
+        self.assertEqual(listed, ["waba-app-only"])
+        self.assertEqual(len(result.rows), 1)
+
+    def test_invalid_meta_response_is_unclassifiable(self):
+        app = self._create_app("waba-invalid")
+        self._create_translation(
+            app,
+            "pedido_enviado",
+            POSITIONAL_BODY,
+            "1002",
+            parameter_format=PARAMETER_FORMAT_POSITIONAL,
+        )
+        self.template_service.list_template_messages.return_value = ["not-a-dict"]
+        result = self._execute()
+        row = self._row_by_name(result, "pedido_enviado")
+        self.assertEqual(row["category"], "unclassifiable")
+        self.assertEqual(row["reason"], "invalid_meta_response")
+
+    def test_meta_token_and_waba_gone_reasons(self):
+        gone = self._create_app("waba-gone")
+        token = self._create_app("waba-token")
+        self._create_translation(
+            gone,
+            "pedido_enviado",
+            POSITIONAL_BODY,
+            "1002",
+            parameter_format=PARAMETER_FORMAT_POSITIONAL,
+        )
+        self._create_translation(
+            token,
+            "cota_aviso",
+            NAMED_BODY,
+            "1001",
+            variable_count=0,
+        )
+
+        def list_messages(waba_id):
+            if waba_id == "waba-gone":
+                return {"error": {"code": 100, "message": "Object does not exist"}}
+            if waba_id == "waba-token":
+                return {"error": {"code": 190, "message": "Invalid OAuth access token"}}
+            return {"data": []}
+
+        self.template_service.list_template_messages.side_effect = list_messages
+        result = self._execute()
+        by_waba = {row["waba_id"]: row for row in result.rows}
+        self.assertEqual(by_waba["waba-gone"]["reason"], "waba_gone")
+        self.assertEqual(by_waba["waba-token"]["reason"], "invalid_token")
+
+    def test_apply_failure_marks_unclassifiable(self):
+        app = self._create_app("waba-apply")
+        self._create_translation(
+            app,
+            "pedido_enviado",
+            POSITIONAL_BODY,
+            "1002",
+            parameter_format=PARAMETER_FORMAT_POSITIONAL,
+        )
+        self.template_service.list_template_messages.return_value = {
+            "data": [_positional_meta_template()]
+        }
+
+        def factory(target):
+            use_case = self._factory(target)
+            use_case.sync_templates = MagicMock(
+                side_effect=RuntimeError("apply failed")
+            )
+            return use_case
+
+        result = TemplateParameterReconciliationUseCase(
+            redis_conn=self.redis,
+            sync_use_case_factory=factory,
+            sleep=self.sleep,
+            logger=self.logger,
+        ).execute(output=self.output_path, budget=30, restart=True)
+        row = self._row_by_name(result, "pedido_enviado")
+        self.assertEqual(row["category"], "unclassifiable")
+        self.assertEqual(row["reason"], "apply_failed")
+
+    def test_exception_reason_invalid_token(self):
+        app = self._create_app("waba-exc")
+        self._create_translation(
+            app,
+            "pedido_enviado",
+            POSITIONAL_BODY,
+            "1002",
+            parameter_format=PARAMETER_FORMAT_POSITIONAL,
+        )
+        self.template_service.list_template_messages.side_effect = RuntimeError(
+            "expired token"
+        )
+        result = self._execute()
+        self.assertEqual(
+            self._row_by_name(result, "pedido_enviado")["reason"], "invalid_token"
+        )
+
+    def test_dry_run_unmatched_template_is_format_not_yet_known(self):
+        app = self._create_app("waba-unmatched")
+        self._create_translation(
+            app,
+            "ghost",
+            "",
+            "9999",
+            parameter_format=None,
+        )
+        self.template_service.list_template_messages.return_value = {
+            "data": [_positional_meta_template()]
+        }
+        result = self._execute(dry_run=True)
+        self.assertEqual(
+            self._row_by_name(result, "ghost")["category"], "format_not_yet_known"
+        )
+
+    def test_named_format_without_stored_names_is_not_previously_broken(self):
+        app = self._create_app("waba-named-empty")
+        self._create_translation(
+            app,
+            "cota_aviso",
+            NAMED_BODY,
+            "1001",
+            variable_count=0,
+            parameter_format=PARAMETER_FORMAT_NAMED,
+            body_named_params=[],
+        )
+        self.template_service.list_template_messages.return_value = {
+            "data": [_named_meta_template()]
+        }
+        result = self._execute()
+        row = self._row_by_name(result, "cota_aviso")
+        self.assertEqual(row["previously_broken"], "false")
+
+    def test_classify_none_post_is_unclassifiable(self):
+        self.assertEqual(
+            self._use_case()._classify(MagicMock(), None), "unclassifiable"
+        )
+
+    def test_snapshot_translations_empty_when_no_apps(self):
+        self.assertEqual(
+            self._use_case()._snapshot_translations([], "waba-x", set()),
+            [],
+        )
+
+    def test_ghost_waba_is_marked_done_without_rows(self):
+        result = self._execute(waba_ids=["ghost-waba"])
+        self.assertEqual(result.rows, [])
+        self.assertIn("ghost-waba", self._progress()["done_waba_ids"])
+
+    def test_meta_error_reason_fallbacks(self):
+        use_case = self._use_case()
+        self.assertEqual(use_case._meta_error_reason("plain"), "plain")
+        self.assertEqual(use_case._meta_error_reason({"code": 77}), "77")
+        self.assertEqual(use_case._meta_error_reason({}), "meta_error")
+
+    def test_exception_reason_uses_class_name_when_empty(self):
+        class EmptyError(Exception):
+            def __str__(self):
+                return ""
+
+        self.assertEqual(self._use_case()._exception_reason(EmptyError()), "EmptyError")
+
+    def test_progress_read_failure_cannot_start(self):
+        redis = MagicMock()
+        redis.get.side_effect = RuntimeError("redis down")
+        use_case = TemplateParameterReconciliationUseCase(
+            redis_conn=redis,
+            sync_use_case_factory=self._factory,
+            sleep=self.sleep,
+            logger=self.logger,
+        )
+        with self.assertRaises(ReconciliationCannotStartError):
+            use_case.execute(output=self.output_path, restart=False)
+
+    def test_progress_delete_failure_on_restart_cannot_start(self):
+        redis = MagicMock()
+        redis.delete.side_effect = RuntimeError("redis down")
+        use_case = TemplateParameterReconciliationUseCase(
+            redis_conn=redis,
+            sync_use_case_factory=self._factory,
+            sleep=self.sleep,
+            logger=self.logger,
+        )
+        with self.assertRaises(ReconciliationCannotStartError):
+            use_case.execute(output=self.output_path, restart=True)
+
+    def test_process_loop_oserror_is_cannot_write(self):
+        self._create_app("waba-os")
+        use_case = self._use_case()
+        with patch.object(use_case, "_process_waba", side_effect=OSError("disk")):
+            with self.assertRaises(ReconciliationCannotWriteError):
+                use_case.execute(output=self.output_path, budget=30, restart=True)
+
+    def test_header_only_unwritable_path_raises(self):
+        with self.assertRaises(ReconciliationCannotWriteError):
+            self._execute(output="/no/such/dir/out.csv")
+
+    def test_emit_rows_writerow_oserror_is_cannot_write(self):
+        writer = MagicMock()
+        writer.writerow.side_effect = OSError("disk")
+        progress = {"counters": {}, "rows_written": 0}
+        with self.assertRaises(ReconciliationCannotWriteError):
+            self._use_case()._emit_waba_rows(
+                [
+                    {
+                        "category": "unchanged",
+                        "_previously_broken": False,
+                        "run_id": RUN_ID,
+                    }
+                ],
+                progress,
+                [],
+                writer,
+                MagicMock(),
+            )
+
+    def test_emit_rows_flush_oserror_is_cannot_write(self):
+        writer = MagicMock()
+        writer_file = MagicMock()
+        writer_file.flush.side_effect = OSError("disk")
+        progress = {"counters": {}, "rows_written": 0}
+        with self.assertRaises(ReconciliationCannotWriteError):
+            self._use_case()._emit_waba_rows(
+                [
+                    {
+                        "category": "unchanged",
+                        "_previously_broken": False,
+                        "run_id": RUN_ID,
+                    }
+                ],
+                progress,
+                [],
+                writer,
+                writer_file,
+            )
+
+    def test_process_loop_cannot_write_is_reraised(self):
+        self._create_app("waba-write")
+        use_case = self._use_case()
+        with patch.object(
+            use_case,
+            "_process_waba",
+            side_effect=ReconciliationCannotWriteError("disk"),
+        ):
+            with self.assertRaises(ReconciliationCannotWriteError):
+                use_case.execute(output=self.output_path, budget=30, restart=True)
+
+    def test_progress_reconciliation_error_is_reraised(self):
+        use_case = self._use_case()
+        with patch.object(
+            use_case,
+            "_read_progress",
+            side_effect=ReconciliationError("progress"),
+        ):
+            with self.assertRaises(ReconciliationError):
+                use_case.execute(output=self.output_path, restart=False)
+
+    def test_read_progress_returns_none_when_missing(self):
+        self.assertIsNone(self._use_case()._read_progress())
+
+    def test_new_run_id_uses_utc_timestamp(self):
+        self._run_id_patcher.stop()
+        try:
+            run_id = TemplateParameterReconciliationUseCase._new_run_id()
+        finally:
+            self._run_id_patcher.start()
+        self.assertRegex(run_id, r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")

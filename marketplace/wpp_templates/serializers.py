@@ -120,6 +120,25 @@ class TemplateTranslationSerializer(serializers.Serializer):
     footer = serializers.JSONField(required=False)
     buttons = ButtonSerializer(many=True, required=False)
     variable_count = serializers.IntegerField(read_only=True)
+    parameter_format = serializers.CharField(read_only=True, allow_null=True)
+    parameter_names = serializers.SerializerMethodField()
+    has_parameter_anomaly = serializers.SerializerMethodField()
+
+    def get_parameter_names(self, instance):
+        params = getattr(instance, "body_named_params", None)
+        if not isinstance(params, list):
+            return []
+        names = []
+        for entry in params:
+            if not isinstance(entry, dict):
+                continue
+            name = entry.get("param_name")
+            if name:
+                names.append(name)
+        return names
+
+    def get_has_parameter_anomaly(self, instance):
+        return getattr(instance, "parameter_anomaly", None) is not None
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -365,6 +384,26 @@ class TemplateMessageSerializer(serializers.Serializer):
     text_preview = serializers.CharField(required=False, read_only=True)
     translations = TemplateTranslationSerializer(many=True, read_only=True)
     gallery_version = serializers.UUIDField(required=False, allow_null=True)
+    parameter_format = serializers.SerializerMethodField()
+
+    def get_parameter_format(self, instance):
+        manager = getattr(instance, "translations", None)
+        if manager is None or not hasattr(manager, "all"):
+            return None
+        try:
+            translations = list(manager.all())
+        except TypeError:
+            return None
+        known_formats = {
+            translation.parameter_format
+            for translation in translations
+            if getattr(translation, "parameter_format", None)
+        }
+        if not known_formats:
+            return None
+        if len(known_formats) == 1:
+            return known_formats.pop()
+        return "MIXED"
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
