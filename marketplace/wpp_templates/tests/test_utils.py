@@ -201,9 +201,7 @@ class TestTemplateWebhookEventProcessor(TestCase):
         self.mock_template_filter.assert_not_called()
 
     @patch("marketplace.wpp_templates.utils.extract_template_data")
-    def test_process_template_category_update_updates_and_notifies(
-        self, mock_extract
-    ):
+    def test_process_template_category_update_updates_and_notifies(self, mock_extract):
         mock_extract.return_value = {"mocked": "data"}
         mock_app = MagicMock()
         mock_app.uuid = "app-uuid-1"
@@ -700,3 +698,55 @@ class TestExtractBodyExample(TestCase):
 
         # Ensure it didn't take from the second group
         self.assertNotEqual(result, ["different", "order", "here"])
+
+    def test_named_example_keys_are_skipped(self):
+        result = extract_body_example(
+            {
+                "body_text_named_params": [
+                    {"param_name": "nome", "example": "João"},
+                    {"param_name": "cota", "example": "3/12"},
+                ]
+            }
+        )
+        self.assertEqual(result, [])
+
+    def test_header_text_named_params_are_skipped(self):
+        result = extract_body_example(
+            {"header_text_named_params": [{"param_name": "titulo", "example": "Promo"}]}
+        )
+        self.assertEqual(result, [])
+
+    def test_positional_examples_kept_when_named_keys_are_present(self):
+        result = extract_body_example(
+            {
+                "body_text": [["João", "12345"]],
+                "body_text_named_params": [
+                    {"param_name": "nome", "example": "João"},
+                ],
+                "header_text_named_params": [
+                    {"param_name": "titulo", "example": "Promo"}
+                ],
+            }
+        )
+        self.assertEqual(result, ["João", "12345"])
+
+    def test_unknown_keys_are_still_extracted(self):
+        result = extract_body_example({"custom_examples": ["alpha", "beta"]})
+        self.assertEqual(result, ["alpha", "beta"])
+
+    def test_existing_positional_payloads_are_unchanged(self):
+        cases = (
+            (
+                {"body_text": [["12345", "#123abc", "29 08 2025"]]},
+                ["12345", "#123abc", "29 08 2025"],
+            ),
+            (
+                {"body_text": [["sarah", "123456798", "Herman miller"]]},
+                ["sarah", "123456798", "Herman miller"],
+            ),
+            ({"body_text": ["simple", "list", "values"]}, ["simple", "list", "values"]),
+            ({"body_text": "single_string_value"}, ["single_string_value"]),
+        )
+        for payload, expected in cases:
+            with self.subTest(payload=payload):
+                self.assertEqual(extract_body_example(payload), expected)

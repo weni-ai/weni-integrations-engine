@@ -1,14 +1,104 @@
-from unittest.mock import MagicMock, patch
+import logging
+import uuid
 from datetime import timezone
-from django.test import SimpleTestCase
+from unittest.mock import MagicMock, patch
+
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.test import SimpleTestCase, TestCase
 from django.utils import timezone as django_timezone
 
+from marketplace.applications.models import App
+from marketplace.core.pacing.constants import TTL_WHATSAPP_TEMPLATES
+from marketplace.wpp_templates.models import (
+    PARAMETER_FORMAT_NAMED,
+    PARAMETER_FORMAT_POSITIONAL,
+    TemplateMessage,
+    TemplateTranslation,
+)
 from marketplace.wpp_templates.usecases.template_sync import (
     TemplateSyncCooldownError,
     TemplateSyncDisabledError,
     TemplateSyncFailedError,
     TemplateSyncUseCase,
 )
+
+User = get_user_model()
+
+NAMED_BODY = "Olá {{nome}}, sua cota {{cota}}"
+NAMED_BODY_WITH_DUE_DATE = "Olá {{nome}}, sua cota {{cota}} vence hoje"
+POSITIONAL_BODY = "Olá {{1}}, seu pedido {{2}} foi enviado."
+NAMED_EXAMPLE_NOME = "João"
+NAMED_EXAMPLE_COTA = "3/12"
+POSITIONAL_EXAMPLE_ORDER = "12345"
+
+
+def _named_examples(*pairs):
+    return [{"param_name": name, "example": example} for name, example in pairs]
+
+
+def _meta_template(
+    template_id,
+    name,
+    body,
+    example=None,
+    parameter_format=None,
+    omit_format=False,
+    language="pt_BR",
+    status="APPROVED",
+    category="UTILITY",
+):
+    body_component = {"type": "BODY", "text": body}
+    if example is not None:
+        body_component["example"] = example
+    template = {
+        "id": template_id,
+        "name": name,
+        "language": language,
+        "status": status,
+        "category": category,
+        "components": [body_component],
+    }
+    if not omit_format:
+        template["parameter_format"] = parameter_format
+    return template
+
+
+def _named_meta_template(
+    template_id="1001",
+    name="cota_aviso",
+    parameter_format="named",
+    body=NAMED_BODY_WITH_DUE_DATE,
+    examples=None,
+):
+    if examples is None:
+        examples = _named_examples(
+            ("nome", NAMED_EXAMPLE_NOME),
+            ("cota", NAMED_EXAMPLE_COTA),
+        )
+    return _meta_template(
+        template_id=template_id,
+        name=name,
+        body=body,
+        example={"body_text_named_params": examples},
+        parameter_format=parameter_format,
+    )
+
+
+def _positional_meta_template(
+    template_id="1002",
+    name="pedido_enviado",
+    omit_format=True,
+    parameter_format=None,
+):
+    return _meta_template(
+        template_id=template_id,
+        name=name,
+        body=POSITIONAL_BODY,
+        example={"body_text": [[NAMED_EXAMPLE_NOME, POSITIONAL_EXAMPLE_ORDER]]},
+        parameter_format=parameter_format,
+        omit_format=omit_format,
+    )
 
 
 class TestTemplateSyncUseCase(SimpleTestCase):
@@ -382,9 +472,7 @@ class TestTemplateSyncRequestSync(SimpleTestCase):
             mock_sync.assert_called_once_with()
 
     def test_cooldown_error_payload(self):
-        error = TemplateSyncCooldownError(
-            retry_after_seconds=12, last_synced_at="ts"
-        )
+        error = TemplateSyncCooldownError(retry_after_seconds=12, last_synced_at="ts")
         self.assertEqual(
             error.to_dict(),
             {
@@ -393,3 +481,376 @@ class TestTemplateSyncRequestSync(SimpleTestCase):
                 "retry_after_seconds": 12,
             },
         )
+
+
+class TemplateSyncRecordingTestCase(TestCase):
+    def setUp(self):
+        self.app = self._create_app()
+
+    def _create_app(self, waba_id="waba-shared"):
+        return App.objects.create(
+            config={
+                "wa_waba_id": waba_id,
+                "wa_user_token": "test-token",
+            },
+            project_uuid=uuid.uuid4(),
+            platform=App.PLATFORM_WENI_FLOWS,
+            code="wpp-cloud",
+            created_by=User.objects.get_admin_user(),
+            flow_object_uuid=uuid.uuid4(),
+        )
+
+    def _use_case(self, app=None):
+        uc = TemplateSyncUseCase(app or self.app)
+        uc.template_service = MagicMock()
+        uc.flows_client = MagicMock()
+        return uc
+
+    def _sync(self, templates, app=None, use_case=None):
+        uc = use_case or self._use_case(app)
+        with self.assertLogs(
+            "marketplace.wpp_templates.usecases.template_sync", level="INFO"
+        ) as captured:
+            result = uc.sync_templates(templates=templates)
+        return uc, captured, result
+
+    def _translation(self, name, app=None):
+        return TemplateTranslation.objects.get(
+            template__app=app or self.app, template__name=name
+        )
+
+    def _assert_no_example_values(self, captured, *values):
+        for record in captured.records:
+            message = record.getMessage()
+            for value in values:
+                self.assertNotIn(
+                    value,
+                    message,
+                    msg=(
+                        f"example value {value!r} leaked at "
+                        f"{record.levelname}: {message}"
+                    ),
+                )
+
+    def test_independent_test_named_and_positional_in_one_meta_list(self):
+        self.assertFalse(settings.WHATSAPP_NAMED_TEMPLATES_ENABLED)
+        named = _named_meta_template()
+        positional = _positional_meta_template()
+        meta_templates = [named, positional]
+
+        uc, captured, result = self._sync(meta_templates)
+
+        self.assertTrue(result)
+        named_translation = self._translation("cota_aviso")
+        self.assertEqual(named_translation.parameter_format, PARAMETER_FORMAT_NAMED)
+        self.assertEqual(
+            [entry["param_name"] for entry in named_translation.body_named_params],
+            ["nome", "cota"],
+        )
+        self.assertEqual(
+            named_translation.body_named_params,
+            [
+                {"param_name": "nome", "example": NAMED_EXAMPLE_NOME},
+                {"param_name": "cota", "example": NAMED_EXAMPLE_COTA},
+            ],
+        )
+        self.assertEqual(named_translation.variable_count, 2)
+        self.assertIsNone(named_translation.parameter_anomaly)
+
+        positional_translation = self._translation("pedido_enviado")
+        self.assertEqual(
+            positional_translation.parameter_format, PARAMETER_FORMAT_POSITIONAL
+        )
+        self.assertEqual(positional_translation.body_named_params, [])
+        self.assertEqual(positional_translation.variable_count, 0)
+        self.assertEqual(
+            positional_translation.body_example,
+            [NAMED_EXAMPLE_NOME, POSITIONAL_EXAMPLE_ORDER],
+        )
+        self.assertIsNone(positional_translation.parameter_anomaly)
+
+        self.assertIs(
+            uc.flows_client.update_facebook_templates.call_args.args[1],
+            meta_templates,
+        )
+        self._assert_no_example_values(
+            captured,
+            NAMED_EXAMPLE_NOME,
+            NAMED_EXAMPLE_COTA,
+            POSITIONAL_EXAMPLE_ORDER,
+        )
+
+    def test_bulk_push_forwards_meta_list_by_identity(self):
+        meta_templates = [_named_meta_template(), _positional_meta_template()]
+        uc, _, _ = self._sync(meta_templates)
+        self.assertIs(
+            uc.flows_client.update_facebook_templates.call_args.args[1],
+            meta_templates,
+        )
+
+    def test_absent_parameter_format_records_positional(self):
+        _, captured, _ = self._sync(
+            [_meta_template("2001", "no_format", POSITIONAL_BODY, omit_format=True)]
+        )
+        translation = self._translation("no_format")
+        self.assertEqual(translation.parameter_format, PARAMETER_FORMAT_POSITIONAL)
+        self.assertEqual(translation.body_named_params, [])
+        self.assertEqual(translation.variable_count, 0)
+        self.assertIsNone(translation.parameter_anomaly)
+        self._assert_no_example_values(
+            captured, NAMED_EXAMPLE_NOME, NAMED_EXAMPLE_COTA, POSITIONAL_EXAMPLE_ORDER
+        )
+
+    def test_named_casings_both_record_named(self):
+        cases = (("named", "lower_named"), ("NAMED", "upper_named"))
+        templates = [
+            _named_meta_template(
+                template_id=str(index),
+                name=name,
+                parameter_format=raw,
+            )
+            for index, (raw, name) in enumerate(cases, start=3001)
+        ]
+        _, captured, _ = self._sync(templates)
+        for _, name in cases:
+            translation = self._translation(name)
+            self.assertEqual(translation.parameter_format, PARAMETER_FORMAT_NAMED)
+            self.assertEqual(translation.variable_count, 2)
+            self.assertIsNone(translation.parameter_anomaly)
+        self._assert_no_example_values(captured, NAMED_EXAMPLE_NOME, NAMED_EXAMPLE_COTA)
+
+    def test_unrecognised_format_records_positional_without_inspecting_body(self):
+        template = _meta_template(
+            "4001",
+            "unrecognised",
+            NAMED_BODY,
+            example={
+                "body_text_named_params": _named_examples(
+                    ("nome", NAMED_EXAMPLE_NOME),
+                    ("cota", NAMED_EXAMPLE_COTA),
+                )
+            },
+            parameter_format="SOMETHING_ELSE",
+        )
+        _, captured, _ = self._sync([template])
+        translation = self._translation("unrecognised")
+        self.assertEqual(translation.parameter_format, PARAMETER_FORMAT_POSITIONAL)
+        self.assertEqual(translation.body_named_params, [])
+        self.assertEqual(translation.variable_count, 0)
+        self.assertEqual(translation.parameter_anomaly["type"], "UNRECOGNISED_FORMAT")
+        self.assertEqual(
+            translation.parameter_anomaly["reported_format"], "SOMETHING_ELSE"
+        )
+        warning_messages = [
+            record.getMessage()
+            for record in captured.records
+            if record.levelno == logging.WARNING
+        ]
+        self.assertTrue(warning_messages)
+        warning = warning_messages[0]
+        self.assertIn("UNRECOGNISED_FORMAT", warning)
+        self.assertIn(str(self.app.uuid), warning)
+        self.assertIn(str(self.app.project_uuid), warning)
+        self.assertIn("unrecognised", warning)
+        self.assertIn("4001", warning)
+        self._assert_no_example_values(captured, NAMED_EXAMPLE_NOME, NAMED_EXAMPLE_COTA)
+
+    def test_named_body_with_zero_placeholders_records_empty_names(self):
+        _, captured, _ = self._sync(
+            [
+                _meta_template(
+                    "5001",
+                    "named_plain",
+                    "Olá, tudo bem?",
+                    parameter_format="NAMED",
+                )
+            ]
+        )
+        translation = self._translation("named_plain")
+        self.assertEqual(translation.parameter_format, PARAMETER_FORMAT_NAMED)
+        self.assertEqual(translation.body_named_params, [])
+        self.assertEqual(translation.variable_count, 0)
+        self.assertIsNone(translation.parameter_anomaly)
+        self._assert_no_example_values(captured, NAMED_EXAMPLE_NOME, NAMED_EXAMPLE_COTA)
+
+    def test_body_example_name_mismatch_keeps_body_names_and_both_sets(self):
+        _, captured, _ = self._sync(
+            [
+                _named_meta_template(
+                    template_id="6001",
+                    name="mismatch",
+                    parameter_format="NAMED",
+                    body=NAMED_BODY,
+                    examples=_named_examples(
+                        ("nome", NAMED_EXAMPLE_NOME),
+                        ("quota", NAMED_EXAMPLE_COTA),
+                    ),
+                )
+            ]
+        )
+        translation = self._translation("mismatch")
+        self.assertEqual(translation.parameter_format, PARAMETER_FORMAT_NAMED)
+        self.assertEqual(
+            translation.body_named_params,
+            [
+                {"param_name": "nome", "example": NAMED_EXAMPLE_NOME},
+                {"param_name": "cota", "example": None},
+            ],
+        )
+        self.assertEqual(translation.variable_count, 2)
+        self.assertEqual(
+            translation.parameter_anomaly["type"], "BODY_EXAMPLE_NAME_MISMATCH"
+        )
+        self.assertEqual(
+            translation.parameter_anomaly["body_param_names"], ["nome", "cota"]
+        )
+        self.assertEqual(
+            translation.parameter_anomaly["example_param_names"], ["nome", "quota"]
+        )
+        self._assert_no_example_values(captured, NAMED_EXAMPLE_NOME, NAMED_EXAMPLE_COTA)
+
+    def test_missing_named_example_stores_null(self):
+        _, captured, _ = self._sync(
+            [
+                _named_meta_template(
+                    template_id="7001",
+                    name="missing_example",
+                    parameter_format="NAMED",
+                    body="Olá {{nome}}",
+                    examples=_named_examples(("nome", "")),
+                )
+            ]
+        )
+        translation = self._translation("missing_example")
+        self.assertEqual(translation.parameter_format, PARAMETER_FORMAT_NAMED)
+        self.assertEqual(
+            translation.body_named_params,
+            [{"param_name": "nome", "example": None}],
+        )
+        self.assertEqual(translation.parameter_anomaly["type"], "MISSING_NAMED_EXAMPLE")
+        self._assert_no_example_values(captured, NAMED_EXAMPLE_NOME, NAMED_EXAMPLE_COTA)
+
+    def test_duplicate_body_param_name_is_not_deduplicated(self):
+        _, captured, _ = self._sync(
+            [
+                _named_meta_template(
+                    template_id="8001",
+                    name="duplicate_name",
+                    parameter_format="NAMED",
+                    body="Olá {{nome}}, tudo bem {{nome}}?",
+                    examples=_named_examples(("nome", NAMED_EXAMPLE_NOME)),
+                )
+            ]
+        )
+        translation = self._translation("duplicate_name")
+        self.assertEqual(translation.parameter_format, PARAMETER_FORMAT_NAMED)
+        self.assertEqual(
+            translation.body_named_params,
+            [
+                {"param_name": "nome", "example": NAMED_EXAMPLE_NOME},
+                {"param_name": "nome", "example": NAMED_EXAMPLE_NOME},
+            ],
+        )
+        self.assertEqual(translation.variable_count, 2)
+        self.assertEqual(
+            translation.parameter_anomaly["type"], "DUPLICATE_BODY_PARAM_NAME"
+        )
+        self.assertEqual(
+            translation.parameter_anomaly["body_param_names"], ["nome", "nome"]
+        )
+        self._assert_no_example_values(captured, NAMED_EXAMPLE_NOME, NAMED_EXAMPLE_COTA)
+
+    def test_positional_or_omitted_format_with_named_body_does_not_infer_named(self):
+        templates = [
+            _meta_template(
+                "9001",
+                "positional_named_body",
+                NAMED_BODY,
+                parameter_format="positional",
+            ),
+            _meta_template(
+                "9002",
+                "omitted_named_body",
+                NAMED_BODY,
+                omit_format=True,
+            ),
+        ]
+        _, captured, _ = self._sync(templates)
+        for name in ("positional_named_body", "omitted_named_body"):
+            translation = self._translation(name)
+            self.assertEqual(translation.parameter_format, PARAMETER_FORMAT_POSITIONAL)
+            self.assertEqual(translation.body_named_params, [])
+            self.assertEqual(translation.variable_count, 0)
+            self.assertEqual(
+                translation.parameter_anomaly["type"], "POSITIONAL_FORMAT_NAMED_BODY"
+            )
+            self.assertEqual(
+                translation.parameter_anomaly["body_param_names"], ["nome", "cota"]
+            )
+        self._assert_no_example_values(captured, NAMED_EXAMPLE_NOME, NAMED_EXAMPLE_COTA)
+
+    def test_changed_names_at_meta_are_replaced_in_place(self):
+        first = _named_meta_template(template_id="1101", name="renamed_params")
+        self._sync([first])
+        original_template_id = TemplateMessage.objects.get(
+            app=self.app, name="renamed_params"
+        ).pk
+        original_translation_id = self._translation("renamed_params").pk
+
+        updated = _named_meta_template(
+            template_id="1101",
+            name="renamed_params",
+            parameter_format="NAMED",
+            body="Olá {{nome}}, seu valor {{valor}}",
+            examples=_named_examples(
+                ("nome", NAMED_EXAMPLE_NOME),
+                ("valor", NAMED_EXAMPLE_COTA),
+            ),
+        )
+        _, captured, _ = self._sync([updated])
+
+        self.assertEqual(TemplateMessage.objects.filter(app=self.app).count(), 1)
+        self.assertEqual(
+            TemplateTranslation.objects.filter(template__app=self.app).count(), 1
+        )
+        self.assertEqual(
+            TemplateMessage.objects.get(app=self.app, name="renamed_params").pk,
+            original_template_id,
+        )
+        translation = self._translation("renamed_params")
+        self.assertEqual(translation.pk, original_translation_id)
+        self.assertEqual(
+            [entry["param_name"] for entry in translation.body_named_params],
+            ["nome", "valor"],
+        )
+        self.assertEqual(translation.variable_count, 2)
+        self._assert_no_example_values(captured, NAMED_EXAMPLE_NOME, NAMED_EXAMPLE_COTA)
+
+    def test_shared_waba_records_the_same_values_without_touching_pacing(self):
+        other_app = self._create_app()
+        meta_templates = [_named_meta_template()]
+        budget_before = settings.META_SYNC_TEMPLATES_DRAIN_BUDGET
+        ttl_before = TTL_WHATSAPP_TEMPLATES
+
+        with patch("marketplace.core.pacing.ttl.mark_synced") as mark_synced, patch(
+            "marketplace.core.pacing.ttl.is_recently_synced"
+        ) as is_recently_synced:
+            first_uc, captured, _ = self._sync(meta_templates)
+            second_uc, _, _ = self._sync(meta_templates, app=other_app)
+
+        first_uc.template_service.list_template_messages.assert_not_called()
+        second_uc.template_service.list_template_messages.assert_not_called()
+        mark_synced.assert_not_called()
+        is_recently_synced.assert_not_called()
+        self.assertEqual(settings.META_SYNC_TEMPLATES_DRAIN_BUDGET, budget_before)
+        self.assertEqual(TTL_WHATSAPP_TEMPLATES, ttl_before)
+
+        for app in (self.app, other_app):
+            translation = self._translation("cota_aviso", app=app)
+            self.assertEqual(translation.parameter_format, PARAMETER_FORMAT_NAMED)
+            self.assertEqual(
+                [entry["param_name"] for entry in translation.body_named_params],
+                ["nome", "cota"],
+            )
+            self.assertEqual(translation.variable_count, 2)
+        self._assert_no_example_values(captured, NAMED_EXAMPLE_NOME, NAMED_EXAMPLE_COTA)
