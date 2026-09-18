@@ -3,6 +3,8 @@ import ast
 
 from typing import Callable, Optional, TYPE_CHECKING
 
+from django.db.models import Q
+
 from marketplace.applications.models import App
 from .models import TemplateMessage, TemplateTranslation
 
@@ -180,7 +182,9 @@ class TemplateWebhookEventProcessor:
         self.logger = logger or logging.getLogger(__name__)
 
     def get_apps_by_waba_id(self, waba_id: str):
-        return App.objects.filter(config__wa_waba_id=waba_id)
+        return App.objects.filter(
+            Q(config__wa_waba_id=waba_id) | Q(config__waba__id=waba_id)
+        )
 
     def process_template_status_update(
         self, waba_id: str, value: dict, webhook: dict
@@ -326,7 +330,12 @@ def extract_template_data(translation: TemplateTranslation) -> dict:
         components.append(header_component)
 
     if translation.body:
-        components.append({"type": "BODY", "text": translation.body})
+        body_component = {"type": "BODY", "text": translation.body}
+        if translation.body_named_params and translation.parameter_anomaly is None:
+            body_component["example"] = {
+                "body_text_named_params": translation.body_named_params
+            }
+        components.append(body_component)
 
     if translation.footer:
         components.append({"type": "FOOTER", "text": translation.footer})
@@ -343,11 +352,12 @@ def extract_template_data(translation: TemplateTranslation) -> dict:
             button_list.append(b)
         components.append({"type": "BUTTONS", "buttons": button_list})
 
-    return {
-        "name": template.name,
-        "components": components,
-        "language": translation.language,
-        "status": translation.status,
-        "category": template.category,
-        "id": str(translation.message_template_id),
-    }
+    payload = {"name": template.name}
+    if translation.parameter_format:
+        payload["parameter_format"] = translation.parameter_format
+    payload["components"] = components
+    payload["language"] = translation.language
+    payload["status"] = translation.status
+    payload["category"] = template.category
+    payload["id"] = str(translation.message_template_id)
+    return payload

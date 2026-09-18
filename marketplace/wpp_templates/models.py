@@ -81,6 +81,17 @@ class TemplateMessage(models.Model):
             raise ValidationError({"name": error_message})
 
 
+PARAMETER_FORMAT_NAMED = "NAMED"
+PARAMETER_FORMAT_POSITIONAL = "POSITIONAL"
+PARAMETER_FORMAT_CHOICES = (
+    (PARAMETER_FORMAT_NAMED, "WhatsApp.data.templates.parameter_format.named"),
+    (
+        PARAMETER_FORMAT_POSITIONAL,
+        "WhatsApp.data.templates.parameter_format.positional",
+    ),
+)
+
+
 class TemplateTranslation(models.Model):
     STATUS_CHOICES = (
         ("APPROVED", "WhatsApp.data.templates.translaction.status.approved"),
@@ -115,6 +126,15 @@ class TemplateTranslation(models.Model):
     namespace = models.CharField(max_length=60, null=True)
     external_id = models.CharField(max_length=60, null=True)
     message_template_id = models.CharField(max_length=20, null=True, blank=True)
+    parameter_format = models.CharField(
+        max_length=10,
+        choices=PARAMETER_FORMAT_CHOICES,
+        null=True,
+        blank=True,
+        default=None,
+    )
+    body_named_params = models.JSONField(default=list, blank=True)
+    parameter_anomaly = models.JSONField(null=True, blank=True, default=None)
 
 
 class TemplateButton(models.Model):
