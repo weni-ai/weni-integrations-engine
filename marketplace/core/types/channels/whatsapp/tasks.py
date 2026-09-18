@@ -1,4 +1,5 @@
 import logging
+from uuid import UUID
 
 import phonenumbers
 from django.conf import settings
@@ -6,12 +7,20 @@ from django.contrib.auth import get_user_model
 from django_redis import get_redis_connection
 from phonenumbers.phonenumberutil import NumberParseException
 
-from marketplace.celery import app as celery_app
-from marketplace.core.types import APPTYPES
 from marketplace.applications.models import App
+from marketplace.celery import app as celery_app
 from marketplace.clients.flows.client import FlowsClient
+from marketplace.core.pacing.constants import (
+    QUEUE_WHATSAPP_CLOUD_PHONE_NUMBERS,
+    QUEUE_WHATSAPP_CLOUD_WABAS,
+    TTL_WHATSAPP_CLOUD_WABAS,
+)
+from marketplace.core.pacing.queue import enqueue_item
+from marketplace.core.pacing.ttl import is_recently_synced
+from marketplace.core.types import APPTYPES
 from marketplace.core.types.channels.whatsapp.usecases.phone_number_sync import (
     PhoneNumberSyncUseCase,
+    SYNC_WHATSAPP_PHONE_NUMBER_LOCK_KEY as CLOUD_PHONE_TTL_KEY,
 )
 from marketplace.core.types.channels.whatsapp.usecases.waba_sync import WABASyncUseCase
 from .apis import FacebookWABAApi, FacebookPhoneNumbersAPI
@@ -169,39 +178,74 @@ def sync_whatsapp_wabas():
 
 
 @celery_app.task(name="sync_whatsapp_cloud_wabas")
-def sync_whatsapp_cloud_wabas():  # pragma: no cover
-    error_counts = {}
-    success_count = 0
+def sync_whatsapp_cloud_wabas():
+    enqueued = 0
+    skipped_ttl = 0
+    seen_waba_ids = set()
     apps = App.objects.filter(code="wpp-cloud", configured=True)
-    total_apps = apps.count()
 
     for app in apps:
-        use_case = WABASyncUseCase(app)
-        result = use_case.sync_whatsapp_cloud_waba()
-        status_result = result.get("status")
+        config = app.config or {}
+        waba_id = config.get("wa_waba_id")
+        if not waba_id or "ignores_meta_sync" in config:
+            continue
+        if waba_id in seen_waba_ids:
+            continue
+        seen_waba_ids.add(waba_id)
 
-        if status_result == "error":
-            error_message = result.get("error", "unknown error")
-            error_counts[error_message] = error_counts.get(error_message, 0) + 1
-            logger.info(
-                f"sync_whatsapp_cloud_wabas: {error_message} for app {app.uuid}"
-            )
-        else:
-            success_count += 1
-            logger.info(f"App {app.uuid} WABA sync result: {status_result}")
-
-    if error_counts:
-        total_errors = sum(error_counts.values())
-        logger.error(
-            "Sync WABAS task encountered errors.",
-            extra={"total_errors": total_errors, "error_counts": error_counts},
-        )
+        ttl_key = TTL_WHATSAPP_CLOUD_WABAS.format(waba_id=waba_id)
+        if is_recently_synced(ttl_key):
+            skipped_ttl += 1
+            continue
+        if enqueue_item(QUEUE_WHATSAPP_CLOUD_WABAS, waba_id):
+            enqueued += 1
 
     logger.info(
-        f"WABA sync task completed: successfully synchronized {success_count} apps, "
-        f"{total_errors} apps failed out of "
-        f"{total_apps} total apps."
+        f"WABA sync dispatch: enqueued={enqueued} skipped_ttl={skipped_ttl} "
+        f"unique_wabas={len(seen_waba_ids)}"
     )
+
+
+def _resolve_waba_id_from_queue_item(item_id: str):
+    """Map an in-flight app UUID to wa_waba_id; pass through already-enqueued waba ids."""
+    try:
+        UUID(str(item_id))
+    except (ValueError, TypeError, AttributeError):
+        return item_id
+
+    try:
+        app = App.objects.get(uuid=item_id, code="wpp-cloud")
+    except App.DoesNotExist:
+        logger.error(f"WABA sync item skipped, app not found: {item_id}")
+        return None
+
+    waba_id = (app.config or {}).get("wa_waba_id")
+    if not waba_id:
+        logger.error(f"WABA sync item skipped, app has no wa_waba_id: {item_id}")
+        return None
+
+    logger.info(f"Resolved in-flight app uuid {item_id} to waba {waba_id}")
+    return waba_id
+
+
+@celery_app.task(name="task_sync_whatsapp_cloud_waba_item")
+def task_sync_whatsapp_cloud_waba_item(item_id: str):
+    waba_id = _resolve_waba_id_from_queue_item(item_id)
+    if not waba_id:
+        return
+
+    try:
+        result = WABASyncUseCase().sync_waba(waba_id)
+        status_result = result.get("status")
+        if status_result == "error":
+            logger.error(
+                f"sync_whatsapp_cloud_wabas: {result.get('error', 'unknown error')} "
+                f"for waba {waba_id}"
+            )
+            return
+        logger.info(f"WABA {waba_id} sync result: {status_result}")
+    except Exception as e:
+        logger.error(f"Error processing WABA sync for waba {waba_id}: {e}")
 
 
 @celery_app.task(name="sync_whatsapp_phone_numbers")
@@ -309,39 +353,43 @@ def sync_whatsapp_phone_numbers():
 
 
 @celery_app.task(name="sync_whatsapp_cloud_phone_numbers")
-def sync_whatsapp_cloud_phone_numbers():  # pragma: no cover
-    error_counts = {}
-    success_count = 0
+def sync_whatsapp_cloud_phone_numbers():
+    enqueued = 0
+    skipped_ttl = 0
     apps = App.objects.filter(code="wpp-cloud", configured=True)
     total_apps = apps.count()
 
     for app in apps:
-        sync_use_case = PhoneNumberSyncUseCase(app)
-        result = sync_use_case.sync_whatsapp_cloud_phone_number()
-        status_result = result.get("status")
-
-        if status_result == "error":
-            error_message = result.get("error", "unknown error")
-            error_counts[error_message] = error_counts.get(error_message, 0) + 1
-            logger.info(
-                f"sync_whatsapp_cloud_phone_numbers: {error_message} for app {app.uuid}"
-            )
-        else:
-            success_count += 1
-            logger.info(f"App {app.uuid} sync result: {status_result}")
-
-    if error_counts:
-        total_errors = sum(error_counts.values())
-        logger.error(
-            "Sync phone numbers task encountered errors.",
-            extra={"total_errors": total_errors, "error_counts": error_counts},
-        )
+        ttl_key = CLOUD_PHONE_TTL_KEY.format(app_uuid=str(app.uuid))
+        if is_recently_synced(ttl_key):
+            skipped_ttl += 1
+            continue
+        if enqueue_item(QUEUE_WHATSAPP_CLOUD_PHONE_NUMBERS, str(app.uuid)):
+            enqueued += 1
 
     logger.info(
-        f"Phone number sync task completed: successfully synchronized {success_count} apps, "
-        f"{sum(error_counts.values()) if error_counts else 0} apps failed out of "
-        f"{total_apps} total apps."
+        f"Phone number sync dispatch: enqueued={enqueued} skipped_ttl={skipped_ttl} "
+        f"total_apps={total_apps}"
     )
+
+
+@celery_app.task(name="task_sync_whatsapp_cloud_phone_number_item")
+def task_sync_whatsapp_cloud_phone_number_item(app_uuid: str):
+    try:
+        app = App.objects.get(uuid=app_uuid, code="wpp-cloud")
+        result = PhoneNumberSyncUseCase(app).sync_whatsapp_cloud_phone_number()
+        status_result = result.get("status")
+        if status_result == "error":
+            logger.error(
+                f"sync_whatsapp_cloud_phone_numbers: "
+                f"{result.get('error', 'unknown error')} for app {app.uuid}"
+            )
+            return
+        logger.info(f"App {app.uuid} sync result: {status_result}")
+    except App.DoesNotExist:
+        logger.error(f"Phone number sync item skipped, app not found: {app_uuid}")
+    except Exception as e:
+        logger.error(f"Error processing phone number sync for app {app_uuid}: {e}")
 
 
 def delete_inactive_apps(apps, flow_object_uuid):

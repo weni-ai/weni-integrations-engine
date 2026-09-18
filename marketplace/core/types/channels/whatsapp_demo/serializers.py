@@ -30,10 +30,6 @@ class WhatsAppDemoSerializer(AppTypeBaseSerializer):
         return instance.config.get("redirect_url")
 
 
-class GetOrCreateWppDemoSerializer(serializers.Serializer):
-    project_uuid = serializers.UUIDField()
-
-
 class ReadWppDemoSerializer(serializers.Serializer):
     uuid = serializers.UUIDField()
     flow_object_uuid = serializers.UUIDField()

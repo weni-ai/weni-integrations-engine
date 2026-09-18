@@ -61,10 +61,6 @@ class AppTypeSerializer(serializers.Serializer):
         return obj.can_add(project_uuid)
 
 
-class CheckWebChatIntegrationSerializer(serializers.Serializer):
-    project_uuid = serializers.UUIDField()
-
-
 class MyAppSerializer(serializers.ModelSerializer):
     icon = serializers.SerializerMethodField()
 

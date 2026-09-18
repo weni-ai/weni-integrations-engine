@@ -49,7 +49,7 @@ class RetrieveWhatsAppTestCase(APIBaseTestCase):
         self.assertIn("project_uuid", response.json)
         self.assertIn("platform", response.json)
         self.assertIn("created_on", response.json)
-        self.assertEqual(response.json["config"], {})
+        self.assertEqual(response.json["config"], {"currency_migration": None})
 
 
 class DestroyWhatsAppTestCase(APIBaseTestCase):

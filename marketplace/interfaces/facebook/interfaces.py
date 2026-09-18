@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class ProfileHandlerInterface(ABC):
@@ -96,7 +96,9 @@ class PhoneNumbersRequestsInterface(ABC):
         pass
 
     @abstractmethod
-    def get_phone_number(self, phone_number_id: str) -> Dict[str, Any]:
+    def get_phone_number(
+        self, phone_number_id: str, fields: Optional[str] = None
+    ) -> Dict[str, Any]:
         pass
 
 

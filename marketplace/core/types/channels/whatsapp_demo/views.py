@@ -5,12 +5,15 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import NotFound, ValidationError, PermissionDenied
 
+from weni_commons.auth import WeniAuthViewMixin
+
+from marketplace.accounts.authentication import WeniModuleAuthentication
+from marketplace.accounts.permissions import ProjectManagePermission
 from marketplace.core.types import views
 from marketplace.core.types.channels.whatsapp_demo.usecases.whatsapp_demo_creation import (
     EnsureWhatsAppDemoAppUseCase,
 )
 from .serializers import (
-    GetOrCreateWppDemoSerializer,
     ReadWppDemoSerializer,
     WhatsAppDemoSerializer,
 )
@@ -22,8 +25,10 @@ if TYPE_CHECKING:
     from rest_framework.request import Request  # pragma: no cover
 
 
-class WhatsAppDemoViewSet(views.BaseAppTypeViewSet):
+class WhatsAppDemoViewSet(WeniAuthViewMixin, views.BaseAppTypeViewSet):
     serializer_class = WhatsAppDemoSerializer
+    authentication_classes = [WeniModuleAuthentication]
+    permission_classes = [ProjectManagePermission]
 
     def get_queryset(self):
         return super().get_queryset().filter(code=self.type_class.code)
@@ -69,13 +74,8 @@ class WhatsAppDemoViewSet(views.BaseAppTypeViewSet):
 
     @action(detail=False, methods=["POST"], url_path="get-or-create")
     def get_or_create(self, request: "Request", **kwargs):
-        serializer = GetOrCreateWppDemoSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        project_uuid = serializer.validated_data.get("project_uuid")
-
         use_case = EnsureWhatsAppDemoAppUseCase(
-            project_uuid=project_uuid,
+            project_uuid=self.auth.project_uuid,
             user=request.user,
         )
         app = use_case.get_or_create()

@@ -32,7 +32,12 @@ from .usecases import TemplateDetailUseCase
 from marketplace.wpp_templates.usecases.template_library_creation import (
     TemplateCreationUseCase,
 )
-
+from marketplace.wpp_templates.usecases.template_sync import (
+    TemplateSyncCooldownError,
+    TemplateSyncDisabledError,
+    TemplateSyncFailedError,
+    TemplateSyncUseCase,
+)
 
 WHATSAPP_VERSION = settings.WHATSAPP_VERSION
 
@@ -310,6 +315,31 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
         response = use_case.create_library_template_single(request.data)
 
         return Response(response, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["GET", "POST"], url_path="sync")
+    def sync(self, request, app_uuid=None, uuid=None):
+        app = get_object_or_404(App, uuid=app_uuid)
+
+        if request.method == "GET":
+            return Response(
+                TemplateSyncUseCase.get_sync_status(app), status=status.HTTP_200_OK
+            )
+
+        try:
+            return Response(
+                TemplateSyncUseCase.request_sync(app), status=status.HTTP_200_OK
+            )
+        except TemplateSyncDisabledError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except TemplateSyncCooldownError as exc:
+            return Response(exc.to_dict(), status=status.HTTP_429_TOO_MANY_REQUESTS)
+        except ValueError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except TemplateSyncFailedError:
+            return Response(
+                {"error": "Couldn't sync templates due to a Meta API error"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
 
     @action(detail=False, methods=["GET"])
     def template_detail(self, request, app_uuid=None, uuid=None):

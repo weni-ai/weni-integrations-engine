@@ -30,6 +30,7 @@ class Request(object):
     def __init__(self, test_instance: TestCase):
         self.test_instance = test_instance
         self.factory = APIRequestFactory()
+        self._auth = None
         self.set_view(test_instance.view)
         self.set_user(test_instance.user)
 
@@ -41,6 +42,15 @@ class Request(object):
 
     def set_user(self, user):
         self._user = user
+
+    def set_auth(self, auth):
+        """Attach a weni-commons auth context to ``request.auth``.
+
+        Views wired with ``WeniAuthentication`` read tenant/identity from
+        ``request.auth``; ``force_authenticate`` skips the authenticator, so
+        tests must supply the context explicitly through the ``token`` slot.
+        """
+        self._auth = auth
 
     def _get_response(self, request, **kwargs) -> Response:
         response = self._view(request, **kwargs)
@@ -67,7 +77,7 @@ class Request(object):
     def get(self, url: str, params=None, headers=None, **kwargs) -> Response:
         request_headers = self._apply_headers(headers)
         request = self.factory.get(url, data=params, **request_headers)
-        force_authenticate(request, user=self._user)
+        force_authenticate(request, user=self._user, token=self._auth)
         return self._get_response(request, **kwargs)
 
     def post(self, url: str, body=None, headers=None, **kwargs) -> Response:
@@ -78,7 +88,7 @@ class Request(object):
             content_type="application/json",
             **request_headers,
         )
-        force_authenticate(request, user=self._user)
+        force_authenticate(request, user=self._user, token=self._auth)
         return self._get_response(request, **kwargs)
 
     def put(self, url: str, body=None, headers=None, **kwargs) -> Response:
@@ -89,7 +99,7 @@ class Request(object):
             content_type="application/json",
             **request_headers,
         )
-        force_authenticate(request, user=self._user)
+        force_authenticate(request, user=self._user, token=self._auth)
         return self._get_response(request, **kwargs)
 
     def delete(self, url: str, body=None, headers=None, **kwargs) -> Response:
@@ -100,7 +110,7 @@ class Request(object):
             content_type="application/json",
             **request_headers,
         )
-        force_authenticate(request, user=self._user)
+        force_authenticate(request, user=self._user, token=self._auth)
         return self._get_response(request, **kwargs)
 
     def patch(self, url: str, body=None, headers=None, **kwargs) -> Response:
@@ -111,7 +121,7 @@ class Request(object):
             content_type="application/json",
             **request_headers,
         )
-        force_authenticate(request, user=self._user)
+        force_authenticate(request, user=self._user, token=self._auth)
         return self._get_response(request, **kwargs)
 
 

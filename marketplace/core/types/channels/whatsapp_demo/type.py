@@ -52,7 +52,7 @@ class WhatsAppDemoType(AppType):
             wa_number=cls.NUMBER,
             wa_verified_name=cls.VERIFIED_NAME,
             wa_waba_id=None,
-            wa_currency="USD",
+            wa_currency="BRL",
             wa_business_id=cls.BUSINESS_ID,
             wa_message_template_namespace=None,
             wa_pin=None,

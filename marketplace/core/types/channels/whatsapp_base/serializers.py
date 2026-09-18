@@ -36,6 +36,11 @@ class WhatsAppConfigPhoneNumberSerializer(serializers.Serializer):
     certificate = serializers.CharField(required=False)
 
 
+class CurrencyMigrationSerializer(serializers.Serializer):
+    migration_date = serializers.CharField(source="migrated_at", allow_null=True)
+    old_waba_id = serializers.CharField(source="wa_waba_id", allow_null=True)
+
+
 class WhatsAppConfigSerializer(serializers.Serializer):
     title = serializers.CharField(required=False)
     waba = WhatsAppConfigWABASerializer(required=False)
@@ -44,6 +49,11 @@ class WhatsAppConfigSerializer(serializers.Serializer):
     mmlite_status = serializers.CharField(required=False)
     has_calling = serializers.BooleanField(required=False)
     direct_send = serializers.BooleanField(required=False)
+    currency_migration = CurrencyMigrationSerializer(
+        source="currency_migration_previous_waba_info",
+        required=False,
+        allow_null=True,
+    )
 
 
 class WhatsAppSerializer(AppTypeBaseSerializer):

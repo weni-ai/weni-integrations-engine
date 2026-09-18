@@ -14,12 +14,15 @@ if TYPE_CHECKING:
         BusinessProfileHandlerInterface,
     )
 
+from weni_commons.auth import (
+    CanCommunicateInternally as WeniCanCommunicateInternally,
+)
+
 from marketplace.accounts.permissions import (
     ProjectManagePermission,
     ProjectViewPermission,
     IsCRMUser,
 )
-from marketplace.internal.permissions import CanCommunicateInternally
 from .requests.facebook import FacebookConversationAPI
 from .exceptions import FacebookApiException, UnableProcessProfilePhoto
 from .serializers import WhatsAppBusinessContactSerializer, WhatsAppProfileSerializer
@@ -162,7 +165,7 @@ class WhatsAppProfileMixin(object, metaclass=abc.ABCMeta):
         methods=["GET", "PATCH", "DELETE"],
         serializer_class=WhatsAppProfileSerializer,
         permission_classes=[
-            ProjectManagePermission | IsCRMUser | CanCommunicateInternally
+            ProjectManagePermission | IsCRMUser | WeniCanCommunicateInternally
         ],
     )
     def profile(self, request: "Request", **kwargs) -> Response:

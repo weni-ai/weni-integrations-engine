@@ -29,10 +29,6 @@ class WhatsAppCloudConfigureSerializer(serializers.Serializer):
     auth_code = serializers.CharField(required=True)
 
 
-class WhatsAppCloudChannelsQueryParamsSerializer(serializers.Serializer):
-    project_uuid = serializers.UUIDField(required=True)
-
-
 class WhatsAppCloudChannelSerializer(serializers.Serializer):
     """Represents a WhatsApp Cloud channel (App) for the channel-selection
     screen consumed by external services such as `retail`.

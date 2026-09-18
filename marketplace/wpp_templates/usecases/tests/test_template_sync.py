@@ -1,7 +1,14 @@
 from unittest.mock import MagicMock, patch
+from datetime import timezone
 from django.test import SimpleTestCase
+from django.utils import timezone as django_timezone
 
-from marketplace.wpp_templates.usecases.template_sync import TemplateSyncUseCase
+from marketplace.wpp_templates.usecases.template_sync import (
+    TemplateSyncCooldownError,
+    TemplateSyncDisabledError,
+    TemplateSyncFailedError,
+    TemplateSyncUseCase,
+)
 
 
 class TestTemplateSyncUseCase(SimpleTestCase):
@@ -39,9 +46,11 @@ class TestTemplateSyncUseCase(SimpleTestCase):
         with patch(
             "marketplace.wpp_templates.usecases.template_sync.handle_error_and_update_config"
         ) as mock_handle:
-            uc.sync_templates()
+            result = uc.sync_templates()
             mock_handle.assert_called_once()
             uc.flows_client.update_facebook_templates.assert_not_called()
+            self.assertFalse(result)
+            self.assertNotIn("templates_last_synced_at", app.config)
 
     def test_sync_templates_success_existing_translation(self):
         """Successful sync with existing translation and all component types present."""
@@ -112,9 +121,12 @@ class TestTemplateSyncUseCase(SimpleTestCase):
                 True,
             )
 
-            uc.sync_templates()
+            result = uc.sync_templates()
 
             uc.flows_client.update_facebook_templates.assert_called_once()
+            self.assertTrue(result)
+            self.assertIn("templates_last_synced_at", app.config)
+            app.save.assert_called()
             mock_extract.assert_called_once()
             # Header created
             mock_header.objects.get_or_create.assert_called()
@@ -242,6 +254,28 @@ class TestTemplateSyncUseCase(SimpleTestCase):
             uc.sync_templates()  # Should not raise
             self.assertEqual(mock_translation.objects.get_or_create.call_count, 2)
 
+    def test_sync_templates_reuses_prefetched_templates(self):
+        app = self._make_app()
+        uc = TemplateSyncUseCase(app)
+        uc.template_service = MagicMock()
+        uc.flows_client = MagicMock()
+
+        with patch(
+            "marketplace.wpp_templates.usecases.template_sync.TemplateTranslation"
+        ) as mock_translation, patch(
+            "marketplace.wpp_templates.usecases.template_sync.TemplateMessage"
+        ) as mock_message:
+            mock_translation.objects.filter.return_value = []
+            mock_message.objects.get_or_create.return_value = (MagicMock(), True)
+            mock_translation.objects.get_or_create.return_value = (MagicMock(), True)
+
+            uc.sync_templates(
+                templates=[{"id": "tpl-1", "name": "n", "components": []}]
+            )
+
+            uc.template_service.list_template_messages.assert_not_called()
+            mock_message.objects.get_or_create.assert_called_once()
+
     def test_delete_unexistent_translations(self):
         """Covers cleanup logic for missing translations and templates."""
         app = self._make_app()
@@ -279,3 +313,83 @@ class TestTemplateSyncUseCase(SimpleTestCase):
             # but ensure filter was called twice and t2 was also deleted after count==0
             self.assertEqual(mock_translation.objects.filter.call_count, 2)
             t2.delete.assert_called_once()
+
+
+class TestTemplateSyncRequestSync(SimpleTestCase):
+    def _make_app(self, config=None):
+        app = MagicMock()
+        app.uuid = "app-uuid-1"
+        app.config = config if config is not None else {}
+        app.apptype.get_access_token.return_value = "access-token"
+        return app
+
+    def test_get_sync_status_without_previous_sync(self):
+        app = self._make_app()
+        self.assertEqual(
+            TemplateSyncUseCase.get_sync_status(app),
+            {"last_synced_at": None},
+        )
+
+    def test_request_sync_disabled(self):
+        app = self._make_app(config={"ignores_meta_sync": {"code": 100}})
+        with self.assertRaises(TemplateSyncDisabledError):
+            TemplateSyncUseCase.request_sync(app)
+
+    def test_request_sync_within_cooldown(self):
+        last_synced_at = django_timezone.now().isoformat()
+        app = self._make_app(config={"templates_last_synced_at": last_synced_at})
+        with self.assertRaises(TemplateSyncCooldownError) as raised:
+            TemplateSyncUseCase.request_sync(app)
+        payload = raised.exception.to_dict()
+        self.assertEqual(payload["last_synced_at"], last_synced_at)
+        self.assertGreaterEqual(payload["retry_after_seconds"], 1)
+
+    def test_parse_invalid_and_naive_timestamps(self):
+        self.assertIsNone(TemplateSyncUseCase._parse_last_synced_at(None))
+        self.assertIsNone(TemplateSyncUseCase._parse_last_synced_at("not-a-date"))
+        parsed = TemplateSyncUseCase._parse_last_synced_at("2026-08-20T15:00:00")
+        self.assertEqual(parsed.tzinfo, timezone.utc)
+
+    @patch.object(TemplateSyncUseCase, "sync_templates", return_value=True)
+    def test_request_sync_success(self, mock_sync_templates):
+        last_synced_at = "2026-08-20T15:00:00+00:00"
+        app = self._make_app()
+
+        def refresh():
+            app.config["templates_last_synced_at"] = last_synced_at
+
+        app.refresh_from_db.side_effect = refresh
+
+        result = TemplateSyncUseCase.request_sync(app)
+
+        mock_sync_templates.assert_called_once_with()
+        self.assertEqual(result, {"last_synced_at": last_synced_at})
+
+    @patch.object(TemplateSyncUseCase, "sync_templates", return_value=False)
+    def test_request_sync_meta_failure(self, mock_sync_templates):
+        app = self._make_app()
+        with self.assertRaises(TemplateSyncFailedError):
+            TemplateSyncUseCase.request_sync(app)
+        mock_sync_templates.assert_called_once_with()
+
+    def test_request_sync_invalid_timestamp_skips_cooldown(self):
+        app = self._make_app(config={"templates_last_synced_at": "invalid"})
+        with patch.object(
+            TemplateSyncUseCase, "sync_templates", return_value=True
+        ) as mock_sync:
+            app.refresh_from_db.side_effect = lambda: None
+            TemplateSyncUseCase.request_sync(app)
+            mock_sync.assert_called_once_with()
+
+    def test_cooldown_error_payload(self):
+        error = TemplateSyncCooldownError(
+            retry_after_seconds=12, last_synced_at="ts"
+        )
+        self.assertEqual(
+            error.to_dict(),
+            {
+                "error": "Templates were synced less than 1 hour ago",
+                "last_synced_at": "ts",
+                "retry_after_seconds": 12,
+            },
+        )

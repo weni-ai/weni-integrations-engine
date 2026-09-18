@@ -9,6 +9,8 @@ from unittest.mock import patch, MagicMock, Mock
 
 from django.contrib.auth import get_user_model
 
+from weni_commons.auth import WeniAuthContext
+
 from marketplace.core.tests.base import APIBaseTestCase
 from marketplace.applications.models import App
 from marketplace.accounts.models import ProjectAuthorization
@@ -64,7 +66,7 @@ class RetrieveWhatsAppCloudTestCase(APIBaseTestCase):
         self.assertIn("project_uuid", response.json)
         self.assertIn("platform", response.json)
         self.assertIn("created_on", response.json)
-        self.assertEqual(response.json["config"], {})
+        self.assertEqual(response.json["config"], {"currency_migration": None})
 
     def test_retrieve_exposes_phone_number_id_and_waba_id(self):
         self.app.config = {
@@ -98,6 +100,42 @@ class RetrieveWhatsAppCloudTestCase(APIBaseTestCase):
         self.assertEqual(config["waba"]["id"], "912460154934195")
 
         self.assertNotIn("wa_phone_number_id", config)
+        self.assertIsNone(config["currency_migration"])
+
+    def test_retrieve_exposes_currency_migration(self):
+        migrated_at = "2026-08-06T18:00:00.123456+00:00"
+        old_waba_id = "111222333444"
+        self.app.config = {
+            "wa_waba_id": "999888777666",
+            "currency_migration_previous_waba_info": {
+                "wa_waba_id": old_waba_id,
+                "wa_currency": "USD",
+                "wa_message_template_namespace": "old-namespace",
+                "waba": {"id": old_waba_id, "name": "Old WABA"},
+                "migrated_at": migrated_at,
+                "template_id_mappings": [
+                    {
+                        "template_name": "hello",
+                        "language": "en",
+                        "old_message_template_id": "1",
+                        "new_message_template_id": "2",
+                    }
+                ],
+            },
+        }
+        self.app.save()
+
+        response = self.request.get(self.url, uuid=self.app.uuid)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        config = response.json["config"]
+        self.assertEqual(
+            config["currency_migration"],
+            {"migration_date": migrated_at, "old_waba_id": old_waba_id},
+        )
+        self.assertNotIn("currency_migration_previous_waba_info", config)
+        self.assertNotIn("template_id_mappings", config["currency_migration"])
 
 
 class DestroyWhatsAppCloudTestCase(APIBaseTestCase):
@@ -450,7 +488,7 @@ class MockBusinessMetaService:
 
 
 class MockPhoneNumbersService:
-    def get_phone_number(self, phone_number_id):
+    def get_phone_number(self, phone_number_id, fields=None):
         return {
             "display_phone_number": "mock_display_phone_number",
             "verified_name": "mock_verified_name",
@@ -480,6 +518,14 @@ class CreateWhatsAppCloudTestCase(APIBaseTestCase):
         self.user_authorization.set_role(ProjectAuthorization.ROLE_ADMIN)
         self.url = reverse("wpp-cloud-app-list")
 
+        # Tenant scope now comes from the signed token (self.auth), not the body.
+        self.request.set_auth(
+            WeniAuthContext(
+                project_uuid=self.payload["project_uuid"],
+                user_email=self.user.email,
+            )
+        )
+
         # Mock usecases
         self.mock_waba_sync = Mock()
         self.mock_waba_sync.sync_whatsapp_cloud_waba.return_value = {}
@@ -506,26 +552,29 @@ class CreateWhatsAppCloudTestCase(APIBaseTestCase):
 
         # Mock services
         self.mock_business_meta_service = MockBusinessMetaService()
+        self.mock_business_meta_service.register_phone_number = Mock()
         self.mock_phone_numbers_service = MockPhoneNumbersService()
         self.mock_flows_service = MockFlowsService()
+        self.mock_template_service = Mock()
+        self.mock_template_service.setup_insights.return_value = True
 
         patcher_waba_sync = patch(
-            "marketplace.core.types.channels.whatsapp_cloud.views.WABASyncUseCase",
+            "marketplace.core.types.channels.whatsapp_cloud.usecases.create_app.WABASyncUseCase",
             new=Mock(return_value=self.mock_waba_sync),
         )
 
         patcher_phone_sync = patch(
-            "marketplace.core.types.channels.whatsapp_cloud.views.PhoneNumberSyncUseCase",
+            "marketplace.core.types.channels.whatsapp_cloud.usecases.create_app.PhoneNumberSyncUseCase",
             new=Mock(return_value=self.mock_phone_sync),
         )
 
         patcher_insights_sync = patch(
-            "marketplace.core.types.channels.whatsapp_cloud.views.WhatsAppInsightsSyncUseCase",
+            "marketplace.core.types.channels.whatsapp_cloud.usecases.create_app.WhatsAppInsightsSyncUseCase",
             new=Mock(return_value=self.mock_insights_sync),
         )
 
         patcher_mmlite_sync = patch(
-            "marketplace.core.types.channels.whatsapp_cloud.views.SyncMmliteStatusUseCase",
+            "marketplace.core.types.channels.whatsapp_cloud.usecases.create_app.SyncMmliteStatusUseCase",
             new=Mock(return_value=self.mock_mmlite_sync),
         )
 
@@ -536,6 +585,10 @@ class CreateWhatsAppCloudTestCase(APIBaseTestCase):
         patcher_phone = patch(
             "marketplace.core.types.channels.whatsapp_cloud.views.PhoneNumbersService",
             new=Mock(return_value=self.mock_phone_numbers_service),
+        )
+        patcher_template = patch(
+            "marketplace.core.types.channels.whatsapp_cloud.views.TemplateService",
+            new=Mock(return_value=self.mock_template_service),
         )
         patcher_flows = patch(
             "marketplace.core.types.channels.whatsapp_cloud.views.FlowsService",
@@ -549,6 +602,7 @@ class CreateWhatsAppCloudTestCase(APIBaseTestCase):
         patcher_mmlite_sync.start()
         patcher_biz_meta.start()
         patcher_phone.start()
+        patcher_template.start()
         patcher_flows.start()
         patcher_celery.start()
 
@@ -558,6 +612,7 @@ class CreateWhatsAppCloudTestCase(APIBaseTestCase):
         self.addCleanup(patcher_mmlite_sync.stop)
         self.addCleanup(patcher_biz_meta.stop)
         self.addCleanup(patcher_phone.stop)
+        self.addCleanup(patcher_template.stop)
         self.addCleanup(patcher_flows.stop)
         self.addCleanup(patcher_celery.stop)
 
@@ -576,7 +631,7 @@ class CreateWhatsAppCloudTestCase(APIBaseTestCase):
         self.assertEqual(app.config["wa_number"], "mock_display_phone_number")
         self.assertEqual(app.config["wa_verified_name"], "mock_verified_name")
         self.assertEqual(app.config["wa_waba_id"], self.payload["waba_id"])
-        self.assertEqual(app.config["wa_currency"], "USD")
+        self.assertEqual(app.config["wa_currency"], "BRL")
         self.assertEqual(app.config["wa_business_id"], "mock_business_id")
         self.assertEqual(
             app.config["wa_message_template_namespace"],
@@ -585,6 +640,37 @@ class CreateWhatsAppCloudTestCase(APIBaseTestCase):
         self.assertEqual(len(app.config["wa_pin"]), 6)
         self.assertEqual(app.config["wa_user_token"], "mock_user_access_token")
         self.assertEqual(app.config["wa_dataset_id"], "mock_dataset_id")
+        self.mock_business_meta_service.register_phone_number.assert_called_once()
+
+    def test_create_whatsapp_cloud_skips_register_when_already_connected(self):
+        self.mock_phone_numbers_service.get_phone_number = Mock(
+            return_value={
+                "display_phone_number": "mock_display_phone_number",
+                "verified_name": "mock_verified_name",
+                "status": "CONNECTED",
+                "platform_type": "CLOUD_API",
+            }
+        )
+        self.mock_business_meta_service.configure_whatsapp_cloud = Mock(
+            return_value={
+                "user_access_token": "mock_user_access_token",
+                "business_id": "mock_business_id",
+                "message_template_namespace": "mock_message_template_namespace",
+                "allocation_config_id": "mock_allocation_config_id",
+                "dataset_id": "mock_dataset_id",
+            }
+        )
+
+        response = self.request.post(self.url, body=self.payload)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        app = App.objects.get(project_uuid=self.payload["project_uuid"])
+        self.assertIsNone(app.config["wa_pin"])
+        self.assertEqual(
+            app.config["wa_phone_number_id"], self.payload["phone_number_id"]
+        )
+        self.mock_business_meta_service.configure_whatsapp_cloud.assert_called_once()
+        self.mock_business_meta_service.register_phone_number.assert_not_called()
 
     def test_create_whatsapp_cloud_failure_on_exchange_auth_code(self):
         self.mock_business_meta_service.configure_whatsapp_cloud = Mock(
@@ -1001,7 +1087,7 @@ class UpdateMmliteStatusTestCase(APIBaseTestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
-class ListWhatsAppCloudChannelsTestCase(PermissionTestCaseMixin, APIBaseTestCase):
+class ListWhatsAppCloudChannelsTestCase(APIBaseTestCase):
     view_class = WhatsAppCloudChannelsView
 
     def setUp(self):
@@ -1011,7 +1097,7 @@ class ListWhatsAppCloudChannelsTestCase(PermissionTestCaseMixin, APIBaseTestCase
         self.other_project_uuid = str(uuid.uuid4())
         self.url = reverse("wpp-cloud-channels")
 
-        self.grant_permission(self.user, "can_communicate_internally")
+        self.request.set_auth(WeniAuthContext(project_uuid=self.project_uuid))
 
     @property
     def view(self):
@@ -1059,19 +1145,18 @@ class ListWhatsAppCloudChannelsTestCase(PermissionTestCaseMixin, APIBaseTestCase
         self.assertEqual(len(response.json), 1)
         self.assertEqual(response.json[0]["app_uuid"], str(app.uuid))
 
-    def test_list_requires_project_uuid(self):
+    def test_list_denies_when_token_has_no_project_uuid(self):
+        self.request.set_auth(WeniAuthContext())
+
         response = self.request.get(self.url)
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_list_denies_non_internal_user(self):
-        self.revoke_permission(self.user, "can_communicate_internally")
-
-        response = self.request.get(
-            self.url, params={"project_uuid": self.project_uuid}
-        )
-
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_list_allows_authenticated_jwt_user_without_internal_permission(self):
+        response = self.request.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json, [])
 
     def test_list_exposes_channel_identifiers_from_nested_config(self):
         flow_object_uuid = str(uuid.uuid4())

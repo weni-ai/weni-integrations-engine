@@ -1,3 +1,43 @@
+v4.27.0
+----------
+* feat: Enhance WhatsApp Cloud app creation process with phone number registration logic
+
+v4.26.0
+----------
+* feat: Add unavailableProductNotify field to ConfigSerializer
+
+v4.25.0
+----------
+* feat: Implement template synchronization feature in TemplateMessageViewSet
+* refactor: Enhance template synchronization logic and error handling
+
+v4.24.0
+----------
+* feat: Implement paced queue for WhatsApp synchronization tasks
+* refactor: Simplify AppConfigurationUseCase by removing channel_client dependency
+
+v4.23.2
+----------
+* fix(whatsapp_cloud): replace internal permission with ProjectManagePermission on channels view
+
+v4.23.1
+----------
+* feat(whatsapp): expose currency_migration info in config serializer
+
+v4.23.0
+----------
+* feat: Adopt weni-commons JWT authentication on channel routes
+* feat: Add CurrencyRON rule for price formatting in Romanian lei 
+
+v4.22.0
+----------
+* feat: Implement stale cache mechanism for preverified phone numbers
+* feat: Implement template category update handling in TemplateWebhookEventProcessor
+
+v4.21.1
+----------
+* fix: Update WhatsApp currency from USD to BRL across multiple components
+
 v4.21.0
 ----------
 * feat: Add internal endpoint to list WhatsApp Cloud channels by project

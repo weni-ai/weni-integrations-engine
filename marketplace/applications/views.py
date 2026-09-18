@@ -12,9 +12,14 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import views
 
+from weni_commons.auth import (
+    WeniAuthViewMixin,
+)
+
+from marketplace.accounts.permissions import ProjectManagePermission
+from marketplace.accounts.authentication import WeniModuleAuthentication
 from marketplace.applications.serializers import (
     AppTypeSerializer,
-    CheckWebChatIntegrationSerializer,
     MyAppSerializer,
 )
 from marketplace.applications.usecases.check_webchat_integration import (
@@ -24,7 +29,6 @@ from marketplace.core import types
 from marketplace.applications.models import App, AppTypeFeatured
 from marketplace.accounts.models import ProjectAuthorization
 from marketplace.accounts.permissions import is_crm_user
-from marketplace.internal.permissions import CanCommunicateInternally
 from marketplace.clients.facebook.client import FacebookClient
 from marketplace.clients.exceptions import CustomAPIException
 
@@ -117,32 +121,23 @@ class MyAppViewSet(viewsets.ReadOnlyModelViewSet):
         return queryset
 
 
-class CheckWebChatIntegrationView(views.APIView):
-    permission_classes = [CanCommunicateInternally]
+class CheckWebChatIntegrationView(WeniAuthViewMixin, views.APIView):
+    authentication_classes = [WeniModuleAuthentication]
+    permission_classes = [ProjectManagePermission]
 
     def get(self, request):
-        serializer = CheckWebChatIntegrationSerializer(data=request.query_params)
-        serializer.is_valid(raise_exception=True)
-
         use_case = CheckWebChatIntegrationUseCase()
-        result = use_case.execute(
-            project_uuid=str(serializer.validated_data["project_uuid"])
-        )
+        result = use_case.execute(project_uuid=self.auth.project_uuid)
 
         return Response(result)
 
 
-class CheckAppIsIntegrated(views.APIView):
-    permission_classes = [CanCommunicateInternally]
+class CheckAppIsIntegrated(WeniAuthViewMixin, views.APIView):
+    authentication_classes = [WeniModuleAuthentication]
+    permission_classes = [ProjectManagePermission]
 
     def get(self, request):
-        project_uuid = request.query_params.get("project_uuid", None)
-
-        if not project_uuid:
-            return Response(
-                {"error": "project_uuid is required on query params"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        project_uuid = self.auth.project_uuid
 
         apps = App.objects.filter(code="wpp-cloud", project_uuid=project_uuid)
 
@@ -170,56 +165,77 @@ class CheckAppIsIntegrated(views.APIView):
         )
 
 
-class PreverifiedPhoneNumber(views.APIView):
+class PreverifiedPhoneNumber(WeniAuthViewMixin, views.APIView):
     """
     Returns a random pre-verified phone number from the BSP business for
-    embedded signup. Cache stores the list from Meta plus IDs already chosen
-    in the last 5 minutes, so we avoid returning the same number twice in that
-    window (e.g. concurrent requests). After 5 min the cache is rebuilt from Meta.
+    embedded signup.
+
+    Primary cache (30 minutes TTL): stores the list from Meta plus the IDs already
+    chosen in that window, so the same number is never handed out twice within
+    that period. After 30 minutes the cache is rebuilt from Meta.
+
+    Stale cache (24 hour TTL): keeps the last known list as a fallback. If Meta
+    is unavailable when the primary cache expires, the stale is used so the
+    popup can still open. chosen_ids are synced to the stale on every pick,
+    keeping the available pool accurate even when the fallback is in use.
     """
 
-    permission_classes = [CanCommunicateInternally]
+    authentication_classes = [WeniModuleAuthentication]
+    permission_classes = [ProjectManagePermission]
     CACHE_KEY = "preverified_numbers"
-    CACHE_TTL_SECONDS = 300  # 5 minutes
+    STALE_CACHE_KEY = "preverified_numbers_stale"
+    CACHE_TTL_SECONDS = 1800  # 30 minutes
+    STALE_CACHE_TTL_SECONDS = 86400  # 24 hours
+
+    def _fetch_from_meta(self):
+        client = FacebookClient(django_settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
+        return client.get_preverified_numbers()
+
+    def _build_error_response(self, e):
+        meta_status = getattr(e, "status_code", None)
+        meta_detail = e.detail
+        if not isinstance(meta_detail, dict):
+            default_msg = "Failed to fetch preverified numbers from Meta"
+            raw = meta_detail if meta_detail is None else str(meta_detail).strip()
+            if raw in (None, "", "A server error occurred."):
+                raw = default_msg
+            meta_detail = {"error": raw}
+        if meta_status == 429:
+            return Response(meta_detail, status=status.HTTP_429_TOO_MANY_REQUESTS)
+        return Response(meta_detail, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def get(self, request):
         cached = cache.get(self.CACHE_KEY)
         now = timezone.now()
         if cached is None or (cached.get("expires_at") and now > cached["expires_at"]):
             try:
-                client = FacebookClient(
-                    django_settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN
-                )
-                response = client.get_preverified_numbers()
+                response = self._fetch_from_meta()
             except CustomAPIException as e:
-                meta_status = getattr(e, "status_code", None)
-                meta_detail = e.detail
-                if not isinstance(meta_detail, dict):
-                    default_msg = "Failed to fetch preverified numbers from Meta"
-                    raw = meta_detail if meta_detail is None else str(meta_detail).strip()
-                    if raw in (None, "", "A server error occurred."):
-                        raw = default_msg
-                    meta_detail = {"error": raw}
-                if meta_status == 429:
-                    return Response(meta_detail, status=status.HTTP_429_TOO_MANY_REQUESTS)
-                if meta_status == 500:
-                    return Response(meta_detail, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-                return Response(
-                    meta_detail,
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                )
+                stale = cache.get(self.STALE_CACHE_KEY)
+                if stale:
+                    cached = stale
+                else:
+                    return self._build_error_response(e)
             except Exception:
-                return Response(
-                    {"error": "Internal server error"},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                stale = cache.get(self.STALE_CACHE_KEY)
+                if stale:
+                    cached = stale
+                else:
+                    return Response(
+                        {"error": "Internal server error"},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    )
+            else:
+                data_list = response.get("data") or []
+                cached = {
+                    "data_list": data_list,
+                    "chosen_ids": [],
+                    "expires_at": now + timedelta(seconds=self.CACHE_TTL_SECONDS),
+                }
+                cache.set(self.CACHE_KEY, cached, timeout=self.CACHE_TTL_SECONDS + 60)
+                cache.set(
+                    self.STALE_CACHE_KEY, cached, timeout=self.STALE_CACHE_TTL_SECONDS
                 )
-            data_list = response.get("data") or []
-            cached = {
-                "data_list": data_list,
-                "chosen_ids": [],
-                "expires_at": now + timedelta(seconds=self.CACHE_TTL_SECONDS),
-            }
-            cache.set(self.CACHE_KEY, cached, timeout=self.CACHE_TTL_SECONDS + 60)
 
         data_list = cached.get("data_list") or []
         chosen_ids = set(cached.get("chosen_ids") or [])
@@ -231,10 +247,16 @@ class PreverifiedPhoneNumber(views.APIView):
         chosen = random.choice(available)
         chosen_id = chosen["id"]
         chosen_ids.add(chosen_id)
+        updated_cache = {**cached, "chosen_ids": list(chosen_ids)}
         remaining = getattr(cache, "ttl", lambda k: None)(self.CACHE_KEY)
         cache.set(
             self.CACHE_KEY,
-            {**cached, "chosen_ids": list(chosen_ids)},
-            timeout=remaining if remaining and remaining > 0 else self.CACHE_TTL_SECONDS + 60,
+            updated_cache,
+            timeout=remaining
+            if remaining and remaining > 0
+            else self.CACHE_TTL_SECONDS + 60,
+        )
+        cache.set(
+            self.STALE_CACHE_KEY, updated_cache, timeout=self.STALE_CACHE_TTL_SECONDS
         )
         return Response({"data": [chosen_id]}, status=status.HTTP_200_OK)

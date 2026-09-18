@@ -4,6 +4,8 @@ from unittest.mock import patch
 from django.urls import reverse
 from rest_framework import status
 
+from weni_commons.auth import WeniAuthContext
+
 from marketplace.core.tests.base import APIBaseTestCase
 from marketplace.core.tests.mixis.permissions import PermissionTestCaseMixin
 from ..views import WhatsAppDemoViewSet
@@ -147,6 +149,59 @@ class CreateWhatsAppDemoAppTestCase(PermissionTestCaseMixin, APIBaseTestCase):
 
         response = self.request.post(self.url, self.body)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class GetOrCreateWhatsAppDemoAppTestCase(PermissionTestCaseMixin, APIBaseTestCase):
+    url = reverse("wpp-demo-app-get-or-create")
+    view_class = WhatsAppDemoViewSet
+
+    def setUp(self):
+        super().setUp()
+        self.project_uuid = str(uuid.uuid4())
+
+        self.user_authorization = self.user.authorizations.create(
+            project_uuid=self.project_uuid, role=ProjectAuthorization.ROLE_CONTRIBUTOR
+        )
+        # Tenant scope comes from the signed token, not the request body.
+        self.request.set_auth(WeniAuthContext(project_uuid=self.project_uuid))
+
+        self.app = App.objects.create(
+            code="wpp-demo",
+            config={},
+            project_uuid=self.project_uuid,
+            platform=App.PLATFORM_WENI_FLOWS,
+            created_by=self.user,
+            flow_object_uuid=uuid.uuid4(),
+        )
+
+        self.use_case_patcher = patch(
+            "marketplace.core.types.channels.whatsapp_demo.views."
+            "EnsureWhatsAppDemoAppUseCase"
+        )
+        self.mock_use_case_class = self.use_case_patcher.start()
+        self.mock_use_case_class.return_value.get_or_create.return_value = self.app
+        self.addCleanup(self.use_case_patcher.stop)
+
+    @property
+    def view(self):
+        return self.view_class.as_view({"post": "get_or_create"})
+
+    def test_reads_tenant_from_token_and_returns_app(self):
+        response = self.request.post(self.url, body={})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json["uuid"], str(self.app.uuid))
+        self.mock_use_case_class.assert_called_once_with(
+            project_uuid=self.project_uuid, user=self.user
+        )
+
+    def test_denies_when_token_has_no_project_uuid(self):
+        self.request.set_auth(WeniAuthContext())
+
+        response = self.request.post(self.url, body={})
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.mock_use_case_class.assert_not_called()
 
 
 class RetrieveWhatsAppDemoAppTestCase(APIBaseTestCase):
