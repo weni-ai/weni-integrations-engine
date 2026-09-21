@@ -37,6 +37,7 @@ ALLOWED_TEMPLATE_WEBHOOK_EVENTS = frozenset(
     }
 )
 
+
 def _resolve_waba_id(app: App):
     waba = app.config.get("waba") or {}
     return app.config.get("wa_waba_id") or waba.get("id")
