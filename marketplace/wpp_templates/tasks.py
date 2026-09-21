@@ -274,6 +274,11 @@ def sync_pending_templates(app_uuid: str):
 def task_sync_templates_from_meta(app_uuid: str):
     try:
         app = App.objects.get(uuid=app_uuid)
+    except App.DoesNotExist:
+        logger.error(f"App {app_uuid} not found.")
+        return
+
+    try:
         TemplateSyncUseCase(app).sync_templates()
     except Exception as e:
         logger.error(f"Error syncing templates from Meta for app {app_uuid}: {e}")

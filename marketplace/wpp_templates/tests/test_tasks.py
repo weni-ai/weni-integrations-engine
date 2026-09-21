@@ -206,8 +206,7 @@ class TestTaskSyncTemplatesFromMeta(SimpleTestCase):
         task_sync_templates_from_meta("missing-uuid")
 
         mock_sync_cls.assert_not_called()
-        mock_logger.error.assert_called_once()
-        self.assertIn("missing-uuid", mock_logger.error.call_args.args[0])
+        mock_logger.error.assert_called_once_with("App missing-uuid not found.")
 
     @patch("marketplace.wpp_templates.tasks.logger")
     @patch("marketplace.wpp_templates.tasks.TemplateSyncUseCase")
