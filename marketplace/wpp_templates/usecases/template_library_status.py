@@ -8,6 +8,9 @@ from marketplace.applications.models import App
 from marketplace.clients.commerce.client import CommerceClient
 from marketplace.services.commerce.service import CommerceService
 from marketplace.wpp_templates.usecases.template_sync import TemplateSyncUseCase
+from marketplace.wpp_templates.usecases.template_sync_scheduler import (
+    TemplateSyncScheduler,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -23,6 +26,7 @@ class TemplateLibraryStatusUseCase:
         app: App,
         redis_conn: Optional[Any] = None,
         commerce_service: Optional[CommerceService] = None,
+        sync_scheduler: Optional[TemplateSyncScheduler] = None,
     ):
         self.app = app
         self.redis_conn = (
@@ -30,6 +34,7 @@ class TemplateLibraryStatusUseCase:
         )
         self.redis_key = f"template_status:{str(self.app.uuid)}"
         self.commerce_service = commerce_service or CommerceService(CommerceClient())
+        self.sync_scheduler = sync_scheduler or TemplateSyncScheduler()
 
     def update_template_status(self, template_name: str, new_status: str):
         """
@@ -87,7 +92,7 @@ class TemplateLibraryStatusUseCase:
         Completes the synchronization process if no templates are pending.
 
         This method checks if there are any templates with PENDING status.
-        If all templates are processed (not PENDING), it syncs with Facebook,
+        If all templates are processed (not PENDING), it schedules a Meta sync,
         notifies the commerce module, and cleans up the Redis storage.
 
         Args:
@@ -102,9 +107,9 @@ class TemplateLibraryStatusUseCase:
         if not has_pending:
             if not skip_facebook_sync:
                 logger.info(
-                    f"No pending templates found. Syncing from Facebook for app {self.app.uuid}"
+                    f"No pending templates found. Scheduling Meta sync for app {self.app.uuid}"
                 )
-                self.sync_templates_from_facebook(self.app)
+                self.sync_scheduler.schedule(str(self.app.uuid))
 
             self.notify_commerce_module(template_statuses)
             self.redis_conn.delete(self.redis_key)

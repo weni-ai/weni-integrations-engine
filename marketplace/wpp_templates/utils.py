@@ -7,8 +7,9 @@ from django.db.models import Q
 
 from marketplace.applications.models import App
 from .models import TemplateMessage, TemplateTranslation
-
-from marketplace.wpp_templates.usecases.template_sync import TemplateSyncUseCase
+from marketplace.wpp_templates.usecases.template_sync_scheduler import (
+    TemplateSyncScheduler,
+)
 
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -25,11 +26,13 @@ class TemplateStatusUpdateHandler:
         flows_service: "FlowsService",
         commerce_service: "CommerceService",
         status_use_case_factory: Callable[[App], "TemplateLibraryStatusUseCase"],
+        sync_scheduler: Optional[TemplateSyncScheduler] = None,
         logger: Optional[logging.Logger] = None,
     ):
         self.flows_service = flows_service
         self.commerce_service = commerce_service
         self.status_use_case_factory = status_use_case_factory
+        self.sync_scheduler = sync_scheduler or TemplateSyncScheduler()
         self.logger = logger or logging.getLogger(__name__)
 
     def handle(
@@ -50,7 +53,6 @@ class TemplateStatusUpdateHandler:
         """
 
         status_changed = False
-        # Check if the status has changed; update locally if needed
         if translation.status != status:
             before_status = translation.status
             translation.status = status
@@ -68,43 +70,12 @@ class TemplateStatusUpdateHandler:
                 f"Proceeding with external notifications."
             )
 
-        # Always notify Commerce if gallery version is defined
         if template.gallery_version:
-            try:
-                # Sync templates to ensure the latest version is used
-                TemplateSyncUseCase(app).sync_templates()
-
-                self.commerce_service.send_gallery_template_version(
-                    gallery_version_uuid=str(template.gallery_version), status=status
-                )
-                self.logger.info(
-                    f"[Commerce] Gallery version {template.gallery_version} for template: {template.name}, "
-                    f"translation: {translation.language}, status: {status} sent successfully."
-                )
-            except Exception as e:
-                self.logger.error(
-                    f"[Commerce] Failed to send gallery version for template: {template.name}, "
-                    f"translation: {translation.language}, status: {status}, error: {e}"
-                )
+            self._notify_commerce(template, translation, status)
+            self.sync_scheduler.schedule(str(app.uuid))
         else:
-            try:
-                # Prepare template data for Flows
-                template_data = extract_template_data(translation)
-                # Notify Flows
-                self.flows_service.update_facebook_templates_webhook(
-                    flow_object_uuid=str(app.flow_object_uuid),
-                    template_data=template_data,
-                    template_name=template.name,
-                    webhook=webhook,
-                )
-                self.logger.info("[Flows] Template update sent to Flows.")
-            except Exception as e:
-                self.logger.error(
-                    f"[Flows] Failed to send template update: {template.name}, "
-                    f"translation: {translation.language}, error: {e}"
-                )
+            self._notify_flows(app, template, translation, webhook)
 
-        # Always update local use case (even if status didn't change)
         try:
             use_case = self.status_use_case_factory(app)
             use_case.update_template_status(
@@ -118,12 +89,53 @@ class TemplateStatusUpdateHandler:
                 f"[StatusSync] Failed to update template library status for: {template.name}. Error: {e}"
             )
 
-        # Final log if status was already up to date
         if not status_changed:
             self.logger.info(
                 f"The template: {template.name}, translation: {translation.language}, "
                 f"translation ID: {translation.message_template_id}, "
                 f"was notified again with same status: {status}."
+            )
+
+    def _notify_commerce(
+        self,
+        template: TemplateMessage,
+        translation: TemplateTranslation,
+        status: str,
+    ) -> None:
+        try:
+            self.commerce_service.send_gallery_template_version(
+                gallery_version_uuid=str(template.gallery_version), status=status
+            )
+            self.logger.info(
+                f"[Commerce] Gallery version {template.gallery_version} for template: {template.name}, "
+                f"translation: {translation.language}, status: {status} sent successfully."
+            )
+        except Exception as e:
+            self.logger.error(
+                f"[Commerce] Failed to send gallery version for template: {template.name}, "
+                f"translation: {translation.language}, status: {status}, error: {e}"
+            )
+
+    def _notify_flows(
+        self,
+        app: App,
+        template: TemplateMessage,
+        translation: TemplateTranslation,
+        webhook: dict,
+    ) -> None:
+        try:
+            template_data = extract_template_data(translation)
+            self.flows_service.update_facebook_templates_webhook(
+                flow_object_uuid=str(app.flow_object_uuid),
+                template_data=template_data,
+                template_name=template.name,
+                webhook=webhook,
+            )
+            self.logger.info("[Flows] Template update sent to Flows.")
+        except Exception as e:
+            self.logger.error(
+                f"[Flows] Failed to send template update: {template.name}, "
+                f"translation: {translation.language}, error: {e}"
             )
 
 
@@ -199,18 +211,39 @@ class TemplateWebhookEventProcessor:
         template_language = value.get("message_template_language")
         message_template_id = value.get("message_template_id")
 
+        if message_template_id is None:
+            self.logger.warning(
+                f"Webhook status update missing message_template_id for "
+                f"template={template_name!r} language={template_language!r} "
+                f"status={status!r} waba_id={waba_id}"
+            )
+
         for app in apps:
             try:
                 template = TemplateMessage.objects.filter(
                     app=app, name=template_name
                 ).first()
                 if not template:
+                    self.logger.warning(
+                        f"Dropping status update: template not found. "
+                        f"app={app.uuid} waba_id={waba_id} "
+                        f"template={template_name!r} status={status!r}"
+                    )
                     continue
 
                 translations = template.translations.filter(
                     language=template_language,
                     message_template_id=message_template_id,
                 )
+                if not translations:
+                    self.logger.warning(
+                        f"Dropping status update: no matching translation. "
+                        f"app={app.uuid} waba_id={waba_id} "
+                        f"template={template_name!r} language={template_language!r} "
+                        f"message_template_id={message_template_id!r} status={status!r}"
+                    )
+                    continue
+
                 for translation in translations:
                     self.status_update_handler.handle(
                         app=app,
@@ -221,7 +254,8 @@ class TemplateWebhookEventProcessor:
                     )
             except Exception as e:
                 self.logger.error(
-                    f"Unexpected error processing template status update for App {str(app.uuid)}: {e}"
+                    f"Unexpected error processing template status update for App {str(app.uuid)}: {e}",
+                    exc_info=True,
                 )
 
     def process_template_category_change(self, waba_id: str, value: dict) -> None:
