@@ -143,21 +143,28 @@ class TestTemplateStatusUpdateHandler(TestCase):
             f"[StatusSync] Failed to update template library status for: {self.template.name}. Error: Sync error"
         )
 
-    def test_commerce_notified_even_when_scheduler_raises(self):
+    def test_scheduler_failure_does_not_block_status_sync(self):
         self.mock_scheduler.schedule.side_effect = Exception("schedule error")
 
-        with self.assertRaises(Exception):
-            self.handler.handle(
-                app=self.app,
-                template=self.template,
-                translation=self.translation,
-                status="APPROVED",
-                webhook={"webhook": "info"},
-            )
+        self.handler.handle(
+            app=self.app,
+            template=self.template,
+            translation=self.translation,
+            status="APPROVED",
+            webhook={"webhook": "info"},
+        )
 
         self.mock_commerce.send_gallery_template_version.assert_called_once_with(
             gallery_version_uuid="v1", status="APPROVED"
         )
+        self.mock_logger.error.assert_any_call(
+            "[Scheduler] Failed to schedule sync for app app-uuid-123: schedule error"
+        )
+        self.mock_use_case.update_template_status.assert_called_once_with(
+            template_name="order_confirmation",
+            new_status="APPROVED",
+        )
+        self.mock_use_case.synchronize_all_stored_templates.assert_called_once()
 
 
 User = get_user_model()
@@ -175,6 +182,7 @@ class TemplateStatusUpdateGalleryPreservationTestCase(DjangoTestCase):
         self.mock_commerce = MagicMock()
         self.mock_use_case = MagicMock()
         self.mock_logger = MagicMock()
+        self.mock_scheduler = MagicMock()
 
         self.app = App.objects.create(
             config={"wa_waba_id": "waba-gallery", "wa_user_token": "test-token"},
@@ -208,6 +216,7 @@ class TemplateStatusUpdateGalleryPreservationTestCase(DjangoTestCase):
             flows_service=self.mock_flows,
             commerce_service=self.mock_commerce,
             status_use_case_factory=lambda app: self.mock_use_case,
+            sync_scheduler=self.mock_scheduler,
             logger=self.mock_logger,
         )
 
@@ -268,3 +277,4 @@ class TemplateStatusUpdateGalleryPreservationTestCase(DjangoTestCase):
         )
         self.mock_flows.update_facebook_templates_webhook.assert_not_called()
         self.mock_commerce.send_gallery_template_version.assert_called_once()
+        self.mock_scheduler.schedule.assert_called_once_with(str(self.app.uuid))
