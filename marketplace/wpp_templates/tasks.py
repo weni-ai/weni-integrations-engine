@@ -20,6 +20,9 @@ from marketplace.wpp_templates.usecases.template_library_status import (
     TemplateLibraryStatusUseCase,
 )
 from marketplace.wpp_templates.usecases.template_sync import TemplateSyncUseCase
+from marketplace.wpp_templates.usecases.template_sync_scheduler import (
+    TemplateSyncScheduler,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -272,13 +275,17 @@ def sync_pending_templates(app_uuid: str):
 
 @shared_task(track_started=True, name="task_sync_templates_from_meta")
 def task_sync_templates_from_meta(app_uuid: str):
+    scheduler = TemplateSyncScheduler()
     try:
-        app = App.objects.get(uuid=app_uuid)
-    except App.DoesNotExist:
-        logger.error(f"App {app_uuid} not found.")
-        return
+        try:
+            app = App.objects.get(uuid=app_uuid)
+        except App.DoesNotExist:
+            logger.error(f"App {app_uuid} not found.")
+            return
 
-    try:
-        TemplateSyncUseCase(app).sync_templates()
-    except Exception as e:
-        logger.error(f"Error syncing templates from Meta for app {app_uuid}: {e}")
+        try:
+            TemplateSyncUseCase(app).sync_templates()
+        except Exception as e:
+            logger.error(f"Error syncing templates from Meta for app {app_uuid}: {e}")
+    finally:
+        scheduler.finish(app_uuid)

@@ -23,8 +23,14 @@ class TemplateSyncScheduler:
         )
 
     def schedule(self, app_uuid: str) -> bool:
-        key = f"template_sync_scheduled:{app_uuid}"
-        if not self.redis_conn.set(key, "1", nx=True, ex=self.debounce_seconds):
+        reservation_ttl = self._reservation_ttl()
+        if not self.redis_conn.set(
+            self._scheduled_key(app_uuid),
+            "1",
+            nx=True,
+            ex=reservation_ttl,
+        ):
+            self._mark_rerun(app_uuid, reservation_ttl)
             logger.info(
                 f"Template sync already scheduled for app {app_uuid}, skipping."
             )
@@ -36,3 +42,24 @@ class TemplateSyncScheduler:
             countdown=self.debounce_seconds,
         )
         return True
+
+    def finish(self, app_uuid: str) -> None:
+        """Releases the reservation. When a webhook arrived while it was held,
+        schedules one follow-up sync."""
+        self.redis_conn.delete(self._scheduled_key(app_uuid))
+        if self.redis_conn.delete(self._rerun_key(app_uuid)):
+            self.schedule(app_uuid)
+
+    def _reservation_ttl(self) -> int:
+        """Outlives the Celery countdown so the key is still held when the
+        task becomes due. finish() deletes it as soon as the sync ends."""
+        return self.debounce_seconds * 2
+
+    def _mark_rerun(self, app_uuid: str, reservation_ttl: int) -> None:
+        self.redis_conn.set(self._rerun_key(app_uuid), "1", ex=reservation_ttl)
+
+    def _scheduled_key(self, app_uuid: str) -> str:
+        return f"template_sync_scheduled:{app_uuid}"
+
+    def _rerun_key(self, app_uuid: str) -> str:
+        return f"template_sync_rerun:{app_uuid}"
