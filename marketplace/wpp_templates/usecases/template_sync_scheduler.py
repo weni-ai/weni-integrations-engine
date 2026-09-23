@@ -9,6 +9,22 @@ from marketplace.celery import app as celery_app
 
 logger = logging.getLogger(__name__)
 
+# Consumes the rerun flag without releasing the reservation first. Releasing
+# it and then calling schedule() lets a webhook win the NX key and mark
+# another rerun, which queues a sync the follow-up task already covers.
+_CLAIM_FOLLOW_UP_SCRIPT = """
+local scheduled_key = KEYS[1]
+local rerun_key = KEYS[2]
+local ttl = tonumber(ARGV[1])
+
+if redis.call('DEL', rerun_key) == 1 then
+  redis.call('SET', scheduled_key, '1', 'EX', ttl)
+  return 1
+end
+redis.call('DEL', scheduled_key)
+return 0
+"""
+
 
 class TemplateSyncScheduler:
     """Coalesces Meta template-sync requests so a burst of status webhooks
@@ -36,23 +52,36 @@ class TemplateSyncScheduler:
             )
             return False
 
+        self._enqueue(app_uuid)
+        return True
+
+    def finish(self, app_uuid: str) -> None:
+        """Releases the reservation. When a webhook arrived while it was held,
+        keeps the reservation and enqueues one follow-up sync."""
+        if self._claim_follow_up(app_uuid):
+            self._enqueue(app_uuid)
+
+    def _enqueue(self, app_uuid: str) -> None:
         celery_app.send_task(
             name="task_sync_templates_from_meta",
             kwargs={"app_uuid": app_uuid},
             countdown=self.debounce_seconds,
         )
-        return True
 
-    def finish(self, app_uuid: str) -> None:
-        """Releases the reservation. When a webhook arrived while it was held,
-        schedules one follow-up sync."""
-        self.redis_conn.delete(self._scheduled_key(app_uuid))
-        if self.redis_conn.delete(self._rerun_key(app_uuid)):
-            self.schedule(app_uuid)
+    def _claim_follow_up(self, app_uuid: str) -> bool:
+        claimed = self.redis_conn.eval(
+            _CLAIM_FOLLOW_UP_SCRIPT,
+            2,
+            self._scheduled_key(app_uuid),
+            self._rerun_key(app_uuid),
+            self._reservation_ttl(),
+        )
+        return bool(claimed)
 
     def _reservation_ttl(self) -> int:
         """Outlives the Celery countdown so the key is still held when the
-        task becomes due. finish() deletes it as soon as the sync ends."""
+        task becomes due. finish() releases it when the sync ends, unless
+        it claims a follow-up."""
         return self.debounce_seconds * 2
 
     def _mark_rerun(self, app_uuid: str, reservation_ttl: int) -> None:
