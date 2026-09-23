@@ -1,3 +1,8 @@
+v4.28.0
+----------
+* fix(wpp_templates): isolate webhook change processing and improve error logging
+* feat(wpp_templates): debounce Meta template sync with Redis-backed scheduler
+
 v4.27.0
 ----------
 * feat: Enhance WhatsApp Cloud app creation process with phone number registration logic
