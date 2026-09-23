@@ -70,7 +70,7 @@ class TemplateStatusUpdateHandler:
 
         if template.gallery_version:
             self._notify_commerce(template, translation, status)
-            self.sync_scheduler.schedule(str(app.uuid))
+            self._schedule_sync(app)
         else:
             self._notify_flows(app, template, translation, webhook)
 
@@ -92,6 +92,15 @@ class TemplateStatusUpdateHandler:
                 f"The template: {template.name}, translation: {translation.language}, "
                 f"translation ID: {translation.message_template_id}, "
                 f"was notified again with same status: {status}."
+            )
+
+    def _schedule_sync(self, app: App) -> None:
+        """Keep a Redis or broker failure from aborting the rest of the webhook."""
+        try:
+            self.sync_scheduler.schedule(str(app.uuid))
+        except Exception as e:
+            self.logger.error(
+                f"[Scheduler] Failed to schedule sync for app {app.uuid}: {e}"
             )
 
     def _notify_commerce(

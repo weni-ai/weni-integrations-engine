@@ -132,18 +132,25 @@ class TestTemplateStatusUpdateHandler(TestCase):
             f"[StatusSync] Failed to update template library status for: {self.template.name}. Error: Sync error"
         )
 
-    def test_commerce_notified_even_when_scheduler_raises(self):
+    def test_scheduler_failure_does_not_block_status_sync(self):
         self.mock_scheduler.schedule.side_effect = Exception("schedule error")
 
-        with self.assertRaises(Exception):
-            self.handler.handle(
-                app=self.app,
-                template=self.template,
-                translation=self.translation,
-                status="APPROVED",
-                webhook={"webhook": "info"},
-            )
+        self.handler.handle(
+            app=self.app,
+            template=self.template,
+            translation=self.translation,
+            status="APPROVED",
+            webhook={"webhook": "info"},
+        )
 
         self.mock_commerce.send_gallery_template_version.assert_called_once_with(
             gallery_version_uuid="v1", status="APPROVED"
         )
+        self.mock_logger.error.assert_any_call(
+            "[Scheduler] Failed to schedule sync for app app-uuid-123: schedule error"
+        )
+        self.mock_use_case.update_template_status.assert_called_once_with(
+            template_name="order_confirmation",
+            new_status="APPROVED",
+        )
+        self.mock_use_case.synchronize_all_stored_templates.assert_called_once()
