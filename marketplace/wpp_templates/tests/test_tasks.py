@@ -422,6 +422,41 @@ class TestUpdateTemplatesByWebhook(SimpleTestCase):
 
         processor.process_event.assert_not_called()
 
+    @patch("marketplace.wpp_templates.tasks.logger")
+    @patch("marketplace.wpp_templates.tasks.create_template_webhook_event_processor")
+    def test_non_dict_value_is_logged_and_following_changes_still_process(
+        self, mock_factory, mock_logger
+    ):
+        processor = MagicMock()
+        mock_factory.return_value = processor
+        good_change = _status_change("good")
+
+        webhook_data = {
+            "entry": [
+                {
+                    "id": "waba-1",
+                    "changes": [
+                        {
+                            "field": "message_template_status_update",
+                            "value": "not-a-dict",
+                        },
+                        good_change,
+                    ],
+                }
+            ]
+        }
+
+        update_templates_by_webhook(webhook_data=webhook_data)
+
+        processor.process_event.assert_called_once_with(
+            "waba-1",
+            good_change["value"],
+            "message_template_status_update",
+            webhook_data,
+        )
+        mock_logger.error.assert_called_once()
+        self.assertTrue(mock_logger.error.call_args.kwargs.get("exc_info"))
+
     @patch("marketplace.wpp_templates.tasks.create_template_webhook_event_processor")
     def test_reason_none_is_normalized_to_empty_string_before_dispatch(
         self, mock_factory

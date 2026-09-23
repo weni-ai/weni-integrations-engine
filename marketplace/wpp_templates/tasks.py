@@ -66,10 +66,9 @@ def _process_webhook_change(processor, waba_id, change, webhook_data) -> None:
         )
         return
 
-    if value.get("reason") is None:
-        value["reason"] = ""
-
     try:
+        if value.get("reason") is None:
+            value["reason"] = ""
         processor.process_event(waba_id, value, field, webhook_data)
     except Exception as e:
         logger.error(
