@@ -165,6 +165,7 @@ class TemplateService:
         category: str,
         components: List[Any],
         language: str,
+        parameter_format: Optional[str] = None,
     ) -> Dict[str, Any]:
         return self.client.create_template_message(
             waba_id=waba_id,
@@ -172,6 +173,7 @@ class TemplateService:
             category=category,
             components=self._clean_components(components),
             language=language,
+            parameter_format=parameter_format,
         )
 
     def get_template_analytics(

@@ -29,7 +29,13 @@ class BusinessProfileHandlerInterface(ABC):
 class TemplatesRequestsInterface(ABC):
     @abstractmethod
     def create_template_message(
-        self, waba_id: str, name: str, category: str, components: list, language: str
+        self,
+        waba_id: str,
+        name: str,
+        category: str,
+        components: list,
+        language: str,
+        parameter_format: Optional[str] = None,
     ) -> Dict[str, Any]:
         pass
 

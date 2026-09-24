@@ -70,7 +70,10 @@ class MockClient:
         else:
             return False
 
-    def create_template_message(self, waba_id, name, category, components, language):
+    def create_template_message(
+        self, waba_id, name, category, components, language, parameter_format=None
+    ):
+        self.last_create_parameter_format = parameter_format
         return {"id": "template_id"}
 
     def get_template_analytics(self, waba_id, fields):
@@ -331,6 +334,18 @@ class TestTemplateService(TestCase):
             "waba_id", "name", "category", ["components"], "language"
         )
         self.assertEqual(response, {"id": "template_id"})
+        self.assertIsNone(self.client.last_create_parameter_format)
+
+        named = self.service.create_template_message(
+            "waba_id",
+            "name",
+            "category",
+            ["components"],
+            "language",
+            parameter_format="named",
+        )
+        self.assertEqual(named, {"id": "template_id"})
+        self.assertEqual(self.client.last_create_parameter_format, "named")
 
     def test_enable_template_insights(self):
         response = self.service.enable_template_insights("waba_id")

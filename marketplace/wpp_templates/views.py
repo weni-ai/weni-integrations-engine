@@ -5,7 +5,6 @@ import pytz
 import dataclasses
 
 from django.contrib.auth import get_user_model
-from django.conf import settings
 from django.core.exceptions import ValidationError
 
 from rest_framework import viewsets
@@ -25,6 +24,11 @@ from marketplace.accounts.permissions import ProjectManagePermission
 from marketplace.celery import app as celery_app
 
 from .models import TemplateHeader, TemplateMessage, TemplateTranslation, TemplateButton
+from .parameters import (
+    PARAMETER_FORMAT_NAMED,
+    detect_authoring_format,
+    extract_named_placeholders,
+)
 from .serializers import TemplateMessageSerializer, TemplateTranslationSerializer
 from .languages import LANGUAGES
 from .usecases import TemplateDetailUseCase
@@ -39,9 +43,18 @@ from marketplace.wpp_templates.usecases.template_sync import (
     TemplateSyncUseCase,
 )
 
-WHATSAPP_VERSION = settings.WHATSAPP_VERSION
-
 User = get_user_model()
+
+
+def _rederive_named_params_from_submitted_body(translation, submitted_body):
+    if detect_authoring_format(submitted_body) != PARAMETER_FORMAT_NAMED:
+        return
+    names = extract_named_placeholders(submitted_body)
+    translation.body_named_params = [
+        {"param_name": name, "example": None} for name in names
+    ]
+    translation.variable_count = len(names)
+    translation.parameter_anomaly = None
 
 
 class CustomResultsPagination(PageNumberPagination):
@@ -235,8 +248,10 @@ class TemplateMessageViewSet(viewsets.ModelViewSet):
             list_components.append(header)
 
         if body:
+            submitted_body = body.get("text")
             list_components.append(data.get("body"))
-            translation.body = body.get("text")
+            translation.body = submitted_body
+            _rederive_named_params_from_submitted_body(translation, submitted_body)
 
         if footer:
             list_components.append(data.get("footer"))

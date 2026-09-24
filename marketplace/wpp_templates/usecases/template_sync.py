@@ -1,18 +1,19 @@
 import logging
 from datetime import datetime, timedelta, timezone as dt_timezone
 
-from marketplace.clients.flows.client import FlowsClient
+from django.utils import timezone
+
 from marketplace.clients.facebook.client import FacebookClient
+from marketplace.clients.flows.client import FlowsClient
 from marketplace.services.facebook.service import TemplateService
+from marketplace.wpp_templates.error_handlers import handle_error_and_update_config
 from marketplace.wpp_templates.models import (
     TemplateButton,
     TemplateHeader,
     TemplateMessage,
     TemplateTranslation,
 )
-from django.utils import timezone
-
-from marketplace.wpp_templates.error_handlers import handle_error_and_update_config
+from marketplace.wpp_templates.parameters import build_translation_parameters
 from marketplace.wpp_templates.template_helpers import extract_body_example
 
 TEMPLATES_LAST_SYNCED_AT_KEY = "templates_last_synced_at"
@@ -71,9 +72,7 @@ class TemplateSyncUseCase:
 
     @classmethod
     def get_sync_status(cls, app):
-        return {
-            "last_synced_at": (app.config or {}).get(TEMPLATES_LAST_SYNCED_AT_KEY)
-        }
+        return {"last_synced_at": (app.config or {}).get(TEMPLATES_LAST_SYNCED_AT_KEY)}
 
     @classmethod
     def request_sync(cls, app):
@@ -100,9 +99,7 @@ class TemplateSyncUseCase:
             )
 
         app.refresh_from_db()
-        return {
-            "last_synced_at": (app.config or {}).get(TEMPLATES_LAST_SYNCED_AT_KEY)
-        }
+        return {"last_synced_at": (app.config or {}).get(TEMPLATES_LAST_SYNCED_AT_KEY)}
 
     @staticmethod
     def _parse_last_synced_at(last_synced_at):
@@ -216,17 +213,23 @@ class TemplateSyncUseCase:
                     template=found_template,
                     language=template.get("language"),
                 )
+                parameters = build_translation_parameters(template)
+
                 returned_translation.body = body
                 returned_translation.body_example = body_example
                 returned_translation.footer = footer
                 returned_translation.status = template.get("status")
-                returned_translation.variable_count = 0
+                returned_translation.parameter_format = parameters.parameter_format
+                returned_translation.body_named_params = parameters.body_named_params
+                returned_translation.parameter_anomaly = parameters.anomaly
+                returned_translation.variable_count = parameters.variable_count
                 returned_translation.message_template_id = template.get("id")
                 returned_translation.save()
+                if parameters.anomaly:
+                    self._log_parameter_anomaly(template, parameters.anomaly)
                 logger.info(
                     f"Translation saved with status: {returned_translation.status}, "
-                    f"ID: {returned_translation.message_template_id} and "
-                    f"body_example: {returned_translation.body_example}"
+                    f"ID: {returned_translation.message_template_id}"
                 )
 
                 for translation in template.get("components"):
@@ -272,6 +275,14 @@ class TemplateSyncUseCase:
         self._mark_templates_synced()
         logger.info(f"Task sync_templates completed for app {str(self.app.uuid)}")
         return True
+
+    def _log_parameter_anomaly(self, template, anomaly):
+        logger.warning(
+            f"Template parameter anomaly type={anomaly.get('type')} "
+            f"app={self.app.uuid} project={self.app.project_uuid} "
+            f"template={template.get('name')} "
+            f"message_template_id={template.get('id')}"
+        )
 
     def _mark_templates_synced(self):
         config = dict(self.app.config or {})

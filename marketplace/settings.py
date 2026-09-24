@@ -344,6 +344,22 @@ ACCOUNT_VERIFICATION_CACHE_TTL = env.int("ACCOUNT_VERIFICATION_CACHE_TTL", defau
 WHATSAPP_API_URL = urllib.parse.urljoin(
     env.str("WHATSAPP_API_URL", default="https://graph.facebook.com/"), WHATSAPP_VERSION
 )
+# Template surfaces run at their own Graph version because `parameter_format` and
+# `body_text_named_params` do not exist below v23.0, while WHATSAPP_API_URL is the base URL for
+# catalogs, product batch upload, commerce settings, phone numbers, profile, OAuth, credit sharing
+# and onboarding. Aligning those onto the newer version is tracked separately (FR-040); v25.0
+# expires 2028-07-29.
+WHATSAPP_TEMPLATE_VERSION = env.str("WHATSAPP_TEMPLATE_VERSION", default="v25.0")
+WHATSAPP_TEMPLATE_API_URL = urllib.parse.urljoin(
+    env.str("WHATSAPP_API_URL", default="https://graph.facebook.com/"),
+    WHATSAPP_TEMPLATE_VERSION,
+)
+# Gates the named AUTHORING path only (FR-027). Sync, webhook, read and reconciliation are never
+# gated: recording what Meta already reported is additive. Default off so this service can ship
+# before Flows, mailroom, goflow and courier.
+WHATSAPP_NAMED_TEMPLATES_ENABLED = env.bool(
+    "WHATSAPP_NAMED_TEMPLATES_ENABLED", default=False
+)
 WHATSAPP_APPLICATION_SECRET = env.str("WHATSAPP_APPLICATION_SECRET", default="")
 WHATSAPP_APPLICATION_ID = env.str("WHATSAPP_APPLICATION_ID", default="")
 
