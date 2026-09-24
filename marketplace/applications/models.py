@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING, Generator
+from uuid import uuid4
 
 from django.db import models
 from django.db.models import Q
@@ -104,3 +105,49 @@ class AppTypeFeatured(AppTypeBaseModel):
     def get_apptype_featureds(cls) -> Generator[None, None, "AppType"]:
         for featured in cls.objects.order_by("priority"):
             yield featured.apptype
+
+
+class AppMigrationStatus(models.TextChoices):
+    PENDING = "PENDING", _("pending")
+    PUBLISH_FAILED = "PUBLISH_FAILED", _("publish failed")
+    IN_PROGRESS = "IN_PROGRESS", _("in progress")
+    PARTIAL_ERROR = "PARTIAL_ERROR", _("partial error")
+    COMPLETED = "COMPLETED", _("completed")
+
+
+class AppMigration(models.Model):
+    class Meta:
+        verbose_name = _("app migration")
+        verbose_name_plural = _("app migrations")
+        indexes = [
+            models.Index(
+                fields=["app", "status"],
+                name="appmigration_app_status",
+            ),
+        ]
+
+    uuid = models.UUIDField(_("UUID"), primary_key=True, default=uuid4, editable=False)
+    app = models.ForeignKey(
+        App,
+        on_delete=models.CASCADE,
+        related_name="migrations",
+    )
+    flow_object_uuid = models.UUIDField(_("flow object UUID"))
+    project_from = models.UUIDField(_("source project UUID"))
+    project_to = models.UUIDField(_("destination project UUID"))
+    status = models.CharField(
+        _("status"),
+        max_length=20,
+        choices=AppMigrationStatus.choices,
+        default=AppMigrationStatus.PENDING,
+    )
+    modules_status = models.JSONField(_("modules status"), default=dict, blank=True)
+    requested_by = models.CharField(
+        _("requested by"), max_length=255, null=True, blank=True
+    )
+    published_at = models.DateTimeField(_("published at"), null=True, blank=True)
+    created_at = models.DateTimeField(_("created at"), auto_now_add=True)
+    updated_at = models.DateTimeField(_("updated at"), auto_now=True)
+
+    def __str__(self):
+        return f"AppMigration {self.uuid} ({self.status})"
