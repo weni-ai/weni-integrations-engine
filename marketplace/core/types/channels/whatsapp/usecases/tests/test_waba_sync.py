@@ -5,6 +5,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
+from marketplace.applications.models import App
 from marketplace.core.pacing.constants import TTL_WHATSAPP_CLOUD_WABAS
 from marketplace.core.types import APPTYPES
 from marketplace.core.types.channels.whatsapp.usecases.waba_sync import WABASyncUseCase
@@ -140,6 +141,31 @@ class WABASyncUseCaseTestCase(TestCase):
         new_app.refresh_from_db()
         self.assertEqual(sibling.config["waba"], WABA_PAYLOAD)
         self.assertEqual(new_app.config["waba"], WABA_PAYLOAD)
+
+    def test_fetch_path_keeps_caller_config_so_later_save_preserves_waba(self):
+        new_app = self._create_app(waba_id=self.waba_id)
+        stored = App.objects.get(pk=new_app.pk)
+        stored.config = {**stored.config, "direct_send": True}
+        stored.save()
+        self.redis_mock.get.return_value = None
+
+        result = self._build_use_case(app=new_app).sync_whatsapp_cloud_waba()
+
+        self.assertEqual(result["status"], "synced")
+        self.assertEqual(new_app.config["waba"], WABA_PAYLOAD)
+        self.assertTrue(new_app.config["direct_send"])
+        self.assertEqual(new_app.modified_by, self.admin_user)
+
+        new_app.config["phone_number"] = {
+            "id": "phone-1",
+            "display_phone_number": "+55 11 99999-0000",
+            "display_name": "Acme",
+        }
+        new_app.save()
+
+        new_app.refresh_from_db()
+        self.assertEqual(new_app.config["waba"], WABA_PAYLOAD)
+        self.assertEqual(new_app.config["phone_number"]["id"], "phone-1")
 
     def test_create_path_fetches_when_ttl_is_fresh_but_no_sibling_cache(self):
         new_app = self._create_app(waba_id=self.waba_id)

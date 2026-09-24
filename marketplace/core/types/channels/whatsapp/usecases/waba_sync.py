@@ -54,7 +54,7 @@ class WABASyncUseCase:
 
         admin = User.objects.get_admin_user()
         for app in eligible_apps:
-            self._write_waba(app, deepcopy(waba_data), admin)
+            self._write_waba(self._app_to_write(app), deepcopy(waba_data), admin)
 
         mark_synced(
             self._ttl_key(waba_id),
@@ -140,6 +140,21 @@ class WABASyncUseCase:
                 continue
             return self._api_factory(token)
         return None
+
+    def _app_to_write(self, loaded_app: App) -> App:
+        """Write the caller's own instance when the loaded row is that app.
+
+        ``sync_waba`` reloads every sibling, including the caller, so a
+        second instance can be saved while ``self.app`` stays stale. The
+        next save of the caller then drops ``config.waba``. Reloading the
+        caller first keeps the write on the instance later steps already hold,
+        on top of the current row.
+        """
+        caller = self.app
+        if caller is None or caller is loaded_app or caller.pk != loaded_app.pk:
+            return loaded_app
+        caller.refresh_from_db()
+        return caller
 
     def _write_waba(self, app: App, waba_data: Dict[str, Any], admin) -> None:
         config = dict(app.config or {})
