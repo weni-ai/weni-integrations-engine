@@ -1,3 +1,10 @@
+v4.29.0
+----------
+* fix(waba_sync): preserve caller app config on WABA sync to prevent stale overwrites
+* docs: spec artifacts for named WhatsApp template parameters for this service
+* feat: Records named WhatsApp template parameters in the local mirror
+* chore: Add speckit
+
 v4.28.0
 ----------
 * fix(wpp_templates): isolate webhook change processing and improve error logging
