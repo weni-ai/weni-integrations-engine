@@ -4,6 +4,7 @@ from .views import (
     VtexIntegrationDetailsView,
     VtexSyncOnDemandInlineView,
     VtexSyncOnDemandView,
+    VtexUploadInlineProductsView,
 )
 
 
@@ -22,5 +23,10 @@ urlpatterns = [
         "sync-on-demand-inline/",
         VtexSyncOnDemandInlineView.as_view(),
         name="sync-on-demand-inline",
+    ),
+    path(
+        "upload-inline-products/",
+        VtexUploadInlineProductsView.as_view(),
+        name="upload-inline-products",
     ),
 ]

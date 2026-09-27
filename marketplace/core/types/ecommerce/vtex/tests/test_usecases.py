@@ -8,13 +8,22 @@ from unittest.mock import Mock, patch
 from rest_framework.exceptions import NotFound
 
 from marketplace.applications.models import App
-from marketplace.wpp_products.models import Catalog
+from marketplace.wpp_products.models import Catalog, UploadProduct
+from marketplace.core.types.ecommerce.dtos.upload_inline_products_dto import (
+    UploadInlineProductsDTO,
+)
 from marketplace.core.types.ecommerce.vtex.usecases.sync_on_demand import (
     SyncOnDemandUseCase,
+)
+from marketplace.core.types.ecommerce.vtex.usecases.upload_inline_products import (
+    UploadInlineProductsUseCase,
 )
 from marketplace.core.types.ecommerce.vtex.usecases.vtex_integration import (
     VtexIntegration,
 )
+from marketplace.services.vtex.tests.fakes import VtexTestEnvironment
+from marketplace.services.vtex.utils.enums import ProductPriority
+from marketplace.services.vtex.utils.facebook_product_dto import FacebookProductDTO
 
 
 User = get_user_model()
@@ -227,3 +236,211 @@ class SyncOnDemandUseCaseTest(TestCase):
 
         mock_filter.assert_called_once_with(sku_id="sku2", catalog="mock_catalog")
         self.assertFalse(result)
+
+
+UPLOAD_USECASE_PATH = (
+    "marketplace.core.types.ecommerce.vtex.usecases.upload_inline_products"
+)
+
+
+class UploadInlineProductsUseCaseTest(TestCase):
+    def setUp(self):
+        self.project_uuid = "project-uuid"
+        self.product = {
+            "id": "1047#1",
+            "title": "Laranja Bahia Importada - Saco (15Kg)",
+            "description": "Laranja Bahia Importada - Saco (15Kg)",
+            "availability": "in stock",
+            "status": "active",
+            "condition": "new",
+            "price": "10.00 BRL",
+            "link": "https://www.arado.com.br/laranja-bahia-importada-1/p?idsku=1047",
+            "image_link": "https://arado.vteximg.com.br/arquivos/ids/158691/img.jpg",
+            "brand": "Arado",
+            "sale_price": "8.00 BRL",
+            "additional_image_link": "",
+            "rich_text_description": "",
+        }
+        self.dto = UploadInlineProductsDTO(products=[self.product])
+
+        self.mock_product_manager = Mock()
+        self.use_case = UploadInlineProductsUseCase(
+            product_manager=self.mock_product_manager
+        )
+
+        self.mock_catalog = Mock(spec=Catalog)
+        self.mock_catalog.name = "Test Catalog"
+        self.mock_app = Mock(spec=App)
+        self.mock_app.uuid = "vtex-app-uuid"
+        self.mock_app.vtex_catalogs.first.return_value = self.mock_catalog
+
+    def test_default_priority_is_on_demand(self):
+        self.assertEqual(self.use_case.priority, ProductPriority.ON_DEMAND)
+
+    @patch(f"{UPLOAD_USECASE_PATH}.UploadManager.check_and_start_upload")
+    @patch("marketplace.applications.models.App.objects.get")
+    def test_execute_saves_products_and_triggers_upload(
+        self, mock_get, mock_check_upload
+    ):
+        mock_get.return_value = self.mock_app
+
+        total = self.use_case.execute(self.dto, self.project_uuid)
+
+        self.assertEqual(total, 1)
+        mock_get.assert_called_once_with(project_uuid=self.project_uuid, code="vtex")
+
+        self.mock_product_manager.bulk_save_initial_product_data.assert_called_once()
+        (
+            saved_products,
+            saved_catalog,
+        ) = self.mock_product_manager.bulk_save_initial_product_data.call_args.args
+        self.assertEqual(saved_catalog, self.mock_catalog)
+        self.assertEqual(len(saved_products), 1)
+        self.assertIsInstance(saved_products[0], FacebookProductDTO)
+        self.assertEqual(saved_products[0].id, "1047#1")
+
+        mock_check_upload.assert_called_once_with(
+            "vtex-app-uuid", priority=ProductPriority.ON_DEMAND
+        )
+
+    @patch(f"{UPLOAD_USECASE_PATH}.UploadManager.check_and_start_upload")
+    @patch("marketplace.applications.models.App.objects.get")
+    def test_execute_raises_not_found_when_vtex_app_missing(
+        self, mock_get, mock_check_upload
+    ):
+        mock_get.side_effect = App.DoesNotExist
+
+        with self.assertRaises(NotFound):
+            self.use_case.execute(self.dto, self.project_uuid)
+
+        self.mock_product_manager.bulk_save_initial_product_data.assert_not_called()
+        mock_check_upload.assert_not_called()
+
+    @patch(f"{UPLOAD_USECASE_PATH}.UploadManager.check_and_start_upload")
+    @patch("marketplace.applications.models.App.objects.get")
+    def test_execute_raises_not_found_when_no_catalog_linked(
+        self, mock_get, mock_check_upload
+    ):
+        self.mock_app.vtex_catalogs.first.return_value = None
+        mock_get.return_value = self.mock_app
+
+        with self.assertRaises(NotFound):
+            self.use_case.execute(self.dto, self.project_uuid)
+
+        self.mock_product_manager.bulk_save_initial_product_data.assert_not_called()
+        mock_check_upload.assert_not_called()
+
+    def test_build_product_dto_maps_all_fields(self):
+        dto = self.use_case._build_product_dto(self.product)
+
+        self.assertEqual(dto.id, "1047#1")
+        self.assertEqual(dto.title, self.product["title"])
+        self.assertEqual(dto.price, "10.00 BRL")
+        self.assertEqual(dto.sale_price, "8.00 BRL")
+        self.assertEqual(dto.product_details, {})
+
+    def test_build_product_dto_defaults_optional_fields(self):
+        minimal_product = {
+            "id": "55#1",
+            "title": "Minimal",
+            "availability": "in stock",
+            "status": "active",
+            "condition": "new",
+            "price": "1.00 BRL",
+            "link": "https://example.com/p",
+            "image_link": "https://example.com/img.jpg",
+        }
+
+        dto = self.use_case._build_product_dto(minimal_product)
+
+        self.assertEqual(dto.description, "")
+        self.assertEqual(dto.brand, "")
+        self.assertEqual(dto.sale_price, "")
+        self.assertEqual(dto.additional_image_link, "")
+        self.assertEqual(dto.rich_text_description, "")
+
+
+class UploadInlineProductsUseCaseIntegrationTest(TestCase):
+    """
+    Exercises the full use case against the real database, persisting UploadProduct rows.
+
+    Only the upload trigger (UploadManager -> redis/celery) is mocked, so the persistence
+    path (ProductFacebookManager, payload filtering and dedup) runs for real.
+    """
+
+    def setUp(self):
+        # Reuses the shared VTEX test environment (DB fixtures + fakes).
+        self.env = VtexTestEnvironment.create(catalog_name="Integration Catalog")
+        self.vtex_app = self.env.vtex_app
+        self.catalog = self.env.catalog
+        self.project_uuid = self.env.project_uuid
+
+        self.product = {
+            "id": "1047#1",
+            "title": "Laranja Bahia Importada - Saco (15Kg)",
+            "description": "Laranja Bahia Importada - Saco (15Kg)",
+            "availability": "in stock",
+            "status": "active",
+            "condition": "new",
+            "price": "10.00 BRL",
+            "link": "https://www.arado.com.br/laranja-bahia-importada-1/p?idsku=1047",
+            "image_link": "https://arado.vteximg.com.br/arquivos/ids/158691/img.jpg",
+            "brand": "Arado",
+            "sale_price": "8.00 BRL",
+            "additional_image_link": "",
+            "rich_text_description": "",
+        }
+        self.use_case = UploadInlineProductsUseCase()
+
+    @patch(f"{UPLOAD_USECASE_PATH}.UploadManager.check_and_start_upload")
+    def test_execute_persists_upload_products_and_triggers_upload(
+        self, mock_check_upload
+    ):
+        dto = UploadInlineProductsDTO(products=[self.product])
+
+        total = self.use_case.execute(dto, self.project_uuid)
+
+        self.assertEqual(total, 1)
+        mock_check_upload.assert_called_once_with(
+            str(self.vtex_app.uuid), priority=ProductPriority.ON_DEMAND
+        )
+
+        uploads = UploadProduct.objects.filter(catalog=self.catalog)
+        self.assertEqual(uploads.count(), 1)
+
+        upload = uploads.first()
+        self.assertEqual(upload.facebook_product_id, "1047#1")
+        self.assertEqual(upload.status, "pending")
+        self.assertEqual(upload.priority, ProductPriority.ON_DEMAND)
+        self.assertEqual(upload.data["id"], "1047#1")
+        self.assertEqual(upload.data["price"], "10.00 BRL")
+        self.assertEqual(upload.data["sale_price"], "8.00 BRL")
+        # Empty fields are stripped from the Meta payload
+        self.assertNotIn("additional_image_link", upload.data)
+        self.assertNotIn("rich_text_description", upload.data)
+
+    @patch(f"{UPLOAD_USECASE_PATH}.UploadManager.check_and_start_upload")
+    def test_execute_dedups_repeated_product_ids_keeping_latest(
+        self, mock_check_upload
+    ):
+        edited_product = dict(self.product, price="12.00 BRL")
+        dto = UploadInlineProductsDTO(products=[self.product, edited_product])
+
+        self.use_case.execute(dto, self.project_uuid)
+
+        uploads = UploadProduct.objects.filter(
+            catalog=self.catalog, facebook_product_id="1047#1"
+        )
+        self.assertEqual(uploads.count(), 1)
+        self.assertEqual(uploads.first().data["price"], "12.00 BRL")
+
+    @patch(f"{UPLOAD_USECASE_PATH}.UploadManager.check_and_start_upload")
+    def test_execute_raises_not_found_when_no_catalog_linked(self, mock_check_upload):
+        self.catalog.delete()
+        dto = UploadInlineProductsDTO(products=[self.product])
+
+        with self.assertRaises(NotFound):
+            self.use_case.execute(dto, self.project_uuid)
+
+        self.assertEqual(UploadProduct.objects.count(), 0)
+        mock_check_upload.assert_not_called()
