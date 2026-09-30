@@ -192,7 +192,11 @@ class PreverifiedPhoneNumber(WeniAuthViewMixin, views.APIView):
     STALE_CACHE_KEY = "preverified_numbers_stale"
     CACHE_TTL_SECONDS = 1800  # 30 minutes
     STALE_CACHE_TTL_SECONDS = 86400  # 24 hours
-    DIALING_CODE_PATTERN = re.compile(r"^\d{1,3}$")
+    MIN_DIALING_CODE_DIGITS = 1
+    MAX_DIALING_CODE_DIGITS = 3
+    DIALING_CODE_PATTERN = re.compile(
+        rf"^\d{{{MIN_DIALING_CODE_DIGITS},{MAX_DIALING_CODE_DIGITS}}}$"
+    )
 
     def _dialing_code(self, raw_value):
         value = str(raw_value).strip() if raw_value is not None else ""
@@ -204,7 +208,13 @@ class PreverifiedPhoneNumber(WeniAuthViewMixin, views.APIView):
 
     def _invalid_dialing_code_response(self, param_name):
         return Response(
-            {"error": f"{param_name} must be a dialing code of 1 to 3 digits."},
+            {
+                "error": (
+                    f"{param_name} must be a dialing code of "
+                    f"{self.MIN_DIALING_CODE_DIGITS} to "
+                    f"{self.MAX_DIALING_CODE_DIGITS} digits."
+                )
+            },
             status=status.HTTP_400_BAD_REQUEST,
         )
 
