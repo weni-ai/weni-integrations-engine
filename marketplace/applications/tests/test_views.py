@@ -752,6 +752,124 @@ class PreverifiedPhoneNumberViewTestCase(APIBaseTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json["data"], ["stale_free"])
 
+    @override_settings(WHATSAPP_BSP_BUSINESS_ID="123456")
+    @patch("marketplace.applications.views.cache.get")
+    @patch("marketplace.applications.views.cache.set")
+    @patch("marketplace.applications.views.cache.ttl", return_value=300)
+    def test_country_code_returns_only_matching_numbers(
+        self, mock_ttl, mock_cache_set, mock_cache_get
+    ):
+        mock_cache_get.return_value = {
+            "data_list": [
+                {"id": "mx", "phone_number": "525512345678"},
+                {"id": "br", "phone_number": "5511999999999"},
+            ],
+            "chosen_ids": [],
+            "expires_at": None,
+        }
+        response = self.request.get(self.url, params={"country_code": "52"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json["data"], ["mx"])
+
+    @override_settings(WHATSAPP_BSP_BUSINESS_ID="123456")
+    @patch("marketplace.applications.views.cache.get")
+    @patch("marketplace.applications.views.cache.set")
+    @patch("marketplace.applications.views.cache.ttl", return_value=300)
+    def test_exclude_country_code_skips_matching_numbers(
+        self, mock_ttl, mock_cache_set, mock_cache_get
+    ):
+        mock_cache_get.return_value = {
+            "data_list": [
+                {"id": "mx", "phone_number": "525512345678"},
+                {"id": "br", "phone_number": "5511999999999"},
+            ],
+            "chosen_ids": [],
+            "expires_at": None,
+        }
+        response = self.request.get(self.url, params={"exclude_country_code": "52"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json["data"], ["br"])
+
+    @override_settings(WHATSAPP_BSP_BUSINESS_ID="123456")
+    @patch("marketplace.applications.views.cache.get")
+    @patch("marketplace.applications.views.cache.set")
+    @patch("marketplace.applications.views.cache.ttl", return_value=300)
+    def test_country_code_matches_formatted_phone_number(
+        self, mock_ttl, mock_cache_set, mock_cache_get
+    ):
+        mock_cache_get.return_value = {
+            "data_list": [
+                {"id": "blank"},
+                {"id": "mx", "phone_number": "+52 55 1234 5678"},
+                {"id": "br", "phone_number": "5511999999999"},
+            ],
+            "chosen_ids": [],
+            "expires_at": None,
+        }
+        response = self.request.get(self.url, params={"country_code": "52"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json["data"], ["mx"])
+
+    @override_settings(WHATSAPP_BSP_BUSINESS_ID="123456")
+    @patch("marketplace.applications.views.cache.get")
+    @patch("marketplace.applications.views.cache.set")
+    def test_returns_empty_when_no_number_matches_country_code(
+        self, mock_cache_set, mock_cache_get
+    ):
+        mock_cache_get.return_value = {
+            "data_list": [{"id": "br", "phone_number": "5511999999999"}],
+            "chosen_ids": [],
+            "expires_at": None,
+        }
+        response = self.request.get(self.url, params={"country_code": "52"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json, {"data": []})
+        mock_cache_set.assert_not_called()
+
+    @override_settings(WHATSAPP_BSP_BUSINESS_ID="123456")
+    @patch("marketplace.applications.views.cache.get")
+    def test_returns_400_when_country_code_is_not_a_dialing_code(self, mock_cache_get):
+        response = self.request.get(self.url, params={"country_code": "MX"})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.json.get("error"),
+            "country_code must be a dialing code of 1 to 3 digits.",
+        )
+        mock_cache_get.assert_not_called()
+
+    @override_settings(WHATSAPP_BSP_BUSINESS_ID="123456")
+    @patch("marketplace.applications.views.cache.get")
+    def test_returns_400_when_exclude_country_code_is_not_a_dialing_code(
+        self, mock_cache_get
+    ):
+        response = self.request.get(self.url, params={"exclude_country_code": "5212"})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.json.get("error"),
+            "exclude_country_code must be a dialing code of 1 to 3 digits.",
+        )
+        mock_cache_get.assert_not_called()
+
+    @override_settings(WHATSAPP_BSP_BUSINESS_ID="123456")
+    @patch("marketplace.applications.views.cache.get")
+    @patch("marketplace.applications.views.cache.set")
+    @patch("marketplace.applications.views.cache.ttl", return_value=300)
+    def test_country_code_excludes_already_chosen_ids(
+        self, mock_ttl, mock_cache_set, mock_cache_get
+    ):
+        mock_cache_get.return_value = {
+            "data_list": [
+                {"id": "mx_used", "phone_number": "525511111111"},
+                {"id": "mx_free", "phone_number": "525522222222"},
+                {"id": "br", "phone_number": "5511999999999"},
+            ],
+            "chosen_ids": ["mx_used"],
+            "expires_at": None,
+        }
+        response = self.request.get(self.url, params={"country_code": "52"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json["data"], ["mx_free"])
+
 
 class FacebookClientGetPreverifiedNumbersTestCase(TestCase):
     """Tests for FacebookClient.get_preverified_numbers (BusinessMetaRequests)."""
