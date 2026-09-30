@@ -1,4 +1,5 @@
 import random
+import re
 from datetime import timedelta
 
 from django.conf import settings as django_settings
@@ -170,6 +171,11 @@ class PreverifiedPhoneNumber(WeniAuthViewMixin, views.APIView):
     Returns a random pre-verified phone number from the BSP business for
     embedded signup.
 
+    Optional query params filter the pool by dialing-code prefix before the
+    pick. `country_code` keeps numbers that start with the code.
+    `exclude_country_code` drops numbers that start with the code. Each value
+    must be 1 to 3 digits. With neither param, the full pool is used.
+
     Primary cache (30 minutes TTL): stores the list from Meta plus the IDs already
     chosen in that window, so the same number is never handed out twice within
     that period. After 30 minutes the cache is rebuilt from Meta.
@@ -186,6 +192,29 @@ class PreverifiedPhoneNumber(WeniAuthViewMixin, views.APIView):
     STALE_CACHE_KEY = "preverified_numbers_stale"
     CACHE_TTL_SECONDS = 1800  # 30 minutes
     STALE_CACHE_TTL_SECONDS = 86400  # 24 hours
+    DIALING_CODE_PATTERN = re.compile(r"^\d{1,3}$")
+
+    def _dialing_code(self, raw_value):
+        value = str(raw_value).strip() if raw_value is not None else ""
+        if not value:
+            return ""
+        if self.DIALING_CODE_PATTERN.match(value):
+            return value
+        return None
+
+    def _invalid_dialing_code_response(self, param_name):
+        return Response(
+            {"error": f"{param_name} must be a dialing code of 1 to 3 digits."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    def _matches_country_filter(self, number, country_code, exclude_country_code):
+        digits = re.sub(r"\D", "", str(number.get("phone_number") or ""))
+        if country_code and not digits.startswith(country_code):
+            return False
+        if exclude_country_code and digits.startswith(exclude_country_code):
+            return False
+        return True
 
     def _fetch_from_meta(self):
         client = FacebookClient(django_settings.WHATSAPP_SYSTEM_USER_ACCESS_TOKEN)
@@ -205,6 +234,15 @@ class PreverifiedPhoneNumber(WeniAuthViewMixin, views.APIView):
         return Response(meta_detail, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def get(self, request):
+        country_code = self._dialing_code(request.query_params.get("country_code"))
+        if country_code is None:
+            return self._invalid_dialing_code_response("country_code")
+        exclude_country_code = self._dialing_code(
+            request.query_params.get("exclude_country_code")
+        )
+        if exclude_country_code is None:
+            return self._invalid_dialing_code_response("exclude_country_code")
+
         cached = cache.get(self.CACHE_KEY)
         now = timezone.now()
         if cached is None or (cached.get("expires_at") and now > cached["expires_at"]):
@@ -239,7 +277,12 @@ class PreverifiedPhoneNumber(WeniAuthViewMixin, views.APIView):
 
         data_list = cached.get("data_list") or []
         chosen_ids = set(cached.get("chosen_ids") or [])
-        available = [i for i in data_list if i.get("id") not in chosen_ids]
+        available = [
+            i
+            for i in data_list
+            if i.get("id") not in chosen_ids
+            and self._matches_country_filter(i, country_code, exclude_country_code)
+        ]
 
         if not available:
             return Response({"data": []}, status=status.HTTP_200_OK)
