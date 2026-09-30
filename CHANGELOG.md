@@ -1,3 +1,7 @@
+v4.29.1
+----------
+* feat: Enhance PreverifiedPhoneNumber to filter phone numbers by dialing code
+
 v4.29.0
 ----------
 * fix(waba_sync): preserve caller app config on WABA sync to prevent stale overwrites
