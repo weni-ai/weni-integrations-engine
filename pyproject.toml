@@ -31,6 +31,8 @@ tqdm = "^4.66.2"
 pyjwt = "^2.10.1"
 cryptography = "^45.0.5"
 pyopenssl = "^25.1.0"
+weni-eda = "0.2.0"
+pendulum = "^3.2.0"
 weni-commons = "1.3.2a11"
 
 [tool.poetry.dev-dependencies]
